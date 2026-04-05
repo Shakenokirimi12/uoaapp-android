@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UoA App</string>
+
+    <!-- Bottom Navigation -->
+    <string name="nav_home">ホーム</string>
+    <string name="nav_calendar">カレンダー</string>
+    <string name="nav_courses">履修</string>
+    <string name="nav_gakushoku">学食</string>
+    <string name="nav_settings">設定</string>
+
+    <!-- Home -->
+    <string name="home_today_classes">今日の授業</string>
+    <string name="home_today_assignments">今日の課題</string>
+    <string name="home_no_classes">今日の授業はありません</string>
+    <string name="home_no_assignments">今日の課題はありません</string>
+    <string name="home_sync_status">同期中…</string>
+    <string name="home_last_synced">最終同期: %s</string>
+
+    <!-- Calendar -->
+    <string name="calendar_classes_tab">授業</string>
+    <string name="calendar_assignments_tab">課題</string>
+
+    <!-- Courses -->
+    <string name="courses_search_hint">コースを検索</string>
+    <string name="courses_active">履修中</string>
+    <string name="courses_past">過去のコース</string>
+
+    <!-- Gakushoku -->
+    <string name="gakushoku_title">学食メニュー</string>
+    <string name="gakushoku_no_menu">メニューがありません</string>
+    <string name="gakushoku_lunch">ランチ</string>
+    <string name="gakushoku_dinner">ディナー</string>
+
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_account">アカウント</string>
+    <string name="settings_username">ユーザー名</string>
+    <string name="settings_password">パスワード</string>
+    <string name="settings_notifications">通知</string>
+    <string name="settings_assignment_notify">課題の通知</string>
+    <string name="settings_grade_notify">成績変更の通知</string>
+    <string name="settings_lunch_notify">学食メニューの通知</string>
+    <string name="settings_general">一般</string>
+    <string name="settings_reset">データをリセット</string>
+    <string name="settings_version">バージョン</string>
+    <string name="settings_logout">ログアウト</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome">UoA App へようこそ</string>
+    <string name="onboarding_disclaimer">このアプリは会津大学の非公式アプリです。\n大学とは一切の関係がありません。</string>
+    <string name="onboarding_agree">同意して続ける</string>
+    <string name="onboarding_login_title">ログイン</string>
+    <string name="onboarding_login_desc">Moodle / CampusSquare のアカウントでログインしてください。</string>
+    <string name="onboarding_username_hint">ユーザー名 (例: s1234567)</string>
+    <string name="onboarding_password_hint">パスワード</string>
+    <string name="onboarding_login_button">ログイン</string>
+    <string name="onboarding_skip">スキップ</string>
+    <string name="onboarding_done">完了</string>
+
+    <!-- Grades -->
+    <string name="settings_grades">成績一覧</string>
+    <string name="settings_facilities">施設利用状況</string>
+
+    <!-- Common -->
+    <string name="loading">読み込み中…</string>
+    <string name="error_generic">エラーが発生しました</string>
+    <string name="retry">再試行</string>
+    <string name="ok">OK</string>
+    <string name="cancel">キャンセル</string>
+    <string name="remaining_format">残り %d 分</string>
+</resources>

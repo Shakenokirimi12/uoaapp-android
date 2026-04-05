@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/navigation_home">
+
+    <fragment
+        android:id="@+id/navigation_home"
+        android:name="com.shakenokirimi12.uoa_app.ui.home.HomeFragment"
+        android:label="@string/nav_home"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/navigation_calendar"
+        android:name="com.shakenokirimi12.uoa_app.ui.calendar.CalendarFragment"
+        android:label="@string/nav_calendar"
+        tools:layout="@layout/fragment_calendar">
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_gakushoku"
+        android:name="com.shakenokirimi12.uoa_app.ui.gakushoku.GakushokuFragment"
+        android:label="@string/nav_gakushoku"
+        tools:layout="@layout/fragment_gakushoku" />
+
+    <fragment
+        android:id="@+id/navigation_courses"
+        android:name="com.shakenokirimi12.uoa_app.ui.courses.CoursesFragment"
+        android:label="@string/nav_courses"
+        tools:layout="@layout/fragment_courses">
+        <action
+            android:id="@+id/action_courses_to_detail"
+            app:destination="@id/navigation_course_detail" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_settings"
+        android:name="com.shakenokirimi12.uoa_app.ui.settings.SettingsFragment"
+        android:label="@string/nav_settings"
+        tools:layout="@layout/fragment_settings">
+        <action
+            android:id="@+id/action_settings_to_grades"
+            app:destination="@id/navigation_grades" />
+        <action
+            android:id="@+id/action_settings_to_facilities"
+            app:destination="@id/navigation_facilities" />
+        <action
+            android:id="@+id/action_settings_to_notifications"
+            app:destination="@id/navigation_notifications" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_grades"
+        android:name="com.shakenokirimi12.uoa_app.ui.grades.GradesFragment"
+        android:label="成績"
+        tools:layout="@layout/fragment_grades" />
+
+    <fragment
+        android:id="@+id/navigation_facilities"
+        android:name="com.shakenokirimi12.uoa_app.ui.facilities.FacilitiesFragment"
+        android:label="施設利用状況"
+        tools:layout="@layout/fragment_facilities" />
+
+    <fragment
+        android:id="@+id/navigation_course_detail"
+        android:name="com.shakenokirimi12.uoa_app.ui.course.CourseDetailFragment"
+        android:label="シラバス・ダッシュボード"
+        tools:layout="@layout/fragment_course_detail">
+        <action
+            android:id="@+id/action_detail_to_syllabus"
+            app:destination="@id/navigation_syllabus" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_syllabus"
+        android:name="com.shakenokirimi12.uoa_app.ui.syllabus.SyllabusFragment"
+        android:label="シラバス" />
+
+    <fragment
+        android:id="@+id/navigation_notifications"
+        android:name="com.shakenokirimi12.uoa_app.ui.notifications.NotificationListFragment"
+        android:label="通知"
+        tools:layout="@layout/fragment_notification_list" />
+
+
+</navigation>
