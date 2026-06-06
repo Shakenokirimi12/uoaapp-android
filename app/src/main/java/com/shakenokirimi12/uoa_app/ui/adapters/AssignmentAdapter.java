@@ -21,6 +21,15 @@ public class AssignmentAdapter extends RecyclerView.Adapter<AssignmentAdapter.Vi
     private List<Assignment> items = new ArrayList<>();
     private final SimpleDateFormat dateFmt =
             new SimpleDateFormat("M/d HH:mm", Locale.JAPAN);
+    private OnAssignmentClickListener clickListener;
+
+    public interface OnAssignmentClickListener {
+        void onAssignmentClick(Assignment assignment);
+    }
+
+    public void setOnAssignmentClickListener(OnAssignmentClickListener listener) {
+        this.clickListener = listener;
+    }
 
     public void setItems(List<Assignment> items) {
         this.items = items;
@@ -49,6 +58,10 @@ public class AssignmentAdapter extends RecyclerView.Adapter<AssignmentAdapter.Vi
         } else {
             holder.textDue.setText("");
         }
+
+        holder.itemView.setOnClickListener(v -> {
+            if (clickListener != null) clickListener.onAssignmentClick(a);
+        });
     }
 
     @Override

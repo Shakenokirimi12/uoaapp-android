@@ -4,12 +4,14 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -19,12 +21,15 @@ import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
+import com.shakenokirimi12.uoa_app.data.models.GakushokuMenuItem;
 import com.shakenokirimi12.uoa_app.data.models.GroupedClass;
 import com.shakenokirimi12.uoa_app.services.CampusSquareService;
+import com.shakenokirimi12.uoa_app.services.GakushokuService;
 import com.shakenokirimi12.uoa_app.services.MoodleService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
 import com.shakenokirimi12.uoa_app.services.notification.ClassNotificationService;
 import com.shakenokirimi12.uoa_app.ui.ClassDetailDialog;
+import com.shakenokirimi12.uoa_app.ui.ClassLocationDialog;
 import com.shakenokirimi12.uoa_app.ui.adapters.AssignmentAdapter;
 import com.shakenokirimi12.uoa_app.ui.adapters.ClassAdapter;
 
@@ -45,10 +50,29 @@ public class HomeFragment extends Fragment {
     private TextView textDate;
     private TextView textTodayHint;
 
+    // Summary cards
+    private TextView textClassCount;
+    private TextView textAssignmentCount;
+
+    // Sync status
+    private View syncStatusBar;
+    private TextView textSyncStatus;
+    private TextView textLastSync;
+
+    // Cafeteria preview
+    private View cardGakushoku;
+    private LinearLayout layoutMenuContent;
+    private TextView textMenuLoading;
+    private TextView textMenuLunch;
+    private TextView textMenuFish;
+    private TextView textMenuSalad;
+    private TextView textMenuDinner;
+
     private ClassAdapter classAdapter;
     private AssignmentAdapter assignmentAdapter;
     private final MoodleService moodleService = new MoodleService();
     private final CampusSquareService csService = new CampusSquareService();
+    private final GakushokuService gakushokuService = new GakushokuService();
 
     private final Calendar selectedDate = Calendar.getInstance();
     private List<CalendarEvent> allEvents = new ArrayList<>();
@@ -75,16 +99,43 @@ public class HomeFragment extends Fragment {
         textDate = view.findViewById(R.id.text_date);
         textTodayHint = view.findViewById(R.id.text_today_hint);
 
+        // Summary cards
+        textClassCount = view.findViewById(R.id.text_class_count);
+        textAssignmentCount = view.findViewById(R.id.text_assignment_count);
+
+        // Sync status
+        syncStatusBar = view.findViewById(R.id.sync_status_bar);
+        textSyncStatus = view.findViewById(R.id.text_sync_status);
+        textLastSync = view.findViewById(R.id.text_last_sync);
+
+        // Cafeteria preview
+        cardGakushoku = view.findViewById(R.id.card_gakushoku);
+        layoutMenuContent = view.findViewById(R.id.layout_menu_content);
+        textMenuLoading = view.findViewById(R.id.text_menu_loading);
+        textMenuLunch = view.findViewById(R.id.text_menu_lunch);
+        textMenuFish = view.findViewById(R.id.text_menu_fish);
+        textMenuSalad = view.findViewById(R.id.text_menu_salad);
+        textMenuDinner = view.findViewById(R.id.text_menu_dinner);
+
         classAdapter = new ClassAdapter();
         classAdapter.setOnClassClickListener(cls ->
-                ClassDetailDialog.show(requireContext(), cls));
+                ClassLocationDialog.show(requireContext(), cls));
         assignmentAdapter = new AssignmentAdapter();
+        assignmentAdapter.setOnAssignmentClickListener(assignment -> {
+            Bundle args = new Bundle();
+            args.putInt("assignment_id", assignment.getId());
+            try {
+                Navigation.findNavController(requireView())
+                        .navigate(R.id.navigation_assignment_detail, args);
+            } catch (Exception ignored) {}
+        });
         recyclerClasses.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerAssignments.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerClasses.setAdapter(classAdapter);
         recyclerAssignments.setAdapter(assignmentAdapter);
 
         updateDateDisplay();
+        showLastSyncTime();
 
         view.findViewById(R.id.button_prev_day).setOnClickListener(v -> {
             selectedDate.add(Calendar.DAY_OF_YEAR, -1);
@@ -101,8 +152,17 @@ public class HomeFragment extends Fragment {
             onDateChanged();
         });
 
+        cardGakushoku.setOnClickListener(v -> {
+            try {
+                Navigation.findNavController(v).navigate(R.id.navigation_gakushoku);
+            } catch (Exception ignored) {}
+        });
+
         swipeRefresh.setColorSchemeResources(R.color.primary);
-        swipeRefresh.setOnRefreshListener(this::syncData);
+        swipeRefresh.setOnRefreshListener(() -> {
+            syncData();
+            loadCafeteriaMenu();
+        });
 
         DataCache cache = DataCache.getInstance(requireContext());
         allEvents = cache.loadEvents();
@@ -112,6 +172,7 @@ public class HomeFragment extends Fragment {
         }
 
         syncData();
+        loadCafeteriaMenu();
     }
 
     private void onDateChanged() {
@@ -126,6 +187,23 @@ public class HomeFragment extends Fragment {
         boolean isToday = selectedDate.get(Calendar.YEAR) == today.get(Calendar.YEAR)
                 && selectedDate.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR);
         textTodayHint.setVisibility(isToday ? View.GONE : View.VISIBLE);
+    }
+
+    private void showLastSyncTime() {
+        PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
+        long lastSync = prefs.getLastSync();
+        if (lastSync > 0) {
+            long diffMs = System.currentTimeMillis() - lastSync;
+            long diffMin = diffMs / 60000;
+            String timeAgo;
+            if (diffMin < 1) timeAgo = "たった今";
+            else if (diffMin < 60) timeAgo = diffMin + "分前";
+            else if (diffMin < 1440) timeAgo = (diffMin / 60) + "時間前";
+            else timeAgo = (diffMin / 1440) + "日前";
+
+            textLastSync.setText(getString(R.string.home_last_synced, timeAgo));
+            textLastSync.setVisibility(View.VISIBLE);
+        }
     }
 
     private void filterAndDisplay() {
@@ -160,9 +238,15 @@ public class HomeFragment extends Fragment {
         assignmentAdapter.setItems(dayAssignments);
         textNoAssignments.setVisibility(dayAssignments.isEmpty() ? View.VISIBLE : View.GONE);
         recyclerAssignments.setVisibility(dayAssignments.isEmpty() ? View.GONE : View.VISIBLE);
+
+        // Update summary cards
+        textClassCount.setText(String.valueOf(grouped.size()));
+        textAssignmentCount.setText(String.valueOf(dayAssignments.size()));
     }
 
     private void syncData() {
+        syncStatusBar.setVisibility(View.VISIBLE);
+        textSyncStatus.setText(R.string.home_sync_status);
         swipeRefresh.setRefreshing(true);
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
         String user = prefs.getUsername();
@@ -170,8 +254,11 @@ public class HomeFragment extends Fragment {
 
         if (user.isEmpty() || pass.isEmpty()) {
             swipeRefresh.setRefreshing(false);
+            syncStatusBar.setVisibility(View.GONE);
             textNoClasses.setVisibility(View.VISIBLE);
             textNoAssignments.setVisibility(View.VISIBLE);
+            textClassCount.setText("0");
+            textAssignmentCount.setText("0");
             return;
         }
 
@@ -203,7 +290,9 @@ public class HomeFragment extends Fragment {
                         allAssignments = assignments;
                         filterAndDisplay();
                         swipeRefresh.setRefreshing(false);
+                        syncStatusBar.setVisibility(View.GONE);
                         prefs.setLastSync(System.currentTimeMillis());
+                        showLastSyncTime();
                         DataCache.getInstance(requireContext()).saveAssignments(assignments);
                     }
 
@@ -211,6 +300,7 @@ public class HomeFragment extends Fragment {
                     public void onError(String message) {
                         if (!isAdded()) return;
                         swipeRefresh.setRefreshing(false);
+                        syncStatusBar.setVisibility(View.GONE);
                         showError(message);
                     }
                 });
@@ -220,9 +310,61 @@ public class HomeFragment extends Fragment {
             public void onError(String message) {
                 if (!isAdded()) return;
                 swipeRefresh.setRefreshing(false);
+                syncStatusBar.setVisibility(View.GONE);
                 showError(message);
             }
         });
+    }
+
+    private void loadCafeteriaMenu() {
+        textMenuLoading.setVisibility(View.VISIBLE);
+        layoutMenuContent.setVisibility(View.GONE);
+
+        gakushokuService.fetchMenu(new ServiceCallback<List<GakushokuMenuItem>>() {
+            @Override
+            public void onSuccess(List<GakushokuMenuItem> items) {
+                if (!isAdded()) return;
+                Calendar cal = Calendar.getInstance();
+                int todayDay = cal.get(Calendar.DAY_OF_MONTH);
+                GakushokuMenuItem todayMenu = null;
+                for (GakushokuMenuItem item : items) {
+                    if (item.getDate() != null && item.getDate().contains(todayDay + "日")) {
+                        todayMenu = item;
+                        break;
+                    }
+                }
+                if (todayMenu != null) {
+                    showMenuPreview(todayMenu);
+                } else {
+                    textMenuLoading.setText("今日のメニューはありません");
+                }
+            }
+
+            @Override
+            public void onError(String message) {
+                if (!isAdded()) return;
+                textMenuLoading.setText("メニュー取得失敗");
+            }
+        });
+    }
+
+    private void showMenuPreview(GakushokuMenuItem menu) {
+        textMenuLoading.setVisibility(View.GONE);
+        layoutMenuContent.setVisibility(View.VISIBLE);
+
+        setMenuLine(textMenuLunch, "🍽 ランチ: ", menu.getLunch());
+        setMenuLine(textMenuFish, "🐟 お魚: ", menu.getFish());
+        setMenuLine(textMenuSalad, "🥗 サラダ: ", menu.getSalad());
+        setMenuLine(textMenuDinner, "🌙 夕食: ", menu.getDinner());
+    }
+
+    private void setMenuLine(TextView tv, String prefix, String content) {
+        if (content != null && !content.trim().isEmpty() && !content.trim().equals("---")) {
+            tv.setText(prefix + content.trim());
+            tv.setVisibility(View.VISIBLE);
+        } else {
+            tv.setVisibility(View.GONE);
+        }
     }
 
     private void startClassNotification(List<CalendarEvent> events) {

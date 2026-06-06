@@ -1,8 +1,10 @@
 package com.shakenokirimi12.uoa_app.ui.settings;
 
 import android.app.Activity;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
-import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,11 +17,15 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.timepicker.MaterialTimePicker;
+import com.google.android.material.timepicker.TimeFormat;
 import com.shakenokirimi12.uoa_app.BuildConfig;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.DataCache;
@@ -34,6 +40,7 @@ public class SettingsFragment extends Fragment {
 
     private PreferenceManager prefs;
     private TextView textUsername;
+    private int versionTapCount = 0;
 
     private final ActivityResultLauncher<Intent> backupLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -78,7 +85,6 @@ public class SettingsFragment extends Fragment {
         // Account
         textUsername = view.findViewById(R.id.text_username);
         textUsername.setText(prefs.getUsername().isEmpty() ? "未ログイン" : prefs.getUsername());
-
         view.findViewById(R.id.text_username).setOnClickListener(v -> showEditAccountDialog());
 
         // Academic navigation
@@ -86,6 +92,10 @@ public class SettingsFragment extends Fragment {
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_grades));
         view.findViewById(R.id.button_facilities).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_facilities));
+        view.findViewById(R.id.button_notifications).setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.action_settings_to_notifications));
+        view.findViewById(R.id.button_campus_map).setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.action_settings_to_campus_map));
 
         // Notification switches
         MaterialSwitch switchAssignment = view.findViewById(R.id.switch_assignment_notify);
@@ -100,16 +110,54 @@ public class SettingsFragment extends Fragment {
                 prefs.setAssignmentNotifyEnabled(checked));
         switchGrade.setOnCheckedChangeListener((v, checked) ->
                 prefs.setGradeNotifyEnabled(checked));
-        switchLunch.setOnCheckedChangeListener((v, checked) ->
-                prefs.setLunchNotifyEnabled(checked));
 
-        // Version
-        TextView textVersion = view.findViewById(R.id.text_version);
-        textVersion.setText(getString(R.string.settings_version) + " " + BuildConfig.VERSION_NAME);
+        // Lunch notify with time picker
+        View layoutLunchTime = view.findViewById(R.id.layout_lunch_time);
+        TextView textLunchTime = view.findViewById(R.id.text_lunch_time);
+        textLunchTime.setText(prefs.getLunchNotifyTime());
+        layoutLunchTime.setVisibility(prefs.isLunchNotifyEnabled() ? View.VISIBLE : View.GONE);
 
-        // Notification inbox & Peer sync
-        view.findViewById(R.id.button_notifications).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_settings_to_notifications));
+        switchLunch.setOnCheckedChangeListener((v, checked) -> {
+            prefs.setLunchNotifyEnabled(checked);
+            layoutLunchTime.setVisibility(checked ? View.VISIBLE : View.GONE);
+        });
+
+        textLunchTime.setOnClickListener(v -> showTimePicker(textLunchTime));
+
+        // Notification timing settings
+        view.findViewById(R.id.button_notify_times).setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.action_settings_to_notify_times));
+
+        // Sync interval toggle
+        MaterialButtonToggleGroup toggleInterval = view.findViewById(R.id.toggle_sync_interval);
+        int interval = prefs.getSyncInterval();
+        if (interval == 15) toggleInterval.check(R.id.btn_interval_15);
+        else if (interval == 30) toggleInterval.check(R.id.btn_interval_30);
+        else toggleInterval.check(R.id.btn_interval_60);
+
+        toggleInterval.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            if (checkedId == R.id.btn_interval_15) prefs.setSyncInterval(15);
+            else if (checkedId == R.id.btn_interval_30) prefs.setSyncInterval(30);
+            else prefs.setSyncInterval(60);
+        });
+
+        // Background sync notification toggles
+        MaterialSwitch switchBgChange = view.findViewById(R.id.switch_bg_change);
+        MaterialSwitch switchBgSuccess = view.findViewById(R.id.switch_bg_success);
+        MaterialSwitch switchBgFailure = view.findViewById(R.id.switch_bg_failure);
+        MaterialSwitch switchBgNoChange = view.findViewById(R.id.switch_bg_nochange);
+
+        switchBgChange.setChecked(prefs.isBgNotifyChange());
+        switchBgSuccess.setChecked(prefs.isBgNotifySuccess());
+        switchBgFailure.setChecked(prefs.isBgNotifyFailure());
+        switchBgNoChange.setChecked(prefs.isBgNotifyNoChange());
+
+        switchBgChange.setOnCheckedChangeListener((v, c) -> prefs.setBgNotifyChange(c));
+        switchBgSuccess.setOnCheckedChangeListener((v, c) -> prefs.setBgNotifySuccess(c));
+        switchBgFailure.setOnCheckedChangeListener((v, c) -> prefs.setBgNotifyFailure(c));
+        switchBgNoChange.setOnCheckedChangeListener((v, c) -> prefs.setBgNotifyNoChange(c));
+
         // Auto attendance
         MaterialSwitch switchAutoAttendance = view.findViewById(R.id.switch_auto_attendance);
         switchAutoAttendance.setChecked(prefs.isAutoAttendanceEnabled());
@@ -121,6 +169,10 @@ public class SettingsFragment extends Fragment {
                 LocationGeofenceService.stopGeofencing(requireContext());
             }
         });
+
+        // Navigation customization
+        view.findViewById(R.id.button_nav_settings).setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.action_settings_to_nav_settings));
 
         // Backup / Restore
         view.findViewById(R.id.button_backup).setOnClickListener(v -> {
@@ -138,6 +190,39 @@ public class SettingsFragment extends Fragment {
             restoreLauncher.launch(intent);
         });
 
+        // Debug section
+        View sectionDebug = view.findViewById(R.id.section_debug);
+        if (prefs.isDebugMode()) {
+            sectionDebug.setVisibility(View.VISIBLE);
+        }
+
+        view.findViewById(R.id.button_test_notification).setOnClickListener(v -> {
+            sendTestNotification();
+            Toast.makeText(requireContext(), "テスト通知を送信しました", Toast.LENGTH_SHORT).show();
+        });
+
+        view.findViewById(R.id.button_force_sync).setOnClickListener(v ->
+                Toast.makeText(requireContext(), "バックグラウンド同期を開始しました", Toast.LENGTH_SHORT).show());
+
+        view.findViewById(R.id.button_notification_debug).setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.action_settings_to_notification_debug));
+
+        // Version with hidden debug mode toggle
+        TextView textVersion = view.findViewById(R.id.text_version);
+        textVersion.setText(getString(R.string.settings_version) + " " + BuildConfig.VERSION_NAME);
+        textVersion.setOnClickListener(v -> {
+            versionTapCount++;
+            if (versionTapCount >= 10) {
+                boolean newState = !prefs.isDebugMode();
+                prefs.setDebugMode(newState);
+                sectionDebug.setVisibility(newState ? View.VISIBLE : View.GONE);
+                Toast.makeText(requireContext(),
+                        newState ? "デバッグモードを有効にしました" : "デバッグモードを無効にしました",
+                        Toast.LENGTH_SHORT).show();
+                versionTapCount = 0;
+            }
+        });
+
         // Logout
         view.findViewById(R.id.button_logout).setOnClickListener(v ->
                 new MaterialAlertDialogBuilder(requireContext())
@@ -151,6 +236,55 @@ public class SettingsFragment extends Fragment {
                         })
                         .setNegativeButton(R.string.cancel, null)
                         .show());
+    }
+
+    private void showTimePicker(TextView textLunchTime) {
+        String current = prefs.getLunchNotifyTime();
+        String[] parts = current.split(":");
+        int hour = 11, minute = 30;
+        if (parts.length == 2) {
+            try {
+                hour = Integer.parseInt(parts[0]);
+                minute = Integer.parseInt(parts[1]);
+            } catch (NumberFormatException ignored) {}
+        }
+
+        MaterialTimePicker picker = new MaterialTimePicker.Builder()
+                .setTimeFormat(TimeFormat.CLOCK_24H)
+                .setHour(hour)
+                .setMinute(minute)
+                .setTitleText("通知時間を選択")
+                .build();
+
+        picker.addOnPositiveButtonClickListener(v -> {
+            String time = String.format(java.util.Locale.US, "%02d:%02d",
+                    picker.getHour(), picker.getMinute());
+            prefs.setLunchNotifyTime(time);
+            textLunchTime.setText(time);
+        });
+
+        picker.show(getParentFragmentManager(), "lunch_time_picker");
+    }
+
+    private void sendTestNotification() {
+        NotificationManager nm = (NotificationManager) requireContext()
+                .getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+        String channelId = "debug_test";
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    channelId, "デバッグテスト", NotificationManager.IMPORTANCE_DEFAULT);
+            nm.createNotificationChannel(channel);
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(requireContext(), channelId)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("テスト通知")
+                .setContentText("この通知が見えていれば、通知機能は正常です。")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true);
+
+        nm.notify(9999, builder.build());
     }
 
     private void showEditAccountDialog() {

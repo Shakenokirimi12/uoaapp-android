@@ -15,6 +15,7 @@ constraintlayout = "2.1.4"
 playServicesLocation = "21.1.0"
 playServicesMaps = "18.2.0"
 browserCustomtabs = "1.7.0"
+securityCrypto = "1.1.0-alpha06"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -34,6 +35,7 @@ constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayo
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
 browser-customtabs = { group = "androidx.browser", name = "browser", version.ref = "browserCustomtabs" }
+security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

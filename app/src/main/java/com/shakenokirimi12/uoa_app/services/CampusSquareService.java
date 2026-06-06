@@ -274,16 +274,22 @@ public class CampusSquareService {
                 cells.add(stripTags(cellMatcher.group(1)).trim());
             }
             if (cells.size() >= 8) {
+                String year = cells.get(1);
+                String semester = cells.get(2);
+                String subjectCode = cells.get(3);
                 String subject = cells.get(4);
-                String credits = cells.get(5);
+                String instructor = cells.get(5);
                 String score = cells.get(6);
                 String gradeStr = cells.get(7);
                 if (!subject.isEmpty() && (!score.isEmpty() || !gradeStr.isEmpty())) {
                     Grade g = new Grade();
+                    g.setSubjectCode(subjectCode);
                     g.setCourseName(subject);
-                    g.setCredits(credits);
+                    g.setInstructor(instructor);
                     g.setScore(score);
                     g.setGrade(gradeStr.isEmpty() ? "履修中" : gradeStr);
+                    g.setYear(year);
+                    g.setSemester(semester);
                     grades.add(g);
                 }
             }

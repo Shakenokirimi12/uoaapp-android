@@ -13,11 +13,7 @@
         android:icon="@drawable/ic_courses"
         android:title="@string/nav_courses" />
     <item
-        android:id="@+id/navigation_gakushoku"
-        android:icon="@drawable/ic_restaurant"
-        android:title="@string/nav_gakushoku" />
-    <item
-        android:id="@+id/navigation_settings"
-        android:icon="@drawable/ic_settings"
-        android:title="@string/nav_settings" />
+        android:id="@+id/navigation_more"
+        android:icon="@drawable/ic_more"
+        android:title="@string/nav_more" />
 </menu>

@@ -85,6 +85,9 @@ dependencies {
     // Chrome Custom Tabs
     implementation(libs.browser.customtabs)
 
+    // Security (EncryptedSharedPreferences)
+    implementation(libs.security.crypto)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
