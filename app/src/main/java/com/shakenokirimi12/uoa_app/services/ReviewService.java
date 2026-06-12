@@ -23,7 +23,7 @@ import okhttp3.Response;
 
 public class ReviewService {
 
-    private static final String BASE_URL = "https://uoa-app-reviews.ken20051205.workers.dev";
+    private static final String BASE_URL = "https://uoa-app-reviews.shakenokirimi12.workers.dev";
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();

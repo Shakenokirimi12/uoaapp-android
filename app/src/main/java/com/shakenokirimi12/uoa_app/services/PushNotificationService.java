@@ -23,7 +23,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class PushNotificationService {
-    private static final String BASE_URL = "https://uoa-app-push.ken20051205.workers.dev";
+    private static final String BASE_URL = "https://uoa-app-push.shakenokirimi12.workers.dev";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
