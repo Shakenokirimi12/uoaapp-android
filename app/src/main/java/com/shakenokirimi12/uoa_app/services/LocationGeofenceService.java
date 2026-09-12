@@ -35,15 +35,16 @@ public class LocationGeofenceService {
     private static final String GEOFENCE_ID = "university-campus";
     private static final long COOLDOWN_MS = 30 * 60 * 1000;
 
-    public static void startGeofencing(Context ctx, double lat, double lng, float radius) {
+    /** @return ジオフェンスの登録を要求したら true。killswitch や権限不足で何もしなかったら false。 */
+    public static boolean startGeofencing(Context ctx, double lat, double lng, float radius) {
         // 出席登録の仕様変更などで誤登録が起きうるとき、リモートから止めるための killswitch。
         if (!AppConfigService.getInstance().isFeatureEnabled("auto_attendance_enabled")) {
             Log.w(TAG, "Auto attendance disabled by remote flag");
-            return;
+            return false;
         }
         if (ActivityCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.w(TAG, "Location permission not granted");
-            return;
+            return false;
         }
 
         GeofencingClient client = LocationServices.getGeofencingClient(ctx);
@@ -63,6 +64,7 @@ public class LocationGeofenceService {
         client.addGeofences(request, getGeofencePendingIntent(ctx))
                 .addOnSuccessListener(v -> Log.d(TAG, "Geofence added"))
                 .addOnFailureListener(e -> Log.e(TAG, "Geofence add failed", e));
+        return true;
     }
 
     public static void stopGeofencing(Context ctx) {

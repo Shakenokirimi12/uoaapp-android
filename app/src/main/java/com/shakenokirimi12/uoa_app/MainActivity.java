@@ -66,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
 
         setupRemoteConfig();
         SyncScheduler.schedule(this);
+        // 自動出席のデバッグテスト中にプロセスが死んでいたら、その後始末
+        com.shakenokirimi12.uoa_app.ui.debug.AutoAttendanceDebugRunner.cleanupIfStale(this);
     }
 
     @Override

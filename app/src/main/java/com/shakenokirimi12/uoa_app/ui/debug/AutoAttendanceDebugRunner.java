@@ -37,7 +37,23 @@ public final class AutoAttendanceDebugRunner {
 
     public interface Callback { void onMessage(String message); }
 
+    private static final String PREF = "auto_attendance_debug";
+    private static final String KEY_IN_PROGRESS = "in_progress";
+    private static final String KEY_WAS_ENABLED = "was_enabled";
+    private static final String KEY_LAST_COOLDOWN = "last_cooldown";
+
     private AutoAttendanceDebugRunner() {}
+
+    /**
+     * 起動時に呼ぶ。テスト中にプロセスが死ぬと 30 秒後の片付けが走らず、自動出席が ON のまま
+     * テスト用の授業と科目がキャッシュに残る。記録が残っていれば起動時に片付ける。
+     */
+    public static void cleanupIfStale(@NonNull Context context) {
+        Context ctx = context.getApplicationContext();
+        SharedPreferences st = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+        if (!st.getBoolean(KEY_IN_PROGRESS, false)) return;
+        restore(ctx);
+    }
 
     public static void run(@NonNull Context context, @NonNull Callback cb) {
         Context ctx = context.getApplicationContext();
@@ -50,18 +66,27 @@ public final class AutoAttendanceDebugRunner {
         DataCache cache = DataCache.getInstance(ctx);
         SharedPreferences geo = ctx.getSharedPreferences("geofence", Context.MODE_PRIVATE);
 
-        // 元に戻すために控える
-        final boolean wasEnabled = prefs.isAutoAttendanceEnabled();
-        final long lastCooldown = geo.getLong("last_geofence_time", 0);
-        final List<CalendarEvent> origEvents = new ArrayList<>(cache.loadEvents());
-        final List<MoodleCourse> origCourses = new ArrayList<>(cache.loadCourses());
+        SharedPreferences st = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+        if (st.getBoolean(KEY_IN_PROGRESS, false)) {
+            cb.onMessage("前回のテストが片付いていません。先に片付けます。");
+            restore(ctx);
+        }
 
-        // 1. テスト用の授業 (5 分前に開始、85 分後に終了) と科目
-        List<CalendarEvent> events = new ArrayList<>(origEvents);
+        // 元に戻すための記録は永続化する。プロセスが死んでも起動時に片付けられるように。
+        st.edit()
+                .putBoolean(KEY_IN_PROGRESS, true)
+                .putBoolean(KEY_WAS_ENABLED, prefs.isAutoAttendanceEnabled())
+                .putLong(KEY_LAST_COOLDOWN, geo.getLong("last_geofence_time", 0))
+                .apply();
+
+        // 1. テスト用の授業 (5 分前に開始、85 分後に終了) と科目を「足す」。
+        //    片付けはスナップショットへの復元ではなく、足した分だけを取り除く。
+        //    復元にすると、テスト中に本物の同期が書いた新しいデータを古い内容で上書きする。
+        List<CalendarEvent> events = new ArrayList<>(cache.loadEvents());
         long now = System.currentTimeMillis();
         events.add(new CalendarEvent(TEST_NAME, "テスト教室",
                 new Date(now - 5 * 60_000L), new Date(now + 85 * 60_000L)));
-        List<MoodleCourse> courses = new ArrayList<>(origCourses);
+        List<MoodleCourse> courses = new ArrayList<>(cache.loadCourses());
         courses.add(new MoodleCourse(TEST_COURSE_ID, "TEST", TEST_NAME));
         cache.saveEvents(events);
         cache.saveCourses(courses);
@@ -74,30 +99,49 @@ public final class AutoAttendanceDebugRunner {
         LocationServices.getFusedLocationProviderClient(ctx).getLastLocation()
                 .addOnSuccessListener(location -> {
                     if (location == null) {
-                        restore(ctx, prefs, geo, cache, wasEnabled, lastCooldown, origEvents, origCourses);
+                        restore(ctx);
                         cb.onMessage("現在地が取れませんでした。地図アプリ等で一度位置を取得してから再実行してください。");
                         return;
                     }
                     LocationGeofenceService.stopGeofencing(ctx);
-                    LocationGeofenceService.startGeofencing(ctx, location.getLatitude(), location.getLongitude(), 200);
+                    boolean registered = LocationGeofenceService.startGeofencing(
+                            ctx, location.getLatitude(), location.getLongitude(), 200);
+                    if (!registered) {
+                        restore(ctx);
+                        cb.onMessage("ジオフェンスを登録できませんでした。killswitch (auto_attendance_enabled) が"
+                                + "false か、位置情報の許可が足りません。");
+                        return;
+                    }
                     cb.onMessage("テスト条件を作りました。数秒後に「自動出席登録完了」の通知が出れば成功です。"
+                            + "本物の授業が進行中ならそちらが優先されることがあります。"
                             + "30 秒後にテスト用データを片付けます。");
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        restore(ctx, prefs, geo, cache, wasEnabled, lastCooldown, origEvents, origCourses);
+                        restore(ctx);
                         cb.onMessage("テスト用データを片付け、元のジオフェンスに戻しました。");
                     }, CLEANUP_DELAY_MS);
                 })
                 .addOnFailureListener(e -> {
-                    restore(ctx, prefs, geo, cache, wasEnabled, lastCooldown, origEvents, origCourses);
+                    restore(ctx);
                     cb.onMessage("現在地の取得に失敗: " + e.getMessage());
                 });
     }
 
-    private static void restore(Context ctx, PreferenceManager prefs, SharedPreferences geo, DataCache cache,
-                                boolean wasEnabled, long lastCooldown,
-                                List<CalendarEvent> events, List<MoodleCourse> courses) {
+    /** 足したテスト用データと設定変更だけを取り除き、元のジオフェンスに戻す。 */
+    private static void restore(Context ctx) {
+        PreferenceManager prefs = PreferenceManager.getInstance(ctx);
+        DataCache cache = DataCache.getInstance(ctx);
+        SharedPreferences geo = ctx.getSharedPreferences("geofence", Context.MODE_PRIVATE);
+        SharedPreferences st = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+        boolean wasEnabled = st.getBoolean(KEY_WAS_ENABLED, false);
+        long lastCooldown = st.getLong(KEY_LAST_COOLDOWN, 0);
+
+        List<CalendarEvent> events = new ArrayList<>(cache.loadEvents());
+        events.removeIf(e -> TEST_NAME.equals(e.getSummary()));
         cache.saveEvents(events);
+        List<MoodleCourse> courses = new ArrayList<>(cache.loadCourses());
+        courses.removeIf(c -> c.getId() == TEST_COURSE_ID);
         cache.saveCourses(courses);
+
         // テストで登録された出席記録は消す (本物の出席簿に混ぜない)
         com.shakenokirimi12.uoa_app.data.AttendanceManager.getInstance(ctx).removeToday(String.valueOf(TEST_COURSE_ID));
         if (lastCooldown > 0) geo.edit().putLong("last_geofence_time", lastCooldown).apply();
@@ -107,5 +151,6 @@ public final class AutoAttendanceDebugRunner {
         if (wasEnabled) {
             LocationGeofenceService.startGeofencing(ctx, 37.5234, 139.9388, 200);
         }
+        st.edit().clear().apply();
     }
 }
