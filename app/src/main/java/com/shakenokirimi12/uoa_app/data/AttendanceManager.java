@@ -75,6 +75,26 @@ public class AttendanceManager {
         prefs.edit().putString(KEY_DATA, gson.toJson(data)).apply();
     }
 
+    /** その科目に今日の記録が既にあるか。自動出席の重複登録と、手動記録の上書きを防ぐ。 */
+    public boolean hasRecordToday(String courseId) {
+        Record r = loadAll().get(courseId);
+        if (r == null) return false;
+        String today = dateFmt.format(new Date());
+        for (HistoryItem h : r.history) if (today.equals(h.date)) return true;
+        return false;
+    }
+
+    /** 今日の記録を消す (デバッグのテスト科目の後始末用)。 */
+    public void removeToday(String courseId) {
+        Map<String, Record> all = loadAll();
+        Record r = all.get(courseId);
+        if (r == null) return;
+        String today = dateFmt.format(new Date());
+        r.history.removeIf(h -> today.equals(h.date));
+        if (r.history.isEmpty()) all.remove(courseId);
+        saveAll(all);
+    }
+
     public AttendanceSummary getAttendance(String courseId) {
         Map<String, Record> all = loadAll();
         Record r = all.get(courseId);

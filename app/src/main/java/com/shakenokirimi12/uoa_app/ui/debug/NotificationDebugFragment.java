@@ -46,6 +46,13 @@ public class NotificationDebugFragment extends Fragment {
         textReport = view.findViewById(R.id.text_report);
         buttonShare = view.findViewById(R.id.button_share_report);
 
+        view.findViewById(R.id.button_test_auto_attendance).setOnClickListener(v ->
+                AutoAttendanceDebugRunner.run(requireContext(), message -> {
+                    if (!isAdded()) return;
+                    android.widget.TextView report = view.findViewById(R.id.text_report);
+                    report.setText(report.getText() + "\n[自動出席テスト] " + message);
+                }));
+
         view.findViewById(R.id.button_test_countdown).setOnClickListener(v -> {
             // 実データに依らず、通知の見た目 (クロノメーターの減算表示と自動消去) を確かめる。
             com.shakenokirimi12.uoa_app.data.models.Assignment fake =

@@ -22,6 +22,15 @@
         android:text="課題カウントダウン通知のテスト (5分後締切)"
         style="@style/Widget.Material3.Button.TonalButton" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_test_auto_attendance"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="8dp"
+        android:text="自動出席のテスト (現在地にジオフェンスを張る)"
+        style="@style/Widget.Material3.Button.TonalButton" />
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"

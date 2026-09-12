@@ -18,8 +18,6 @@ import com.google.android.gms.location.GeofencingClient;
 import com.google.android.gms.location.GeofencingEvent;
 import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationServices;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.AttendanceManager;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
@@ -91,9 +89,21 @@ public class LocationGeofenceService {
         }
     }
 
-    private static void checkAutoAttendance(Context ctx) {
+    /**
+     * ジオフェンスに入ったときに、今の授業を特定して出席を登録する。
+     *
+     * 以前は "data_cache" という名前の SharedPreferences を読んでいたが、DataCache が書くのは
+     * "uoa_data_cache" で、常に空のまま即 return していた (= 自動出席が一度も動いていなかった)。
+     * DataCache を直接読む。
+     *
+     * 候補の選び方は iOS の checkAutoAttendance と同じ: 開始 15 分前〜終了までを対象にし、
+     * 進行中の授業を優先 (進行中が複数なら遅く始まった方)、次に直近で始まる授業。
+     * 今日の記録が既にある科目は飛ばす (重複登録と手動記録の上書きを防ぐ)。
+     */
+    static void checkAutoAttendance(Context ctx) {
         PreferenceManager prefs = PreferenceManager.getInstance(ctx);
         if (!prefs.isAutoAttendanceEnabled()) return;
+        if (!AppConfigService.getInstance().isFeatureEnabled("auto_attendance_enabled")) return;
 
         SharedPreferences sp = ctx.getSharedPreferences("geofence", Context.MODE_PRIVATE);
         long lastNotified = sp.getLong("last_geofence_time", 0);
@@ -103,57 +113,64 @@ public class LocationGeofenceService {
             return;
         }
 
-        Gson gson = new Gson();
-        SharedPreferences dataPrefs = ctx.getSharedPreferences("data_cache", Context.MODE_PRIVATE);
+        com.shakenokirimi12.uoa_app.data.DataCache cache = com.shakenokirimi12.uoa_app.data.DataCache.getInstance(ctx);
+        List<CalendarEvent> events = cache.loadEvents();
+        List<MoodleCourse> courses = cache.loadCourses();
+        if (events == null || courses == null || events.isEmpty() || courses.isEmpty()) {
+            Log.d(TAG, "No cached events/courses");
+            return;
+        }
 
-        String eventsJson = dataPrefs.getString("events", null);
-        String coursesJson = dataPrefs.getString("courses", null);
-        if (eventsJson == null || coursesJson == null) return;
-
-        List<CalendarEvent> events;
-        List<MoodleCourse> courses;
-        try {
-            events = gson.fromJson(eventsJson, new TypeToken<List<CalendarEvent>>(){}.getType());
-            courses = gson.fromJson(coursesJson, new TypeToken<List<MoodleCourse>>(){}.getType());
-        } catch (Exception e) { return; }
-
-        if (events == null || courses == null) return;
-
-        long nowSec = now / 1000;
-        CalendarEvent currentClass = null;
+        List<CalendarEvent> candidates = new java.util.ArrayList<>();
         for (CalendarEvent ev : events) {
-            long startSec = ev.getDtstart().getTime() / 1000;
-            long windowStart = startSec - 15 * 60;
-            long windowEnd = startSec + 90 * 60;
-            if (nowSec >= windowStart && nowSec <= windowEnd) {
-                currentClass = ev;
-                break;
-            }
+            if (ev.getDtstart() == null || ev.getDtend() == null) continue;
+            long start = ev.getDtstart().getTime();
+            long end = ev.getDtend().getTime();
+            if (now >= start - 15 * 60_000L && now <= end) candidates.add(ev);
         }
-        if (currentClass == null) return;
+        candidates.sort((a, b) -> {
+            boolean aIn = now >= a.getDtstart().getTime();
+            boolean bIn = now >= b.getDtstart().getTime();
+            if (aIn != bIn) return aIn ? -1 : 1;
+            return aIn ? b.getDtstart().compareTo(a.getDtstart()) : a.getDtstart().compareTo(b.getDtstart());
+        });
 
-        String eventNorm = normalize(currentClass.getSummary());
-        MoodleCourse matched = null;
-        for (MoodleCourse c : courses) {
-            String cNorm = normalize(c.getFullname());
-            String sNorm = normalize(c.getShortname());
-            if (eventNorm.contains(cNorm) || eventNorm.contains(sNorm) || cNorm.contains(eventNorm)) {
-                matched = c;
-                break;
+        AttendanceManager attendance = AttendanceManager.getInstance(ctx);
+        for (CalendarEvent ev : candidates) {
+            String eventNorm = normalize(ev.getSummary());
+            MoodleCourse matched = null;
+            for (MoodleCourse c : courses) {
+                String cNorm = normalize(c.getFullname());
+                String sNorm = normalize(c.getShortname());
+                if (cNorm.isEmpty() && sNorm.isEmpty()) continue;
+                if ((!cNorm.isEmpty() && (eventNorm.contains(cNorm) || cNorm.contains(eventNorm)))
+                        || (!sNorm.isEmpty() && eventNorm.contains(sNorm))) {
+                    matched = c;
+                    break;
+                }
             }
+            if (matched == null) continue;
+            String courseId = String.valueOf(matched.getId());
+            if (attendance.hasRecordToday(courseId)) {
+                Log.d(TAG, "Already recorded today: " + courseId);
+                continue;
+            }
+
+            attendance.addHistory(courseId, AttendanceManager.Status.PRESENT, new Date(), "auto");
+            sp.edit().putLong("last_geofence_time", now).apply();
+            notifyRegistered(ctx, matched);
+            return;
         }
-        if (matched == null) return;
+        Log.d(TAG, "No class to register now");
+    }
 
-        AttendanceManager.getInstance(ctx).addHistory(
-                String.valueOf(matched.getId()),
-                AttendanceManager.Status.PRESENT,
-                new Date(),
-                "auto"
-        );
-
-        sp.edit().putLong("last_geofence_time", now).apply();
-
+    private static void notifyRegistered(Context ctx, MoodleCourse matched) {
         try {
+            // チャンネルは ClassNotificationService が作るが、それが一度も起動していない端末では
+            // 存在せず通知が黙って落ちる。ここでも作る (既にあれば何もしない)。
+            android.app.NotificationManager nm = (android.app.NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+            nm.createNotificationChannel(new android.app.NotificationChannel(
+                    "class_ongoing", "授業", android.app.NotificationManager.IMPORTANCE_LOW));
             NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, "class_ongoing")
                     .setSmallIcon(R.drawable.ic_calendar)
                     .setContentTitle("自動出席登録完了")
@@ -164,7 +181,9 @@ public class LocationGeofenceService {
             if (ActivityCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                 NotificationManagerCompat.from(ctx).notify(2001, builder.build());
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            Log.w(TAG, "notify failed: " + e.getMessage());
+        }
     }
 
     private static String normalize(String s) {

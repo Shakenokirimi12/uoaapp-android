@@ -74,8 +74,10 @@ public final class AppConfigService {
                 OkHttpClient client = NetworkClient.getNoCookieClient();
                 // Flagship の % ロールアウトが端末ごとに安定するよう deviceId を渡す (iOS と同じ)。
                 // メンテナンス解除の再確認で古い応答を読まないよう、キャッシュは使わない。
+                // os=android を付ける。強制更新の最低バージョンは iOS (3.x) と系列が違うので、
+                // サーバーはこれを見て Android 向けの値 (未設定なら無し) を返す。
                 Request req = new Request.Builder()
-                        .url(BASE_URL + "/api/app-config?deviceId=" + deviceId)
+                        .url(BASE_URL + "/api/app-config?deviceId=" + deviceId + "&os=android")
                         .cacheControl(CacheControl.FORCE_NETWORK)
                         .build();
                 try (Response resp = client.newCall(req).execute()) {
