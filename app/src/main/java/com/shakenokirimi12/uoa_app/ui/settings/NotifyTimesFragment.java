@@ -27,12 +27,21 @@ import java.util.UUID;
 
 public class NotifyTimesFragment extends Fragment {
 
+    // 課題の締切に対する通知タイミング。iOS と同じ id/分数にしてサーバー側の予約を共通にする。
+    // 以前は授業開始向けのラベルが付いていたが、それに対応する通知はどこにも実装されていなかった。
     private static final String[][] DEFAULT_OPTIONS = {
-            {"prev_day_18", "前日の18:00"},
-            {"prev_60", "授業開始1時間前"},
-            {"prev_20", "授業開始20分前"},
-            {"prev_10", "授業開始10分前"},
-            {"prev_5", "授業開始5分前"},
+            {"prev_10", "10分前"},
+            {"prev_20", "20分前"},
+            {"prev_30", "30分前"},
+            {"prev_60", "1時間前"},
+            {"prev_120", "2時間前"},
+            {"prev_180", "3時間前"},
+            {"prev_360", "6時間前"},
+            {"prev_720", "12時間前"},
+            {"prev_1440", "1日前"},
+            {"prev_2880", "2日前"},
+            {"prev_4320", "3日前"},
+            {"prev_10080", "1週間前"},
     };
 
     private PreferenceManager prefs;

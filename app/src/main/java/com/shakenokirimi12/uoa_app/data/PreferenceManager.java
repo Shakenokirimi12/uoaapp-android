@@ -14,6 +14,8 @@ public class PreferenceManager {
     private static final String KEY_PASSWORD = "password";
     private static final String KEY_ONBOARDING_DONE = "onboarding_done";
     private static final String KEY_CREDENTIALS_INVALID = "credentials_invalid";
+    private static final String KEY_FCM_TOKEN = "fcm_token";
+    private static final String KEY_SERVER_HOLDS_REMINDERS = "server_holds_assignment_reminders";
     private static final String KEY_NOTIFY_ASSIGNMENTS = "notify_assignments";
     private static final String KEY_NOTIFY_GRADES = "notify_grades";
     private static final String KEY_NOTIFY_LUNCH = "notify_lunch";
@@ -112,6 +114,16 @@ public class PreferenceManager {
      * ロックされうる。パスワードの再入力でだけ解除される。
      */
     public boolean isCredentialsInvalid() { return prefs.getBoolean(KEY_CREDENTIALS_INVALID, false); }
+
+    public String getFcmToken() { return prefs.getString(KEY_FCM_TOKEN, ""); }
+    public void setFcmToken(String token) { prefs.edit().putString(KEY_FCM_TOKEN, token).apply(); }
+
+    /**
+     * サーバー側が期限通知の予約を持っているか。同期が成功したときだけ更新する。
+     * 「サーバーは空」と言い切れるのは clearAll のときだけ (iOS の serverHoldsReminders と同じ)。
+     */
+    public boolean isServerHoldingReminders() { return prefs.getBoolean(KEY_SERVER_HOLDS_REMINDERS, false); }
+    public void setServerHoldingReminders(boolean holds) { prefs.edit().putBoolean(KEY_SERVER_HOLDS_REMINDERS, holds).apply(); }
     public void setCredentialsInvalid(boolean invalid) { prefs.edit().putBoolean(KEY_CREDENTIALS_INVALID, invalid).apply(); }
 
     public boolean hasCredentials() {

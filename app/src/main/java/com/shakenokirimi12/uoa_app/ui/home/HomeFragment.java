@@ -303,6 +303,7 @@ public class HomeFragment extends Fragment {
                         prefs.setLastSync(System.currentTimeMillis());
                         showLastSyncTime();
                         DataCache.getInstance(requireContext()).saveAssignments(assignments);
+                        com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.sync(requireContext(), assignments);
                     }
 
                     @Override

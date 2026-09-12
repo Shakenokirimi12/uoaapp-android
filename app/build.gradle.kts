@@ -2,6 +2,7 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.google.services)
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -90,6 +91,10 @@ dependencies {
 
     // Background sync
     implementation(libs.work.runtime)
+
+    // Push (FCM)。app/google-services.json が必要 (Firebase コンソールから取得、gitignore 済み)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

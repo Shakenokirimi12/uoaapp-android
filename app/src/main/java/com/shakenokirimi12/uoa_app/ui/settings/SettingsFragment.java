@@ -107,7 +107,11 @@ public class SettingsFragment extends Fragment {
         switchLunch.setChecked(prefs.isLunchNotifyEnabled());
 
         switchAssignment.setOnCheckedChangeListener((v, checked) ->
-                prefs.setAssignmentNotifyEnabled(checked));
+                {
+                    prefs.setAssignmentNotifyEnabled(checked);
+                    // OFF にしたらサーバー側の予約も消す。消さないと cron から届き続ける。
+                    if (!checked) com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.clear(requireContext());
+                });
         switchGrade.setOnCheckedChangeListener((v, checked) ->
                 prefs.setGradeNotifyEnabled(checked));
 
@@ -234,6 +238,8 @@ public class SettingsFragment extends Fragment {
                             DataCache.getInstance(requireContext()).clearAll();
                             // OkHttp の cookie と WebView の cookie は別の入れ物。片方だけ消しても、
                             // 次のユーザーがアプリ内ブラウザを開いたときに前のセッションが使われる。
+                            // deviceId が消える前にサーバー側の予約を空にする。後からでは古い行に触れない。
+                            com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.clear(requireContext());
                             com.shakenokirimi12.uoa_app.services.NetworkClient.clearCookies();
                             com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity.clearWebSession();
                             startActivity(new Intent(requireActivity(), OnboardingActivity.class));

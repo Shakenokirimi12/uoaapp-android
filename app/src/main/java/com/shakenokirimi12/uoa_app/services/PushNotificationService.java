@@ -46,13 +46,22 @@ public class PushNotificationService {
 
     public String getDeviceId() { return deviceId; }
 
-    public void registerDevice() {
+    public void registerDevice() { registerDevice(null); }
+
+    /**
+     * @param fcmToken 端末の FCM 登録トークン。サーバーはこれが無いと OS 通知 (課題の期限通知等)
+     *                 を一切送れない。iOS の APNs deviceToken に相当する。
+     */
+    public void registerDevice(String fcmToken) {
         executor.execute(() -> {
             try {
                 JsonObject body = new JsonObject();
                 body.addProperty("deviceId", deviceId);
                 body.addProperty("os", "Android");
                 body.addProperty("appVersion", BuildConfig.VERSION_NAME);
+                if (fcmToken != null && !fcmToken.isEmpty()) {
+                    body.addProperty("fcmToken", fcmToken);
+                }
 
                 OkHttpClient client = NetworkClient.getNoCookieClient();
                 Request req = new Request.Builder()
@@ -111,6 +120,79 @@ public class PushNotificationService {
                     // ignore result
                 }
             } catch (Exception ignored) {}
+        });
+    }
+
+    // MARK: 課題の期限通知 (サーバー配信)
+
+    public static class AssignmentReminder {
+        public final int assignmentId;
+        public final String offsetId;
+        public final String triggerAt;   // ISO8601 (UTC)
+        public final String title;
+        public final String body;
+        public final String url;
+
+        public AssignmentReminder(int assignmentId, String offsetId, String triggerAt,
+                                  String title, String body, String url) {
+            this.assignmentId = assignmentId;
+            this.offsetId = offsetId;
+            this.triggerAt = triggerAt;
+            this.title = title;
+            this.body = body;
+            this.url = url;
+        }
+    }
+
+    public interface SyncCallback { void onDone(boolean succeeded); }
+
+    /**
+     * 端末が持っている期限通知の一覧をサーバーへ渡し、サーバー側をそれに合わせる。
+     * iOS の syncAssignmentReminders と同じエンドポイント・同じ意味論。
+     *
+     * @param clearAll 「通知を止める」意思表示。通常の再同期では、期限が来ていてまだ配信されて
+     *                 いない予約をサーバーに残す (クライアントは期限の来た分を一覧に含めないため、
+     *                 消すと cron が拾う前の再同期で黙って消える)。止めるときだけは全部消す。
+     */
+    public void syncAssignmentReminders(List<AssignmentReminder> reminders, boolean clearAll, SyncCallback callback) {
+        executor.execute(() -> {
+            boolean ok = false;
+            try {
+                JsonObject body = new JsonObject();
+                body.addProperty("deviceId", deviceId);
+                body.addProperty("clearAll", clearAll);
+                JsonArray arr = new JsonArray();
+                for (AssignmentReminder r : reminders) {
+                    JsonObject o = new JsonObject();
+                    o.addProperty("assignmentId", r.assignmentId);
+                    o.addProperty("offsetId", r.offsetId);
+                    o.addProperty("triggerAt", r.triggerAt);
+                    o.addProperty("title", r.title);
+                    o.addProperty("body", r.body);
+                    o.addProperty("url", r.url);
+                    arr.add(o);
+                }
+                body.add("reminders", arr);
+
+                // 「全データを削除」はこの応答を待つ。既定の接続待ちのまま電波が悪いだけで
+                // 長く固まって見えるので短くする。
+                OkHttpClient client = NetworkClient.getNoCookieClient().newBuilder()
+                        .callTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                        .build();
+                Request req = new Request.Builder()
+                        .url(BASE_URL + "/api/reminders/sync")
+                        .post(RequestBody.create(body.toString(), JSON))
+                        .build();
+                try (Response resp = client.newCall(req).execute()) {
+                    ok = resp.isSuccessful();
+                }
+            } catch (Exception e) {
+                android.util.Log.w("PushNotificationService", "reminders/sync failed: " + e.getMessage());
+            }
+            if (callback != null) {
+                final boolean result = ok;
+                mainHandler.post(() -> callback.onDone(result));
+            }
         });
     }
 

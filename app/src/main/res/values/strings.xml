@@ -100,4 +100,6 @@
     <string name="sync_notify_no_change">同期しましたが変更はありませんでした</string>
     <string name="sync_notify_failure">同期に失敗しました</string>
     <string name="sync_notify_credentials_invalid">ユーザー名またはパスワードが正しくないため、自動同期を停止しました。設定から入力し直してください。</string>
+    <!-- Push -->
+    <string name="push_channel_name">課題の期限通知</string>
 </resources>

@@ -16,3 +16,6 @@ local.properties
 keystore.properties
 *.jks
 *.keystore
+
+# Firebase 設定 (API キーを含むため配布しない。Firebase コンソールから取得して app/ に置く)
+app/google-services.json

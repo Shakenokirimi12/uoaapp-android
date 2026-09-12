@@ -46,6 +46,11 @@ public class SyncWorker extends Worker {
     private static final int NOTIFICATION_ID = 4100;
     private static final long STEP_TIMEOUT_SEC = 90;
 
+    // サービスは内部に単一スレッドの executor を持ち、shutdown する口が無い。
+    // 実行のたびに new すると 15 分ごとにスレッドが増え続けるので、プロセスで 1 つを使い回す。
+    private static final MoodleService moodle = new MoodleService();
+    private static final CampusSquareService campusSquare = new CampusSquareService();
+
     public SyncWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
     }
@@ -73,7 +78,6 @@ public class SyncWorker extends Worker {
 
         // 1. Moodle
         if (AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
-            MoodleService moodle = new MoodleService();
             AtomicReference<String> loginError = new AtomicReference<>();
             if (await(latch -> moodle.login(user, pass, new ServiceCallback<Boolean>() {
                 @Override public void onSuccess(Boolean r) { latch.countDown(); }
@@ -90,6 +94,7 @@ public class SyncWorker extends Worker {
                     if (assignments != null) {
                         changed |= differs(cache.loadAssignments(), assignments);
                         cache.saveAssignments(assignments);
+                        com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.sync(ctx, assignments);
                     } else {
                         anyFailure = true;
                     }
@@ -110,16 +115,22 @@ public class SyncWorker extends Worker {
 
         // 2. CampusSquare のカレンダー (時間割)
         if (AppConfigService.getInstance().isFeatureEnabled("campussquare_calendar_enabled")) {
-            CampusSquareService cs = new CampusSquareService();
             AtomicReference<List<CalendarEvent>> fetched = new AtomicReference<>();
-            await(latch -> cs.fetchCalendarEvents(user, pass, new ServiceCallback<List<CalendarEvent>>() {
+            AtomicReference<String> csError = new AtomicReference<>();
+            await(latch -> campusSquare.fetchCalendarEvents(user, pass, new ServiceCallback<List<CalendarEvent>>() {
                 @Override public void onSuccess(List<CalendarEvent> r) { fetched.set(r); latch.countDown(); }
-                @Override public void onError(String m) { latch.countDown(); }
+                @Override public void onError(String m) { csError.set(m); latch.countDown(); }
             }));
             if (fetched.get() != null) {
                 cache.saveEvents(fetched.get());
             } else {
                 anyFailure = true;
+                // CampusSquare 側だけで ID/PW 誤りが判明することもある (Moodle が killswitch で
+                // 止まっている、または片方だけ認証方式が変わった場合)。
+                if (csError.get() != null && com.shakenokirimi12.uoa_app.services.AuthErrors.isInvalidCredentials(csError.get())) {
+                    prefs.setCredentialsInvalid(true);
+                    Log.w(TAG, "CampusSquare rejected credentials; disabling automatic sync");
+                }
             }
         }
 
@@ -143,28 +154,32 @@ public class SyncWorker extends Worker {
         }
     }
 
+    /** 一覧の増減だけでなく、締切や課題名の変更も「変更あり」に含める。 */
     private static boolean differs(List<Assignment> before, List<Assignment> after) {
         if (before == null) return !after.isEmpty();
-        Set<Integer> a = new HashSet<>();
-        for (Assignment x : before) a.add(x.getId());
-        Set<Integer> b = new HashSet<>();
-        for (Assignment x : after) b.add(x.getId());
+        Set<String> a = new HashSet<>();
+        for (Assignment x : before) a.add(x.getId() + "|" + x.getDueDate() + "|" + x.getName());
+        Set<String> b = new HashSet<>();
+        for (Assignment x : after) b.add(x.getId() + "|" + x.getDueDate() + "|" + x.getName());
         return !a.equals(b);
     }
 
     /** 設定画面の「バックグラウンド通知」の項目に従って結果を通知する。 */
     private static void notifyIfEnabled(Context ctx, PreferenceManager prefs,
                                         boolean changed, boolean success, boolean failure) {
+        // 4 つのトグルはそれぞれ独立に意味を持たせる。具体的な文面 (変更あり / 変更なし) が
+        // 出せるならそちらを優先し、それらが OFF でも「同期成功」が ON なら成功を伝える。
         String text;
-        if (failure && prefs.isBgNotifyFailure()) {
+        if (failure) {
+            if (!prefs.isBgNotifyFailure()) return;
             text = prefs.isCredentialsInvalid()
                     ? ctx.getString(R.string.sync_notify_credentials_invalid)
                     : ctx.getString(R.string.sync_notify_failure);
         } else if (changed && prefs.isBgNotifyChange()) {
             text = ctx.getString(R.string.sync_notify_changed);
-        } else if (success && !changed && prefs.isBgNotifyNoChange()) {
+        } else if (!changed && prefs.isBgNotifyNoChange()) {
             text = ctx.getString(R.string.sync_notify_no_change);
-        } else if (success && prefs.isBgNotifySuccess() && changed) {
+        } else if (success && prefs.isBgNotifySuccess()) {
             text = ctx.getString(R.string.sync_notify_success);
         } else {
             return;

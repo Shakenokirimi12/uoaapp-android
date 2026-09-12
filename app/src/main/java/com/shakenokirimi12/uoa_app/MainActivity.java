@@ -50,7 +50,15 @@ public class MainActivity extends AppCompatActivity {
         // Register device for push notifications
         PushNotificationService pushService = new PushNotificationService();
         pushService.init(prefs.getDeviceId());
-        pushService.registerDevice();
+        pushService.registerDevice(prefs.getFcmToken().isEmpty() ? null : prefs.getFcmToken());
+        // FCM トークンを取り直して登録する。onNewToken は入れ替わったときしか呼ばれない。
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+                .addOnSuccessListener(token -> {
+                    if (token == null || token.equals(prefs.getFcmToken())) return;
+                    prefs.setFcmToken(token);
+                    pushService.registerDevice(token);
+                });
+        requestNotificationPermissionIfNeeded();
 
         // Start geofencing if enabled
         if (prefs.isAutoAttendanceEnabled()) {
@@ -67,6 +75,15 @@ public class MainActivity extends AppCompatActivity {
         // 前面復帰のたびに取り直す。メンテナンス解除や killswitch の変更を、
         // アプリを起動し直さなくても拾えるようにする (iOS と同じタイミング)。
         AppConfigService.getInstance().refresh(this);
+    }
+
+    /** API 33 以降は許可が無いと通知が一切出ない。これまでどこでも求めていなかった。 */
+    private void requestNotificationPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT < 33) return;
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED) return;
+        androidx.core.app.ActivityCompat.requestPermissions(
+                this, new String[] {android.Manifest.permission.POST_NOTIFICATIONS}, 1001);
     }
 
     // ---- リモート設定 (メンテナンス / 強制更新 / お知らせ) ----
