@@ -215,6 +215,9 @@ public class SettingsFragment extends Fragment {
             Toast.makeText(requireContext(), "バックグラウンド同期を開始しました", Toast.LENGTH_SHORT).show();
         });
 
+        view.findViewById(R.id.button_block_list).setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.action_settings_to_block_list));
+
         view.findViewById(R.id.button_notification_debug).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_notification_debug));
 

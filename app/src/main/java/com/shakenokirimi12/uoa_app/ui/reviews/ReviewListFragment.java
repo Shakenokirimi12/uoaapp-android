@@ -61,7 +61,30 @@ public class ReviewListFragment extends Fragment {
             return;
         }
 
-        initUI(view, prefs);
+        showGuidelinesThenInit(view, prefs);
+    }
+
+    /**
+     * データ利用の同意 (上のダイアログ) とは別に、投稿ルールへの同意を取る (iOS と同じ 2 段構え)。
+     * 未同意のまま一覧を出さないのは、誹謗中傷や個人情報の投稿を防ぐ前提として
+     * 必ず一度は読んでもらうため。
+     */
+    private void showGuidelinesThenInit(View view, PreferenceManager prefs) {
+        if (prefs.isReviewGuidelinesAccepted()) {
+            initUI(view, prefs);
+            return;
+        }
+        ReviewGuidelinesDialogFragment.show(getChildFragmentManager(), new ReviewGuidelinesDialogFragment.Listener() {
+            @Override
+            public void onAgreed() {
+                if (isAdded()) initUI(view, prefs);
+            }
+
+            @Override
+            public void onDisagreed() {
+                if (isAdded()) requireActivity().getOnBackPressedDispatcher().onBackPressed();
+            }
+        });
     }
 
     private void showConsentDialog(PreferenceManager prefs, View view) {
@@ -72,7 +95,7 @@ public class ReviewListFragment extends Fragment {
                         + "本機能は学生が個人で提供する非公式機能であり、会津大学とは一切関係ありません。")
                 .setPositiveButton("同意する", (d, w) -> {
                     prefs.setReviewConsentGiven(true);
-                    initUI(view, prefs);
+                    showGuidelinesThenInit(view, prefs);
                 })
                 .setNegativeButton("戻る", (d, w) -> {
                     if (isAdded()) requireActivity().getOnBackPressedDispatcher().onBackPressed();

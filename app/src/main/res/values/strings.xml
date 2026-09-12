@@ -105,4 +105,26 @@
     <!-- Assignment countdown -->
     <string name="countdown_channel_name">課題の締切カウントダウン</string>
     <string name="countdown_title">課題の締め切りが近づいています</string>
+    <!-- Review guidelines / block list -->
+    <string name="review_guidelines_title">授業評価ガイドライン</string>
+    <string name="review_guidelines_intro">安全で役立つコミュニティづくりのために、以下のルールを必ずお守りください。</string>
+    <string name="review_guidelines_agree">同意して利用する</string>
+    <string name="review_guidelines_disagree">同意しない</string>
+    <string name="review_guideline_1_title">名誉毀損・誹謗中傷の禁止</string>
+    <string name="review_guideline_1_body">教員や特定の個人に対する中傷、人格否定、客観的事実に基づかない批判、暴言は固く禁止します。講義の進め方や課題、テストの難易度など、学習の参考になる客観的な評価・フィードバックを記述してください。</string>
+    <string name="review_guideline_2_title">個人情報の保護</string>
+    <string name="review_guideline_2_body">他の学生の氏名やSNSアカウント、個人を特定できるエピソードなどは掲載しないでください。完全に匿名性を保って利用してください。</string>
+    <string name="review_guideline_3_title">嫌がらせ・スパムの禁止</string>
+    <string name="review_guideline_3_body">同一の文章を何度も投稿する行為や、嫌がらせ目的での連続した通報は禁止されています。</string>
+    <string name="review_guideline_4_title">違反者への措置について</string>
+    <string name="review_guideline_4_body">ガイドラインに抵触する投稿は、管理者またはシステムによって自動的に非表示にされます。また、規約違反行為を繰り返すユーザーは、レビュー機能の利用資格を永久に剥奪（BAN）されます。</string>
+    <string name="review_guideline_5_title">データの削除・退会について</string>
+    <string name="review_guideline_5_body">投稿したレビューやアカウントデータは、設定画面からいつでも完全に消去（物理削除）することができます。退会した場合は、投稿されたデータは復元できません。</string>
+    <string name="block_list_title">ブロック中のユーザー</string>
+    <string name="block_list_empty">ブロック中のユーザーはいません</string>
+    <string name="block_list_hint">ブロックしたユーザーの投稿は非表示になります</string>
+    <string name="block_list_unblock">ブロック解除</string>
+    <string name="block_list_user_id">ユーザー ID</string>
+    <string name="settings_reviews_section">授業評価</string>
+    <string name="settings_block_list">ブロック中のユーザー</string>
 </resources>

@@ -464,6 +464,32 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Reviews -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/settings_reviews_section"
+            android:textColor="@color/primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            style="@style/Widget.Material3.CardView.Outlined">
+            <TextView
+                android:id="@+id/button_block_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:drawableEnd="@drawable/ic_chevron_right"
+                android:text="@string/settings_block_list"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Backup -->
         <TextView
             android:layout_width="match_parent"

@@ -279,6 +279,54 @@ public class ReviewService {
         });
     }
 
+    // ブロック中のユーザー一覧
+    public void fetchBlockedUsers(String userId, ServiceCallback<List<String>> callback) {
+        executor.execute(() -> {
+            try {
+                Request request = new Request.Builder()
+                        .url(BASE_URL + "/api/users/" + userId + "/blocks")
+                        .build();
+                try (Response resp = client.newCall(request).execute()) {
+                    if (!resp.isSuccessful()) {
+                        postError(callback, parseError(resp));
+                        return;
+                    }
+                    Map<String, Object> json = gson.fromJson(resp.body().string(),
+                            new TypeToken<Map<String, Object>>() {}.getType());
+                    List<String> ids = new java.util.ArrayList<>();
+                    Object raw = json.get("blockedUserIds");
+                    if (raw instanceof List) {
+                        for (Object o : (List<?>) raw) ids.add(String.valueOf(o));
+                    }
+                    postSuccess(callback, ids);
+                }
+            } catch (Exception e) {
+                postError(callback, e.getMessage());
+            }
+        });
+    }
+
+    // ブロック解除
+    public void unblockUser(String targetUserId, String userId, ServiceCallback<Boolean> callback) {
+        executor.execute(() -> {
+            try {
+                Request request = new Request.Builder()
+                        .url(BASE_URL + "/api/users/" + targetUserId + "/block?userId=" + userId)
+                        .delete()
+                        .build();
+                try (Response resp = client.newCall(request).execute()) {
+                    if (!resp.isSuccessful()) {
+                        postError(callback, parseError(resp));
+                        return;
+                    }
+                    postSuccess(callback, true);
+                }
+            } catch (Exception e) {
+                postError(callback, e.getMessage());
+            }
+        });
+    }
+
     private String parseError(Response resp) {
         try {
             Map<String, Object> err = gson.fromJson(resp.body().string(),

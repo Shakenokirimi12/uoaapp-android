@@ -17,4 +17,13 @@
     <style name="Theme.Uoaapp.Onboarding" parent="Theme.Uoaapp">
         <item name="android:statusBarColor">@color/primary</item>
     </style>
+
+    <!-- 全画面のダイアログ (ガイドライン同意)。通常の Dialog だと本文が長すぎて読みにくい。 -->
+    <style name="Theme.Uoaapp.FullScreenDialog" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
 </resources>

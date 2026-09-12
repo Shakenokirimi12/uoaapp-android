@@ -61,6 +61,7 @@
         android:name="com.shakenokirimi12.uoa_app.ui.settings.SettingsFragment"
         android:label="@string/nav_settings"
         tools:layout="@layout/fragment_settings">
+        <action android:id="@+id/action_settings_to_block_list" app:destination="@id/navigation_block_list" />
         <action android:id="@+id/action_settings_to_grades" app:destination="@id/navigation_grades" />
         <action android:id="@+id/action_settings_to_facilities" app:destination="@id/navigation_facilities" />
         <action android:id="@+id/action_settings_to_notifications" app:destination="@id/navigation_notifications" />
@@ -173,4 +174,9 @@
         android:name="com.shakenokirimi12.uoa_app.ui.debug.NotificationDebugFragment"
         android:label="通知診断" />
 
+
+    <fragment
+        android:id="@+id/navigation_block_list"
+        android:name="com.shakenokirimi12.uoa_app.ui.reviews.BlockListFragment"
+        android:label="ブロック中のユーザー" />
 </navigation>
