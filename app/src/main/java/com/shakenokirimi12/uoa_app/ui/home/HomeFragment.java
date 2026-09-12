@@ -304,6 +304,7 @@ public class HomeFragment extends Fragment {
                         showLastSyncTime();
                         DataCache.getInstance(requireContext()).saveAssignments(assignments);
                         com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.sync(requireContext(), assignments);
+                        com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier.post(requireContext(), assignments);
                     }
 
                     @Override

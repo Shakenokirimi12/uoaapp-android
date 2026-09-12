@@ -95,6 +95,7 @@ public class SyncWorker extends Worker {
                         changed |= differs(cache.loadAssignments(), assignments);
                         cache.saveAssignments(assignments);
                         com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.sync(ctx, assignments);
+                        com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier.post(ctx, assignments);
                     } else {
                         anyFailure = true;
                     }

@@ -206,8 +206,14 @@ public class SettingsFragment extends Fragment {
             Toast.makeText(requireContext(), "テスト通知を送信しました", Toast.LENGTH_SHORT).show();
         });
 
-        view.findViewById(R.id.button_force_sync).setOnClickListener(v ->
-                Toast.makeText(requireContext(), "バックグラウンド同期を開始しました", Toast.LENGTH_SHORT).show());
+        view.findViewById(R.id.button_force_sync).setOnClickListener(v -> {
+            // 定期ワーカーと同じ SyncWorker を 1 回だけ即時実行する。以前は Toast を出すだけで
+            // 何も起きていなかった。
+            androidx.work.WorkManager.getInstance(requireContext()).enqueue(
+                    new androidx.work.OneTimeWorkRequest.Builder(
+                            com.shakenokirimi12.uoa_app.services.sync.SyncWorker.class).build());
+            Toast.makeText(requireContext(), "バックグラウンド同期を開始しました", Toast.LENGTH_SHORT).show();
+        });
 
         view.findViewById(R.id.button_notification_debug).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_notification_debug));

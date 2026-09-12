@@ -46,6 +46,16 @@ public class NotificationDebugFragment extends Fragment {
         textReport = view.findViewById(R.id.text_report);
         buttonShare = view.findViewById(R.id.button_share_report);
 
+        view.findViewById(R.id.button_test_countdown).setOnClickListener(v -> {
+            // 実データに依らず、通知の見た目 (クロノメーターの減算表示と自動消去) を確かめる。
+            com.shakenokirimi12.uoa_app.data.models.Assignment fake =
+                    new com.shakenokirimi12.uoa_app.data.models.Assignment(
+                            999_999, "テスト課題", "テスト科目", 0,
+                            System.currentTimeMillis() / 1000L + 5 * 60);
+            com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier
+                    .post(requireContext(), java.util.Collections.singletonList(fake));
+        });
+
         view.findViewById(R.id.button_generate_report).setOnClickListener(v -> generateReport());
 
         buttonShare.setOnClickListener(v -> {

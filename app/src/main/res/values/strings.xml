@@ -102,4 +102,7 @@
     <string name="sync_notify_credentials_invalid">ユーザー名またはパスワードが正しくないため、自動同期を停止しました。設定から入力し直してください。</string>
     <!-- Push -->
     <string name="push_channel_name">課題の期限通知</string>
+    <!-- Assignment countdown -->
+    <string name="countdown_channel_name">課題の締切カウントダウン</string>
+    <string name="countdown_title">課題の締め切りが近づいています</string>
 </resources>
