@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- debug ビルドだけの上書き。adb からアプリ内ブラウザを直接開いて確認するために export する。
+     例: adb shell am start -n com.shakenokirimi12.uoa_app/.ui.browser.InAppBrowserActivity (2連ハイフンの es オプションは使えないのでコメントでは省略) url エクストラに開きたいURLを渡す
+     release には反映されない (この節は debug ソースセットにしか無い)。 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <activity
+            android:name=".ui.browser.InAppBrowserActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+    </application>
+</manifest>

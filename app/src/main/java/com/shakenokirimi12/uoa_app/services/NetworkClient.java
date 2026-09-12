@@ -73,6 +73,12 @@ public class NetworkClient {
         return noRedirectClient;
     }
 
+    /** アプリ内ブラウザへセッションを持ち込むために、ホスト単位でcookieを取り出す。 */
+    public static synchronized List<Cookie> cookiesForHost(String host) {
+        List<Cookie> cookies = cookieStore.get(host);
+        return cookies != null ? new ArrayList<>(cookies) : new ArrayList<>();
+    }
+
     public static void clearCookies() {
         cookieStore.clear();
     }

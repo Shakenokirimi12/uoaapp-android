@@ -14,7 +14,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -24,6 +23,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity;
 import com.shakenokirimi12.uoa_app.data.AttendanceManager;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
@@ -135,11 +135,7 @@ public class CourseDetailFragment extends Fragment {
 
         view.findViewById(R.id.btn_moodle_browser).setOnClickListener(v -> {
             String url = "https://elms.u-aizu.ac.jp/course/view.php?id=" + courseId;
-            try {
-                new CustomTabsIntent.Builder().build().launchUrl(requireContext(), Uri.parse(url));
-            } catch (Exception e) {
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-            }
+            InAppBrowserActivity.open(requireContext(), url);
         });
 
         swipeRefresh.setOnRefreshListener(this::loadData);
@@ -289,14 +285,7 @@ public class CourseDetailFragment extends Fragment {
                 modView.setPadding(40, 12, 16, 12);
                 modView.setCompoundDrawablePadding(8);
                 if (!mod.getUrl().isEmpty()) {
-                    modView.setOnClickListener(v -> {
-                        try {
-                            new CustomTabsIntent.Builder().build()
-                                    .launchUrl(requireContext(), Uri.parse(mod.getUrl()));
-                        } catch (Exception e) {
-                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(mod.getUrl())));
-                        }
-                    });
+                    modView.setOnClickListener(v -> InAppBrowserActivity.open(requireContext(), mod.getUrl()));
                 }
                 layoutContents.addView(modView);
             }

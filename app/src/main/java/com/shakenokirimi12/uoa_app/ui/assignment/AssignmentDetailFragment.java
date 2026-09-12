@@ -9,10 +9,10 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.fragment.app.Fragment;
 
 import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 
@@ -102,8 +102,8 @@ public class AssignmentDetailFragment extends Fragment {
         // Open in Moodle
         view.findViewById(R.id.button_open_moodle).setOnClickListener(v -> {
             String url = "https://elms.u-aizu.ac.jp/mod/assign/view.php?id=" + assignment.getId();
-            new CustomTabsIntent.Builder().build()
-                    .launchUrl(requireContext(), Uri.parse(url));
+            // Custom Tabs は別プロセスの Chrome でアプリの cookie が届かず、毎回ログインを求められた。
+            InAppBrowserActivity.open(requireContext(), url);
         });
     }
 

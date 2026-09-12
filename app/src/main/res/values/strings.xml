@@ -82,4 +82,15 @@
     <string name="force_update_open_store">Google Playで開く</string>
     <string name="status_notice_dismiss">閉じる</string>
     <string name="feature_disabled">この機能は現在利用できません</string>
+    <!-- In-app browser -->
+    <string name="browser_close">閉じる</string>
+    <string name="browser_menu">メニュー</string>
+    <string name="browser_back">戻る</string>
+    <string name="browser_forward">進む</string>
+    <string name="browser_reload">再読み込み</string>
+    <string name="browser_share">共有</string>
+    <string name="browser_open_external">ブラウザで開く</string>
+    <string name="browser_auth_failed">%1$s の認証を通過できませんでした。メニューからブラウザで開いてください。</string>
+    <string name="browser_download_started">ダウンロードを開始しました: %1$s</string>
+    <string name="browser_download_failed">ダウンロードを開始できませんでした</string>
 </resources>
