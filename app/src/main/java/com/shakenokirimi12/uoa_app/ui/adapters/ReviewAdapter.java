@@ -3,7 +3,6 @@ package com.shakenokirimi12.uoa_app.ui.adapters;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -69,7 +68,7 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ViewHolder
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         final TextView textRating, textYear, textTitle, textBody, textDate;
-        final ImageView buttonMenu;
+        final View buttonMenu;
 
         ViewHolder(View v) {
             super(v);

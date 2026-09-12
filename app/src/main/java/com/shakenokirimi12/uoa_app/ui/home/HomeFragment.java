@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.google.android.material.color.MaterialColors;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
@@ -158,7 +159,8 @@ public class HomeFragment extends Fragment {
             } catch (Exception ignored) {}
         });
 
-        swipeRefresh.setColorSchemeResources(R.color.primary);
+        swipeRefresh.setColorSchemeColors(
+                MaterialColors.getColor(swipeRefresh, androidx.appcompat.R.attr.colorPrimary));
         swipeRefresh.setOnRefreshListener(() -> {
             syncData();
             loadCafeteriaMenu();
@@ -365,10 +367,10 @@ public class HomeFragment extends Fragment {
         textMenuLoading.setVisibility(View.GONE);
         layoutMenuContent.setVisibility(View.VISIBLE);
 
-        setMenuLine(textMenuLunch, "🍽 ランチ: ", menu.getLunch());
-        setMenuLine(textMenuFish, "🐟 お魚: ", menu.getFish());
-        setMenuLine(textMenuSalad, "🥗 サラダ: ", menu.getSalad());
-        setMenuLine(textMenuDinner, "🌙 夕食: ", menu.getDinner());
+        setMenuLine(textMenuLunch, "ランチ: ", menu.getLunch());
+        setMenuLine(textMenuFish, "お魚: ", menu.getFish());
+        setMenuLine(textMenuSalad, "サラダ: ", menu.getSalad());
+        setMenuLine(textMenuDinner, "夕食: ", menu.getDinner());
     }
 
     private void setMenuLine(TextView tv, String prefix, String content) {

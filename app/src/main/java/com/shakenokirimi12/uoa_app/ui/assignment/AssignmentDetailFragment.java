@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.color.MaterialColors;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity;
 import com.shakenokirimi12.uoa_app.data.DataCache;
@@ -49,7 +50,6 @@ public class AssignmentDetailFragment extends Fragment {
         TextView textCourseName = view.findViewById(R.id.text_course_name);
         TextView textDueDate = view.findViewById(R.id.text_due_date);
         TextView textDueRelative = view.findViewById(R.id.text_due_relative);
-        TextView textStatus = view.findViewById(R.id.text_status);
         TextView labelDesc = view.findViewById(R.id.label_description);
         TextView textDesc = view.findViewById(R.id.text_description);
 
@@ -67,29 +67,21 @@ public class AssignmentDetailFragment extends Fragment {
             long diffSec = assignment.getDueDate() - nowSec;
             if (diffSec < 0) {
                 textDueRelative.setText("期限切れ");
-                textDueRelative.setTextColor(getResources().getColor(R.color.error, null));
+                textDueRelative.setTextColor(MaterialColors.getColor(textDueRelative, androidx.appcompat.R.attr.colorError));
             } else if (diffSec < 3600) {
                 textDueRelative.setText("残り" + (diffSec / 60) + "分");
-                textDueRelative.setTextColor(getResources().getColor(R.color.error, null));
+                textDueRelative.setTextColor(MaterialColors.getColor(textDueRelative, androidx.appcompat.R.attr.colorError));
             } else if (diffSec < 86400) {
                 textDueRelative.setText("残り" + (diffSec / 3600) + "時間");
-                textDueRelative.setTextColor(getResources().getColor(R.color.primary, null));
+                textDueRelative.setTextColor(MaterialColors.getColor(textDueRelative, androidx.appcompat.R.attr.colorPrimary));
             } else {
                 textDueRelative.setText("残り" + (diffSec / 86400) + "日");
-                textDueRelative.setTextColor(getResources().getColor(R.color.primary, null));
+                textDueRelative.setTextColor(MaterialColors.getColor(textDueRelative, androidx.appcompat.R.attr.colorPrimary));
             }
         }
 
-        // Status
-        if (assignment.isSubmitted()) {
-            textStatus.setText("提出済み");
-            textStatus.setTextColor(getResources().getColor(R.color.primary, null));
-            textStatus.setBackgroundColor(0x1A008578);
-        } else {
-            textStatus.setText("未提出");
-            textStatus.setTextColor(getResources().getColor(R.color.error, null));
-            textStatus.setBackgroundColor(0x1AB00020);
-        }
+        // Submission status is intentionally not shown: Assignment.submitted is never
+        // populated from Moodle, so any value here would be fabricated.
 
         // Description
         if (assignment.getIntro() != null && !assignment.getIntro().isEmpty()) {

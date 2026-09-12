@@ -4,263 +4,316 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:paddingBottom="24dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="vertical">
 
-        <!-- Account section -->
+        <!-- Account -->
         <TextView
+            style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/settings_account"
-            android:textColor="@color/primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:paddingTop="8dp"
+            android:text="@string/settings_account" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.Material3.CardView.Outlined">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/text_username"
+                <LinearLayout
+                    android:id="@+id/row_account"
+                    style="@style/Widget.Uoa.ListRow.Container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    tools:text="s1234567" />
+                    android:background="?attr/selectableItemBackground"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp">
 
-                <TextView
+                    <ImageView
+                        style="@style/Widget.Uoa.IconContainer"
+                        android:contentDescription="@string/settings_account"
+                        android:src="@drawable/ic_user" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/text_username"
+                            style="@style/Widget.Uoa.ListRow.Title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            tools:text="s1234567" />
+
+                        <TextView
+                            style="@style/Widget.Uoa.ListRow.Supporting"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_username" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginStart="12dp"
+                        android:contentDescription="アカウント情報の変更"
+                        android:src="@drawable/ic_edit"
+                        app:tint="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+
+                <com.google.android.material.divider.MaterialDivider
+                    android:id="@+id/divider_logout"
+                    style="@style/Widget.Uoa.Divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_logout"
+                    style="@style/Widget.Material3.Button.TextButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
                     android:layout_marginTop="4dp"
-                    android:text="@string/settings_username"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="@string/settings_logout"
+                    android:textColor="?attr/colorError"
+                    app:icon="@drawable/ic_log_out"
+                    app:iconGravity="textStart"
+                    app:iconTint="?attr/colorError" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Academic section -->
+        <!-- Academic shortcuts -->
         <TextView
+            style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="学業"
-            android:textColor="@color/primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:text="学業" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.Material3.CardView.Outlined">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:divider="@drawable/divider"
-                android:showDividers="middle">
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/button_grades"
+                    style="@style/Widget.Uoa.ListRow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp"
+                    android:drawableStart="@drawable/ic_grades"
                     android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="@string/settings_grades"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp" />
+                    android:text="@string/settings_grades" />
+
+                <com.google.android.material.divider.MaterialDivider
+                    style="@style/Widget.Uoa.Divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
 
                 <TextView
                     android:id="@+id/button_facilities"
+                    style="@style/Widget.Uoa.ListRow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp"
+                    android:drawableStart="@drawable/ic_building"
                     android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="@string/settings_facilities"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp" />
+                    android:text="@string/settings_facilities" />
+
+                <com.google.android.material.divider.MaterialDivider
+                    style="@style/Widget.Uoa.Divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
 
                 <TextView
                     android:id="@+id/button_notifications"
+                    style="@style/Widget.Uoa.ListRow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp"
+                    android:drawableStart="@drawable/ic_inbox"
                     android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="通知受信ボックス"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp" />
+                    android:text="通知受信ボックス" />
+
+                <com.google.android.material.divider.MaterialDivider
+                    android:id="@+id/divider_campus_map"
+                    style="@style/Widget.Uoa.Divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
 
                 <TextView
                     android:id="@+id/button_campus_map"
+                    style="@style/Widget.Uoa.ListRow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp"
+                    android:drawableStart="@drawable/ic_map"
                     android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="キャンパスマップ"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp" />
+                    android:text="キャンパスマップ" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Notifications section -->
+        <!-- Notifications -->
         <TextView
+            style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/settings_notifications"
-            android:textColor="@color/primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:text="@string/settings_notifications" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.Material3.CardView.Outlined">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:divider="@drawable/divider"
-                android:showDividers="middle">
+                android:orientation="vertical">
 
                 <!-- Assignment notifications -->
                 <LinearLayout
+                    style="@style/Widget.Uoa.ListRow.Container"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
+                    android:layout_height="wrap_content">
+
                     <TextView
+                        style="@style/Widget.Uoa.ListRow.Title"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="@string/settings_assignment_notify"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:text="@string/settings_assignment_notify" />
+
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_assignment_notify"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp" />
                 </LinearLayout>
 
-                <!-- Notification timing settings -->
                 <TextView
                     android:id="@+id/button_notify_times"
+                    style="@style/Widget.Uoa.ListRow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp"
                     android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="通知タイミングの設定"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp" />
+                    android:text="通知タイミングの設定" />
+
+                <com.google.android.material.divider.MaterialDivider
+                    style="@style/Widget.Uoa.Divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
 
                 <!-- Grade notifications -->
                 <LinearLayout
+                    style="@style/Widget.Uoa.ListRow.Container"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
+                    android:layout_height="wrap_content">
+
                     <TextView
+                        style="@style/Widget.Uoa.ListRow.Title"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="@string/settings_grade_notify"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:text="@string/settings_grade_notify" />
+
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_grade_notify"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp" />
                 </LinearLayout>
+
+                <com.google.android.material.divider.MaterialDivider
+                    style="@style/Widget.Uoa.Divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
 
                 <!-- Lunch notifications -->
                 <LinearLayout
+                    style="@style/Widget.Uoa.ListRow.Container"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
+                    android:layout_height="wrap_content">
+
                     <TextView
+                        style="@style/Widget.Uoa.ListRow.Title"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="@string/settings_lunch_notify"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:text="@string/settings_lunch_notify" />
+
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_lunch_notify"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp" />
                 </LinearLayout>
 
-                <!-- Lunch notify time -->
+                <!-- Lunch notify time (shown only while lunch notifications are on) -->
                 <LinearLayout
                     android:id="@+id/layout_lunch_time"
+                    style="@style/Widget.Uoa.ListRow.Container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp"
-                    android:visibility="gone">
+                    android:paddingTop="0dp"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
                     <TextView
+                        style="@style/Widget.Uoa.ListRow.Supporting"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="通知時間"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
-                    <TextView
+                        android:text="通知時間" />
+
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/text_lunch_time"
+                        style="@style/Widget.Material3.Button.TonalButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:padding="8dp"
-                        android:textColor="@color/primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
+                        android:minWidth="0dp"
+                        app:icon="@drawable/ic_clock"
+                        app:iconGravity="textStart"
                         tools:text="11:30" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Background sync section -->
+        <!-- Background sync -->
         <TextView
+            style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="バックグラウンド同期"
-            android:textColor="@color/primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:text="バックグラウンド同期" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.Material3.CardView.Outlined">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:divider="@drawable/divider"
-                android:showDividers="middle">
+                android:orientation="vertical">
 
                 <!-- Sync interval -->
                 <LinearLayout
@@ -270,386 +323,382 @@
                     android:padding="16dp">
 
                     <TextView
+                        style="@style/Widget.Uoa.ListRow.Title"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="同期間隔"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:text="同期間隔" />
 
                     <com.google.android.material.button.MaterialButtonToggleGroup
                         android:id="@+id/toggle_sync_interval"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        app:singleSelection="true"
-                        app:selectionRequired="true">
+                        android:layout_marginTop="12dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_interval_15"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="15分"
-                            style="@style/Widget.Material3.Button.OutlinedButton" />
+                            android:text="15分" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_interval_30"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="30分"
-                            style="@style/Widget.Material3.Button.OutlinedButton" />
+                            android:text="30分" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_interval_60"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="1時間"
-                            style="@style/Widget.Material3.Button.OutlinedButton" />
+                            android:text="1時間" />
                     </com.google.android.material.button.MaterialButtonToggleGroup>
                 </LinearLayout>
 
+                <com.google.android.material.divider.MaterialDivider
+                    style="@style/Widget.Uoa.Divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
                 <!-- Sync result notifications -->
                 <TextView
+                    style="@style/Widget.Uoa.ListRow.Supporting"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:paddingStart="16dp"
                     android:paddingTop="12dp"
-                    android:text="同期結果の通知"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:paddingEnd="16dp"
+                    android:text="同期結果の通知" />
 
                 <LinearLayout
+                    style="@style/Widget.Uoa.ListRow.Container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
+                    android:minHeight="48dp">
+
                     <TextView
+                        style="@style/Widget.Uoa.ListRow.Title"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="変更あり"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:text="変更あり" />
+
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_bg_change"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp" />
                 </LinearLayout>
 
                 <LinearLayout
+                    style="@style/Widget.Uoa.ListRow.Container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
+                    android:minHeight="48dp">
+
                     <TextView
+                        style="@style/Widget.Uoa.ListRow.Title"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="同期成功"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:text="同期成功" />
+
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_bg_success"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp" />
                 </LinearLayout>
 
                 <LinearLayout
+                    style="@style/Widget.Uoa.ListRow.Container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
+                    android:minHeight="48dp">
+
                     <TextView
+                        style="@style/Widget.Uoa.ListRow.Title"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="同期失敗"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:text="同期失敗" />
+
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_bg_failure"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp" />
                 </LinearLayout>
 
                 <LinearLayout
+                    style="@style/Widget.Uoa.ListRow.Container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="16dp">
+                    android:minHeight="48dp"
+                    android:paddingBottom="12dp">
+
                     <TextView
+                        style="@style/Widget.Uoa.ListRow.Title"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="変更なし"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:text="変更なし" />
+
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_bg_nochange"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Location / Geofence -->
+        <!-- Auto attendance -->
         <TextView
+            style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="詳細設定"
-            android:textColor="@color/primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:text="自動出席" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.Material3.CardView.Outlined">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:divider="@drawable/divider"
-                android:showDividers="middle">
+                android:orientation="vertical">
 
                 <LinearLayout
+                    style="@style/Widget.Uoa.ListRow.Container"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-                    <TextView
+                    android:layout_height="wrap_content">
+
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="自動出席 (ジオフェンス)"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Uoa.ListRow.Title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="自動出席" />
+
+                        <TextView
+                            style="@style/Widget.Uoa.ListRow.Supporting"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="ジオフェンスで大学に入ったことを検知します" />
+                    </LinearLayout>
+
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_auto_attendance"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp" />
                 </LinearLayout>
 
                 <TextView
                     android:id="@+id/text_location_warning"
+                    style="@style/Widget.Uoa.Notice"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"
-                    android:layout_marginBottom="8dp"
-                    android:background="#FFF3E0"
-                    android:padding="12dp"
+                    android:layout_marginBottom="16dp"
                     android:text="位置情報が「常に許可」になっていないため、アプリを閉じている間は自動出席が動きません。タップして許可する"
-                    android:textColor="#E65100"
-                    android:textSize="13sp"
                     android:visibility="gone"
                     tools:visibility="visible" />
-
-                <!-- Navigation customization -->
-                <TextView
-                    android:id="@+id/button_nav_settings"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="16dp"
-                    android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="タブの表示設定"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp" />
             </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Display / navigation -->
+        <TextView
+            style="@style/Widget.Uoa.SectionHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="表示" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
+
+            <TextView
+                android:id="@+id/button_nav_settings"
+                style="@style/Widget.Uoa.ListRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:drawableStart="@drawable/ic_layout"
+                android:drawableEnd="@drawable/ic_chevron_right"
+                android:text="タブの表示設定" />
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Reviews -->
         <TextView
+            style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/settings_reviews_section"
-            android:textColor="@color/primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:text="@string/settings_reviews_section" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.Material3.CardView.Outlined">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
+
             <TextView
                 android:id="@+id/button_block_list"
+                style="@style/Widget.Uoa.ListRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp"
+                android:drawableStart="@drawable/ic_ban"
                 android:drawableEnd="@drawable/ic_chevron_right"
-                android:text="@string/settings_block_list"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp" />
+                android:text="@string/settings_block_list" />
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Backup -->
         <TextView
+            style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="データ管理"
-            android:textColor="@color/primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:text="データ管理" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.Material3.CardView.Outlined">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:divider="@drawable/divider"
-                android:showDividers="middle">
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/button_backup"
+                    style="@style/Widget.Uoa.ListRow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp"
+                    android:drawableStart="@drawable/ic_upload"
                     android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="バックアップ（エクスポート）"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp" />
+                    android:text="バックアップ（エクスポート）" />
+
+                <com.google.android.material.divider.MaterialDivider
+                    style="@style/Widget.Uoa.Divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
 
                 <TextView
                     android:id="@+id/button_restore"
+                    style="@style/Widget.Uoa.ListRow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp"
+                    android:drawableStart="@drawable/ic_download"
                     android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="リストア（インポート）"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp" />
+                    android:text="リストア（インポート）" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Debug section (hidden by default) -->
+        <!-- Debug section (hidden unless debug mode is on) -->
         <LinearLayout
             android:id="@+id/section_debug"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:visibility="gone">
+            android:visibility="gone"
+            tools:visibility="visible">
 
             <TextView
+                style="@style/Widget.Uoa.SectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
                 android:text="デバッグ &amp; テスト"
-                android:textColor="@color/error"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:textColor="?attr/colorError" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                style="@style/Widget.Material3.CardView.Outlined">
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp">
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:divider="@drawable/divider"
-                    android:showDividers="middle">
+                    android:orientation="vertical">
 
                     <TextView
                         android:id="@+id/button_test_notification"
+                        style="@style/Widget.Uoa.ListRow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:padding="16dp"
-                        android:text="テスト通知を送信"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:drawableStart="@drawable/ic_bell_ring"
+                        android:text="テスト通知を送信" />
+
+                    <com.google.android.material.divider.MaterialDivider
+                        style="@style/Widget.Uoa.Divider"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
 
                     <TextView
                         android:id="@+id/button_force_sync"
+                        style="@style/Widget.Uoa.ListRow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:padding="16dp"
-                        android:text="即時バックグラウンド同期を実行"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:drawableStart="@drawable/ic_refresh"
+                        android:text="即時バックグラウンド同期を実行" />
+
+                    <com.google.android.material.divider.MaterialDivider
+                        style="@style/Widget.Uoa.Divider"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
 
                     <TextView
                         android:id="@+id/button_notification_debug"
+                        style="@style/Widget.Uoa.ListRow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:padding="16dp"
+                        android:drawableStart="@drawable/ic_bug"
                         android:drawableEnd="@drawable/ic_chevron_right"
-                        android:text="通知診断レポート"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:text="通知診断レポート" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
-        <!-- General section -->
+        <!-- App info -->
         <TextView
+            style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/settings_general"
-            android:textColor="@color/primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:text="アプリ情報" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.Material3.CardView.Outlined">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
 
-            <LinearLayout
+            <TextView
+                android:id="@+id/text_version"
+                style="@style/Widget.Uoa.ListRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:divider="@drawable/divider"
-                android:showDividers="middle">
-
-                <TextView
-                    android:id="@+id/text_version"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="16dp"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp"
-                    tools:text="バージョン 0.1beta" />
-
-                <TextView
-                    android:id="@+id/button_logout"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="16dp"
-                    android:text="@string/settings_logout"
-                    android:textColor="@color/error"
-                    android:textSize="16sp" />
-            </LinearLayout>
+                android:drawableStart="@drawable/ic_info"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                tools:text="バージョン 0.1beta" />
         </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>

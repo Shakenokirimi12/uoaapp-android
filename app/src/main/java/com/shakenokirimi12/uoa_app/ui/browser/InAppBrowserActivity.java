@@ -15,8 +15,6 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.ImageButton;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -25,6 +23,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
@@ -66,10 +67,10 @@ public class InAppBrowserActivity extends AppCompatActivity {
     }
 
     private WebView webView;
-    private ProgressBar progress;
+    private LinearProgressIndicator progress;
     private TextView titleView;
     private TextView hostView;
-    private ImageButton back, forward, reload;
+    private MaterialButton back, forward, reload;
 
     /** ログアウト時に呼ぶ。CookieManager はプロセスをまたいでディスクに残る。 */
     public static void clearWebSession() {
@@ -129,6 +130,7 @@ public class InAppBrowserActivity extends AppCompatActivity {
 
         findViewById(R.id.close).setOnClickListener(v -> finish());
         findViewById(R.id.menu).setOnClickListener(this::showMenu);
+        findViewById(R.id.nav_open_external).setOnClickListener(v -> openExternal());
         back.setOnClickListener(v -> { if (webView.canGoBack()) webView.goBack(); });
         forward.setOnClickListener(v -> { if (webView.canGoForward()) webView.goForward(); });
         reload.setOnClickListener(v -> {
@@ -349,6 +351,12 @@ public class InAppBrowserActivity extends AppCompatActivity {
         forward.setAlpha(webView.canGoForward() ? 1f : 0.3f);
     }
 
+    private void openExternal() {
+        String current = webView.getUrl();
+        if (current == null) return;
+        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(current)));
+    }
+
     private void showMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
         menu.getMenu().add(0, 1, 0, R.string.browser_share);
@@ -360,7 +368,7 @@ public class InAppBrowserActivity extends AppCompatActivity {
                 Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, current);
                 startActivity(Intent.createChooser(send, null));
             } else {
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(current)));
+                openExternal();
             }
             return true;
         });

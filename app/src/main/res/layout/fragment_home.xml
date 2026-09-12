@@ -10,40 +10,104 @@
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:clipToPadding="false"
         android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="24dp">
 
             <!-- Sync status -->
             <LinearLayout
                 android:id="@+id/sync_status_bar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_sync_status"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_notice_neutral"
                 android:gravity="center"
                 android:orientation="horizontal"
-                android:padding="10dp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp"
                 android:visibility="gone"
                 tools:visibility="visible">
 
-                <ProgressBar
+                <com.google.android.material.progressindicator.CircularProgressIndicator
                     android:id="@+id/sync_progress"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_marginEnd="8dp"
-                    android:indeterminateTint="@color/white" />
+                    android:indeterminate="true"
+                    app:indicatorColor="?attr/colorOnSecondaryContainer"
+                    app:indicatorSize="16dp"
+                    app:trackThickness="2dp" />
 
                 <TextView
                     android:id="@+id/text_sync_status"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/home_sync_status"
-                    android:textColor="@color/white"
-                    android:textSize="12sp" />
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:textColor="?attr/colorOnSecondaryContainer" />
+            </LinearLayout>
+
+            <!-- Date selector -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_prev_day"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="前の日"
+                    app:icon="@drawable/ic_chevron_left"
+                    app:iconTint="?attr/colorOnSurface" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/text_date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceTitleLarge"
+                        android:textColor="?attr/colorOnSurface"
+                        tools:text="4月4日 (金)" />
+
+                    <TextView
+                        android:id="@+id/text_today_hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="2dp"
+                        android:text="今日に戻る"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:textColor="?attr/colorPrimary"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_next_day"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="次の日"
+                    app:icon="@drawable/ic_chevron_right"
+                    app:iconTint="?attr/colorOnSurface" />
             </LinearLayout>
 
             <!-- Last sync time -->
@@ -52,208 +116,140 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:paddingTop="4dp"
                 android:paddingBottom="4dp"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:visibility="gone"
-                tools:text="最終同期: 5分前" />
-
-            <!-- Date selector -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_prev_day"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:padding="0dp"
-                    app:cornerRadius="20dp"
-                    app:icon="@drawable/ic_chevron_left"
-                    app:iconGravity="textStart"
-                    app:iconPadding="0dp"
-                    app:iconSize="24dp"
-                    app:iconTint="@color/text_primary"
-                    style="@style/Widget.Material3.Button.TextButton" />
-
-                <TextView
-                    android:id="@+id/text_date"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:textColor="@color/text_primary"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    tools:text="4月4日 (金)" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_next_day"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:padding="0dp"
-                    app:cornerRadius="20dp"
-                    app:icon="@drawable/ic_chevron_right"
-                    app:iconGravity="textStart"
-                    app:iconPadding="0dp"
-                    app:iconSize="24dp"
-                    app:iconTint="@color/text_primary"
-                    style="@style/Widget.Material3.Button.TextButton" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/text_today_hint"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:padding="4dp"
-                android:text="今日に戻る"
-                android:textColor="@color/primary"
-                android:textSize="13sp"
-                android:visibility="gone" />
+                tools:text="最終同期: 5分前"
+                tools:visibility="visible" />
 
             <!-- Summary cards -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="8dp"
                 android:orientation="horizontal">
 
                 <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.Uoa.Card.Primary"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:layout_marginEnd="8dp"
-                    app:cardBackgroundColor="@color/primary"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp">
+                    android:layout_weight="1">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center"
+                        android:gravity="center_horizontal"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:paddingVertical="20dp"
+                        android:paddingHorizontal="16dp">
 
                         <TextView
                             android:id="@+id/text_class_count"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/white"
-                            android:textSize="36sp"
-                            android:textStyle="bold"
+                            android:textAppearance="?attr/textAppearanceDisplaySmall"
+                            android:textColor="?attr/colorOnPrimaryContainer"
                             tools:text="3" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
                             android:text="授業"
-                            android:textColor="#CCFFFFFF"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textColor="?attr/colorOnPrimaryContainer" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.Uoa.Card.Secondary"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:layout_marginStart="8dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
-                    style="@style/Widget.Material3.CardView.Outlined">
+                    android:layout_weight="1">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center"
+                        android:gravity="center_horizontal"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:paddingVertical="20dp"
+                        android:paddingHorizontal="16dp">
 
                         <TextView
                             android:id="@+id/text_assignment_count"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/primary"
-                            android:textSize="36sp"
-                            android:textStyle="bold"
+                            android:textAppearance="?attr/textAppearanceDisplaySmall"
+                            android:textColor="?attr/colorOnSecondaryContainer"
                             tools:text="2" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
                             android:text="課題〆切"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textColor="?attr/colorOnSecondaryContainer" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
 
             <!-- Today's classes section -->
             <TextView
+                style="@style/Widget.Uoa.SectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="@string/home_today_classes"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:layout_marginTop="8dp"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:text="@string/home_today_classes" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_classes"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:clipToPadding="false"
                 android:nestedScrollingEnabled="false"
                 tools:itemCount="3"
                 tools:listitem="@layout/item_class" />
 
             <TextView
                 android:id="@+id/text_no_classes"
+                style="@style/Widget.Uoa.EmptyState"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:gravity="center"
+                android:padding="16dp"
                 android:text="@string/home_no_classes"
-                android:textColor="@color/text_secondary"
                 android:visibility="gone" />
 
             <!-- Today's assignments section -->
             <TextView
+                style="@style/Widget.Uoa.SectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="@string/home_today_assignments"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:text="@string/home_today_assignments" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_assignments"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:clipToPadding="false"
                 android:nestedScrollingEnabled="false"
                 tools:itemCount="2"
                 tools:listitem="@layout/item_assignment" />
 
             <TextView
                 android:id="@+id/text_no_assignments"
+                style="@style/Widget.Uoa.EmptyState"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:gravity="center"
+                android:padding="16dp"
                 android:text="@string/home_no_assignments"
-                android:textColor="@color/text_secondary"
                 android:visibility="gone" />
 
             <!-- Cafeteria menu preview -->
@@ -262,9 +258,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
-                style="@style/Widget.Material3.CardView.Elevated">
+                android:clickable="true"
+                android:focusable="true">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -280,28 +275,25 @@
                         android:padding="16dp">
 
                         <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:src="@drawable/ic_restaurant"
-                            app:tint="@color/primary"
-                            android:contentDescription="学食" />
+                            style="@style/Widget.Uoa.IconContainer"
+                            android:contentDescription="学食"
+                            android:src="@drawable/ic_restaurant" />
 
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
+                            android:layout_marginStart="16dp"
                             android:layout_weight="1"
                             android:text="学食メニュー"
-                            android:textColor="@color/text_primary"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textColor="?attr/colorOnSurface" />
 
                         <ImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="詳細"
                             android:src="@drawable/ic_chevron_right"
-                            app:tint="@color/text_secondary"
-                            android:contentDescription="詳細" />
+                            app:tint="?attr/colorOnSurfaceVariant" />
                     </LinearLayout>
 
                     <!-- Menu content -->
@@ -313,46 +305,43 @@
                         android:paddingStart="16dp"
                         android:paddingEnd="16dp"
                         android:paddingBottom="16dp"
-                        android:visibility="gone">
+                        android:visibility="gone"
+                        tools:visibility="visible">
 
                         <TextView
                             android:id="@+id/text_menu_lunch"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:drawablePadding="8dp"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
-                            tools:text="🍽 ランチ: カレーライス" />
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="?attr/colorOnSurface"
+                            tools:text="ランチ: カレーライス" />
 
                         <TextView
                             android:id="@+id/text_menu_fish"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:drawablePadding="8dp"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
-                            tools:text="🐟 お魚: 焼き鮭定食" />
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="?attr/colorOnSurface"
+                            tools:text="お魚: 焼き鮭定食" />
 
                         <TextView
                             android:id="@+id/text_menu_salad"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:drawablePadding="8dp"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
-                            tools:text="🥗 サラダ: シーザーサラダ" />
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="?attr/colorOnSurface"
+                            tools:text="サラダ: シーザーサラダ" />
 
                         <TextView
                             android:id="@+id/text_menu_dinner"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:drawablePadding="8dp"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
-                            tools:text="🌙 夕食: 唐揚げ定食" />
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="?attr/colorOnSurface"
+                            tools:text="夕食: 唐揚げ定食" />
                     </LinearLayout>
 
                     <!-- Loading / empty -->
@@ -360,11 +349,12 @@
                         android:id="@+id/text_menu_loading"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:padding="16dp"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:paddingBottom="16dp"
                         android:text="メニュー取得中…"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="13sp" />
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

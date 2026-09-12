@@ -37,7 +37,8 @@ public class OnboardingActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_onboarding);
         // 背景色を持つルート自体に当てる。content フレームに当てるとバーの裏が白く抜ける。
-        EdgeToEdge.apply(this, findViewById(R.id.onboarding_root), null, /* darkBackground = */ true);
+        // 背景はテーマの surface なので、バーのアイコン色はライト/ダークに追従させる。
+        EdgeToEdge.apply(this, findViewById(R.id.onboarding_root), null);
 
         prefs = PreferenceManager.getInstance(this);
         viewPager = findViewById(R.id.view_pager);

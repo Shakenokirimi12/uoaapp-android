@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -13,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.google.android.material.color.MaterialColors;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.models.GakushokuMenuItem;
@@ -25,6 +27,7 @@ import java.util.List;
 public class GakushokuFragment extends Fragment {
 
     private SwipeRefreshLayout swipeRefresh;
+    private TextView textEmpty;
     private final MenuAdapter menuAdapter = new MenuAdapter();
     private final GakushokuService gakushokuService = new GakushokuService();
 
@@ -41,17 +44,20 @@ public class GakushokuFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         swipeRefresh = view.findViewById(R.id.swipe_refresh);
+        textEmpty = view.findViewById(R.id.text_empty);
         RecyclerView recyclerMenu = view.findViewById(R.id.recycler_menu);
         recyclerMenu.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerMenu.setAdapter(menuAdapter);
 
-        swipeRefresh.setColorSchemeResources(R.color.primary);
+        swipeRefresh.setColorSchemeColors(
+                MaterialColors.getColor(view, androidx.appcompat.R.attr.colorPrimary));
         swipeRefresh.setOnRefreshListener(this::loadMenu);
 
         List<GakushokuMenuItem> cached = DataCache.getInstance(requireContext()).loadMenu();
         if (!cached.isEmpty()) {
             menuAdapter.setItems(cached);
         }
+        updateEmptyState();
 
         loadMenu();
     }
@@ -63,6 +69,7 @@ public class GakushokuFragment extends Fragment {
             public void onSuccess(List<GakushokuMenuItem> items) {
                 if (!isAdded()) return;
                 menuAdapter.setItems(items);
+                updateEmptyState();
                 swipeRefresh.setRefreshing(false);
                 DataCache.getInstance(requireContext()).saveMenu(items);
             }
@@ -75,5 +82,10 @@ public class GakushokuFragment extends Fragment {
                 }
             }
         });
+    }
+
+    private void updateEmptyState() {
+        if (textEmpty == null) return;
+        textEmpty.setVisibility(menuAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
     }
 }

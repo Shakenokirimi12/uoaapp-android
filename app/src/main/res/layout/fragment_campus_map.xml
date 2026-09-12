@@ -6,30 +6,33 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <!-- Mode selector -->
+    <!-- Mode selector (segmented) -->
     <com.google.android.material.button.MaterialButtonToggleGroup
         android:id="@+id/toggle_map_mode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="8dp"
-        app:singleSelection="true"
-        app:selectionRequired="true">
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginVertical="8dp"
+        app:selectionRequired="true"
+        app:singleSelection="true">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_mode_official"
+            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="公式マップ"
-            style="@style/Widget.Material3.Button.OutlinedButton" />
+            app:icon="@drawable/ic_map" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_mode_gps"
+            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="GPSマップ"
-            style="@style/Widget.Material3.Button.OutlinedButton" />
+            app:icon="@drawable/ic_map_pin" />
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
     <!-- Official map (WebView with campus map image) -->
@@ -44,30 +47,46 @@
             android:layout_height="match_parent" />
     </FrameLayout>
 
-    <!-- GPS map placeholder -->
+    <!-- GPS map: hands off to the Google Maps app -->
     <FrameLayout
         android:id="@+id/frame_gps_map"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/text_gps_info"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:gravity="center"
-            android:text="GPSマップ\n\nGoogle Mapsアプリで表示します"
-            android:textColor="@color/text_secondary"
-            android:textSize="16sp" />
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingHorizontal="32dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_open_google_maps"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|center_horizontal"
-            android:layout_marginBottom="32dp"
-            android:text="Google Mapsで開く"
-            style="@style/Widget.Material3.Button.TonalButton" />
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_navigation"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
+            <TextView
+                android:id="@+id/text_gps_info"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:text="Google Mapsアプリで表示します"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_open_google_maps"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Google Mapsで開く"
+                app:icon="@drawable/ic_map_pin" />
+        </LinearLayout>
     </FrameLayout>
 </LinearLayout>

@@ -32,10 +32,13 @@ public class MoreFragment extends Fragment {
         com.shakenokirimi12.uoa_app.services.AppConfigService flags =
                 com.shakenokirimi12.uoa_app.services.AppConfigService.getInstance();
         flags.config().observe(getViewLifecycleOwner(), config -> {
-            view.findViewById(R.id.button_reviews).setVisibility(
-                    flags.isFeatureEnabled("review_enabled") ? View.VISIBLE : View.GONE);
-            view.findViewById(R.id.button_campus_map).setVisibility(
-                    flags.isFeatureEnabled("campus_map_enabled") ? View.VISIBLE : View.GONE);
+            // Hide the adjacent divider together with the row so the card has no stray hairline.
+            int reviews = flags.isFeatureEnabled("review_enabled") ? View.VISIBLE : View.GONE;
+            view.findViewById(R.id.button_reviews).setVisibility(reviews);
+            view.findViewById(R.id.divider_reviews).setVisibility(reviews);
+            int campusMap = flags.isFeatureEnabled("campus_map_enabled") ? View.VISIBLE : View.GONE;
+            view.findViewById(R.id.button_campus_map).setVisibility(campusMap);
+            view.findViewById(R.id.divider_campus_map).setVisibility(campusMap);
         });
 
         view.findViewById(R.id.button_reviews).setOnClickListener(v ->

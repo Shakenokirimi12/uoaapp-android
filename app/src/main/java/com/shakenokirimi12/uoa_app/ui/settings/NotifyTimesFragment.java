@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.NumberPicker;
 import android.widget.TextView;
@@ -13,6 +12,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipDrawable;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
@@ -46,8 +48,8 @@ public class NotifyTimesFragment extends Fragment {
 
     private PreferenceManager prefs;
     private Set<String> selectedTimes;
-    private LinearLayout layoutDefaultTimes;
-    private LinearLayout layoutCustomTimes;
+    private ChipGroup layoutDefaultTimes;
+    private ChipGroup layoutCustomTimes;
     private View labelCustom;
     private View cardCustomTimes;
 
@@ -112,60 +114,50 @@ public class NotifyTimesFragment extends Fragment {
         }
     }
 
-    private void addOptionRow(LinearLayout parent, String key, String label,
+    private void addOptionRow(ChipGroup parent, String key, String label,
                               boolean checked, boolean canDelete) {
-        LinearLayout row = new LinearLayout(requireContext());
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(dp(16), dp(13), dp(16), dp(13));
-        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        // Filter chip: the checked icon replaces the old check ImageView.
+        Chip chip = new Chip(requireContext());
+        chip.setChipDrawable(ChipDrawable.createFromAttributes(
+                requireContext(), null, 0,
+                com.google.android.material.R.style.Widget_Material3_Chip_Filter));
+        chip.setText(label);
+        chip.setCheckable(true);
+        chip.setChecked(checked);
 
-        TextView text = new TextView(requireContext());
-        text.setText(label);
-        text.setTextSize(16);
-        text.setTextColor(getResources().getColor(R.color.text_primary, null));
-        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        text.setLayoutParams(textParams);
-        row.addView(text);
-
-        ImageView checkIcon = new ImageView(requireContext());
-        checkIcon.setImageResource(android.R.drawable.checkbox_on_background);
-        checkIcon.setVisibility(checked ? View.VISIBLE : View.INVISIBLE);
-        checkIcon.setColorFilter(getResources().getColor(R.color.primary, null));
-        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(24), dp(24));
-        checkIcon.setLayoutParams(iconParams);
-        row.addView(checkIcon);
-
-        row.setOnClickListener(v -> {
+        chip.setOnClickListener(v -> {
             boolean nowSelected = selectedTimes.contains(key);
             if (nowSelected) {
                 selectedTimes.remove(key);
-                checkIcon.setVisibility(View.INVISIBLE);
             } else {
                 selectedTimes.add(key);
-                checkIcon.setVisibility(View.VISIBLE);
             }
+            chip.setChecked(!nowSelected);
             saveSelectedTimes();
         });
 
         if (canDelete) {
-            row.setOnLongClickListener(v -> {
-                new MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("削除")
-                        .setMessage(label + " を削除しますか？")
-                        .setPositiveButton("削除", (d, w) -> {
-                            selectedTimes.remove(key);
-                            removeCustomTime(key);
-                            saveSelectedTimes();
-                            buildCustomOptions();
-                        })
-                        .setNegativeButton(R.string.cancel, null)
-                        .show();
+            chip.setCloseIconVisible(true);
+            View.OnClickListener confirmDelete = v ->
+                    new MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("削除")
+                            .setMessage(label + " を削除しますか？")
+                            .setPositiveButton("削除", (d, w) -> {
+                                selectedTimes.remove(key);
+                                removeCustomTime(key);
+                                saveSelectedTimes();
+                                buildCustomOptions();
+                            })
+                            .setNegativeButton(R.string.cancel, null)
+                            .show();
+            chip.setOnCloseIconClickListener(confirmDelete);
+            chip.setOnLongClickListener(v -> {
+                confirmDelete.onClick(v);
                 return true;
             });
         }
 
-        parent.addView(row);
+        parent.addView(chip);
     }
 
     private void showAddCustomDialog() {

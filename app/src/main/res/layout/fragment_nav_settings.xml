@@ -1,74 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.core.widget.NestedScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:paddingBottom="24dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="vertical">
 
         <TextView
+            style="@style/Widget.Uoa.Notice.Neutral"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="ナビゲーションバーに表示 (最大4つ)"
-            android:textColor="@color/primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:text="タップして表示先を入れ替えます。「その他」タブは常にナビゲーションの末尾に固定表示されます。" />
+
+        <TextView
+            style="@style/Widget.Uoa.SectionHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ナビゲーションバーに表示 (最大4つ)" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.Material3.CardView.Outlined">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
+
             <LinearLayout
                 android:id="@+id/layout_main_tabs"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:divider="@drawable/divider"
-                android:showDividers="middle" />
+                android:orientation="vertical" />
         </com.google.android.material.card.MaterialCardView>
 
         <TextView
+            style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="「その他」に表示"
-            android:textColor="@color/primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:text="「その他」に表示" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.Material3.CardView.Outlined">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
+
             <LinearLayout
                 android:id="@+id/layout_other_tabs"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:divider="@drawable/divider"
-                android:showDividers="middle" />
+                android:orientation="vertical" />
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_reset_nav"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
             android:layout_marginTop="24dp"
+            android:layout_marginEnd="16dp"
             android:text="デフォルトに戻す"
-            style="@style/Widget.Material3.Button.OutlinedButton" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="※「その他」タブは常にナビゲーションの末尾に固定表示されます。"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            app:icon="@drawable/ic_rotate_ccw"
+            app:iconGravity="textStart" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

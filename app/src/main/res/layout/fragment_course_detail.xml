@@ -1,393 +1,472 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/swipe_refresh"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="?android:colorBackground"
-        android:padding="16dp"
-        android:clipToPadding="false">
+        android:background="?attr/colorSurface"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Course Header -->
-            <com.google.android.material.card.MaterialCardView
+            <!-- Course header -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                style="@style/Widget.Material3.CardView.Elevated">
-                <LinearLayout
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="4dp">
+
+                <TextView
+                    android:id="@+id/text_course_name"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-                    <TextView
-                        android:id="@+id/text_course_name"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
-                    <TextView
-                        android:id="@+id/text_course_shortname"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textColor="?android:textColorSecondary"
-                        android:layout_marginTop="4dp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                    android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                    android:textColor="?attr/colorOnSurface"
+                    tools:text="コンピュータ理工学" />
 
-            <!-- Syllabus Card -->
+                <TextView
+                    android:id="@+id/text_course_shortname"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    tools:text="LI14-2025" />
+            </LinearLayout>
+
+            <!-- Syllabus summary -->
+            <TextView
+                style="@style/Widget.Uoa.SectionHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="シラバス" />
+
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_syllabus"
+                style="@style/Widget.Uoa.Card.Primary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
+                android:layout_marginHorizontal="16dp"
                 android:clickable="true"
-                android:focusable="true"
-                style="@style/Widget.Material3.CardView.Elevated">
+                android:focusable="true">
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:padding="16dp"
-                    android:gravity="center_vertical">
+                    android:padding="16dp">
+
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_book"
+                        android:layout_marginEnd="16dp"
                         android:contentDescription="@null"
-                        android:layout_marginEnd="12dp" />
+                        android:src="@drawable/ic_book"
+                        app:tint="?attr/colorOnPrimaryContainer" />
+
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:orientation="vertical">
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="単位数"
-                            android:textSize="12sp"
-                            android:textColor="?android:textColorSecondary"
-                            android:textStyle="bold" />
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textColor="?attr/colorOnPrimaryContainer" />
+
                         <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:baselineAligned="true">
+                            android:baselineAligned="true"
+                            android:orientation="horizontal">
+
                             <TextView
                                 android:id="@+id/text_syllabus_credits"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="-"
-                                android:textSize="24sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/primary" />
+                                android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                                android:textColor="?attr/colorOnPrimaryContainer"
+                                tools:text="2" />
+
                             <TextView
                                 android:id="@+id/text_syllabus_category"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="8dp"
-                                android:textSize="12sp"
-                                android:textColor="?android:textColorSecondary" />
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnPrimaryContainer"
+                                tools:text="専門科目" />
                         </LinearLayout>
                     </LinearLayout>
+
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="詳細を見る"
-                        android:textSize="12sp"
-                        android:textColor="@color/primary" />
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="4dp"
+                        android:drawableTint="?attr/colorOnPrimaryContainer"
+                        android:gravity="center_vertical"
+                        android:text="詳細"
+                        android:textAppearance="?attr/textAppearanceLabelLarge"
+                        android:textColor="?attr/colorOnPrimaryContainer" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Attendance Simulator -->
+            <!-- Attendance simulator -->
+            <TextView
+                style="@style/Widget.Uoa.SectionHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="出席状況（シミュレーター）" />
+
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_attendance"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                style="@style/Widget.Material3.CardView.Elevated">
+                android:layout_marginHorizontal="16dp">
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:padding="16dp">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="出席状況（シミュレーター）"
-                        android:textStyle="bold"
-                        android:textSize="16sp"
-                        android:layout_marginBottom="12dp" />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center">
-                        <LinearLayout
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.card.MaterialCardView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_marginEnd="8dp"
                             android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:gravity="center">
-                            <TextView android:id="@+id/text_present_count"
-                                android:layout_width="wrap_content"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
+                            app:cardCornerRadius="12dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="0"
-                                android:textSize="24sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/primary" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="出席"
-                                android:textColor="?android:textColorSecondary"
-                                android:textSize="12sp" />
-                        </LinearLayout>
-                        <LinearLayout
+                                android:gravity="center"
+                                android:orientation="vertical"
+                                android:paddingVertical="12dp">
+
+                                <TextView
+                                    android:id="@+id/text_present_count"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                                    android:textColor="@color/success"
+                                    tools:text="0" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="出席"
+                                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="4dp"
                             android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:gravity="center">
-                            <TextView android:id="@+id/text_absent_count"
-                                android:layout_width="wrap_content"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
+                            app:cardCornerRadius="12dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="0"
-                                android:textSize="24sp"
-                                android:textStyle="bold"
-                                android:textColor="#F44336" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="欠席"
-                                android:textColor="?android:textColorSecondary"
-                                android:textSize="12sp" />
-                        </LinearLayout>
-                        <LinearLayout
+                                android:gravity="center"
+                                android:orientation="vertical"
+                                android:paddingVertical="12dp">
+
+                                <TextView
+                                    android:id="@+id/text_absent_count"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                                    android:textColor="?attr/colorError"
+                                    tools:text="0" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="欠席"
+                                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
                             android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:gravity="center">
-                            <TextView android:id="@+id/text_late_count"
-                                android:layout_width="wrap_content"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
+                            app:cardCornerRadius="12dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="0"
-                                android:textSize="24sp"
-                                android:textStyle="bold"
-                                android:textColor="#FF9800" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="遅刻"
-                                android:textColor="?android:textColorSecondary"
-                                android:textSize="12sp" />
-                        </LinearLayout>
+                                android:gravity="center"
+                                android:orientation="vertical"
+                                android:paddingVertical="12dp">
+
+                                <TextView
+                                    android:id="@+id/text_late_count"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                                    android:textColor="@color/warning"
+                                    tools:text="0" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="遅刻"
+                                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
                     </LinearLayout>
+
                     <TextView
                         android:id="@+id/text_absence_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="欠席・遅刻許容数 (0/5)"
-                        android:textSize="12sp"
-                        android:textColor="?android:textColorSecondary"
-                        android:layout_marginTop="12dp" />
-                    <ProgressBar
+                        android:layout_marginTop="16dp"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        tools:text="欠席・遅刻許容数 (0/5)" />
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
                         android:id="@+id/progress_absence"
-                        style="@android:style/Widget.ProgressBar.Horizontal"
-                        android:layout_width="match_parent"
-                        android:layout_height="8dp"
-                        android:max="5"
-                        android:progress="0"
-                        android:layout_marginTop="4dp" />
-                    <TextView
-                        android:id="@+id/text_danger_warning"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="⚠️ 落単の危険があります"
-                        android:textColor="#F44336"
-                        android:textStyle="bold"
-                        android:gravity="center"
-                        android:padding="12dp"
                         android:layout_marginTop="8dp"
+                        android:max="5"
+                        app:indicatorColor="?attr/colorError"
+                        app:trackColor="?attr/colorSurfaceContainerHighest"
+                        app:trackCornerRadius="4dp"
+                        app:trackThickness="8dp" />
+
+                    <TextView
+                        android:id="@+id/text_danger_warning"
+                        style="@style/Widget.Uoa.Notice"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:drawablePadding="8dp"
+                        android:drawableStart="@drawable/ic_alert"
+                        android:drawableTint="@color/on_warning_container"
+                        android:gravity="center_vertical"
+                        android:text="落単の危険があります"
                         android:visibility="gone"
-                        android:background="#1AF44336" />
+                        tools:visibility="visible" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Today's Action -->
+            <!-- Today's registration -->
+            <TextView
+                style="@style/Widget.Uoa.SectionHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="本日の出席登録" />
+
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_today_action"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                style="@style/Widget.Material3.CardView.Elevated">
+                android:layout_marginHorizontal="16dp">
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:padding="16dp">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="本日の出席登録"
-                        android:textStyle="bold"
-                        android:textSize="16sp"
-                        android:layout_marginBottom="8dp" />
+
                     <TextView
                         android:id="@+id/text_today_class_info"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="本日は授業予定がありません"
-                        android:textColor="?android:textColorSecondary"
-                        android:layout_marginBottom="12dp" />
+                        android:layout_marginBottom="12dp"
+                        android:drawablePadding="8dp"
+                        android:drawableStart="@drawable/ic_clock"
+                        android:drawableTint="?attr/colorOnSurfaceVariant"
+                        android:gravity="center_vertical"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        tools:text="本日は授業予定がありません" />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
+
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_present"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_marginEnd="4dp"
                             android:layout_weight="1"
                             android:text="出席"
-                            android:layout_marginEnd="4dp"
-                            style="@style/Widget.Material3.Button.OutlinedButton" />
+                            app:icon="@drawable/ic_check" />
+
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_late"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="4dp"
                             android:layout_weight="1"
                             android:text="遅刻"
-                            android:layout_marginHorizontal="4dp"
-                            style="@style/Widget.Material3.Button.OutlinedButton" />
+                            app:icon="@drawable/ic_clock" />
+
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_absent"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
                             android:layout_weight="1"
                             android:text="欠席"
-                            android:layout_marginStart="4dp"
-                            style="@style/Widget.Material3.Button.OutlinedButton" />
+                            app:icon="@drawable/ic_x_circle" />
                     </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Attendance history -->
+            <TextView
+                style="@style/Widget.Uoa.SectionHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="履歴" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/recycler_history"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"
+                        android:paddingVertical="4dp"
+                        tools:listitem="@layout/item_history" />
+
+                    <TextView
+                        android:id="@+id/text_no_history"
+                        style="@style/Widget.Uoa.EmptyState"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="24dp"
+                        android:text="履歴なし" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Assignments -->
             <TextView
-                android:layout_width="wrap_content"
+                style="@style/Widget.Uoa.SectionHeader"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="課題・小テスト"
-                android:textStyle="bold"
-                android:textSize="16sp"
-                android:layout_marginBottom="8dp" />
+                android:text="課題・小テスト" />
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_assignments"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:clipToPadding="false"
                 android:nestedScrollingEnabled="false"
-                android:layout_marginBottom="12dp" />
+                android:paddingHorizontal="16dp"
+                tools:listitem="@layout/item_assignment" />
+
             <TextView
                 android:id="@+id/text_no_assignments"
+                style="@style/Widget.Uoa.EmptyState"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:padding="24dp"
                 android:text="未完了の課題はありません。"
-                android:textColor="?android:textColorSecondary"
-                android:gravity="center"
-                android:padding="16dp"
-                android:visibility="gone"
-                android:layout_marginBottom="12dp" />
+                android:visibility="gone" />
 
-            <!-- Course Contents -->
+            <!-- Course contents -->
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="コースコンテンツ"
-                android:textStyle="bold"
-                android:textSize="16sp"
-                android:layout_marginBottom="8dp" />
-            <ProgressBar
-                android:id="@+id/progress_contents"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginBottom="8dp" />
-            <LinearLayout
-                android:id="@+id/layout_contents"
+                style="@style/Widget.Uoa.SectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginBottom="12dp" />
+                android:text="コースコンテンツ" />
 
-            <!-- Links -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="リンク"
-                android:textStyle="bold"
-                android:textSize="16sp"
-                android:layout_marginBottom="8dp" />
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/btn_moodle_browser"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:clickable="true"
-                android:focusable="true"
-                style="@style/Widget.Material3.CardView.Elevated">
+                android:layout_marginHorizontal="16dp">
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="16dp"
-                    android:gravity="center_vertical">
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_link"
-                        android:contentDescription="@null"
-                        android:layout_marginEnd="12dp" />
-                    <TextView
-                        android:layout_width="0dp"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.progressindicator.CircularProgressIndicator
+                        android:id="@+id/progress_contents"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Moodleで開く" />
+                        android:layout_gravity="center"
+                        android:layout_margin="24dp"
+                        android:indeterminate="true"
+                        app:indicatorSize="32dp" />
+
+                    <LinearLayout
+                        android:id="@+id/layout_contents"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingVertical="4dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Attendance History -->
+            <!-- Links -->
             <TextView
+                style="@style/Widget.Uoa.SectionHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="リンク" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_moodle_browser"
+                style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="履歴"
-                android:textStyle="bold"
-                android:textSize="16sp"
-                android:layout_marginTop="4dp"
-                android:layout_marginBottom="8dp" />
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_history"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false"
-                android:layout_marginBottom="16dp" />
-            <TextView
-                android:id="@+id/text_no_history"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="履歴なし"
-                android:textColor="?android:textColorSecondary"
-                android:gravity="center"
-                android:padding="16dp"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginHorizontal="8dp"
+                android:text="Moodleで開く"
+                app:icon="@drawable/ic_link" />
 
         </LinearLayout>
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

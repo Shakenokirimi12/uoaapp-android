@@ -41,6 +41,10 @@
         <item name="colorSurfaceContainerHigh">@color/md_surface_container_high</item>
         <item name="colorSurfaceContainerHighest">@color/md_surface_container_highest</item>
 
+        <!-- Framework widgets (CalendarView) read colorAccent, which M3 maps to secondary. -->
+        <item name="android:colorAccent">@color/md_primary</item>
+        <item name="colorAccent">@color/md_primary</item>
+
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
@@ -59,11 +63,8 @@
 
     <style name="Theme.Uoaapp" parent="Base.Theme.Uoaapp" />
 
-    <!-- Onboarding paints the window with primary, so bar icons must be light there. -->
-    <style name="Theme.Uoaapp.Onboarding" parent="Theme.Uoaapp">
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
-    </style>
+    <!-- Onboarding now sits on the theme surface, so it inherits the bar appearance. -->
+    <style name="Theme.Uoaapp.Onboarding" parent="Theme.Uoaapp" />
 
     <!-- 全画面のダイアログ (ガイドライン同意)。通常の Dialog だと本文が長すぎて読みにくい。 -->
     <style name="Theme.Uoaapp.FullScreenDialog" parent="Theme.Uoaapp">

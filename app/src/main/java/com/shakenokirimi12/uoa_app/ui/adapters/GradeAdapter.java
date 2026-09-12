@@ -1,5 +1,6 @@
 package com.shakenokirimi12.uoa_app.ui.adapters;
 
+import android.content.Context;
 import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -7,8 +8,10 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.color.MaterialColors;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.models.Grade;
 
@@ -36,6 +39,23 @@ public class GradeAdapter extends RecyclerView.Adapter<GradeAdapter.ViewHolder> 
         Grade g = items.get(position);
         holder.textCourseName.setText(g.getCourseName());
 
+        StringBuilder meta = new StringBuilder();
+        if (g.getSubjectCode() != null && !g.getSubjectCode().isEmpty()) {
+            meta.append(g.getSubjectCode());
+        }
+        if (g.getYear() != null && !g.getYear().isEmpty()) {
+            if (meta.length() > 0) meta.append("  ");
+            meta.append(g.getYear());
+            if (g.getSemester() != null && !g.getSemester().isEmpty()) {
+                meta.append(" ").append(g.getSemester());
+            }
+        } else if (g.getSemester() != null && !g.getSemester().isEmpty()) {
+            if (meta.length() > 0) meta.append("  ");
+            meta.append(g.getSemester());
+        }
+        holder.textMeta.setText(meta.toString());
+        holder.textMeta.setVisibility(meta.length() > 0 ? View.VISIBLE : View.GONE);
+
         StringBuilder detail = new StringBuilder();
         if (g.getCredits() != null && !g.getCredits().isEmpty()) {
             detail.append(g.getCredits()).append("単位");
@@ -45,22 +65,45 @@ public class GradeAdapter extends RecyclerView.Adapter<GradeAdapter.ViewHolder> 
             detail.append("点数: ").append(g.getScore());
         }
         holder.textCredits.setText(detail.toString());
+        holder.textCredits.setVisibility(detail.length() > 0 ? View.VISIBLE : View.GONE);
 
         String grade = g.getGrade() != null ? g.getGrade() : "?";
         holder.textGradeChip.setText(grade.length() > 2 ? grade.substring(0, 2) : grade);
 
-        GradientDrawable bg = (GradientDrawable) holder.textGradeChip.getBackground();
-        bg.setColor(getGradeColor(grade));
+        Context ctx = holder.itemView.getContext();
+        // mutate(): the shape drawable's constant state is shared across rows.
+        GradientDrawable bg = (GradientDrawable) holder.textGradeChip.getBackground().mutate();
+        bg.setColor(gradeContainerColor(ctx, holder.textGradeChip, grade));
+        holder.textGradeChip.setTextColor(gradeOnContainerColor(ctx, holder.textGradeChip, grade));
     }
 
-    private int getGradeColor(String grade) {
-        if (grade == null) return 0xFF9E9E9E;
+    private int gradeContainerColor(Context ctx, View view, String grade) {
         switch (grade.toUpperCase().trim()) {
-            case "AA": case "A":  return 0xFF008578;
-            case "B":             return 0xFF4CAF50;
-            case "C":             return 0xFFFFC107;
-            case "D": case "F":   return 0xFFF44336;
-            default:              return 0xFF9E9E9E;
+            case "AA": case "A":
+                return MaterialColors.getColor(view, com.google.android.material.R.attr.colorPrimaryContainer);
+            case "B":
+                return ContextCompat.getColor(ctx, R.color.success_container);
+            case "C":
+                return ContextCompat.getColor(ctx, R.color.warning_container);
+            case "D": case "F":
+                return MaterialColors.getColor(view, com.google.android.material.R.attr.colorErrorContainer);
+            default:
+                return MaterialColors.getColor(view, com.google.android.material.R.attr.colorSurfaceContainerHighest);
+        }
+    }
+
+    private int gradeOnContainerColor(Context ctx, View view, String grade) {
+        switch (grade.toUpperCase().trim()) {
+            case "AA": case "A":
+                return MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnPrimaryContainer);
+            case "B":
+                return ContextCompat.getColor(ctx, R.color.success);
+            case "C":
+                return ContextCompat.getColor(ctx, R.color.on_warning_container);
+            case "D": case "F":
+                return MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnErrorContainer);
+            default:
+                return MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnSurfaceVariant);
         }
     }
 
@@ -72,12 +115,14 @@ public class GradeAdapter extends RecyclerView.Adapter<GradeAdapter.ViewHolder> 
     static class ViewHolder extends RecyclerView.ViewHolder {
         final TextView textGradeChip;
         final TextView textCourseName;
+        final TextView textMeta;
         final TextView textCredits;
 
         ViewHolder(View view) {
             super(view);
             textGradeChip = view.findViewById(R.id.text_grade_chip);
             textCourseName = view.findViewById(R.id.text_course_name);
+            textMeta = view.findViewById(R.id.text_meta);
             textCredits = view.findViewById(R.id.text_credits);
         }
     }

@@ -10,7 +10,11 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.widget.TextViewCompat;
 import androidx.fragment.app.Fragment;
+
+import com.google.android.material.color.MaterialColors;
+import com.google.android.material.divider.MaterialDivider;
 
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
@@ -96,27 +100,43 @@ public class NavSettingsFragment extends Fragment {
     private void addTabRow(LinearLayout parent, String tabKey, boolean isMain) {
         String label = TAB_LABELS.getOrDefault(tabKey, tabKey);
 
+        if (parent.getChildCount() > 0) {
+            MaterialDivider divider = new MaterialDivider(requireContext(), null,
+                    com.google.android.material.R.attr.materialDividerStyle);
+            divider.setDividerInsetStart(dp(16));
+            divider.setDividerInsetEnd(dp(16));
+            parent.addView(divider);
+        }
+
         LinearLayout row = new LinearLayout(requireContext());
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(dp(16), dp(13), dp(16), dp(13));
+        row.setMinimumHeight(dp(56));
+        row.setPadding(dp(16), dp(8), dp(16), dp(8));
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        android.util.TypedValue ripple = new android.util.TypedValue();
+        requireContext().getTheme().resolveAttribute(
+                android.R.attr.selectableItemBackground, ripple, true);
+        row.setBackgroundResource(ripple.resourceId);
 
         TextView text = new TextView(requireContext());
         text.setText(label);
-        text.setTextSize(16);
-        text.setTextColor(getResources().getColor(R.color.text_primary, null));
+        android.util.TypedValue bodyLarge = new android.util.TypedValue();
+        requireContext().getTheme().resolveAttribute(
+                com.google.android.material.R.attr.textAppearanceBodyLarge, bodyLarge, true);
+        TextViewCompat.setTextAppearance(text, bodyLarge.resourceId);
+        text.setTextColor(MaterialColors.getColor(text, com.google.android.material.R.attr.colorOnSurface));
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         text.setLayoutParams(textParams);
         row.addView(text);
 
+        // Down = move out of the bar, up = promote into the bar.
         ImageView arrow = new ImageView(requireContext());
-        arrow.setColorFilter(isMain
-                ? getResources().getColor(R.color.text_secondary, null)
-                : getResources().getColor(R.color.primary, null));
-        arrow.setImageResource(isMain
-                ? android.R.drawable.arrow_down_float
-                : android.R.drawable.arrow_up_float);
+        arrow.setImageResource(isMain ? R.drawable.ic_chevron_down : R.drawable.ic_chevron_up);
+        arrow.setColorFilter(MaterialColors.getColor(arrow, isMain
+                ? com.google.android.material.R.attr.colorOnSurfaceVariant
+                : androidx.appcompat.R.attr.colorPrimary));
+        arrow.setContentDescription(isMain ? "「その他」へ移動" : "ナビゲーションバーへ移動");
         LinearLayout.LayoutParams arrowParams = new LinearLayout.LayoutParams(dp(24), dp(24));
         arrow.setLayoutParams(arrowParams);
         row.addView(arrow);

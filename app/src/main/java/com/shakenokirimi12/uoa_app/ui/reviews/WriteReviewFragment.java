@@ -4,12 +4,14 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.textfield.TextInputEditText;
@@ -23,7 +25,7 @@ import java.util.Calendar;
 public class WriteReviewFragment extends Fragment {
 
     private int selectedRating = 0;
-    private final TextView[] starViews = new TextView[5];
+    private final ImageView[] starViews = new ImageView[5];
 
     @Nullable
     @Override
@@ -64,11 +66,12 @@ public class WriteReviewFragment extends Fragment {
         LinearLayout layoutStars = view.findViewById(R.id.layout_stars);
         for (int i = 0; i < 5; i++) {
             final int starIndex = i;
-            TextView star = new TextView(requireContext());
-            star.setText("☆");
-            star.setTextSize(36);
-            star.setTextColor(0xFFFFA000);
-            star.setPadding(dp(8), 0, dp(8), 0);
+            ImageView star = new ImageView(requireContext());
+            star.setLayoutParams(new LinearLayout.LayoutParams(dp(48), dp(48)));
+            star.setPadding(dp(4), dp(4), dp(4), dp(4));
+            star.setImageResource(R.drawable.ic_review);
+            star.setImageTintList(ContextCompat.getColorStateList(requireContext(), R.color.rating_star));
+            star.setContentDescription((starIndex + 1) + "つ星");
             star.setOnClickListener(v -> {
                 selectedRating = starIndex + 1;
                 updateStars();
@@ -150,7 +153,7 @@ public class WriteReviewFragment extends Fragment {
 
     private void updateStars() {
         for (int i = 0; i < 5; i++) {
-            starViews[i].setText(i < selectedRating ? "★" : "☆");
+            starViews[i].setImageResource(i < selectedRating ? R.drawable.ic_star_filled : R.drawable.ic_review);
         }
     }
 

@@ -13,9 +13,12 @@ import com.shakenokirimi12.uoa_app.data.models.MoodleCourse;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class CourseAdapter extends RecyclerView.Adapter<CourseAdapter.ViewHolder> {
+    private List<MoodleCourse> allItems = new ArrayList<>();
     private List<MoodleCourse> items = new ArrayList<>();
+    private String query = "";
     private OnCourseClickListener listener;
 
     public interface OnCourseClickListener {
@@ -27,8 +30,33 @@ public class CourseAdapter extends RecyclerView.Adapter<CourseAdapter.ViewHolder
     }
 
     public void setItems(List<MoodleCourse> items) {
-        this.items = items;
+        this.allItems = items;
+        applyFilter();
+    }
+
+    /** Filters the visible list by course name / shortname (case-insensitive substring). */
+    public void setQuery(String query) {
+        this.query = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        applyFilter();
+    }
+
+    private void applyFilter() {
+        if (query.isEmpty()) {
+            items = allItems;
+        } else {
+            List<MoodleCourse> filtered = new ArrayList<>();
+            for (MoodleCourse c : allItems) {
+                if (contains(c.getDisplayname()) || contains(c.getFullname()) || contains(c.getShortname())) {
+                    filtered.add(c);
+                }
+            }
+            items = filtered;
+        }
         notifyDataSetChanged();
+    }
+
+    private boolean contains(String s) {
+        return s != null && s.toLowerCase(Locale.ROOT).contains(query);
     }
 
     @NonNull

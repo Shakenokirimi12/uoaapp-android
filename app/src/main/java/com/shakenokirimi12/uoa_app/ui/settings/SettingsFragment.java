@@ -169,8 +169,12 @@ public class SettingsFragment extends Fragment {
 
         // Account
         textUsername = view.findViewById(R.id.text_username);
-        textUsername.setText(prefs.getUsername().isEmpty() ? "未ログイン" : prefs.getUsername());
-        view.findViewById(R.id.text_username).setOnClickListener(v -> showEditAccountDialog());
+        boolean loggedIn = !prefs.getUsername().isEmpty();
+        textUsername.setText(loggedIn ? prefs.getUsername() : "未ログイン");
+        view.findViewById(R.id.row_account).setOnClickListener(v -> showEditAccountDialog());
+        // A logout button next to "未ログイン" is contradictory; hide it until there is an account.
+        view.findViewById(R.id.button_logout).setVisibility(loggedIn ? View.VISIBLE : View.GONE);
+        view.findViewById(R.id.divider_logout).setVisibility(loggedIn ? View.VISIBLE : View.GONE);
 
         // Academic navigation
         view.findViewById(R.id.button_grades).setOnClickListener(v ->
@@ -181,6 +185,14 @@ public class SettingsFragment extends Fragment {
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_notifications));
         view.findViewById(R.id.button_campus_map).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_campus_map));
+        // Same killswitch as MoreFragment: the shortcut must disappear together with the entry.
+        com.shakenokirimi12.uoa_app.services.AppConfigService flags =
+                com.shakenokirimi12.uoa_app.services.AppConfigService.getInstance();
+        flags.config().observe(getViewLifecycleOwner(), config -> {
+            int vis = flags.isFeatureEnabled("campus_map_enabled") ? View.VISIBLE : View.GONE;
+            view.findViewById(R.id.button_campus_map).setVisibility(vis);
+            view.findViewById(R.id.divider_campus_map).setVisibility(vis);
+        });
 
         // Notification switches
         MaterialSwitch switchAssignment = view.findViewById(R.id.switch_assignment_notify);

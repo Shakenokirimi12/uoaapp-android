@@ -72,7 +72,6 @@ public class ReviewGuidelinesDialogFragment extends DialogFragment {
                 R.string.review_guideline_4_body, R.string.review_guideline_5_body};
         for (int i = 0; i < ids.length; i++) {
             View row = view.findViewById(ids[i]);
-            ((android.widget.TextView) row.findViewById(R.id.guideline_number)).setText(String.valueOf(i + 1));
             ((android.widget.TextView) row.findViewById(R.id.guideline_title)).setText(titles[i]);
             ((android.widget.TextView) row.findViewById(R.id.guideline_body)).setText(bodies[i]);
         }

@@ -3,6 +3,7 @@ package com.shakenokirimi12.uoa_app.ui.syllabus;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.color.MaterialColors;
 import com.google.gson.Gson;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.models.SyllabusData;
@@ -71,23 +73,33 @@ public class SyllabusFragment extends Fragment {
     private void addInfoRow(LinearLayout parent, String label, String value) {
         if (value == null || value.isEmpty()) return;
 
+        float density = getResources().getDisplayMetrics().density;
         LinearLayout row = new LinearLayout(requireContext());
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(0, 4, 0, 4);
+        row.setPadding(0, Math.round(4 * density), 0, Math.round(4 * density));
 
         TextView labelView = new TextView(requireContext());
         labelView.setText(label);
-        labelView.setTextSize(13);
-        labelView.setMinWidth(240);
-        labelView.setTextColor(requireContext().getColor(R.color.primary));
+        labelView.setTextAppearance(textAppearance(com.google.android.material.R.attr.textAppearanceLabelMedium));
+        labelView.setTextColor(MaterialColors.getColor(parent, com.google.android.material.R.attr.colorOnSurfaceVariant));
+        labelView.setWidth(Math.round(112 * density));
 
         TextView valueView = new TextView(requireContext());
         valueView.setText(value);
-        valueView.setTextSize(13);
+        valueView.setTextAppearance(textAppearance(com.google.android.material.R.attr.textAppearanceBodyMedium));
+        valueView.setTextColor(MaterialColors.getColor(parent, com.google.android.material.R.attr.colorOnSurface));
+        valueView.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         row.addView(labelView);
         row.addView(valueView);
         parent.addView(row);
+    }
+
+    /** Resolves a theme textAppearance attribute to its style resource. */
+    private int textAppearance(int attr) {
+        TypedValue tv = new TypedValue();
+        requireContext().getTheme().resolveAttribute(attr, tv, true);
+        return tv.resourceId;
     }
 
     private void setSection(View root, int cardId, int textId, String content) {

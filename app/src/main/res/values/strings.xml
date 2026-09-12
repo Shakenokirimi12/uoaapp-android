@@ -21,6 +21,8 @@
     <!-- Calendar -->
     <string name="calendar_classes_tab">授業</string>
     <string name="calendar_assignments_tab">課題</string>
+    <string name="calendar_no_classes">この日の授業はありません</string>
+    <string name="calendar_no_assignments">この日の課題はありません</string>
 
     <!-- Courses -->
     <string name="courses_search_hint">コースを検索</string>

@@ -9,20 +9,20 @@
 
     <!-- Disclaimer -->
     <TextView
+        style="@style/Widget.Uoa.Notice.Neutral"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="本機能は学生が個人で提供する非公式機能であり、会津大学とは一切関係ありません。"
-        android:textColor="@color/text_secondary"
-        android:textSize="10sp"
-        android:padding="8dp"
-        android:background="#FFF3E0"
-        android:gravity="center" />
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:text="本機能は学生が個人で提供する非公式機能であり、会津大学とは一切関係ありません。" />
 
     <!-- Tab: Course / Instructor -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tab_type"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         app:tabMode="fixed"
         app:tabGravity="fill">
 
@@ -39,16 +39,18 @@
 
     <!-- Search bar -->
     <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.Uoa.SearchField"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="16dp">
 
         <com.google.android.material.textfield.TextInputEditText
+            android:hint="検索"
             android:id="@+id/edit_search"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="検索"
             android:imeOptions="actionSearch"
             android:inputType="text" />
     </com.google.android.material.textfield.TextInputLayout>
@@ -56,25 +58,29 @@
     <!-- Write instructor review button (hidden by default) -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_write_instructor"
+        style="@style/Widget.Material3.Button.TonalButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
         android:text="新しい教員のレビューを書く"
         android:visibility="gone"
-        app:icon="@drawable/ic_review"
-        style="@style/Widget.Material3.Button.TonalButton" />
+        app:icon="@drawable/ic_edit"
+        app:iconGravity="textStart" />
 
     <!-- Write course review button (course tab only) -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_write_course"
+        style="@style/Widget.Material3.Button.TonalButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
         android:text="履修した授業のレビューを書く"
-        app:icon="@drawable/ic_review"
-        style="@style/Widget.Material3.Button.TonalButton" />
+        app:icon="@drawable/ic_edit"
+        app:iconGravity="textStart" />
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh"
@@ -90,18 +96,20 @@
                 android:id="@+id/recycler_courses"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:padding="16dp"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="24dp"
                 android:clipToPadding="false"
                 tools:listitem="@layout/item_review_course" />
 
             <TextView
                 android:id="@+id/text_empty"
-                android:layout_width="wrap_content"
+                style="@style/Widget.Uoa.EmptyState"
+                android:drawableTop="@drawable/ic_empty_search"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:gravity="center"
-                android:padding="32dp"
-                android:textColor="@color/text_secondary"
                 android:visibility="gone"
                 tools:text="授業が見つかりません"
                 tools:visibility="visible" />

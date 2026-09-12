@@ -3,38 +3,43 @@
      学務システム連携の障害など、アプリ更新なしで周知したい告知に使う (iOS の StatusNoticeBanner)。 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/status_notice"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@drawable/bg_notice"
+    android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:gravity="top"
-    android:background="#1FFF9800"
-    android:padding="12dp"
-    android:visibility="gone">
+    android:paddingStart="16dp"
+    android:paddingEnd="4dp"
+    android:paddingVertical="4dp"
+    android:visibility="gone"
+    tools:visibility="visible">
 
     <ImageView
         android:layout_width="20dp"
         android:layout_height="20dp"
-        android:layout_marginEnd="10dp"
+        android:layout_marginEnd="12dp"
         android:contentDescription="@null"
-        android:src="@android:drawable/ic_dialog_alert"
-        app:tint="#FF9800" />
+        android:src="@drawable/ic_info"
+        app:tint="@color/on_warning_container" />
 
     <TextView
         android:id="@+id/status_notice_text"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:textColor="?android:attr/textColorPrimary"
-        android:textSize="13sp" />
+        android:paddingVertical="8dp"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="@color/on_warning_container"
+        tools:text="@string/maintenance_default_message" />
 
-    <ImageButton
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/status_notice_dismiss"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:layout_marginStart="8dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
+        style="@style/Widget.Material3.Button.IconButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:contentDescription="@string/status_notice_dismiss"
-        android:src="@android:drawable/ic_menu_close_clear_cancel"
-        app:tint="?android:attr/textColorSecondary" />
+        app:icon="@drawable/ic_close"
+        app:iconTint="@color/on_warning_container" />
 </LinearLayout>

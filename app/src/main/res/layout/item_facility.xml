@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="1dp">
+    android:layout_marginBottom="8dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -26,21 +23,23 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textColor="@color/text_primary"
-                android:textSize="15sp"
-                android:textStyle="bold"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
                 tools:text="M4" />
 
+            <!-- Status label; icon and colour are set per status by FacilityAdapter. -->
             <TextView
                 android:id="@+id/text_status_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_period_badge"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="3dp"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                tools:text="利用可能" />
+                android:layout_marginStart="8dp"
+                android:drawablePadding="4dp"
+                android:gravity="center_vertical"
+                android:textAppearance="?attr/textAppearanceLabelLarge"
+                tools:drawableStart="@drawable/ic_check_circle"
+                tools:drawableTint="@color/success"
+                tools:text="利用可能"
+                tools:textColor="@color/success" />
         </LinearLayout>
 
         <TextView
@@ -48,8 +47,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
             tools:text="利用可能 (13:00から利用予定)" />
 
         <TextView
@@ -58,8 +57,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:lineSpacingExtra="4dp"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
             tools:text="06:00 - 10:50  空き\n10:50 - 12:30  OS概論\n12:30 - 24:00  空き" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

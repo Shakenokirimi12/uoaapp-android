@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CalendarView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -36,6 +37,7 @@ public class CalendarFragment extends Fragment {
     private CalendarView calendarView;
     private TabLayout tabLayout;
     private RecyclerView recyclerEvents;
+    private TextView textEmpty;
     private final Calendar selectedDate = Calendar.getInstance();
 
     private List<CalendarEvent> allEvents = new ArrayList<>();
@@ -61,6 +63,7 @@ public class CalendarFragment extends Fragment {
         calendarView = view.findViewById(R.id.calendar_view);
         tabLayout = view.findViewById(R.id.tab_layout);
         recyclerEvents = view.findViewById(R.id.recycler_events);
+        textEmpty = view.findViewById(R.id.text_empty);
         recyclerEvents.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         classAdapter.setOnClassClickListener(cls ->
@@ -160,6 +163,7 @@ public class CalendarFragment extends Fragment {
             List<GroupedClass> grouped = GroupedClass.groupBySubject(dayEvents);
             recyclerEvents.setAdapter(classAdapter);
             classAdapter.setItems(grouped);
+            showEmpty(grouped.isEmpty(), R.string.calendar_no_classes);
         } else {
             List<Assignment> dayAssignments = new ArrayList<>();
             for (Assignment a : allAssignments) {
@@ -168,6 +172,13 @@ public class CalendarFragment extends Fragment {
             }
             recyclerEvents.setAdapter(assignmentAdapter);
             assignmentAdapter.setItems(dayAssignments);
+            showEmpty(dayAssignments.isEmpty(), R.string.calendar_no_assignments);
         }
+    }
+
+    private void showEmpty(boolean empty, int messageRes) {
+        textEmpty.setText(messageRes);
+        textEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+        recyclerEvents.setVisibility(empty ? View.GONE : View.VISIBLE);
     }
 }

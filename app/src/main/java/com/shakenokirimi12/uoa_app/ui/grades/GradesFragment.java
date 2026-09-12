@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -13,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.google.android.material.color.MaterialColors;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
@@ -26,6 +28,7 @@ import java.util.List;
 public class GradesFragment extends Fragment {
 
     private SwipeRefreshLayout swipeRefresh;
+    private TextView textEmpty;
     private final GradeAdapter gradeAdapter = new GradeAdapter();
     private final CampusSquareService csService = new CampusSquareService();
 
@@ -42,17 +45,20 @@ public class GradesFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         swipeRefresh = view.findViewById(R.id.swipe_refresh);
+        textEmpty = view.findViewById(R.id.text_empty);
         RecyclerView recycler = view.findViewById(R.id.recycler_grades);
         recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         recycler.setAdapter(gradeAdapter);
 
-        swipeRefresh.setColorSchemeResources(R.color.primary);
+        swipeRefresh.setColorSchemeColors(
+                MaterialColors.getColor(view, androidx.appcompat.R.attr.colorPrimary));
         swipeRefresh.setOnRefreshListener(this::loadGrades);
 
         List<Grade> cached = DataCache.getInstance(requireContext()).loadGrades();
         if (!cached.isEmpty()) {
             gradeAdapter.setItems(cached);
         }
+        updateEmptyState();
 
         loadGrades();
     }
@@ -79,6 +85,7 @@ public class GradesFragment extends Fragment {
             public void onSuccess(List<Grade> grades) {
                 if (!isAdded()) return;
                 gradeAdapter.setItems(grades);
+                updateEmptyState();
                 swipeRefresh.setRefreshing(false);
                 DataCache.getInstance(requireContext()).saveGrades(grades);
             }
@@ -90,5 +97,10 @@ public class GradesFragment extends Fragment {
                 if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void updateEmptyState() {
+        if (textEmpty == null) return;
+        textEmpty.setVisibility(gradeAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
     }
 }

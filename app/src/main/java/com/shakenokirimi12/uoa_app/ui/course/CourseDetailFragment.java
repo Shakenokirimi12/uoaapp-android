@@ -1,8 +1,8 @@
 package com.shakenokirimi12.uoa_app.ui.course;
 
 import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.Typeface;
+import android.content.res.ColorStateList;
+import android.util.TypedValue;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -22,6 +22,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.color.MaterialColors;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity;
 import com.shakenokirimi12.uoa_app.data.AttendanceManager;
@@ -223,9 +225,10 @@ public class CourseDetailFragment extends Fragment {
 
         if (todayEvent != null) {
             textTodayClassInfo.setText("授業あり: " + timeFmt.format(todayEvent.getDtstart()) + " ~");
-            textTodayClassInfo.setTextColor(requireContext().getColor(R.color.primary));
+            textTodayClassInfo.setTextColor(MaterialColors.getColor(textTodayClassInfo, androidx.appcompat.R.attr.colorPrimary));
         } else {
             textTodayClassInfo.setText("本日は授業予定がありません");
+            textTodayClassInfo.setTextColor(MaterialColors.getColor(textTodayClassInfo, com.google.android.material.R.attr.colorOnSurfaceVariant));
         }
 
         boolean canRegister = todayEvent != null;
@@ -256,35 +259,45 @@ public class CourseDetailFragment extends Fragment {
 
     private void buildContentsUI(List<CourseSection> sections) {
         layoutContents.removeAllViews();
-        LayoutInflater inflater = LayoutInflater.from(requireContext());
+        int h = dp(16);
+        int onSurface = MaterialColors.getColor(layoutContents, com.google.android.material.R.attr.colorOnSurface);
+        int onSurfaceVariant = MaterialColors.getColor(layoutContents, com.google.android.material.R.attr.colorOnSurfaceVariant);
+        int primary = MaterialColors.getColor(layoutContents, androidx.appcompat.R.attr.colorPrimary);
 
         for (CourseSection section : sections) {
             if (section.getName().isEmpty() && section.getModules().isEmpty()) continue;
 
             TextView header = new TextView(requireContext());
             header.setText(section.getName());
-            header.setTextSize(14);
-            header.setTypeface(null, Typeface.BOLD);
-            header.setTextColor(requireContext().getColor(R.color.primary));
-            header.setPadding(16, 12, 16, 8);
-            header.setBackgroundColor(requireContext().getColor(R.color.primary) & 0x1AFFFFFF);
+            header.setTextAppearance(textAppearance(com.google.android.material.R.attr.textAppearanceTitleSmall));
+            header.setTextColor(primary);
+            header.setPadding(h, dp(12), h, dp(4));
             layoutContents.addView(header);
 
             if (!section.getSummary().isEmpty()) {
                 TextView summaryText = new TextView(requireContext());
                 summaryText.setText(section.getSummary());
-                summaryText.setTextSize(12);
-                summaryText.setPadding(16, 4, 16, 4);
+                summaryText.setTextAppearance(textAppearance(com.google.android.material.R.attr.textAppearanceBodySmall));
+                summaryText.setTextColor(onSurfaceVariant);
+                summaryText.setPadding(h, 0, h, dp(4));
                 layoutContents.addView(summaryText);
             }
 
             for (CourseSection.CourseModule mod : section.getModules()) {
                 TextView modView = new TextView(requireContext());
-                modView.setText("  " + mod.getName());
-                modView.setTextSize(14);
-                modView.setPadding(40, 12, 16, 12);
-                modView.setCompoundDrawablePadding(8);
+                modView.setText(mod.getName());
+                modView.setTextAppearance(textAppearance(com.google.android.material.R.attr.textAppearanceBodyMedium));
+                modView.setTextColor(onSurface);
+                modView.setMinHeight(dp(48));
+                modView.setGravity(android.view.Gravity.CENTER_VERTICAL);
+                modView.setPadding(h, dp(8), h, dp(8));
+                modView.setCompoundDrawablePadding(dp(12));
+                modView.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_file_text, 0, 0, 0);
+                androidx.core.widget.TextViewCompat.setCompoundDrawableTintList(modView, ColorStateList.valueOf(onSurfaceVariant));
                 if (!mod.getUrl().isEmpty()) {
+                    TypedValue tv = new TypedValue();
+                    requireContext().getTheme().resolveAttribute(android.R.attr.selectableItemBackground, tv, true);
+                    modView.setBackgroundResource(tv.resourceId);
                     modView.setOnClickListener(v -> InAppBrowserActivity.open(requireContext(), mod.getUrl()));
                 }
                 layoutContents.addView(modView);
@@ -293,11 +306,23 @@ public class CourseDetailFragment extends Fragment {
             if (section.getModules().isEmpty()) {
                 TextView empty = new TextView(requireContext());
                 empty.setText("モジュールはありません");
-                empty.setTextSize(12);
-                empty.setPadding(16, 8, 16, 8);
+                empty.setTextAppearance(textAppearance(com.google.android.material.R.attr.textAppearanceBodySmall));
+                empty.setTextColor(onSurfaceVariant);
+                empty.setPadding(h, dp(4), h, dp(8));
                 layoutContents.addView(empty);
             }
         }
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    /** Resolves a theme textAppearance attribute (e.g. textAppearanceBodyMedium) to its style resource. */
+    private int textAppearance(int attr) {
+        TypedValue tv = new TypedValue();
+        requireContext().getTheme().resolveAttribute(attr, tv, true);
+        return tv.resourceId;
     }
 
     private void loadAssignments() {
@@ -404,13 +429,34 @@ public class CourseDetailFragment extends Fragment {
             }
             if ("auto".equals(item.source)) label += " (自動)";
             h.status.setText(label);
+            int fg, bg;
+            switch (item.status) {
+                case "PRESENT":
+                    fg = h.itemView.getContext().getColor(R.color.success);
+                    bg = h.itemView.getContext().getColor(R.color.success_container);
+                    break;
+                case "ABSENT":
+                    fg = MaterialColors.getColor(h.itemView, androidx.appcompat.R.attr.colorError);
+                    bg = MaterialColors.getColor(h.itemView, com.google.android.material.R.attr.colorErrorContainer);
+                    break;
+                case "LATE":
+                    fg = h.itemView.getContext().getColor(R.color.warning);
+                    bg = h.itemView.getContext().getColor(R.color.warning_container);
+                    break;
+                default:
+                    fg = MaterialColors.getColor(h.itemView, com.google.android.material.R.attr.colorOnSurfaceVariant);
+                    bg = MaterialColors.getColor(h.itemView, com.google.android.material.R.attr.colorSurfaceContainerHighest);
+            }
+            h.status.setTextColor(fg);
+            h.status.setChipBackgroundColor(ColorStateList.valueOf(bg));
             h.delete.setOnClickListener(v -> listener.onDelete(item.id));
         }
 
         @Override public int getItemCount() { return items.size(); }
 
         static class VH extends RecyclerView.ViewHolder {
-            TextView date, status;
+            TextView date;
+            Chip status;
             View delete;
             VH(View v) {
                 super(v);

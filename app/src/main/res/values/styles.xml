@@ -24,12 +24,27 @@
 
     <!-- Section label above a group (M3 list subheader). -->
     <style name="Widget.Uoa.SectionHeader" parent="Widget.MaterialComponents.TextView">
-        <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
-        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleMedium</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
         <item name="android:paddingStart">16dp</item>
         <item name="android:paddingEnd">16dp</item>
-        <item name="android:paddingTop">20dp</item>
-        <item name="android:paddingBottom">8dp</item>
+        <item name="android:paddingTop">24dp</item>
+        <item name="android:paddingBottom">12dp</item>
+    </style>
+
+    <!-- Search field that reads as an M3 search bar: filled, pill-shaped, no outline. -->
+    <style name="Widget.Uoa.SearchField" parent="Widget.Material3.TextInputLayout.FilledBox">
+        <item name="boxBackgroundColor">?attr/colorSurfaceContainerHigh</item>
+        <item name="boxStrokeWidth">0dp</item>
+        <item name="boxStrokeWidthFocused">0dp</item>
+        <item name="boxCornerRadiusTopStart">28dp</item>
+        <item name="boxCornerRadiusTopEnd">28dp</item>
+        <item name="boxCornerRadiusBottomStart">28dp</item>
+        <item name="boxCornerRadiusBottomEnd">28dp</item>
+        <item name="startIconDrawable">@drawable/ic_search</item>
+        <item name="startIconTint">?attr/colorOnSurfaceVariant</item>
+        <item name="hintEnabled">false</item>
+        <item name="endIconMode">clear_text</item>
     </style>
 
     <!-- One-line navigation row inside a card (More / Settings). -->
@@ -92,6 +107,8 @@
         <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
         <item name="android:gravity">center</item>
         <item name="android:padding">32dp</item>
+        <item name="android:drawablePadding">16dp</item>
+        <item name="android:drawableTint">?attr/colorOutline</item>
     </style>
 
     <!-- Small tonal circle behind a list icon. -->

@@ -5,7 +5,7 @@ import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ProgressBar;
+import com.google.android.material.progressindicator.CircularProgressIndicator;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -28,7 +28,7 @@ public class NotificationListFragment extends Fragment {
 
     private PushNotificationService pushService;
     private RecyclerView recycler;
-    private ProgressBar progress;
+    private CircularProgressIndicator progress;
     private TextView textEmpty;
     private final List<PushNotification> notifications = new ArrayList<>();
 
