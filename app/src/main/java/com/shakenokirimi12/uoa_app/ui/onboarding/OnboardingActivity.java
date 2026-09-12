@@ -10,6 +10,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import com.shakenokirimi12.uoa_app.ui.util.EdgeToEdge;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -35,6 +36,8 @@ public class OnboardingActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_onboarding);
+        // 背景色を持つルート自体に当てる。content フレームに当てるとバーの裏が白く抜ける。
+        EdgeToEdge.apply(this, findViewById(R.id.onboarding_root), null, /* darkBackground = */ true);
 
         prefs = PreferenceManager.getInstance(this);
         viewPager = findViewById(R.id.view_pager);

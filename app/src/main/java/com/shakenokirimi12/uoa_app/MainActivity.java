@@ -13,6 +13,7 @@ import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.services.LocationGeofenceService;
 import com.shakenokirimi12.uoa_app.services.PushNotificationService;
 import com.shakenokirimi12.uoa_app.ui.onboarding.OnboardingActivity;
+import com.shakenokirimi12.uoa_app.ui.util.EdgeToEdge;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -35,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         NavigationUI.setupWithNavController(bottomNav, navController);
+        EdgeToEdge.apply(this, findViewById(R.id.container), bottomNav);
 
         // Register device for push notifications
         PushNotificationService pushService = new PushNotificationService();

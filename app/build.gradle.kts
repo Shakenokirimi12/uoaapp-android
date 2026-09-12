@@ -12,12 +12,12 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.shakenokirimi12.uoa_app"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.shakenokirimi12.uoa_app"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 

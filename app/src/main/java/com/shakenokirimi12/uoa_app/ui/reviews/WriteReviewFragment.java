@@ -123,7 +123,7 @@ public class WriteReviewFragment extends Fragment {
                         public void onSuccess(Boolean result) {
                             if (!isAdded()) return;
                             Toast.makeText(requireContext(), "レビューを投稿しました", Toast.LENGTH_SHORT).show();
-                            requireActivity().onBackPressed();
+                            requireActivity().getOnBackPressedDispatcher().onBackPressed();
                         }
 
                         @Override

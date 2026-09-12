@@ -75,7 +75,7 @@ public class ReviewListFragment extends Fragment {
                     initUI(view, prefs);
                 })
                 .setNegativeButton("戻る", (d, w) -> {
-                    if (isAdded()) requireActivity().onBackPressed();
+                    if (isAdded()) requireActivity().getOnBackPressedDispatcher().onBackPressed();
                 })
                 .setCancelable(false)
                 .show();
