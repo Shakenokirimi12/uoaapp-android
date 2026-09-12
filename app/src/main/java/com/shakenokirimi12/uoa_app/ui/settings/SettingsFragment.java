@@ -250,6 +250,10 @@ public class SettingsFragment extends Fragment {
                             com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.clear(requireContext());
                             prefs.clearAll();
                             DataCache.getInstance(requireContext()).clearAll();
+                            // キャッシュを捨てたら、それを映しているウィジェットと通知も片付ける。
+                            // 放置すると次の定期更新まで前のユーザーの時間割が出続ける。
+                            com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(requireContext());
+                            com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier.clearAll(requireContext());
                             // OkHttp の cookie と WebView の cookie は別の入れ物。片方だけ消しても、
                             // 次のユーザーがアプリ内ブラウザを開いたときに前のセッションが使われる。
                             com.shakenokirimi12.uoa_app.services.NetworkClient.clearCookies();

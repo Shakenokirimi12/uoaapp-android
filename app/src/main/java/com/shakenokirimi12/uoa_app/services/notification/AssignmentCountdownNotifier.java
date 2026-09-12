@@ -40,12 +40,29 @@ public final class AssignmentCountdownNotifier {
 
     private AssignmentCountdownNotifier() {}
 
+    // 前面の取得と定期同期から同時に呼ばれる。記録の読み書きが交錯すると、出したはずの
+    // 通知が記録から漏れ、課題が消えても取り消されなくなる。
+    private static final Object LOCK = new Object();
+
     /** 課題の取得に成功したあとに呼ぶ。対象の課題ごとに 1 通、同じ id で上書きする。 */
     public static void post(@NonNull Context context, @NonNull List<Assignment> assignments) {
+        synchronized (LOCK) {
+            postLocked(context, assignments);
+        }
+    }
+
+    /** ログアウトなど、課題の一覧を捨てるときに呼ぶ。出ている通知を全部消す。 */
+    public static void clearAll(@NonNull Context context) {
+        post(context, java.util.Collections.emptyList());
+    }
+
+    private static void postLocked(@NonNull Context context, @NonNull List<Assignment> assignments) {
         Context ctx = context.getApplicationContext();
         PreferenceManager prefs = PreferenceManager.getInstance(ctx);
-        if (!prefs.isAssignmentNotifyEnabled()) return;
-        if (!AppConfigService.getInstance().isFeatureEnabled("live_activity_enabled")) return;
+        // 無効化されているときは新規に出さないが、既に出ている分を消す処理は続ける
+        boolean enabled = prefs.isAssignmentNotifyEnabled()
+                && AppConfigService.getInstance().isFeatureEnabled("live_activity_enabled");
+        if (!enabled) assignments = java.util.Collections.emptyList();
 
         NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
         nm.createNotificationChannel(new NotificationChannel(

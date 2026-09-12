@@ -55,16 +55,24 @@ public class SyncWorker extends Worker {
         super(context, params);
     }
 
-    // 定期実行と手動実行が重なったとき、後から来た方を待たせる。両方が同じ単一スレッドの
-    // executor にタスクを積むと、片方の await が 90 秒のタイムアウトに達して
-    // 「同期に失敗」と誤って通知しうる。
-    private static final Object LOCK = new Object();
+    // 定期実行と手動実行が重なったとき、後から来た方は何もせずに終える。両方が同じ
+    // 単一スレッドの executor にタスクを積むと、片方の await が 90 秒のタイムアウトに達して
+    // 「同期に失敗」と誤って通知しうる。ロックで待たせる形にしないのは、待ち時間も
+    // WorkManager の実行時間枠 (10 分) に計上され、最悪で強制停止と再試行を招くため。
+    // 走っている方が同じ内容を取りに行っているので、譲って問題ない。
+    private static final java.util.concurrent.atomic.AtomicBoolean running = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     @NonNull
     @Override
     public Result doWork() {
-        synchronized (LOCK) {
+        if (!running.compareAndSet(false, true)) {
+            Log.d(TAG, "Another sync is in progress; skipping");
+            return Result.success();
+        }
+        try {
             return doWorkSerialized();
+        } finally {
+            running.set(false);
         }
     }
 
