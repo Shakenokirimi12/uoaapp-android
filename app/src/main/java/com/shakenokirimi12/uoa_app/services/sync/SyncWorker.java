@@ -214,7 +214,7 @@ public class SyncWorker extends Worker {
                 new Intent(ctx, MainActivity.class),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(R.drawable.ic_stat_notification)
                 .setContentTitle(ctx.getString(R.string.app_name))
                 .setContentText(text)
                 .setContentIntent(open)

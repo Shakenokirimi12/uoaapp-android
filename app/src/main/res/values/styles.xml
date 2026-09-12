@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Shared widget styles. Screens compose these instead of repeating colors and paddings,
+  so the whole app shifts together when the palette changes.
+-->
+<resources>
+    <!-- Cards: tonal surface, no stroke, 16dp corners. -->
+    <style name="Widget.Uoa.Card" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">?attr/colorSurfaceContainerLow</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeWidth">0dp</item>
+        <item name="rippleColor">@color/m3_card_ripple_color</item>
+    </style>
+
+    <!-- Emphasised card (today's counters, hero blocks). -->
+    <style name="Widget.Uoa.Card.Primary">
+        <item name="cardBackgroundColor">?attr/colorPrimaryContainer</item>
+    </style>
+
+    <style name="Widget.Uoa.Card.Secondary">
+        <item name="cardBackgroundColor">?attr/colorSecondaryContainer</item>
+    </style>
+
+    <!-- Section label above a group (M3 list subheader). -->
+    <style name="Widget.Uoa.SectionHeader" parent="Widget.MaterialComponents.TextView">
+        <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:paddingTop">20dp</item>
+        <item name="android:paddingBottom">8dp</item>
+    </style>
+
+    <!-- One-line navigation row inside a card (More / Settings). -->
+    <style name="Widget.Uoa.ListRow" parent="Widget.MaterialComponents.TextView">
+        <item name="android:textAppearance">?attr/textAppearanceBodyLarge</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:drawablePadding">16dp</item>
+        <item name="android:drawableTint">?attr/colorOnSurfaceVariant</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+    </style>
+
+    <!-- Row that hosts a control (switch, value) on the end side. -->
+    <style name="Widget.Uoa.ListRow.Container" parent="">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:paddingTop">8dp</item>
+        <item name="android:paddingBottom">8dp</item>
+    </style>
+
+    <style name="Widget.Uoa.ListRow.Title" parent="Widget.MaterialComponents.TextView">
+        <item name="android:textAppearance">?attr/textAppearanceBodyLarge</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="Widget.Uoa.ListRow.Supporting" parent="Widget.MaterialComponents.TextView">
+        <item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+    </style>
+
+    <!-- Hairline between rows inside a card. -->
+    <style name="Widget.Uoa.Divider" parent="Widget.Material3.MaterialDivider">
+        <item name="dividerInsetStart">16dp</item>
+        <item name="dividerInsetEnd">16dp</item>
+        <item name="dividerColor">?attr/colorOutlineVariant</item>
+    </style>
+
+    <!-- Inline notice (warnings, disclaimers). -->
+    <style name="Widget.Uoa.Notice" parent="Widget.MaterialComponents.TextView">
+        <item name="android:textAppearance">?attr/textAppearanceBodySmall</item>
+        <item name="android:textColor">@color/on_warning_container</item>
+        <item name="android:background">@drawable/bg_notice</item>
+        <item name="android:padding">12dp</item>
+    </style>
+
+    <style name="Widget.Uoa.Notice.Neutral">
+        <item name="android:textColor">?attr/colorOnSecondaryContainer</item>
+        <item name="android:background">@drawable/bg_notice_neutral</item>
+    </style>
+
+    <!-- Empty-state text centred in a list area. -->
+    <style name="Widget.Uoa.EmptyState" parent="Widget.MaterialComponents.TextView">
+        <item name="android:textAppearance">?attr/textAppearanceBodyLarge</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+        <item name="android:gravity">center</item>
+        <item name="android:padding">32dp</item>
+    </style>
+
+    <!-- Small tonal circle behind a list icon. -->
+    <style name="Widget.Uoa.IconContainer" parent="">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:background">@drawable/bg_icon_container</item>
+        <item name="android:scaleType">centerInside</item>
+        <item name="tint">?attr/colorOnSecondaryContainer</item>
+    </style>
+
+    <style name="Widget.Uoa.BottomNavigation" parent="Widget.Material3.BottomNavigationView">
+        <item name="android:background">?attr/colorSurfaceContainer</item>
+        <item name="labelVisibilityMode">labeled</item>
+    </style>
+
+    <style name="Widget.Uoa.Toolbar" parent="Widget.Material3.Toolbar.OnSurface">
+        <item name="titleTextAppearance">?attr/textAppearanceTitleLarge</item>
+        <item name="titleCentered">false</item>
+    </style>
+</resources>

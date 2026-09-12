@@ -403,7 +403,7 @@ public class SettingsFragment extends Fragment {
         }
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(requireContext(), channelId)
-                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(R.drawable.ic_stat_notification)
                 .setContentTitle("テスト通知")
                 .setContentText("この通知が見えていれば、通知機能は正常です。")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)

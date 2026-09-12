@@ -116,7 +116,7 @@ public class ClassNotificationService extends Service {
         GroupedClass next = getNextClass();
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_calendar)
+                .setSmallIcon(R.drawable.ic_stat_calendar)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(pi)

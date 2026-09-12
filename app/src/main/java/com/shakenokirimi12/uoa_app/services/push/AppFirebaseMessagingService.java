@@ -79,7 +79,7 @@ public class AppFirebaseMessagingService extends FirebaseMessagingService {
                 open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(R.drawable.ic_stat_notification)
                 .setContentTitle(title != null ? title : getString(R.string.app_name))
                 .setContentText(body)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(body))

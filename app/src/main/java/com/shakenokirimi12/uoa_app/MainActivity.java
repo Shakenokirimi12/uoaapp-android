@@ -45,6 +45,12 @@ public class MainActivity extends AppCompatActivity {
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         NavigationUI.setupWithNavController(bottomNav, navController);
+        // The top app bar follows the destination: tab labels on the four roots, a back
+        // arrow plus the nav_graph label everywhere else. Screens used to have no title at all.
+        com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        androidx.navigation.ui.AppBarConfiguration appBarConfiguration =
+                new androidx.navigation.ui.AppBarConfiguration.Builder(bottomNav.getMenu()).build();
+        NavigationUI.setupWithNavController(toolbar, navController, appBarConfiguration);
         EdgeToEdge.apply(this, findViewById(R.id.container), bottomNav);
 
         // Register device for push notifications

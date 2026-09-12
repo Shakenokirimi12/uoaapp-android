@@ -174,7 +174,7 @@ public class LocationGeofenceService {
             nm.createNotificationChannel(new android.app.NotificationChannel(
                     "class_ongoing", "授業", android.app.NotificationManager.IMPORTANCE_LOW));
             NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, "class_ongoing")
-                    .setSmallIcon(R.drawable.ic_calendar)
+                    .setSmallIcon(R.drawable.ic_stat_calendar)
                     .setContentTitle("自動出席登録完了")
                     .setContentText(matched.getFullname() + " の出席を自動登録しました。")
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)

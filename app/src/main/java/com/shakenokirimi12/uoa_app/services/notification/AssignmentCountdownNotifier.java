@@ -89,7 +89,7 @@ public final class AssignmentCountdownNotifier {
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
             NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_notification)
+                    .setSmallIcon(R.drawable.ic_stat_notification)
                     .setContentTitle(ctx.getString(R.string.countdown_title))
                     .setContentText(a.getName())
                     .setSubText(a.getCourseName())

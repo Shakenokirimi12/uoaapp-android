@@ -1,29 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Uoaapp" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorAccent">@color/accent</item>
-        <item name="colorOnPrimary">@color/on_primary</item>
-        <item name="android:colorBackground">@color/background</item>
-        <item name="colorSurface">@color/surface</item>
-        <item name="colorOnSurface">@color/on_surface</item>
-        <item name="android:textColorPrimary">@color/text_primary</item>
-        <item name="android:textColorSecondary">@color/text_secondary</item>
-        <item name="android:statusBarColor">@color/primary</item>
-        <item name="android:navigationBarColor">@color/surface</item>
+    <!--
+      Material 3 with the brand tonal palette (colors.xml). Every role is set explicitly so
+      components pick up the same palette in light and dark; values-night only swaps colors.
+      System bars are transparent: EdgeToEdge handles insets and icon contrast.
+    -->
+    <style name="Base.Theme.Uoaapp" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/md_primary</item>
+        <item name="colorOnPrimary">@color/md_on_primary</item>
+        <item name="colorPrimaryContainer">@color/md_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/md_on_primary_container</item>
+        <item name="colorPrimaryInverse">@color/md_inverse_primary</item>
+        <item name="colorSecondary">@color/md_secondary</item>
+        <item name="colorOnSecondary">@color/md_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/md_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/md_on_secondary_container</item>
+        <item name="colorTertiary">@color/md_tertiary</item>
+        <item name="colorOnTertiary">@color/md_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/md_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/md_on_tertiary_container</item>
+        <item name="colorError">@color/md_error</item>
+        <item name="colorOnError">@color/md_on_error</item>
+        <item name="colorErrorContainer">@color/md_error_container</item>
+        <item name="colorOnErrorContainer">@color/md_on_error_container</item>
+        <item name="android:colorBackground">@color/md_background</item>
+        <item name="colorOnBackground">@color/md_on_background</item>
+        <item name="colorSurface">@color/md_surface</item>
+        <item name="colorOnSurface">@color/md_on_surface</item>
+        <item name="colorSurfaceVariant">@color/md_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/md_on_surface_variant</item>
+        <item name="colorOutline">@color/md_outline</item>
+        <item name="colorOutlineVariant">@color/md_outline_variant</item>
+        <item name="colorSurfaceInverse">@color/md_inverse_surface</item>
+        <item name="colorOnSurfaceInverse">@color/md_inverse_on_surface</item>
+        <item name="colorSurfaceDim">@color/md_surface_dim</item>
+        <item name="colorSurfaceBright">@color/md_surface_bright</item>
+        <item name="colorSurfaceContainerLowest">@color/md_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/md_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/md_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/md_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/md_surface_container_highest</item>
+
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+
+        <!-- Slightly rounder than the M3 default so cards and sheets feel current. -->
+        <item name="shapeAppearanceCornerSmall">@style/ShapeAppearance.Uoa.Small</item>
+        <item name="shapeAppearanceCornerMedium">@style/ShapeAppearance.Uoa.Medium</item>
+        <item name="shapeAppearanceCornerLarge">@style/ShapeAppearance.Uoa.Large</item>
+
+        <item name="materialCardViewStyle">@style/Widget.Uoa.Card</item>
+        <item name="toolbarStyle">@style/Widget.Material3.Toolbar.OnSurface</item>
+        <item name="bottomNavigationStyle">@style/Widget.Uoa.BottomNavigation</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Material3.MaterialAlertDialog</item>
     </style>
 
+    <style name="Theme.Uoaapp" parent="Base.Theme.Uoaapp" />
+
+    <!-- Onboarding paints the window with primary, so bar icons must be light there. -->
     <style name="Theme.Uoaapp.Onboarding" parent="Theme.Uoaapp">
-        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 
     <!-- 全画面のダイアログ (ガイドライン同意)。通常の Dialog だと本文が長すぎて読みにくい。 -->
-    <style name="Theme.Uoaapp.FullScreenDialog" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="android:windowLightStatusBar">true</item>
+    <style name="Theme.Uoaapp.FullScreenDialog" parent="Theme.Uoaapp">
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowFullscreen">false</item>
         <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+    <style name="ShapeAppearance.Uoa.Small" parent="ShapeAppearance.Material3.Corner.Small">
+        <item name="cornerSize">10dp</item>
+    </style>
+    <style name="ShapeAppearance.Uoa.Medium" parent="ShapeAppearance.Material3.Corner.Medium">
+        <item name="cornerSize">16dp</item>
+    </style>
+    <style name="ShapeAppearance.Uoa.Large" parent="ShapeAppearance.Material3.Corner.Large">
+        <item name="cornerSize">24dp</item>
     </style>
 </resources>
