@@ -79,6 +79,12 @@ public class CoursesFragment extends Fragment {
             return;
         }
 
+        // ID/PW 誤りが確定している間は自動でログインを試みない (アカウントロック対策)。
+        if (com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(requireContext()).isCredentialsInvalid()) {
+            if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
+            android.widget.Toast.makeText(requireContext(), com.shakenokirimi12.uoa_app.services.AuthErrors.INVALID_CREDENTIALS_MESSAGE, android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
         moodleService.login(user, pass, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {

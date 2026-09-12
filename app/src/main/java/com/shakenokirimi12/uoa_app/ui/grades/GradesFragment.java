@@ -68,6 +68,12 @@ public class GradesFragment extends Fragment {
             return;
         }
 
+        // ID/PW 誤りが確定している間は自動でログインを試みない (アカウントロック対策)。
+        if (com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(requireContext()).isCredentialsInvalid()) {
+            if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
+            android.widget.Toast.makeText(requireContext(), com.shakenokirimi12.uoa_app.services.AuthErrors.INVALID_CREDENTIALS_MESSAGE, android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
         csService.fetchGrades(user, pass, new ServiceCallback<List<Grade>>() {
             @Override
             public void onSuccess(List<Grade> grades) {
@@ -79,6 +85,7 @@ public class GradesFragment extends Fragment {
 
             @Override
             public void onError(String message) {
+                if (isAdded()) com.shakenokirimi12.uoa_app.services.AuthErrors.markInvalidIfCredentialsError(requireContext(), message);
                 swipeRefresh.setRefreshing(false);
                 if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }

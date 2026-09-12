@@ -39,25 +39,14 @@ public class MoodleService {
 
     /** 画面側が「この URL は Moodle か」を判定するために使う。 */
     public static String currentBaseUrl() { return baseUrl(); }
-    /**
-     * ID/PW 誤りを他の失敗 (メンテナンス・通信エラー・想定外 HTML) と区別するためのメッセージ。
-     * 呼び出し側は isInvalidCredentialsError で判定し、PreferenceManager.setCredentialsInvalid を立てる。
-     */
-    public static final String INVALID_CREDENTIALS_MESSAGE = "ログインに失敗しました。ユーザー名またはパスワードを確認してください。";
+    public static final String INVALID_CREDENTIALS_MESSAGE = AuthErrors.INVALID_CREDENTIALS_MESSAGE;
 
     public static boolean isInvalidCredentialsError(String message) {
-        return INVALID_CREDENTIALS_MESSAGE.equals(message);
+        return AuthErrors.isInvalidCredentials(message);
     }
 
-    /**
-     * ログイン失敗が ID/PW 誤りなら「資格情報が不正」を立てる。以後の自動同期は
-     * パスワードが入力し直されるまで止まる (SyncWorker / HomeFragment 参照)。
-     * 各画面の onError から呼ぶ。
-     */
     public static void markInvalidIfCredentialsError(android.content.Context context, String message) {
-        if (isInvalidCredentialsError(message)) {
-            com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(context).setCredentialsInvalid(true);
-        }
+        AuthErrors.markInvalidIfCredentialsError(context, message);
     }
 
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -124,7 +113,7 @@ public class MoodleService {
                 // <script> を除いてから見る。この判定は「自動同期の恒久停止」に使われるため、
                 // ページの JS 内に同じ文言が文字列として埋まっているだけで、正しいパスワードの
                 // ユーザーまで止めてしまう誤検知を避ける (iOS 側で実例あり)。
-                String bodyWithoutScripts = responseHtml.replaceAll("(?is)<script[^>]*>.*?</script>", " ");
+                String bodyWithoutScripts = AuthErrors.withoutScripts(responseHtml);
                 if (bodyWithoutScripts.contains("Invalid login")
                         || bodyWithoutScripts.contains("ログインが無効です")
                         || bodyWithoutScripts.contains("invalidlogin")

@@ -38,6 +38,24 @@ public class CampusSquareService {
      * ここを固定文字列にしておくと、フラグでホストを差し替えたときに
      * リダイレクト先だけ旧ホストへ戻ってセッションが分裂する。
      */
+    /**
+     * ID/PW 誤りの文言。iOS と同じ既定値で、`campussquare_auth_failure_markers` フラグ
+     * (カンマ区切り) で審査なしに上書きできる。大学側が文言を変えたときの逃げ道。
+     */
+    private static final String DEFAULT_AUTH_FAILURE_MARKER = "ユーザ名またはパスワードの入力に誤りがあります";
+
+    private static boolean containsAuthFailureMarker(String html) {
+        String raw = AppConfigService.getInstance().flagValue("campussquare_auth_failure_markers");
+        java.util.List<String> markers = new java.util.ArrayList<>();
+        if (raw != null) {
+            for (String m : raw.split(",")) if (!m.trim().isEmpty()) markers.add(m.trim());
+        }
+        if (markers.isEmpty()) markers.add(DEFAULT_AUTH_FAILURE_MARKER);
+        String body = AuthErrors.withoutScripts(html);
+        for (String m : markers) if (body.contains(m)) return true;
+        return false;
+    }
+
     private static String baseOrigin() {
         String url = baseUrl();
         int schemeEnd = url.indexOf("://");
@@ -109,6 +127,12 @@ public class CampusSquareService {
             String newSid = extractSessionId(resp);
             authSid = (newSid != null && !newSid.isEmpty()) ? newSid : initialSid;
             locationHeader = resp.header("Location");
+            // ID/PW 誤りはログイン POST の応答本文にだけ現れる (page=main には出ない。iOS で実測)。
+            // 見逃すと Step 4 の「ログインに失敗」に紛れ、誤ったパスワードで自動同期が回り続ける。
+            String loginBody = resp.body() != null ? resp.body().string() : "";
+            if (containsAuthFailureMarker(loginBody)) {
+                throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
+            }
         }
 
         // Step 3: Follow redirect if present

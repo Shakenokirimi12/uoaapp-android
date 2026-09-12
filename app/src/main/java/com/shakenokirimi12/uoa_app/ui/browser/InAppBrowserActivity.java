@@ -236,7 +236,9 @@ public class InAppBrowserActivity extends AppCompatActivity {
                 PreferenceManager prefs = PreferenceManager.getInstance(InAppBrowserActivity.this);
                 String user = prefs.getUsername();
                 String pass = prefs.getPassword();
-                if (!isAllowedHost(host) || !pageHttps
+                // ID/PW 誤りが確定している間は送らない。ここも「大学の資格情報を送る経路」なので
+                // 自動同期と同じ理由でロックアウト対策の対象になる。
+                if (!isAllowedHost(host) || !pageHttps || prefs.isCredentialsInvalid()
                         || user == null || user.isEmpty() || pass == null || pass.isEmpty()) {
                     handler.cancel();
                     return;
@@ -248,9 +250,10 @@ public class InAppBrowserActivity extends AppCompatActivity {
                 // 大学側の試行回数を消費してアカウントロックへ近づく。
                 //
                 // 「断られた」の判定: 一度送った後に同じ realm で再び聞かれ、かつ WebView が
-                // 保存済みの資格情報をまだ試していない (useHttpAuthUsernamePassword が偽) とき。
-                // 同一 realm のサブリソースが同時にチャレンジされた場合は後者が真のままなので、
-                // 結果が返る前の 2 件目を「断られた」と誤認しない。
+                // 「保存済みの資格情報は使えない」と言っている (useHttpAuthUsernamePassword が偽 =
+                // サーバーに一度拒否された) とき。同一 realm のサブリソースが同時にチャレンジ
+                // された場合はまだ拒否されていないので真のままで、結果が返る前の 2 件目を
+                // 「断られた」と誤認しない。
                 if (rejectedRealms.contains(key)
                         || (attemptedRealms.contains(key) && !handler.useHttpAuthUsernamePassword())) {
                     rejectedRealms.add(key);

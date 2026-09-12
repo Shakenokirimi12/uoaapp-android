@@ -96,6 +96,11 @@ public class CalendarFragment extends Fragment {
         String pass = prefs.getPassword();
         if (user.isEmpty()) return;
 
+        // ID/PW 誤りが確定している間は自動でログインを試みない (アカウントロック対策)。
+        if (com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(requireContext()).isCredentialsInvalid()) {
+            android.widget.Toast.makeText(requireContext(), com.shakenokirimi12.uoa_app.services.AuthErrors.INVALID_CREDENTIALS_MESSAGE, android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
         csService.fetchCalendarEvents(user, pass, new ServiceCallback<List<CalendarEvent>>() {
             @Override
             public void onSuccess(List<CalendarEvent> events) {
@@ -105,6 +110,7 @@ public class CalendarFragment extends Fragment {
             }
             @Override
             public void onError(String message) {
+                if (isAdded()) com.shakenokirimi12.uoa_app.services.AuthErrors.markInvalidIfCredentialsError(requireContext(), message);
                 if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });
