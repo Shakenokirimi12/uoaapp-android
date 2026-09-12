@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- サーバー側の status_notice フラグを表示する非ブロッキングの常時バナー。
+     学務システム連携の障害など、アプリ更新なしで周知したい告知に使う (iOS の StatusNoticeBanner)。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/status_notice"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="top"
+    android:background="#1FFF9800"
+    android:padding="12dp"
+    android:visibility="gone">
+
+    <ImageView
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginEnd="10dp"
+        android:contentDescription="@null"
+        android:src="@android:drawable/ic_dialog_alert"
+        app:tint="#FF9800" />
+
+    <TextView
+        android:id="@+id/status_notice_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textSize="13sp" />
+
+    <ImageButton
+        android:id="@+id/status_notice_dismiss"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/status_notice_dismiss"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        app:tint="?android:attr/textColorSecondary" />
+</LinearLayout>

@@ -27,7 +27,15 @@ import okhttp3.Response;
 
 public class MoodleService {
     private static final String TAG = "MoodleService";
-    private static final String BASE_URL = "https://elms.u-aizu.ac.jp";
+    private static final String DEFAULT_BASE_URL = "https://elms.u-aizu.ac.jp";
+
+    /**
+     * 大学側が URL を変えたときに、審査なしにフラグだけで追従できるようにする (iOS と同じ)。
+     * 未設定なら既定値。
+     */
+    private static String baseUrl() {
+        return AppConfigService.getInstance().stringFlag("moodle_base_url", DEFAULT_BASE_URL);
+    }
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private static final MediaType FORM = MediaType.parse("application/x-www-form-urlencoded");
 
@@ -39,6 +47,10 @@ public class MoodleService {
     private String userid = "";
 
     public void login(String username, String password, ServiceCallback<Boolean> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 OkHttpClient client = NetworkClient.getCookieClient();
@@ -47,7 +59,7 @@ public class MoodleService {
 
                 // GET login page for logintoken
                 Request getLogin = new Request.Builder()
-                        .url(BASE_URL + "/login/index.php")
+                        .url(baseUrl() + "/login/index.php")
                         .header("User-Agent", NetworkClient.getUserAgent())
                         .build();
 
@@ -70,7 +82,7 @@ public class MoodleService {
                 }
 
                 Request postLogin = new Request.Builder()
-                        .url(BASE_URL + "/login/index.php")
+                        .url(baseUrl() + "/login/index.php")
                         .header("User-Agent", NetworkClient.getUserAgent())
                         .post(RequestBody.create(body.toString(), FORM))
                         .build();
@@ -96,7 +108,7 @@ public class MoodleService {
 
                 // GET /my/ to extract sesskey and userid
                 Request getDashboard = new Request.Builder()
-                        .url(BASE_URL + "/my/")
+                        .url(baseUrl() + "/my/")
                         .header("User-Agent", NetworkClient.getUserAgent())
                         .build();
 
@@ -142,6 +154,10 @@ public class MoodleService {
     }
 
     public void fetchCourses(ServiceCallback<List<MoodleCourse>> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 String jsonBody = "[{\"index\":0,\"methodname\":" +
@@ -193,6 +209,10 @@ public class MoodleService {
     }
 
     public void fetchAssignments(ServiceCallback<List<Assignment>> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 long now = System.currentTimeMillis() / 1000;
@@ -246,7 +266,7 @@ public class MoodleService {
 
     private String ajaxCall(String info, String jsonBody) throws IOException {
         OkHttpClient client = NetworkClient.getCookieClient();
-        String url = BASE_URL + "/lib/ajax/service.php?sesskey=" + sesskey + "&info=" + info;
+        String url = baseUrl() + "/lib/ajax/service.php?sesskey=" + sesskey + "&info=" + info;
 
         Request request = new Request.Builder()
                 .url(url)
@@ -265,15 +285,19 @@ public class MoodleService {
     }
 
     public void fetchCourseContents(int courseId, ServiceCallback<List<com.shakenokirimi12.uoa_app.data.models.CourseSection>> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 OkHttpClient client = NetworkClient.getCookieClient();
-                String url = BASE_URL + "/webservice/rest/server.php?wstoken=" + sesskey
+                String url = baseUrl() + "/webservice/rest/server.php?wstoken=" + sesskey
                         + "&wsfunction=core_course_get_contents&courseid=" + courseId
                         + "&moodlewsrestformat=json";
 
                 // Try AJAX approach first
-                String ajaxUrl = BASE_URL + "/lib/ajax/service.php?sesskey=" + sesskey
+                String ajaxUrl = baseUrl() + "/lib/ajax/service.php?sesskey=" + sesskey
                         + "&info=core_course_get_contents";
                 com.google.gson.JsonArray args = new com.google.gson.JsonArray();
                 com.google.gson.JsonObject call = new com.google.gson.JsonObject();

@@ -72,4 +72,14 @@
     <string name="ok">OK</string>
     <string name="cancel">キャンセル</string>
     <string name="remaining_format">残り %d 分</string>
+    <!-- Remote config (maintenance / force update / status notice) -->
+    <string name="maintenance_title">ただいまメンテナンス中です</string>
+    <string name="maintenance_default_message">ただいまメンテナンス中です。しばらくしてから再度お試しください。</string>
+    <string name="maintenance_recheck">再確認する</string>
+    <string name="maintenance_rechecking">確認中…</string>
+    <string name="force_update_title">アップデートが必要です</string>
+    <string name="force_update_default_message">このバージョンはご利用いただけません。最新版にアップデートしてください。</string>
+    <string name="force_update_open_store">Google Playで開く</string>
+    <string name="status_notice_dismiss">閉じる</string>
+    <string name="feature_disabled">この機能は現在利用できません</string>
 </resources>

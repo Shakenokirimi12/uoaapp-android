@@ -34,6 +34,10 @@ public class SyllabusService {
     }
 
     public void fetchSyllabus(String courseId, ServiceCallback<SyllabusData> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("syllabus_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 OkHttpClient client = NetworkClient.getNoCookieClient();

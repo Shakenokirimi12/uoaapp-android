@@ -26,7 +26,25 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class CampusSquareService {
-    private static final String BASE_URL = "https://csweb.u-aizu.ac.jp/campusweb";
+    private static final String DEFAULT_BASE_URL = "https://csweb.u-aizu.ac.jp/campusweb";
+
+    /** 大学側が URL を変えたときにフラグだけで追従できるようにする (iOS と同じ)。 */
+    private static String baseUrl() {
+        return AppConfigService.getInstance().stringFlag("campussquare_base_url", DEFAULT_BASE_URL);
+    }
+
+    /**
+     * baseUrl() の scheme://host 部分。Origin ヘッダとルート相対リダイレクトの解決に使う。
+     * ここを固定文字列にしておくと、フラグでホストを差し替えたときに
+     * リダイレクト先だけ旧ホストへ戻ってセッションが分裂する。
+     */
+    private static String baseOrigin() {
+        String url = baseUrl();
+        int schemeEnd = url.indexOf("://");
+        if (schemeEnd < 0) return url;
+        int pathStart = url.indexOf('/', schemeEnd + 3);
+        return pathStart < 0 ? url : url.substring(0, pathStart);
+    }
     private static final MediaType FORM = MediaType.parse("application/x-www-form-urlencoded");
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -50,7 +68,7 @@ public class CampusSquareService {
 
         // Step 1: GET portal page for rwfHash + initial JSESSIONID
         Request getPortal = new Request.Builder()
-                .url(BASE_URL + "/campusportal.do?locale=ja_JP")
+                .url(baseUrl() + "/campusportal.do?locale=ja_JP")
                 .header("User-Agent", NetworkClient.getUserAgent())
                 .build();
 
@@ -76,12 +94,12 @@ public class CampusSquareService {
                 "&locale=ja_JP&undefined=&action=rwf&tabId=home&page=&rwfHash=" + rwfHash;
 
         Request postLogin = new Request.Builder()
-                .url(BASE_URL + "/campusportal.do")
+                .url(baseUrl() + "/campusportal.do")
                 .header("User-Agent", NetworkClient.getUserAgent())
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("Cookie", "JSESSIONID=" + initialSid)
-                .header("Referer", BASE_URL + "/campusportal.do?locale=ja_JP")
-                .header("Origin", "https://csweb.u-aizu.ac.jp")
+                .header("Referer", baseUrl() + "/campusportal.do?locale=ja_JP")
+                .header("Origin", baseOrigin())
                 .post(RequestBody.create(body, FORM))
                 .build();
 
@@ -100,7 +118,7 @@ public class CampusSquareService {
                     .url(redirectUrl)
                     .header("User-Agent", NetworkClient.getUserAgent())
                     .header("Cookie", "JSESSIONID=" + authSid)
-                    .header("Referer", BASE_URL + "/campusportal.do")
+                    .header("Referer", baseUrl() + "/campusportal.do")
                     .build();
             try (Response resp = NetworkClient.getNoCookieClient().newCall(followRedirect).execute()) {
                 resp.body().string();
@@ -109,10 +127,10 @@ public class CampusSquareService {
 
         // Step 4: Verify login
         Request verifyReq = new Request.Builder()
-                .url(BASE_URL + "/campusportal.do?page=main")
+                .url(baseUrl() + "/campusportal.do?page=main")
                 .header("User-Agent", NetworkClient.getUserAgent())
                 .header("Cookie", "JSESSIONID=" + authSid)
-                .header("Referer", BASE_URL + "/campusportal.do")
+                .header("Referer", baseUrl() + "/campusportal.do")
                 .build();
 
         try (Response resp = NetworkClient.getNoCookieClient().newCall(verifyReq).execute()) {
@@ -126,16 +144,20 @@ public class CampusSquareService {
     }
 
     public void fetchGrades(String username, String password, ServiceCallback<List<Grade>> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("campussquare_grades_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 String sid = doLogin(username, password);
 
                 // Navigate to grades tab
                 Request tabReq = new Request.Builder()
-                        .url(BASE_URL + "/campusportal.do?page=main&tabId=si")
+                        .url(baseUrl() + "/campusportal.do?page=main&tabId=si")
                         .header("User-Agent", NetworkClient.getUserAgent())
                         .header("Cookie", "JSESSIONID=" + sid)
-                        .header("Referer", BASE_URL + "/campusportal.do?page=main")
+                        .header("Referer", baseUrl() + "/campusportal.do?page=main")
                         .build();
                 try (Response r = NetworkClient.getNoCookieClient().newCall(tabReq).execute()) {
                     r.body().string();
@@ -145,11 +167,11 @@ public class CampusSquareService {
                 // Start grade flow
                 OkHttpClient noRedirect = NetworkClient.getNoRedirectClient();
                 Request flowReq = new Request.Builder()
-                        .url(BASE_URL + "/campussquare.do?_flowId=SIW0001200-flow")
+                        .url(baseUrl() + "/campussquare.do?_flowId=SIW0001200-flow")
                         .header("User-Agent", NetworkClient.getUserAgent())
                         .header("Cookie", "JSESSIONID=" + sid)
                         .header("sec-fetch-dest", "iframe")
-                        .header("Referer", BASE_URL + "/campusportal.do?page=main&tabId=si")
+                        .header("Referer", baseUrl() + "/campusportal.do?page=main&tabId=si")
                         .build();
 
                 String flowHtml;
@@ -184,11 +206,11 @@ public class CampusSquareService {
                 // POST to display grades
                 String postBody = "_flowExecutionKey=" + flowKey + "&_eventId=display";
                 Request gradePost = new Request.Builder()
-                        .url(BASE_URL + "/campussquare.do")
+                        .url(baseUrl() + "/campussquare.do")
                         .header("User-Agent", NetworkClient.getUserAgent())
                         .header("Cookie", "JSESSIONID=" + sid)
                         .header("Content-Type", "application/x-www-form-urlencoded")
-                        .header("Referer", BASE_URL + "/campussquare.do?_flowId=SIW0001200-flow&_flowExecutionKey=" + flowKey)
+                        .header("Referer", baseUrl() + "/campussquare.do?_flowId=SIW0001200-flow&_flowExecutionKey=" + flowKey)
                         .post(RequestBody.create(postBody, FORM))
                         .build();
 
@@ -207,16 +229,20 @@ public class CampusSquareService {
 
     public void fetchCalendarEvents(String username, String password,
                                     ServiceCallback<List<CalendarEvent>> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("campussquare_calendar_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 String sid = doLogin(username, password);
 
                 // Navigate to calendar tab
                 Request tabReq = new Request.Builder()
-                        .url(BASE_URL + "/campusportal.do?page=main&tabId=po")
+                        .url(baseUrl() + "/campusportal.do?page=main&tabId=po")
                         .header("User-Agent", NetworkClient.getUserAgent())
                         .header("Cookie", "JSESSIONID=" + sid)
-                        .header("Referer", BASE_URL + "/campusportal.do?page=main")
+                        .header("Referer", baseUrl() + "/campusportal.do?page=main")
                         .build();
                 try (Response r = NetworkClient.getNoCookieClient().newCall(tabReq).execute()) {
                     r.body().string();
@@ -225,11 +251,11 @@ public class CampusSquareService {
 
                 // Get calendar URL
                 Request calReq = new Request.Builder()
-                        .url(BASE_URL + "/campussquare.do?_flowId=POW2401000-flow")
+                        .url(baseUrl() + "/campussquare.do?_flowId=POW2401000-flow")
                         .header("User-Agent", NetworkClient.getUserAgent())
                         .header("Cookie", "JSESSIONID=" + sid)
                         .header("sec-fetch-dest", "iframe")
-                        .header("Referer", BASE_URL + "/campusportal.do?page=main&tabId=po")
+                        .header("Referer", baseUrl() + "/campusportal.do?page=main&tabId=po")
                         .build();
 
                 String calHtml;
@@ -380,8 +406,8 @@ public class CampusSquareService {
 
     private static String resolveUrl(String location) {
         if (location.startsWith("http")) return location;
-        if (location.startsWith("/")) return "https://csweb.u-aizu.ac.jp" + location;
-        return BASE_URL + "/" + location;
+        if (location.startsWith("/")) return baseOrigin() + location;
+        return baseUrl() + "/" + location;
     }
 
     private static String extractMatch(String text, String regex) {
@@ -390,6 +416,10 @@ public class CampusSquareService {
     }
 
     public void fetchFacilityUsage(String dateStr, ServiceCallback<List<FacilityUsage>> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("campussquare_facility_usage_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 OkHttpClient noRedirect = NetworkClient.getNoRedirectClient();
@@ -397,7 +427,7 @@ public class CampusSquareService {
 
                 // GET initial flow page (no login required)
                 Request flowReq = new Request.Builder()
-                        .url(BASE_URL + "/campussquare.do?_flowId=KHW0001310-flow")
+                        .url(baseUrl() + "/campussquare.do?_flowId=KHW0001310-flow")
                         .header("User-Agent", NetworkClient.getUserAgent())
                         .build();
 
@@ -442,7 +472,7 @@ public class CampusSquareService {
                         flowKey = extractMatch(html, "_flowExecutionKey=([a-zA-Z0-9_-]+)");
                     }
                     if (flowKey != null && sid != null) {
-                        String dateUrl = BASE_URL + "/campussquare.do?_flowExecutionKey="
+                        String dateUrl = baseUrl() + "/campussquare.do?_flowExecutionKey="
                                 + flowKey + "&_eventId=show&displayDate=" + dateStr;
                         Request dateReq = new Request.Builder()
                                 .url(dateUrl)

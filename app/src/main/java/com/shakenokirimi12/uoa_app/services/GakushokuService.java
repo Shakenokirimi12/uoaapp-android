@@ -30,6 +30,10 @@ public class GakushokuService {
     private final Gson gson = new Gson();
 
     public void fetchMenu(ServiceCallback<List<GakushokuMenuItem>> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("gakushoku_menu_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 OkHttpClient client = NetworkClient.getNoCookieClient();

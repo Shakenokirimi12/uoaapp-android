@@ -26,6 +26,18 @@ public class MoreFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        // iOS の MoreMenuView と同じく、killswitch で止めた機能は入口ごと隠す。
+        // 一度きりの評価にせず購読するのは、この画面を開いたままフラグが変わったときに
+        // 前面復帰の取り直しで入口が消えるようにするため。
+        com.shakenokirimi12.uoa_app.services.AppConfigService flags =
+                com.shakenokirimi12.uoa_app.services.AppConfigService.getInstance();
+        flags.config().observe(getViewLifecycleOwner(), config -> {
+            view.findViewById(R.id.button_reviews).setVisibility(
+                    flags.isFeatureEnabled("review_enabled") ? View.VISIBLE : View.GONE);
+            view.findViewById(R.id.button_campus_map).setVisibility(
+                    flags.isFeatureEnabled("campus_map_enabled") ? View.VISIBLE : View.GONE);
+        });
+
         view.findViewById(R.id.button_reviews).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_more_to_reviews));
         view.findViewById(R.id.button_grades).setOnClickListener(v ->

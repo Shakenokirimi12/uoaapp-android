@@ -61,6 +61,10 @@ public class ReviewService {
 
     // Search courses
     public void searchCourses(String query, ServiceCallback<List<ReviewCourse>> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("review_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 String url = BASE_URL + "/api/courses";
@@ -103,6 +107,10 @@ public class ReviewService {
 
     // Search instructors
     public void searchInstructors(String query, ServiceCallback<List<ReviewCourse>> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("review_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 String url = BASE_URL + "/api/instructors";
@@ -142,6 +150,10 @@ public class ReviewService {
 
     // Get reviews for a course
     public void getReviews(String courseId, String userId, ServiceCallback<List<Review>> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("review_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
         executor.execute(() -> {
             try {
                 String url = BASE_URL + "/api/courses/" + courseId + "/reviews";
