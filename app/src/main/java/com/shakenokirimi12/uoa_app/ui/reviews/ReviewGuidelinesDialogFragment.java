@@ -25,14 +25,23 @@ public class ReviewGuidelinesDialogFragment extends DialogFragment {
         void onDisagreed();
     }
 
-    private Listener listener;
+    /**
+     * 親 Fragment (ReviewListFragment) が Listener を実装する。フィールドで持たせないのは、
+     * プロセス再生成でこのダイアログが引数なしコンストラクタから作り直され、
+     * フィールドが null に戻るため。その状態で「同意する」を押すと同意だけ記録されて
+     * 一覧の初期化が呼ばれず、画面が空のまま残る。
+     */
+    private Listener listener() {
+        androidx.fragment.app.Fragment parent = getParentFragment();
+        return parent instanceof Listener ? (Listener) parent : null;
+    }
 
-    public static ReviewGuidelinesDialogFragment show(@NonNull androidx.fragment.app.FragmentManager fm, @NonNull Listener listener) {
+    /** 既に出ていれば重ねない (未回答のまま回転すると親の onViewCreated が再び呼ぶ)。 */
+    public static void showIfNeeded(@NonNull androidx.fragment.app.FragmentManager fm) {
+        if (fm.findFragmentByTag(TAG) != null) return;
         ReviewGuidelinesDialogFragment f = new ReviewGuidelinesDialogFragment();
-        f.listener = listener;
         f.setCancelable(false);
         f.show(fm, TAG);
-        return f;
     }
 
     @Override
@@ -69,19 +78,15 @@ public class ReviewGuidelinesDialogFragment extends DialogFragment {
         }
         view.findViewById(R.id.button_agree).setOnClickListener(v -> {
             PreferenceManager.getInstance(requireContext()).setReviewGuidelinesAccepted(true);
+            Listener l = listener();
             dismiss();
-            if (listener != null) listener.onAgreed();
+            if (l != null) l.onAgreed();
         });
         view.findViewById(R.id.button_disagree).setOnClickListener(v -> {
+            Listener l = listener();
             dismiss();
-            if (listener != null) listener.onDisagreed();
+            if (l != null) l.onDisagreed();
         });
     }
 
-    @Override
-    public void onDestroyView() {
-        // 画面回転で作り直されたときは listener が失われる。その場合は同意の再表示で済ませる
-        // (ReviewListFragment.onViewCreated が未同意なら再び出す)。
-        super.onDestroyView();
-    }
 }

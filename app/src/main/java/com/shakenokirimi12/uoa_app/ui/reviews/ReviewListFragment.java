@@ -32,7 +32,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-public class ReviewListFragment extends Fragment {
+public class ReviewListFragment extends Fragment implements ReviewGuidelinesDialogFragment.Listener {
 
     private RecyclerView recyclerCourses;
     private TextInputEditText editSearch;
@@ -74,17 +74,17 @@ public class ReviewListFragment extends Fragment {
             initUI(view, prefs);
             return;
         }
-        ReviewGuidelinesDialogFragment.show(getChildFragmentManager(), new ReviewGuidelinesDialogFragment.Listener() {
-            @Override
-            public void onAgreed() {
-                if (isAdded()) initUI(view, prefs);
-            }
+        ReviewGuidelinesDialogFragment.showIfNeeded(getChildFragmentManager());
+    }
 
-            @Override
-            public void onDisagreed() {
-                if (isAdded()) requireActivity().getOnBackPressedDispatcher().onBackPressed();
-            }
-        });
+    @Override
+    public void onAgreed() {
+        if (isAdded() && getView() != null) initUI(getView(), PreferenceManager.getInstance(requireContext()));
+    }
+
+    @Override
+    public void onDisagreed() {
+        if (isAdded()) requireActivity().getOnBackPressedDispatcher().onBackPressed();
     }
 
     private void showConsentDialog(PreferenceManager prefs, View view) {

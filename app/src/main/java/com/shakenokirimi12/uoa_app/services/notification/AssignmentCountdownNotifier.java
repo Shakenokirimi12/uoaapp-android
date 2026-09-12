@@ -33,8 +33,10 @@ import java.util.List;
  */
 public final class AssignmentCountdownNotifier {
     public static final String CHANNEL_ID = "assignment_countdown";
-    private static final int ID_BASE = 5000;
+    // 他の固定 ID (1001 授業, 4100 同期, 9999 テスト通知) と重ならない範囲に置く。
+    private static final int ID_BASE = 700_000;
     private static final long LEAD_MS = 2 * 60 * 60_000L;
+    private static final String PREF_ACTIVE_IDS = "countdown_active_ids";
 
     private AssignmentCountdownNotifier() {}
 
@@ -49,11 +51,18 @@ public final class AssignmentCountdownNotifier {
         nm.createNotificationChannel(new NotificationChannel(
                 CHANNEL_ID, ctx.getString(R.string.countdown_channel_name), NotificationManager.IMPORTANCE_LOW));
 
+        // 前回出した通知のうち、今回の一覧に無いもの (提出済み・削除・締切延長) は消す。
+        // 消さないと、もう関係ない課題のカウントダウンが最初の締切まで残り続ける。
+        android.content.SharedPreferences sp = ctx.getSharedPreferences("countdown_notifier", Context.MODE_PRIVATE);
+        java.util.Set<String> previous = new java.util.HashSet<>(sp.getStringSet(PREF_ACTIVE_IDS, java.util.Collections.emptySet()));
+        java.util.Set<String> active = new java.util.HashSet<>();
+
         long now = System.currentTimeMillis();
         for (Assignment a : assignments) {
             long dueMs = a.getDueDate() * 1000L;
             long remaining = dueMs - now;
             if (remaining <= 0 || remaining > LEAD_MS) continue;
+            active.add(String.valueOf(a.getId()));
 
             String url = MoodleService.currentBaseUrl() + "/mod/assign/view.php?id=" + a.getId();
             Intent open = new Intent(ctx, InAppBrowserActivity.class)
@@ -85,5 +94,16 @@ public final class AssignmentCountdownNotifier {
                 return;
             }
         }
+
+        for (String id : previous) {
+            if (!active.contains(id)) {
+                try {
+                    NotificationManagerCompat.from(ctx).cancel(ID_BASE + Integer.parseInt(id));
+                } catch (NumberFormatException ignored) {
+                    // 壊れた記録は捨てるだけ
+                }
+            }
+        }
+        sp.edit().putStringSet(PREF_ACTIVE_IDS, active).apply();
     }
 }

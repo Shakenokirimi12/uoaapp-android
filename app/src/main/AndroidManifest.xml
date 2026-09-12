@@ -30,6 +30,17 @@
             </intent-filter>
         </activity>
 
+        <receiver
+            android:name=".widget.ClassScheduleWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_class_schedule_info" />
+        </receiver>
+
         <service
             android:name=".services.push.AppFirebaseMessagingService"
             android:exported="false">

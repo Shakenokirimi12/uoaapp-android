@@ -209,7 +209,8 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.button_force_sync).setOnClickListener(v -> {
             // 定期ワーカーと同じ SyncWorker を 1 回だけ即時実行する。以前は Toast を出すだけで
             // 何も起きていなかった。
-            androidx.work.WorkManager.getInstance(requireContext()).enqueue(
+            androidx.work.WorkManager.getInstance(requireContext()).enqueueUniqueWork(
+                    "manual_sync", androidx.work.ExistingWorkPolicy.KEEP,
                     new androidx.work.OneTimeWorkRequest.Builder(
                             com.shakenokirimi12.uoa_app.services.sync.SyncWorker.class).build());
             Toast.makeText(requireContext(), "バックグラウンド同期を開始しました", Toast.LENGTH_SHORT).show();

@@ -279,6 +279,7 @@ public class HomeFragment extends Fragment {
                 filterAndDisplay();
                 startClassNotification(events);
                 DataCache.getInstance(requireContext()).saveEvents(events);
+                com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(requireContext());
             }
 
             @Override

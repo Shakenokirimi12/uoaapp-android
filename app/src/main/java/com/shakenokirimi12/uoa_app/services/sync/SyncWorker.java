@@ -55,9 +55,20 @@ public class SyncWorker extends Worker {
         super(context, params);
     }
 
+    // 定期実行と手動実行が重なったとき、後から来た方を待たせる。両方が同じ単一スレッドの
+    // executor にタスクを積むと、片方の await が 90 秒のタイムアウトに達して
+    // 「同期に失敗」と誤って通知しうる。
+    private static final Object LOCK = new Object();
+
     @NonNull
     @Override
     public Result doWork() {
+        synchronized (LOCK) {
+            return doWorkSerialized();
+        }
+    }
+
+    private Result doWorkSerialized() {
         Context ctx = getApplicationContext();
         PreferenceManager prefs = PreferenceManager.getInstance(ctx);
 
@@ -124,6 +135,7 @@ public class SyncWorker extends Worker {
             }));
             if (fetched.get() != null) {
                 cache.saveEvents(fetched.get());
+                com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(ctx);
             } else {
                 anyFailure = true;
                 // CampusSquare 側だけで ID/PW 誤りが判明することもある (Moodle が killswitch で
