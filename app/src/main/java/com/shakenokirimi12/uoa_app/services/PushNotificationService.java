@@ -31,6 +31,22 @@ public class PushNotificationService {
     private final Gson gson = new Gson();
     private String deviceId;
 
+    private static PushNotificationService shared;
+
+    /**
+     * プロセスで 1 つのインスタンス。内部の単一スレッド executor に shutdown の口が無く、
+     * 呼び出しのたびに new するとスレッドが増え続ける。期限通知の同期はこの executor の
+     * 順序に依存するので、同期の呼び出し元は必ずこれを使うこと。
+     */
+    public static synchronized PushNotificationService shared(android.content.Context context) {
+        if (shared == null) {
+            shared = new PushNotificationService();
+            shared.init(com.shakenokirimi12.uoa_app.data.PreferenceManager
+                    .getInstance(context.getApplicationContext()).getDeviceId());
+        }
+        return shared;
+    }
+
     public interface NotificationCallback {
         void onResult(List<PushNotification> notifications, int unreadCount);
         void onError(String message);

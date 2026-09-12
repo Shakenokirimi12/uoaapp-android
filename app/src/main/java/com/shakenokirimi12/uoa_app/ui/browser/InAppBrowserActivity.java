@@ -103,6 +103,20 @@ public class InAppBrowserActivity extends AppCompatActivity {
         String url = getIntent().getStringExtra(EXTRA_URL);
         if (url == null || url.isEmpty()) { finish(); return; }
 
+        // 初回の loadUrl() には shouldOverrideUrlLoading が掛からない。ここで弾かないと、
+        // 通知の url など外から来た値で任意のホストをこの画面の中に開いてしまう。
+        Uri initial = Uri.parse(url);
+        String scheme = initial.getScheme() != null ? initial.getScheme().toLowerCase(Locale.ROOT) : "";
+        if (!(scheme.equals("http") || scheme.equals("https")) || !isAllowedHost(initial.getHost())) {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, initial));
+            } catch (Exception ignored) {
+                // 開けるアプリが無いだけ
+            }
+            finish();
+            return;
+        }
+
         webView = findViewById(R.id.web_view);
         progress = findViewById(R.id.progress);
         titleView = findViewById(R.id.title);

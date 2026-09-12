@@ -234,12 +234,14 @@ public class SettingsFragment extends Fragment {
                         .setTitle(R.string.settings_logout)
                         .setMessage("ログアウトしてもよろしいですか？")
                         .setPositiveButton(R.string.ok, (dialog, which) -> {
+                            // 先にサーバー側の予約を空にする。prefs.clearAll() は deviceId と
+                            // 「サーバーが予約を持っている」記録の両方を消すので、後から呼ぶと
+                            // 取り消しは早期 return し、古い deviceId の予約が二度と触れなくなる。
+                            com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.clear(requireContext());
                             prefs.clearAll();
                             DataCache.getInstance(requireContext()).clearAll();
                             // OkHttp の cookie と WebView の cookie は別の入れ物。片方だけ消しても、
                             // 次のユーザーがアプリ内ブラウザを開いたときに前のセッションが使われる。
-                            // deviceId が消える前にサーバー側の予約を空にする。後からでは古い行に触れない。
-                            com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.clear(requireContext());
                             com.shakenokirimi12.uoa_app.services.NetworkClient.clearCookies();
                             com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity.clearWebSession();
                             startActivity(new Intent(requireActivity(), OnboardingActivity.class));

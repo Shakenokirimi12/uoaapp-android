@@ -48,8 +48,7 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.apply(this, findViewById(R.id.container), bottomNav);
 
         // Register device for push notifications
-        PushNotificationService pushService = new PushNotificationService();
-        pushService.init(prefs.getDeviceId());
+        PushNotificationService pushService = PushNotificationService.shared(this);
         pushService.registerDevice(prefs.getFcmToken().isEmpty() ? null : prefs.getFcmToken());
         // FCM トークンを取り直して登録する。onNewToken は入れ替わったときしか呼ばれない。
         com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()

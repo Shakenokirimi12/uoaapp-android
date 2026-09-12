@@ -43,16 +43,10 @@ public final class AssignmentReminderSync {
         }
     }
 
-    private static PushNotificationService shared;
-
     private AssignmentReminderSync() {}
 
-    private static synchronized PushNotificationService push(Context ctx) {
-        if (shared == null) {
-            shared = new PushNotificationService();
-            shared.init(PreferenceManager.getInstance(ctx).getDeviceId());
-        }
-        return shared;
+    private static PushNotificationService push(Context ctx) {
+        return PushNotificationService.shared(ctx);
     }
 
     /** 課題の取得に成功したあとに呼ぶ。 */

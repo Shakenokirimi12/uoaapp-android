@@ -41,9 +41,7 @@ public class AppFirebaseMessagingService extends FirebaseMessagingService {
         // トークンは端末側で入れ替わる。届いたらすぐサーバーへ登録し直す。
         PreferenceManager prefs = PreferenceManager.getInstance(getApplicationContext());
         prefs.setFcmToken(token);
-        PushNotificationService push = new PushNotificationService();
-        push.init(prefs.getDeviceId());
-        push.registerDevice(token);
+        PushNotificationService.shared(this).registerDevice(token);
     }
 
     @Override
