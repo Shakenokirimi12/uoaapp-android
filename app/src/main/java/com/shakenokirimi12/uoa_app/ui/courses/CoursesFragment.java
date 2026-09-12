@@ -104,6 +104,8 @@ public class CoursesFragment extends Fragment {
 
             @Override
             public void onError(String message) {
+                // requireContext() は detach 後に投げるので、isAdded の内側で呼ぶ
+                if (isAdded()) MoodleService.markInvalidIfCredentialsError(requireContext(), message);
                 swipeRefresh.setRefreshing(false);
                 if (isAdded()) {
                     Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();

@@ -13,6 +13,7 @@ public class PreferenceManager {
     private static final String KEY_USERNAME = "username";
     private static final String KEY_PASSWORD = "password";
     private static final String KEY_ONBOARDING_DONE = "onboarding_done";
+    private static final String KEY_CREDENTIALS_INVALID = "credentials_invalid";
     private static final String KEY_NOTIFY_ASSIGNMENTS = "notify_assignments";
     private static final String KEY_NOTIFY_GRADES = "notify_grades";
     private static final String KEY_NOTIFY_LUNCH = "notify_lunch";
@@ -99,7 +100,19 @@ public class PreferenceManager {
     public void setUsername(String username) { encryptedPrefs.edit().putString(KEY_USERNAME, username).apply(); }
 
     public String getPassword() { return encryptedPrefs.getString(KEY_PASSWORD, ""); }
-    public void setPassword(String password) { encryptedPrefs.edit().putString(KEY_PASSWORD, password).apply(); }
+    public void setPassword(String password) {
+        encryptedPrefs.edit().putString(KEY_PASSWORD, password).apply();
+        // 入力し直したら「資格情報が不正」の判定を解除して同期を再開できるようにする。
+        setCredentialsInvalid(false);
+    }
+
+    /**
+     * ID/PW 誤りが確定しているか。立っている間は自動同期でログインを試みない。
+     * 誤ったパスワードのまま定期同期がリトライを繰り返すと、大学側でアカウントが
+     * ロックされうる。パスワードの再入力でだけ解除される。
+     */
+    public boolean isCredentialsInvalid() { return prefs.getBoolean(KEY_CREDENTIALS_INVALID, false); }
+    public void setCredentialsInvalid(boolean invalid) { prefs.edit().putBoolean(KEY_CREDENTIALS_INVALID, invalid).apply(); }
 
     public boolean hasCredentials() {
         return !getUsername().isEmpty() && !getPassword().isEmpty();

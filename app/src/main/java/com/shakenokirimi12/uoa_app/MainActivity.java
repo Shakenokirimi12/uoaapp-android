@@ -18,6 +18,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.AppConfig;
 import com.shakenokirimi12.uoa_app.services.AppConfigService;
+import com.shakenokirimi12.uoa_app.services.sync.SyncScheduler;
 import com.shakenokirimi12.uoa_app.services.LocationGeofenceService;
 import com.shakenokirimi12.uoa_app.services.PushNotificationService;
 import com.shakenokirimi12.uoa_app.ui.onboarding.OnboardingActivity;
@@ -57,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setupRemoteConfig();
+        SyncScheduler.schedule(this);
     }
 
     @Override

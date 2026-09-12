@@ -140,6 +140,7 @@ public class SettingsFragment extends Fragment {
             if (checkedId == R.id.btn_interval_15) prefs.setSyncInterval(15);
             else if (checkedId == R.id.btn_interval_30) prefs.setSyncInterval(30);
             else prefs.setSyncInterval(60);
+            com.shakenokirimi12.uoa_app.services.sync.SyncScheduler.schedule(requireContext());
         });
 
         // Background sync notification toggles
@@ -231,6 +232,10 @@ public class SettingsFragment extends Fragment {
                         .setPositiveButton(R.string.ok, (dialog, which) -> {
                             prefs.clearAll();
                             DataCache.getInstance(requireContext()).clearAll();
+                            // OkHttp の cookie と WebView の cookie は別の入れ物。片方だけ消しても、
+                            // 次のユーザーがアプリ内ブラウザを開いたときに前のセッションが使われる。
+                            com.shakenokirimi12.uoa_app.services.NetworkClient.clearCookies();
+                            com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity.clearWebSession();
                             startActivity(new Intent(requireActivity(), OnboardingActivity.class));
                             requireActivity().finish();
                         })

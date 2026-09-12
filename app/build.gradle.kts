@@ -88,6 +88,9 @@ dependencies {
     // Security (EncryptedSharedPreferences)
     implementation(libs.security.crypto)
 
+    // Background sync
+    implementation(libs.work.runtime)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

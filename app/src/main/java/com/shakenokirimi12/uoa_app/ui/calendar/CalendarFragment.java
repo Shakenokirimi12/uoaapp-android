@@ -125,7 +125,10 @@ public class CalendarFragment extends Fragment {
                 });
             }
             @Override
-            public void onError(String msg) {}
+            public void onError(String msg) {
+                if (!isAdded()) return;
+                MoodleService.markInvalidIfCredentialsError(requireContext(), msg);
+            }
         });
     }
 

@@ -52,14 +52,33 @@ import okhttp3.Cookie;
 public class InAppBrowserActivity extends AppCompatActivity {
     public static final String EXTRA_URL = "url";
 
-    /** この起動中に、保存済み資格情報を断られた Basic 認証の realm (host + realm)。 */
+    /**
+     * この起動中に Basic 認証で資格情報を送った/断られた組み合わせ。
+     * キーは host + realm + 資格情報のハッシュ。realm だけで覚えると、パスワードを直しても
+     * アプリを終了するまで再試行できなくなる (iOS 側で同じ落とし穴を踏んだ)。
+     */
+    private static final Set<String> attemptedRealms = new HashSet<>();
     private static final Set<String> rejectedRealms = new HashSet<>();
+
+    private static String realmKey(String host, String realm, String user, String pass) {
+        // パスワードそのものは持たない。
+        return host + "/" + realm + "#" + (user + "\u0000" + pass).hashCode();
+    }
 
     private WebView webView;
     private ProgressBar progress;
     private TextView titleView;
     private TextView hostView;
     private ImageButton back, forward, reload;
+
+    /** ログアウト時に呼ぶ。CookieManager はプロセスをまたいでディスクに残る。 */
+    public static void clearWebSession() {
+        CookieManager cm = CookieManager.getInstance();
+        cm.removeAllCookies(null);
+        cm.flush();
+        rejectedRealms.clear();
+        attemptedRealms.clear();
+    }
 
     public static void open(@NonNull Context context, @NonNull String url) {
         Intent i = new Intent(context, InAppBrowserActivity.class);
@@ -111,9 +130,48 @@ public class InAppBrowserActivity extends AppCompatActivity {
         });
 
         setupWebView();
-        injectCookies(url);
         hostView.setText(Uri.parse(url).getHost());
-        webView.loadUrl(url);
+        ensureSessionThenLoad(url);
+    }
+
+    /**
+     * cookie の入れ物はプロセス内メモリなので、起動直後や長時間放置の後は空のことがある。
+     * その状態で読み込むと Moodle のログイン画面が出る (iOS の ensureLoggedIn に相当)。
+     * Moodle のホストで cookie が無ければ、先にログインしてから読み込む。
+     */
+    private void ensureSessionThenLoad(String url) {
+        String host = Uri.parse(url).getHost();
+        PreferenceManager prefs = PreferenceManager.getInstance(this);
+        boolean isMoodle = host != null && host.equals(Uri.parse(
+                com.shakenokirimi12.uoa_app.services.MoodleService.currentBaseUrl()).getHost());
+        boolean hasSession = !NetworkClient.cookiesForHost(host).isEmpty();
+
+        if (!isMoodle || hasSession || !prefs.hasCredentials() || prefs.isCredentialsInvalid()) {
+            injectCookies(url);
+            webView.loadUrl(url);
+            return;
+        }
+
+        progress.setVisibility(View.VISIBLE);
+        new com.shakenokirimi12.uoa_app.services.MoodleService().login(
+                prefs.getUsername(), prefs.getPassword(), new com.shakenokirimi12.uoa_app.services.ServiceCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean result) {
+                if (isFinishing() || isDestroyed()) return;
+                injectCookies(url);
+                webView.loadUrl(url);
+            }
+
+            @Override
+            public void onError(String message) {
+                if (isFinishing() || isDestroyed()) return;
+                com.shakenokirimi12.uoa_app.services.MoodleService
+                        .markInvalidIfCredentialsError(InAppBrowserActivity.this, message);
+                // ログインできなくても開く。ページ側のログイン画面が逃げ道になる。
+                injectCookies(url);
+                webView.loadUrl(url);
+            }
+        });
     }
 
     private void setupWebView() {
@@ -124,6 +182,8 @@ public class InAppBrowserActivity extends AppCompatActivity {
         // WebChromeClient.onCreateWindow の実装が要り、無ければリンクが無反応になる。
         s.setSupportMultipleWindows(false);
         s.setUserAgentString(NetworkClient.getUserAgent());
+        // targetSdk 21 以降の既定だが、Basic 認証の https 判定がこれに依存するので明示する。
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
@@ -131,6 +191,9 @@ public class InAppBrowserActivity extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                // iframe の読み込みもここへ来る。区別しないと、埋め込み動画のような許可外
+                // ホストの iframe があるだけで、ユーザーが何もしていないのに外部アプリが起動する。
+                if (!request.isForMainFrame()) return false;
                 Uri uri = request.getUrl();
                 String scheme = uri.getScheme() != null ? uri.getScheme().toLowerCase(Locale.ROOT) : "";
                 // ページ自身が作ったコンテンツは通す。
@@ -164,29 +227,41 @@ public class InAppBrowserActivity extends AppCompatActivity {
             @Override
             public void onReceivedHttpAuthRequest(WebView view, HttpAuthHandler handler, String host, String realm) {
                 // Basic認証。web-int.u-aizu.ac.jp のように、Moodleのセッションとは別に
-                // 認証が掛かっているホストが学内にある。
-                // 送るのは学内ホスト、かつ https のときだけ。断られた組み合わせはこの起動中
-                // もう送らない。弾かれた資格情報を送り直すと大学側の試行回数を消費して
-                // アカウントロックへ近づく。
-                String key = host + "/" + realm;
-                boolean https = view.getUrl() != null && view.getUrl().startsWith("https://");
-                if (!isAllowedHost(host) || !https || rejectedRealms.contains(key)) {
-                    handler.cancel();
-                    if (rejectedRealms.contains(key)) {
-                        Toast.makeText(InAppBrowserActivity.this,
-                                getString(R.string.browser_auth_failed, host), Toast.LENGTH_LONG).show();
-                    }
-                    return;
-                }
+                // 認証が掛かっているホストが学内にある。送るのは学内ホストにだけ。
+                //
+                // https の判定はページの URL で行う。チャレンジ元のリソースの URL はここでは
+                // 分からないが、setMixedContentMode(NEVER_ALLOW) により https ページ内の
+                // 平文サブリソースは読み込まれないので、ページが https なら平文経路は無い。
+                boolean pageHttps = view.getUrl() != null && view.getUrl().startsWith("https://");
                 PreferenceManager prefs = PreferenceManager.getInstance(InAppBrowserActivity.this);
                 String user = prefs.getUsername();
                 String pass = prefs.getPassword();
-                if (user == null || user.isEmpty() || pass == null || pass.isEmpty()) {
+                if (!isAllowedHost(host) || !pageHttps
+                        || user == null || user.isEmpty() || pass == null || pass.isEmpty()) {
                     handler.cancel();
                     return;
                 }
-                // 送った事実を先に記録する。同じ realm で再び聞かれたら「断られた」と分かる。
-                rejectedRealms.add(key);
+
+                String key = realmKey(host, realm, user, pass);
+
+                // 断られた組み合わせはこの起動中もう送らない。弾かれた資格情報を送り直すと
+                // 大学側の試行回数を消費してアカウントロックへ近づく。
+                //
+                // 「断られた」の判定: 一度送った後に同じ realm で再び聞かれ、かつ WebView が
+                // 保存済みの資格情報をまだ試していない (useHttpAuthUsernamePassword が偽) とき。
+                // 同一 realm のサブリソースが同時にチャレンジされた場合は後者が真のままなので、
+                // 結果が返る前の 2 件目を「断られた」と誤認しない。
+                if (rejectedRealms.contains(key)
+                        || (attemptedRealms.contains(key) && !handler.useHttpAuthUsernamePassword())) {
+                    rejectedRealms.add(key);
+                    handler.cancel();
+                    Toast.makeText(InAppBrowserActivity.this,
+                            getString(R.string.browser_auth_failed, host), Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                attemptedRealms.add(key);
+                view.setHttpAuthUsernamePassword(host, realm, user, pass);
                 handler.proceed(user, pass);
             }
         });
@@ -240,6 +315,9 @@ public class InAppBrowserActivity extends AppCompatActivity {
             StringBuilder sb = new StringBuilder();
             sb.append(c.name()).append('=').append(c.value());
             sb.append("; Path=").append(c.path().isEmpty() ? "/" : c.path());
+            // ドメイン cookie は Domain を付けないと、書き込み先ホスト限定に格下げされて
+            // 同じドメインの別ホストへ遷移したときに送られない。
+            if (!c.hostOnly()) sb.append("; Domain=").append(c.domain());
             if (c.secure()) sb.append("; Secure");
             if (c.httpOnly()) sb.append("; HttpOnly");
             cm.setCookie(origin, sb.toString());

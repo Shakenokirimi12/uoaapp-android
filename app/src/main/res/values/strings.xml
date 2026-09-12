@@ -93,4 +93,11 @@
     <string name="browser_auth_failed">%1$s の認証を通過できませんでした。メニューからブラウザで開いてください。</string>
     <string name="browser_download_started">ダウンロードを開始しました: %1$s</string>
     <string name="browser_download_failed">ダウンロードを開始できませんでした</string>
+    <!-- Background sync -->
+    <string name="sync_channel_name">バックグラウンド同期</string>
+    <string name="sync_notify_changed">課題の一覧が更新されました</string>
+    <string name="sync_notify_success">同期が完了しました</string>
+    <string name="sync_notify_no_change">同期しましたが変更はありませんでした</string>
+    <string name="sync_notify_failure">同期に失敗しました</string>
+    <string name="sync_notify_credentials_invalid">ユーザー名またはパスワードが正しくないため、自動同期を停止しました。設定から入力し直してください。</string>
 </resources>

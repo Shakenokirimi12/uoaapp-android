@@ -262,6 +262,15 @@ public class HomeFragment extends Fragment {
             return;
         }
 
+        // ID/PW 誤りが確定している間は自動でログインを試みない。画面を開くたびに
+        // 誤ったパスワードで認証すると、大学側でアカウントがロックされうる。
+        if (prefs.isCredentialsInvalid()) {
+            swipeRefresh.setRefreshing(false);
+            syncStatusBar.setVisibility(View.GONE);
+            showError(MoodleService.INVALID_CREDENTIALS_MESSAGE);
+            return;
+        }
+
         csService.fetchCalendarEvents(user, pass, new ServiceCallback<List<CalendarEvent>>() {
             @Override
             public void onSuccess(List<CalendarEvent> events) {
@@ -309,6 +318,7 @@ public class HomeFragment extends Fragment {
             @Override
             public void onError(String message) {
                 if (!isAdded()) return;
+                MoodleService.markInvalidIfCredentialsError(requireContext(), message);
                 swipeRefresh.setRefreshing(false);
                 syncStatusBar.setVisibility(View.GONE);
                 showError(message);
