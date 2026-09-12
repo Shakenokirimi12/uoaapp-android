@@ -62,6 +62,28 @@ public final class AppConfigService {
 
     public void refresh(@NonNull Context context) { refresh(context, null); }
 
+    // 取得に失敗したときの再試行。killswitch は「取れなければ有効」に倒しているので、
+    // 起動直後に Wi-Fi がまだ繋がっていない等で 1 回落ちると、次に前面復帰するまで
+    // 止めたはずの機能の入口が出続ける。数回だけ間隔を空けて取り直す。
+    private static final long[] RETRY_DELAYS_MS = {5_000L, 15_000L, 45_000L};
+    private int retryAttempt = 0;
+    private final Runnable retryRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (retryContext == null) return;
+            refresh(retryContext, null);
+        }
+    };
+    @Nullable private Context retryContext;
+
+    private void scheduleRetry(@NonNull Context appContext) {
+        if (retryAttempt >= RETRY_DELAYS_MS.length) return;
+        retryContext = appContext;
+        mainHandler.removeCallbacks(retryRunnable);
+        mainHandler.postDelayed(retryRunnable, RETRY_DELAYS_MS[retryAttempt]);
+        retryAttempt++;
+    }
+
     /**
      * サーバーから取り直す。完了は callback と LiveData の両方で伝える。
      * メンテナンス画面の「再確認する」ボタンが完了を待ちたいので callback がある。
@@ -84,6 +106,7 @@ public final class AppConfigService {
                     if (resp.isSuccessful() && resp.body() != null) {
                         AppConfig parsed = gson.fromJson(resp.body().string(), AppConfig.class);
                         if (parsed != null) {
+                            Log.d(TAG, "app-config ok: " + parsed.flagsOrEmpty().size() + " flags, minRequiredVersion=" + parsed.minRequiredVersion);
                             config.postValue(parsed);
                             ok = true;
                         }
@@ -94,10 +117,17 @@ public final class AppConfigService {
             } catch (Exception e) {
                 Log.w(TAG, "app-config fetch failed: " + e.getMessage());
             }
-            if (callback != null) {
-                final boolean result = ok;
-                mainHandler.post(() -> callback.onDone(result));
-            }
+            final boolean result = ok;
+            final Context appContext = context.getApplicationContext();
+            mainHandler.post(() -> {
+                if (result) {
+                    retryAttempt = 0;
+                    mainHandler.removeCallbacks(retryRunnable);
+                } else {
+                    scheduleRetry(appContext);
+                }
+                if (callback != null) callback.onDone(result);
+            });
         });
     }
 

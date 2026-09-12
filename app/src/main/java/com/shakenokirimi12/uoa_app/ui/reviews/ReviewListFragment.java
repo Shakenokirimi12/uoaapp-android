@@ -37,6 +37,7 @@ public class ReviewListFragment extends Fragment implements ReviewGuidelinesDial
     private RecyclerView recyclerCourses;
     private TextInputEditText editSearch;
     private View buttonWriteInstructor;
+    private View buttonWriteCourse;
     private ReviewCourseAdapter courseAdapter;
     private ReviewCourseAdapter instructorAdapter;
     private boolean isInstructorTab = false;
@@ -109,8 +110,11 @@ public class ReviewListFragment extends Fragment implements ReviewGuidelinesDial
         recyclerCourses.setLayoutManager(new LinearLayoutManager(requireContext()));
         editSearch = view.findViewById(R.id.edit_search);
         buttonWriteInstructor = view.findViewById(R.id.button_write_instructor);
+        buttonWriteCourse = view.findViewById(R.id.button_write_course);
 
-        // Course adapter (from grades)
+        // Course adapter: courses that already have reviews, from the server (same as iOS).
+        // Listing the grades cache here was wrong twice over: it is empty until CampusSquare
+        // has been fetched, and it keyed courses by name while the server keys by subject code.
         courseAdapter = new ReviewCourseAdapter();
         courseAdapter.setOnCourseClickListener(course -> {
             Bundle args = new Bundle();
@@ -139,12 +143,13 @@ public class ReviewListFragment extends Fragment implements ReviewGuidelinesDial
                 editSearch.setHint(isInstructorTab ? "教員名を検索" : "科目名を検索");
                 editSearch.setText("");
                 buttonWriteInstructor.setVisibility(isInstructorTab ? View.VISIBLE : View.GONE);
+                buttonWriteCourse.setVisibility(isInstructorTab ? View.GONE : View.VISIBLE);
                 if (isInstructorTab) {
                     recyclerCourses.setAdapter(instructorAdapter);
                     loadInstructors("");
                 } else {
                     recyclerCourses.setAdapter(courseAdapter);
-                    loadGrades("");
+                    loadCourses("");
                 }
             }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
@@ -155,7 +160,7 @@ public class ReviewListFragment extends Fragment implements ReviewGuidelinesDial
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 String q = editSearch.getText() != null ? editSearch.getText().toString().trim() : "";
                 if (isInstructorTab) loadInstructors(q);
-                else loadGrades(q);
+                else loadCourses(q);
                 return true;
             }
             return false;
@@ -170,30 +175,81 @@ public class ReviewListFragment extends Fragment implements ReviewGuidelinesDial
             Navigation.findNavController(v).navigate(R.id.action_reviews_to_write_review, args);
         });
 
+        // Write a course review: pick one of the user's own courses (grades cache), keyed by
+        // subject code so it lines up with reviews written from iOS.
+        buttonWriteCourse.setOnClickListener(v -> showTakenCoursePicker(v));
+
         if (prefs.getReviewUserId().isEmpty() && !prefs.getUsername().isEmpty()) {
             registerUser(prefs);
         }
 
         view.findViewById(R.id.swipe_refresh).setEnabled(false);
-        loadGrades("");
+        loadCourses("");
     }
 
-    private void loadGrades(String query) {
+    private void loadCourses(String query) {
+        reviewService.searchCourses(query, new ServiceCallback<List<ReviewCourse>>() {
+            @Override
+            public void onSuccess(List<ReviewCourse> courses) {
+                if (!isAdded()) return;
+                courseAdapter.setItems(courses);
+                showEmptyIfNeeded(courses.isEmpty(), "まだレビューのある授業がありません。\n下のボタンから履修した授業のレビューを書けます。");
+            }
+
+            @Override
+            public void onError(String message) {
+                if (!isAdded()) return;
+                courseAdapter.setItems(new ArrayList<>());
+                showEmptyIfNeeded(true, message);
+            }
+        });
+    }
+
+    private void showEmptyIfNeeded(boolean empty, String message) {
+        View v = getView();
+        if (v == null) return;
+        TextView textEmpty = v.findViewById(R.id.text_empty);
+        textEmpty.setText(message);
+        textEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+    }
+
+    private void showTakenCoursePicker(View anchor) {
         List<Grade> grades = DataCache.getInstance(requireContext()).loadGrades();
         Set<String> seen = new LinkedHashSet<>();
-        List<ReviewCourse> items = new ArrayList<>();
-
+        List<Grade> taken = new ArrayList<>();
         for (Grade g : grades) {
-            if (g.getCourseName() == null || seen.contains(g.getCourseName())) continue;
-            if (!query.isEmpty() && !g.getCourseName().toLowerCase().contains(query.toLowerCase())) continue;
-            seen.add(g.getCourseName());
-            ReviewCourse rc = new ReviewCourse();
-            rc.setCourseId(g.getCourseName().replace(" ", "_"));
-            rc.setCourseName(g.getCourseName());
-            rc.setInstructor(g.getGrade() + (g.getScore() != null && !g.getScore().isEmpty() ? " (" + g.getScore() + "点)" : ""));
-            items.add(rc);
+            String code = g.getSubjectCode();
+            if (code == null || code.isEmpty() || g.getCourseName() == null || seen.contains(code)) continue;
+            seen.add(code);
+            taken.add(g);
         }
-        courseAdapter.setItems(items);
+        if (taken.isEmpty()) {
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("履修した授業が見つかりません")
+                    .setMessage("先に「成績一覧」を開いて履修データを読み込んでください。")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+        CharSequence[] labels = new CharSequence[taken.size()];
+        for (int i = 0; i < taken.size(); i++) {
+            Grade g = taken.get(i);
+            String year = g.getYear() != null && !g.getYear().isEmpty() ? g.getYear() + " " : "";
+            labels[i] = year + g.getCourseName();
+        }
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("レビューを書く授業")
+                .setItems(labels, (d, which) -> {
+                    Grade g = taken.get(which);
+                    Bundle args = new Bundle();
+                    args.putString("course_id", g.getSubjectCode());
+                    args.putString("course_name", g.getCourseName());
+                    args.putString("instructor", g.getInstructor() != null ? g.getInstructor() : "");
+                    args.putString("review_type", "course");
+                    Navigation.findNavController(anchor).navigate(R.id.action_reviews_to_write_review, args);
+                })
+                .setNegativeButton("キャンセル", null)
+                .show();
     }
 
     private void loadInstructors(String query) {
@@ -202,10 +258,15 @@ public class ReviewListFragment extends Fragment implements ReviewGuidelinesDial
             public void onSuccess(List<ReviewCourse> instructors) {
                 if (!isAdded()) return;
                 instructorAdapter.setItems(instructors);
+                showEmptyIfNeeded(instructors.isEmpty(), "教員が見つかりません");
             }
 
             @Override
-            public void onError(String message) {}
+            public void onError(String message) {
+                if (!isAdded()) return;
+                instructorAdapter.setItems(new ArrayList<>());
+                showEmptyIfNeeded(true, message);
+            }
         });
     }
 

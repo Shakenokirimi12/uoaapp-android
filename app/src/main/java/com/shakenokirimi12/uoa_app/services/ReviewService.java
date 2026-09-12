@@ -11,6 +11,7 @@ import com.shakenokirimi12.uoa_app.data.models.ReviewCourse;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -196,21 +197,53 @@ public class ReviewService {
         });
     }
 
+    /**
+     * Register the course in the server catalogue so it shows up in /api/courses.
+     * iOS does this before every course review; without it a review written from
+     * Android lands in the DB but the course never appears in the list.
+     * Failure is reported but callers are expected to continue with the submit.
+     */
+    public void upsertCourse(String courseId, String courseName, String instructor,
+                             ServiceCallback<Boolean> callback) {
+        executor.execute(() -> {
+            try {
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("courseId", courseId);
+                payload.put("courseName", courseName);
+                if (instructor != null && !instructor.isEmpty()) payload.put("instructor", instructor);
+                Request request = new Request.Builder()
+                        .url(BASE_URL + "/api/courses/upsert")
+                        .post(RequestBody.create(gson.toJson(payload), JSON_TYPE))
+                        .build();
+                try (Response resp = client.newCall(request).execute()) {
+                    if (!resp.isSuccessful()) {
+                        postError(callback, parseError(resp));
+                        return;
+                    }
+                    postSuccess(callback, true);
+                }
+            } catch (Exception e) {
+                postError(callback, e.getMessage());
+            }
+        });
+    }
+
     // Submit a review
     public void submitReview(String courseId, String courseName, String userId,
                              int rating, String title, String body, int enrollmentYear,
-                             String reviewType, ServiceCallback<Boolean> callback) {
+                             String reviewType, String instructor, ServiceCallback<Boolean> callback) {
         executor.execute(() -> {
             try {
-                String json = gson.toJson(Map.of(
-                        "userId", userId,
-                        "courseName", courseName,
-                        "rating", rating,
-                        "title", title != null ? title : "",
-                        "body", body,
-                        "enrollmentYear", enrollmentYear,
-                        "reviewType", reviewType != null ? reviewType : "course"
-                ));
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("userId", userId);
+                payload.put("courseName", courseName);
+                payload.put("rating", rating);
+                payload.put("title", title != null ? title : "");
+                payload.put("body", body);
+                payload.put("enrollmentYear", enrollmentYear);
+                payload.put("reviewType", reviewType != null ? reviewType : "course");
+                if (instructor != null && !instructor.isEmpty()) payload.put("instructor", instructor);
+                String json = gson.toJson(payload);
                 Request request = new Request.Builder()
                         .url(BASE_URL + "/api/courses/" + courseId + "/reviews")
                         .post(RequestBody.create(json, JSON_TYPE))

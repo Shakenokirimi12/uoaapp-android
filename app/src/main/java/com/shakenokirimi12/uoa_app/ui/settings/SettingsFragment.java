@@ -40,7 +40,92 @@ public class SettingsFragment extends Fragment {
 
     private PreferenceManager prefs;
     private TextView textUsername;
+    private MaterialSwitch switchAutoAttendance;
+    private TextView textLocationWarning;
     private int versionTapCount = 0;
+
+    // ---- 位置情報の許可 ----
+    //
+    // ジオフェンスはフォアグラウンド許可だけでも登録できるが、授業中にアプリを開いていることは
+    // 無いので実際に発火するには「常に許可」が要る (iOS の Always と同じ)。
+    // API 30 以降はバックグラウンド許可を直接ダイアログで出せず、設定画面に飛ばされる。
+
+    private final ActivityResultLauncher<String[]> fineLocationLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                if (!isAdded()) return;
+                if (hasFineLocation()) {
+                    switchAutoAttendance.setChecked(true);
+                } else {
+                    Toast.makeText(requireContext(), "位置情報の許可が無いと自動出席は使えません", Toast.LENGTH_LONG).show();
+                    updateLocationWarning();
+                }
+            });
+
+    private final ActivityResultLauncher<String> backgroundLocationLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (!isAdded()) return;
+                if (granted) {
+                    LocationGeofenceService.startGeofencing(requireContext(), 37.5234, 139.9388, 200);
+                }
+                updateLocationWarning();
+            });
+
+    private boolean hasFineLocation() {
+        return androidx.core.content.ContextCompat.checkSelfPermission(requireContext(),
+                android.Manifest.permission.ACCESS_FINE_LOCATION)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean hasBackgroundLocation() {
+        if (Build.VERSION.SDK_INT < 29) return true;
+        return androidx.core.content.ContextCompat.checkSelfPermission(requireContext(),
+                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void enableAutoAttendance() {
+        prefs.setAutoAttendanceEnabled(true);
+        LocationGeofenceService.startGeofencing(requireContext(), 37.5234, 139.9388, 200);
+        if (!hasBackgroundLocation()) {
+            requestBackgroundLocation();
+        }
+        updateLocationWarning();
+    }
+
+    private void requestBackgroundLocation() {
+        if (!hasFineLocation()) {
+            fineLocationLauncher.launch(new String[] {
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION});
+            return;
+        }
+        if (hasBackgroundLocation()) return;
+        String option = Build.VERSION.SDK_INT >= 30
+                ? requireContext().getPackageManager().getBackgroundPermissionOptionLabel().toString()
+                : "常に許可";
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("位置情報を「" + option + "」にしてください")
+                .setMessage("自動出席はアプリを閉じている間にキャンパスへの到着を検知します。"
+                        + "次の画面で位置情報を「" + option + "」に変更してください。")
+                .setPositiveButton("設定へ", (d, w) ->
+                        backgroundLocationLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION))
+                .setNegativeButton("あとで", null)
+                .show();
+    }
+
+    /** iOS の StatusNoticeBanner 相当。有効なのに「常に許可」でないときだけ出す。 */
+    private void updateLocationWarning() {
+        if (textLocationWarning == null) return;
+        boolean show = prefs.isAutoAttendanceEnabled() && !(hasFineLocation() && hasBackgroundLocation());
+        textLocationWarning.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 設定アプリから戻ってきたときに反映する。
+        updateLocationWarning();
+    }
 
     private final ActivityResultLauncher<Intent> backupLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -163,17 +248,30 @@ public class SettingsFragment extends Fragment {
         switchBgFailure.setOnCheckedChangeListener((v, c) -> prefs.setBgNotifyFailure(c));
         switchBgNoChange.setOnCheckedChangeListener((v, c) -> prefs.setBgNotifyNoChange(c));
 
-        // Auto attendance
-        MaterialSwitch switchAutoAttendance = view.findViewById(R.id.switch_auto_attendance);
+        // Auto attendance. Nothing used to request location permission, so the switch
+        // turned on, the geofence silently failed, and the feature never worked.
+        switchAutoAttendance = view.findViewById(R.id.switch_auto_attendance);
+        textLocationWarning = view.findViewById(R.id.text_location_warning);
         switchAutoAttendance.setChecked(prefs.isAutoAttendanceEnabled());
         switchAutoAttendance.setOnCheckedChangeListener((v, checked) -> {
-            prefs.setAutoAttendanceEnabled(checked);
-            if (checked) {
-                LocationGeofenceService.startGeofencing(requireContext(), 37.5234, 139.9388, 200);
-            } else {
+            if (!checked) {
+                prefs.setAutoAttendanceEnabled(false);
                 LocationGeofenceService.stopGeofencing(requireContext());
+                updateLocationWarning();
+                return;
             }
+            if (!hasFineLocation()) {
+                // Keep the switch off until the permission result comes back.
+                switchAutoAttendance.setChecked(false);
+                fineLocationLauncher.launch(new String[] {
+                        android.Manifest.permission.ACCESS_FINE_LOCATION,
+                        android.Manifest.permission.ACCESS_COARSE_LOCATION});
+                return;
+            }
+            enableAutoAttendance();
         });
+        textLocationWarning.setOnClickListener(v -> requestBackgroundLocation());
+        updateLocationWarning();
 
         // Navigation customization
         view.findViewById(R.id.button_nav_settings).setOnClickListener(v ->

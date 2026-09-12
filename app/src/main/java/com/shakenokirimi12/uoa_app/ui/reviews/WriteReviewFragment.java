@@ -40,6 +40,7 @@ public class WriteReviewFragment extends Fragment {
         final String[] courseId = {getArguments() != null ? getArguments().getString("course_id", "") : ""};
         final String[] courseName = {getArguments() != null ? getArguments().getString("course_name", "") : ""};
         String reviewType = getArguments() != null ? getArguments().getString("review_type", "course") : "course";
+        final String instructor = getArguments() != null ? getArguments().getString("instructor", "") : "";
         boolean needsNameInput = "instructor".equals(reviewType) && courseId[0].isEmpty();
 
         TextView textCourseName = view.findViewById(R.id.text_course_name);
@@ -116,9 +117,8 @@ public class WriteReviewFragment extends Fragment {
             }
 
             v.setEnabled(false);
-            new ReviewService().submitReview(courseId[0], courseName[0], userId,
-                    selectedRating, title, body, year, reviewType,
-                    new ServiceCallback<Boolean>() {
+            ReviewService service = new ReviewService();
+            ServiceCallback<Boolean> submitCallback = new ServiceCallback<Boolean>() {
                         @Override
                         public void onSuccess(Boolean result) {
                             if (!isAdded()) return;
@@ -132,7 +132,19 @@ public class WriteReviewFragment extends Fragment {
                             v.setEnabled(true);
                             Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
                         }
-                    });
+                    };
+            Runnable submit = () -> service.submitReview(courseId[0], courseName[0], userId,
+                    selectedRating, title, body, year, reviewType, instructor, submitCallback);
+            if ("course".equals(reviewType)) {
+                // Same order as iOS: put the course in the catalogue first so the list
+                // shows it right after posting. The upsert failing is not fatal.
+                service.upsertCourse(courseId[0], courseName[0], instructor, new ServiceCallback<Boolean>() {
+                    @Override public void onSuccess(Boolean result) { submit.run(); }
+                    @Override public void onError(String message) { submit.run(); }
+                });
+            } else {
+                submit.run();
+            }
         });
     }
 

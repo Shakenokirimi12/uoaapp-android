@@ -63,12 +63,10 @@ public class CourseReviewsFragment extends Fragment {
 
         textCourseName.setText(courseName);
 
-        if (getArguments() != null) {
-            double avg = getArguments().getDouble("avg_rating", 0);
-            int count = getArguments().getInt("review_count", 0);
-            textAvgRating.setText(starsFor(avg) + " " + String.format("%.1f", avg));
-            textReviewCount.setText(count + "件のレビュー");
-        }
+        // The summary is derived from the reviews actually loaded (see loadReviews), not from
+        // navigation args: those were typed float/double inconsistently and went stale after posting.
+        textAvgRating.setText("");
+        textReviewCount.setText("");
 
         // Hide instructor tab - this screen is course-only
         view.findViewById(R.id.tab_review_type).setVisibility(View.GONE);
@@ -119,6 +117,7 @@ public class CourseReviewsFragment extends Fragment {
                     if (!"instructor".equals(r.getReviewType())) courseOnly.add(r);
                 }
                 adapter.setItems(courseOnly);
+                updateSummary(courseOnly);
                 swipeRefresh.setRefreshing(false);
             }
 
@@ -129,6 +128,23 @@ public class CourseReviewsFragment extends Fragment {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void updateSummary(List<Review> reviews) {
+        View v = getView();
+        if (v == null) return;
+        TextView textAvgRating = v.findViewById(R.id.text_avg_rating);
+        TextView textReviewCount = v.findViewById(R.id.text_review_count);
+        if (reviews.isEmpty()) {
+            textAvgRating.setText("");
+            textReviewCount.setText("まだレビューがありません");
+            return;
+        }
+        double sum = 0;
+        for (Review r : reviews) sum += r.getRating();
+        double avg = sum / reviews.size();
+        textAvgRating.setText(starsFor(avg) + " " + String.format(java.util.Locale.JAPAN, "%.1f", avg));
+        textReviewCount.setText(reviews.size() + "件のレビュー");
     }
 
     private void showReviewMenu(Review review, View anchor, String userId) {
