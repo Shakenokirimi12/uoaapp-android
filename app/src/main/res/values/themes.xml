@@ -50,6 +50,25 @@
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
 
+        <!-- Typography: Zen Kaku Gothic New everywhere (type.xml). -->
+        <item name="fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="textAppearanceDisplayLarge">@style/TextAppearance.Uoa.DisplayLarge</item>
+        <item name="textAppearanceDisplayMedium">@style/TextAppearance.Uoa.DisplayMedium</item>
+        <item name="textAppearanceDisplaySmall">@style/TextAppearance.Uoa.DisplaySmall</item>
+        <item name="textAppearanceHeadlineLarge">@style/TextAppearance.Uoa.HeadlineLarge</item>
+        <item name="textAppearanceHeadlineMedium">@style/TextAppearance.Uoa.HeadlineMedium</item>
+        <item name="textAppearanceHeadlineSmall">@style/TextAppearance.Uoa.HeadlineSmall</item>
+        <item name="textAppearanceTitleLarge">@style/TextAppearance.Uoa.TitleLarge</item>
+        <item name="textAppearanceTitleMedium">@style/TextAppearance.Uoa.TitleMedium</item>
+        <item name="textAppearanceTitleSmall">@style/TextAppearance.Uoa.TitleSmall</item>
+        <item name="textAppearanceBodyLarge">@style/TextAppearance.Uoa.BodyLarge</item>
+        <item name="textAppearanceBodyMedium">@style/TextAppearance.Uoa.BodyMedium</item>
+        <item name="textAppearanceBodySmall">@style/TextAppearance.Uoa.BodySmall</item>
+        <item name="textAppearanceLabelLarge">@style/TextAppearance.Uoa.LabelLarge</item>
+        <item name="textAppearanceLabelMedium">@style/TextAppearance.Uoa.LabelMedium</item>
+        <item name="textAppearanceLabelSmall">@style/TextAppearance.Uoa.LabelSmall</item>
+
         <!-- Slightly rounder than the M3 default so cards and sheets feel current. -->
         <item name="shapeAppearanceCornerSmall">@style/ShapeAppearance.Uoa.Small</item>
         <item name="shapeAppearanceCornerMedium">@style/ShapeAppearance.Uoa.Medium</item>

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Material 3 type scale re-declared on Zen Kaku Gothic New. MDC hardcodes sans-serif in its
+  TextAppearance.Material3.* styles, so the theme has to point every scale at these instead.
+  Tracking is reduced from the Roboto values: CJK glyphs already carry their own side bearings.
+  Headlines and TitleLarge use Medium: at 400 the face reads too light for Japanese titles.
+-->
+<resources>
+    <style name="TextAppearance.Uoa.DisplayLarge" parent="TextAppearance.Material3.DisplayLarge">
+        <item name="fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:letterSpacing">-0.0044</item>
+    </style>
+    <style name="TextAppearance.Uoa.DisplayMedium" parent="TextAppearance.Material3.DisplayMedium">
+        <item name="fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:letterSpacing">0.0000</item>
+    </style>
+    <style name="TextAppearance.Uoa.DisplaySmall" parent="TextAppearance.Material3.DisplaySmall">
+        <item name="fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:letterSpacing">0.0000</item>
+    </style>
+    <style name="TextAppearance.Uoa.HeadlineLarge" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:textFontWeight">500</item>
+        <item name="android:letterSpacing">0.0000</item>
+    </style>
+    <style name="TextAppearance.Uoa.HeadlineMedium" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:textFontWeight">500</item>
+        <item name="android:letterSpacing">0.0000</item>
+    </style>
+    <style name="TextAppearance.Uoa.HeadlineSmall" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:textFontWeight">500</item>
+        <item name="android:letterSpacing">0.0000</item>
+    </style>
+    <style name="TextAppearance.Uoa.TitleLarge" parent="TextAppearance.Material3.TitleLarge">
+        <item name="fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:textFontWeight">500</item>
+        <item name="android:letterSpacing">0.0000</item>
+    </style>
+    <style name="TextAppearance.Uoa.TitleMedium" parent="TextAppearance.Material3.TitleMedium">
+        <item name="fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:textFontWeight">500</item>
+        <item name="android:letterSpacing">0.0094</item>
+    </style>
+    <style name="TextAppearance.Uoa.TitleSmall" parent="TextAppearance.Material3.TitleSmall">
+        <item name="fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:textFontWeight">500</item>
+        <item name="android:letterSpacing">0.0071</item>
+    </style>
+    <style name="TextAppearance.Uoa.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
+        <item name="fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:letterSpacing">0.0000</item>
+    </style>
+    <style name="TextAppearance.Uoa.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
+        <item name="fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:letterSpacing">0.0000</item>
+    </style>
+    <style name="TextAppearance.Uoa.BodySmall" parent="TextAppearance.Material3.BodySmall">
+        <item name="fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:letterSpacing">0.0000</item>
+    </style>
+    <style name="TextAppearance.Uoa.LabelLarge" parent="TextAppearance.Material3.LabelLarge">
+        <item name="fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:textFontWeight">500</item>
+        <item name="android:letterSpacing">0.0071</item>
+    </style>
+    <style name="TextAppearance.Uoa.LabelMedium" parent="TextAppearance.Material3.LabelMedium">
+        <item name="fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:textFontWeight">500</item>
+        <item name="android:letterSpacing">0.0417</item>
+    </style>
+    <style name="TextAppearance.Uoa.LabelSmall" parent="TextAppearance.Material3.LabelSmall">
+        <item name="fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
+        <item name="android:textFontWeight">500</item>
+        <item name="android:letterSpacing">0.0455</item>
+    </style>
+</resources>
