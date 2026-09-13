@@ -114,7 +114,8 @@ public class CalendarFragment extends Fragment {
             @Override
             public void onError(String message) {
                 if (isAdded()) com.shakenokirimi12.uoa_app.services.AuthErrors.markInvalidIfCredentialsError(requireContext(), message);
-                if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                // Lead with the meaning; the raw reason (host, port) stays for diagnosis.
+                if (isAdded()) Toast.makeText(requireContext(), "CampusSquare の予定を取得できませんでした\n" + message, Toast.LENGTH_LONG).show();
             }
         });
 

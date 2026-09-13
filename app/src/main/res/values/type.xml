@@ -4,6 +4,7 @@
   TextAppearance.Material3.* styles, so the theme has to point every scale at these instead.
   Tracking is reduced from the Roboto values: CJK glyphs already carry their own side bearings.
   Headlines and TitleLarge use Medium: at 400 the face reads too light for Japanese titles.
+  Body line heights are 2sp above the M3 defaults: Japanese needs the extra leading.
 -->
 <resources>
     <style name="TextAppearance.Uoa.DisplayLarge" parent="TextAppearance.Material3.DisplayLarge">
@@ -53,7 +54,9 @@
         <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
         <item name="android:textFontWeight">500</item>
         <item name="android:letterSpacing">0.0094</item>
-    </style>
+            <item name="lineHeight">26sp</item>
+        <item name="android:lineHeight">26sp</item>
+</style>
     <style name="TextAppearance.Uoa.TitleSmall" parent="TextAppearance.Material3.TitleSmall">
         <item name="fontFamily">@font/zen_kaku_gothic_new_medium</item>
         <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
@@ -65,19 +68,25 @@
         <item name="android:fontFamily">@font/zen_kaku_gothic_new</item>
         <item name="android:textFontWeight">400</item>
         <item name="android:letterSpacing">0.0000</item>
-    </style>
+            <item name="lineHeight">26sp</item>
+        <item name="android:lineHeight">26sp</item>
+</style>
     <style name="TextAppearance.Uoa.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
         <item name="fontFamily">@font/zen_kaku_gothic_new</item>
         <item name="android:fontFamily">@font/zen_kaku_gothic_new</item>
         <item name="android:textFontWeight">400</item>
         <item name="android:letterSpacing">0.0000</item>
-    </style>
+            <item name="lineHeight">22sp</item>
+        <item name="android:lineHeight">22sp</item>
+</style>
     <style name="TextAppearance.Uoa.BodySmall" parent="TextAppearance.Material3.BodySmall">
         <item name="fontFamily">@font/zen_kaku_gothic_new</item>
         <item name="android:fontFamily">@font/zen_kaku_gothic_new</item>
         <item name="android:textFontWeight">400</item>
         <item name="android:letterSpacing">0.0000</item>
-    </style>
+            <item name="lineHeight">18sp</item>
+        <item name="android:lineHeight">18sp</item>
+</style>
     <style name="TextAppearance.Uoa.LabelLarge" parent="TextAppearance.Material3.LabelLarge">
         <item name="fontFamily">@font/zen_kaku_gothic_new_medium</item>
         <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
@@ -95,5 +104,13 @@
         <item name="android:fontFamily">@font/zen_kaku_gothic_new_medium</item>
         <item name="android:textFontWeight">500</item>
         <item name="android:letterSpacing">0.0455</item>
+    </style>
+
+    <!-- Calendar day numbers: same face, colour follows the selection state. -->
+    <style name="TextAppearance.Uoa.CalendarDay" parent="TextAppearance.Uoa.BodyMedium">
+        <item name="android:textColor">@color/calendar_day_text</item>
+    </style>
+    <style name="TextAppearance.Uoa.CalendarWeekDay" parent="TextAppearance.Uoa.LabelMedium">
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
     </style>
 </resources>

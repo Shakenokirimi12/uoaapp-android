@@ -25,6 +25,8 @@
     <!-- Section label above a group (M3 list subheader). -->
     <style name="Widget.Uoa.SectionHeader" parent="Widget.MaterialComponents.TextView">
         <item name="android:textAppearance">?attr/textAppearanceTitleMedium</item>
+        <!-- Bold: Zen Kaku Medium is too close to Regular for a header to separate from body. -->
+        <item name="android:fontFamily">@font/zen_kaku_gothic_new_bold</item>
         <item name="android:textColor">?attr/colorOnSurface</item>
         <item name="android:paddingStart">16dp</item>
         <item name="android:paddingEnd">16dp</item>

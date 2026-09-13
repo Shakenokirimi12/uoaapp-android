@@ -19,8 +19,8 @@
             android:id="@+id/calendar_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:dateTextAppearance="?attr/textAppearanceBodyMedium"
-            android:weekDayTextAppearance="?attr/textAppearanceLabelMedium" />
+            android:dateTextAppearance="@style/TextAppearance.Uoa.CalendarDay"
+            android:weekDayTextAppearance="@style/TextAppearance.Uoa.CalendarWeekDay" />
     </com.google.android.material.card.MaterialCardView>
 
     <com.google.android.material.tabs.TabLayout
