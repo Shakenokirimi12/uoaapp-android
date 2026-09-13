@@ -56,8 +56,16 @@ public class MoodleService {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Gson gson = new Gson();
 
-    private String sesskey = "";
-    private String userid = "";
+    // Shared across instances: the cookie jar is process-wide already, and every screen
+    // creates its own MoodleService. Per-instance keys meant a fresh instance (course
+    // detail) called the AJAX API with an empty sesskey and quietly got nothing back.
+    private static String sesskey = "";
+    private static String userid = "";
+
+    /** True once any instance has logged in during this process. */
+    public boolean hasSession() {
+        return sesskey != null && !sesskey.isEmpty();
+    }
 
     public void login(String username, String password, ServiceCallback<Boolean> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
@@ -336,7 +344,8 @@ public class MoodleService {
                     com.google.gson.JsonArray respArr = new com.google.gson.Gson().fromJson(body, com.google.gson.JsonArray.class);
                     if (respArr != null && respArr.size() > 0) {
                         com.google.gson.JsonObject first = respArr.get(0).getAsJsonObject();
-                        if (!first.has("error") || first.get("error").isJsonNull()) {
+                        com.google.gson.JsonElement err = first.get("error");
+                        if (err == null || err.isJsonNull() || (err.isJsonPrimitive() && !err.getAsBoolean())) {
                             com.google.gson.JsonElement data = first.get("data");
                             java.lang.reflect.Type listType = new com.google.gson.reflect.TypeToken<List<com.shakenokirimi12.uoa_app.data.models.CourseSection>>() {}.getType();
                             List<com.shakenokirimi12.uoa_app.data.models.CourseSection> sections =
@@ -345,13 +354,79 @@ public class MoodleService {
                             postSuccess(callback, sections);
                             return;
                         }
+                        // core_course_get_contents is not an AJAX-enabled function on this
+                        // Moodle ("ウェブサービスを利用できません"), so this branch is the normal
+                        // path. Same as iOS: fall back to scraping the course page.
+                        Log.d(TAG, "core_course_get_contents unavailable, scraping course page");
                     }
                 }
-                postSuccess(callback, new java.util.ArrayList<>());
+                postSuccess(callback, scrapeCourseContents(client, courseId));
             } catch (Exception e) {
                 postError(callback, e.getMessage());
             }
         });
+    }
+
+    /**
+     * Port of the iOS fetchCourseContentsScraping: parse /course/view.php?id=N into sections
+     * and activity links. Throws when the page cannot be loaded so the caller shows an error
+     * instead of an empty (and therefore misleading) list.
+     */
+    private List<com.shakenokirimi12.uoa_app.data.models.CourseSection> scrapeCourseContents(OkHttpClient client, int courseId) throws java.io.IOException {
+        Request req = new Request.Builder()
+                .url(baseUrl() + "/course/view.php?id=" + courseId)
+                .header("User-Agent", NetworkClient.getUserAgent())
+                .build();
+        String html;
+        try (Response resp = client.newCall(req).execute()) {
+            if (resp.code() != 200 || resp.body() == null) {
+                throw new java.io.IOException("コースページを読み込めませんでした (HTTP " + resp.code() + ")");
+            }
+            html = resp.body().string();
+        }
+        List<com.shakenokirimi12.uoa_app.data.models.CourseSection> sections = new ArrayList<>();
+        Matcher sec = Pattern.compile("<li[^>]+id=\"section-(\\d+)\"([^>]*)>([\\s\\S]*?)(?=<li[^>]+id=\"section-\\d+\"|$)", Pattern.CASE_INSENSITIVE).matcher(html);
+        Pattern nameP = Pattern.compile("<h3[^>]+class=\"[^\"]*sectionname[^\"]*\"[^>]*>([\\s\\S]*?)</h3>");
+        Pattern ariaP = Pattern.compile("aria-label=\"([^\"]+)\"");
+        Pattern dataNameP = Pattern.compile("data-sectionname=\"([^\"]+)\"");
+        Pattern summaryP = Pattern.compile("<div[^>]+class=\"[^\"]*summary[^\"]*\"[^>]*>([\\s\\S]*?)</div>");
+        Pattern actP = Pattern.compile("<li[^>]+class=\"activity\\s+([^\"]*)\"\\s+id=\"module-(\\d+)\"[^>]*>([\\s\\S]*?)</li>", Pattern.CASE_INSENSITIVE);
+        Pattern hrefP = Pattern.compile("<a[^>]+href=\"([^\"]+)\"");
+        Pattern spanNameP = Pattern.compile("<span[^>]+class=\"[^\"]*(?:instance|activity)name[^\"]*\"[^>]*>([\\s\\S]*?)</span>");
+        Pattern linkTextP = Pattern.compile("<a[^>]+href=\"[^\"]+\"[^>]*>([\\s\\S]*?)</a>");
+        Pattern modtypeP = Pattern.compile("modtype_(\\w+)");
+        while (sec.find()) {
+            String num = sec.group(1), attrs = sec.group(2), content = sec.group(3);
+            String name;
+            Matcher m;
+            if ((m = nameP.matcher(content)).find()) name = stripTags(m.group(1));
+            else if ((m = ariaP.matcher(attrs)).find()) name = m.group(1).trim();
+            else if ((m = dataNameP.matcher(attrs)).find()) name = m.group(1).trim();
+            else name = "0".equals(num) ? "General" : "Section " + num;
+            String summary = (m = summaryP.matcher(content)).find() ? m.group(1).trim() : "";
+            com.shakenokirimi12.uoa_app.data.models.CourseSection section =
+                    new com.shakenokirimi12.uoa_app.data.models.CourseSection(toInt(num), name, summary);
+            Matcher act = actP.matcher(content);
+            while (act.find()) {
+                String classes = act.group(1), inner = act.group(3);
+                Matcher href = hrefP.matcher(inner);
+                if (!href.find()) continue;
+                String url = href.group(1).replace("&amp;", "&");
+                String modName;
+                if ((m = spanNameP.matcher(inner)).find()) modName = stripTags(m.group(1));
+                else if ((m = linkTextP.matcher(inner)).find()) modName = stripTags(m.group(1));
+                else modName = "";
+                String modname = (m = modtypeP.matcher(classes)).find() ? m.group(1) : "unknown";
+                section.getModules().add(new com.shakenokirimi12.uoa_app.data.models.CourseSection.CourseModule(
+                        toInt(act.group(2)), modName, modname, url));
+            }
+            sections.add(section);
+        }
+        return sections;
+    }
+
+    private static String stripTags(String s) {
+        return android.text.Html.fromHtml(s.replaceAll("<[^>]*>", ""), android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim();
     }
 
     private static String urlEncode(String s) {

@@ -9,6 +9,12 @@ public class CourseSection {
     private String summary;
     private List<CourseModule> modules = new ArrayList<>();
 
+    public CourseSection() {}
+
+    public CourseSection(int id, String name, String summary) {
+        this.id = id; this.name = name; this.summary = summary;
+    }
+
     public int getId() { return id; }
     public String getName() { return name != null ? name : ""; }
     public String getSummary() { return summary != null ? summary.replaceAll("<[^>]+>", "").trim() : ""; }
@@ -19,6 +25,12 @@ public class CourseSection {
         private String name;
         private String modname;
         private String url;
+
+        public CourseModule() {}
+
+        public CourseModule(int id, String name, String modname, String url) {
+            this.id = id; this.name = name; this.modname = modname; this.url = url;
+        }
 
         public int getId() { return id; }
         public String getName() { return name != null ? name : ""; }

@@ -25,6 +25,7 @@ import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.color.MaterialColors;
 import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity;
 import com.shakenokirimi12.uoa_app.data.AttendanceManager;
 import com.shakenokirimi12.uoa_app.data.DataCache;
@@ -242,19 +243,55 @@ public class CourseDetailFragment extends Fragment {
         layoutContents.removeAllViews();
 
         MoodleService service = new MoodleService();
-        service.fetchCourseContents(courseId, new ServiceCallback<List<CourseSection>>() {
+        ServiceCallback<List<CourseSection>> onContents = new ServiceCallback<List<CourseSection>>() {
             @Override
             public void onSuccess(List<CourseSection> sections) {
                 if (!isAdded()) return;
                 progressContents.setVisibility(View.GONE);
-                buildContentsUI(sections);
+                if (sections.isEmpty()) {
+                    showContentsMessage("コンテンツはありません");
+                } else {
+                    buildContentsUI(sections);
+                }
             }
             @Override
             public void onError(String message) {
                 if (!isAdded()) return;
                 progressContents.setVisibility(View.GONE);
+                showContentsMessage(message);
+            }
+        };
+        if (service.hasSession()) {
+            service.fetchCourseContents(courseId, onContents);
+            return;
+        }
+        // Reached this screen before any other tab logged in (e.g. cold start straight
+        // into a course via the courses cache): log in first, like the tabs do.
+        PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
+        service.login(prefs.getUsername(), prefs.getPassword(), new ServiceCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean ok) {
+                if (!isAdded()) return;
+                service.fetchCourseContents(courseId, onContents);
+            }
+            @Override
+            public void onError(String message) {
+                if (!isAdded()) return;
+                progressContents.setVisibility(View.GONE);
+                showContentsMessage(message);
             }
         });
+    }
+
+    private void showContentsMessage(String message) {
+        layoutContents.removeAllViews();
+        TextView t = new TextView(requireContext());
+        t.setText(message);
+        t.setTextAppearance(textAppearance(com.google.android.material.R.attr.textAppearanceBodyMedium));
+        t.setTextColor(MaterialColors.getColor(layoutContents, com.google.android.material.R.attr.colorOnSurfaceVariant));
+        t.setGravity(android.view.Gravity.CENTER);
+        t.setPadding(dp(16), dp(12), dp(16), dp(16));
+        layoutContents.addView(t);
     }
 
     private void buildContentsUI(List<CourseSection> sections) {
