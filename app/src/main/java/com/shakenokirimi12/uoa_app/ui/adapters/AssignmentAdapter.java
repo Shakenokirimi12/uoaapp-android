@@ -1,8 +1,10 @@
 package com.shakenokirimi12.uoa_app.ui.adapters;
 
+import android.content.res.ColorStateList;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -54,11 +56,15 @@ public class AssignmentAdapter extends RecyclerView.Adapter<AssignmentAdapter.Vi
             Date due = new Date(a.getDueDate() * 1000);
             holder.textDue.setText("締切: " + dateFmt.format(due));
             // Past deadlines are muted; upcoming ones keep the error tone so they stand out.
-            holder.textDue.setTextColor(MaterialColors.getColor(holder.itemView, a.isDuePast()
+            int dueColor = MaterialColors.getColor(holder.itemView, a.isDuePast()
                     ? com.google.android.material.R.attr.colorOnSurfaceVariant
-                    : androidx.appcompat.R.attr.colorError));
+                    : androidx.appcompat.R.attr.colorError);
+            holder.textDue.setTextColor(dueColor);
+            holder.iconDue.setImageTintList(ColorStateList.valueOf(dueColor));
+            holder.iconDue.setVisibility(View.VISIBLE);
         } else {
             holder.textDue.setText("");
+            holder.iconDue.setVisibility(View.GONE);
         }
 
         holder.itemView.setOnClickListener(v -> {
@@ -75,12 +81,14 @@ public class AssignmentAdapter extends RecyclerView.Adapter<AssignmentAdapter.Vi
         final TextView textName;
         final TextView textCourse;
         final TextView textDue;
+        final ImageView iconDue;
 
         ViewHolder(View view) {
             super(view);
             textName = view.findViewById(R.id.text_assignment_name);
             textCourse = view.findViewById(R.id.text_course_name);
             textDue = view.findViewById(R.id.text_due_date);
+            iconDue = view.findViewById(R.id.icon_due);
         }
     }
 }

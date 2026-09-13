@@ -47,6 +47,8 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ViewHolder> 
         GroupedClass cls = items.get(position);
         holder.textClassName.setText(cls.getSummary() != null ? cls.getSummary() : "");
         holder.textClassRoom.setText(cls.getLocation());
+        // Hide the pin row entirely when CampusSquare gave no room, so nothing dangles.
+        holder.layoutClassRoom.setVisibility(cls.getLocation().isEmpty() ? View.GONE : View.VISIBLE);
         holder.textStartTime.setText(cls.getDtstart() != null ? timeFmt.format(cls.getDtstart()) : "");
         holder.textEndTime.setText(cls.getDtend() != null ? timeFmt.format(cls.getDtend()) : "");
 
@@ -71,6 +73,7 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ViewHolder> 
     static class ViewHolder extends RecyclerView.ViewHolder {
         final TextView textClassName;
         final TextView textClassRoom;
+        final View layoutClassRoom;
         final TextView textStartTime;
         final TextView textEndTime;
         final TextView textPeriod;
@@ -79,6 +82,7 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ViewHolder> 
             super(view);
             textClassName = view.findViewById(R.id.text_class_name);
             textClassRoom = view.findViewById(R.id.text_class_room);
+            layoutClassRoom = view.findViewById(R.id.layout_class_room);
             textStartTime = view.findViewById(R.id.text_start_time);
             textEndTime = view.findViewById(R.id.text_end_time);
             textPeriod = view.findViewById(R.id.text_period);

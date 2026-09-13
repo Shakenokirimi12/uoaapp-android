@@ -13,16 +13,16 @@
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:paddingHorizontal="24dp"
-        android:paddingTop="48dp"
+        android:paddingTop="56dp"
         android:paddingBottom="24dp">
 
         <ImageView
-            android:layout_width="96dp"
-            android:layout_height="96dp"
+            android:layout_width="112dp"
+            android:layout_height="112dp"
             android:background="@drawable/bg_icon_container"
             android:backgroundTint="?attr/colorPrimaryContainer"
             android:contentDescription="@null"
-            android:padding="24dp"
+            android:padding="28dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_school"
             app:tint="?attr/colorOnPrimaryContainer" />
@@ -41,51 +41,146 @@
             android:layout_marginTop="8dp"
             android:gravity="center"
             android:text="時間割・課題・成績・学食を\nひとつのアプリでまとめて確認"
+            android:lineSpacingMultiplier="1.15"
             android:textAppearance="?attr/textAppearanceBodyLarge"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
-        <LinearLayout
+        <!-- What the app does, as the same row grammar used in More / Settings. -->
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:orientation="vertical">
+            android:layout_marginTop="32dp">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:drawableStart="@drawable/ic_calendar"
-                android:drawablePadding="16dp"
-                android:drawableTint="?attr/colorPrimary"
-                android:gravity="center_vertical"
-                android:minHeight="48dp"
-                android:text="今日の授業と教室をすぐに確認"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurface" />
+                android:orientation="vertical"
+                android:paddingVertical="4dp">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:drawableStart="@drawable/ic_notification"
-                android:drawablePadding="16dp"
-                android:drawableTint="?attr/colorPrimary"
                 android:gravity="center_vertical"
-                android:minHeight="48dp"
-                android:text="課題の締切と休講を通知で受け取る"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurface" />
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
 
-            <TextView
+                <ImageView
+                    style="@style/Widget.Uoa.IconContainer"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_calendar_days" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="今日の授業と教室"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="時間割から今日の予定と教室をすぐ確認"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <com.google.android.material.divider.MaterialDivider
+                style="@style/Widget.Uoa.Divider"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:drawableStart="@drawable/ic_grades"
-                android:drawablePadding="16dp"
-                android:drawableTint="?attr/colorPrimary"
+                app:dividerInsetStart="72dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:gravity="center_vertical"
-                android:minHeight="48dp"
-                android:text="成績と取得単位をまとめて見る"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurface" />
-        </LinearLayout>
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
+
+                <ImageView
+                    style="@style/Widget.Uoa.IconContainer"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_notification" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="締切と休講の通知"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="課題の締切や休講を通知で受け取る"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <com.google.android.material.divider.MaterialDivider
+                style="@style/Widget.Uoa.Divider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:dividerInsetStart="72dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
+
+                <ImageView
+                    style="@style/Widget.Uoa.IconContainer"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_grades" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="成績と取得単位"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="成績と取得単位をまとめて見る"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+            </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <TextView
             style="@style/Widget.Uoa.Notice.Neutral"

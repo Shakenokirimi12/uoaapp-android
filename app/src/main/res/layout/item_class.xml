@@ -22,8 +22,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
-            android:gravity="center_horizontal"
-            android:minWidth="48dp"
+            android:minWidth="52dp"
             android:orientation="vertical">
 
             <TextView
@@ -60,15 +59,33 @@
                 android:textColor="?attr/colorOnSurface"
                 tools:text="コンピュータ理工学演習" />
 
-            <TextView
-                android:id="@+id/text_class_room"
+            <LinearLayout
+                android:id="@+id/layout_class_room"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:drawablePadding="4dp"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                tools:text="講義棟M10" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_marginEnd="4dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_map_pin"
+                    app:tint="?attr/colorOnSurfaceVariant" />
+
+                <TextView
+                    android:id="@+id/text_class_room"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    tools:text="講義棟M10" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Period badge -->
@@ -77,11 +94,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:background="@drawable/bg_grade_chip"
-            android:paddingHorizontal="8dp"
+            android:background="@drawable/bg_sync_status"
+            android:paddingHorizontal="10dp"
             android:paddingVertical="4dp"
             android:textAppearance="?attr/textAppearanceLabelMedium"
-            android:textColor="?attr/colorOnPrimaryContainer"
+            android:textColor="?attr/colorOnSecondaryContainer"
             android:visibility="gone"
             tools:text="3-4限"
             tools:visibility="visible" />
