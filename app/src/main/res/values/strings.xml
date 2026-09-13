@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">UoA App</string>
+    <string name="app_name">UoA非公式アプリ</string>
 
     <!-- Bottom Navigation -->
     <string name="nav_home">ホーム</string>
@@ -52,7 +52,7 @@
     <string name="settings_logout">ログアウト</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_welcome">UoA App へようこそ</string>
+    <string name="onboarding_welcome">UoA非公式アプリへようこそ</string>
     <string name="onboarding_disclaimer">このアプリは会津大学の非公式アプリです。\n大学とは一切の関係がありません。</string>
     <string name="onboarding_agree">同意して続ける</string>
     <string name="onboarding_login_title">ログイン</string>
