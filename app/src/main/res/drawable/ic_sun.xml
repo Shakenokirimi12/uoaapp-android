@@ -7,55 +7,55 @@
     android:viewportHeight="24"
     android:tint="?attr/colorControlNormal">
     <path
-        android:pathData="M8,12a4,4 0 1,0 8,0a4,4 0 1,0 -8,0"
+        android:pathData="M 8 12 a 4 4 0 1 0 8 0 a 4 4 0 1 0 -8 0"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M12 2v2"
+        android:pathData="M 12 2 v 2"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M12 20v2"
+        android:pathData="M 12 20 v 2"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="m4.93 4.93 1.41 1.41"
+        android:pathData="m 4.93 4.93 1.41 1.41"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="m17.66 17.66 1.41 1.41"
+        android:pathData="m 17.66 17.66 1.41 1.41"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M2 12h2"
+        android:pathData="M 2 12 h 2"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M20 12h2"
+        android:pathData="M 20 12 h 2"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="m6.34 17.66-1.41 1.41"
+        android:pathData="m 6.34 17.66 -1.41 1.41"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="m19.07 4.93-1.41 1.41"
+        android:pathData="m 19.07 4.93 -1.41 1.41"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"

@@ -7,13 +7,13 @@
     android:viewportHeight="24"
     android:tint="?attr/colorControlNormal">
     <path
-        android:pathData="m21 21-4.34-4.34"
+        android:pathData="m 21 21 -4.34 -4.34"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M3,11a8,8 0 1,0 16,0a8,8 0 1,0 -16,0"
+        android:pathData="M 3 11 a 8 8 0 1 0 16 0 a 8 8 0 1 0 -16 0"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"

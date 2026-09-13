@@ -7,25 +7,25 @@
     android:viewportHeight="24"
     android:tint="?attr/colorControlNormal">
     <path
-        android:pathData="M10 2v2"
+        android:pathData="M 10 2 v 2"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M14 2v2"
+        android:pathData="M 14 2 v 2"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"
+        android:pathData="M 16 8 a 1 1 0 0 1 1 1 v 8 a 4 4 0 0 1 -4 4 H 7 a 4 4 0 0 1 -4 -4 V 9 a 1 1 0 0 1 1 -1 h 14 a 4 4 0 1 1 0 8 h -1"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M6 2v2"
+        android:pathData="M 6 2 v 2"
         android:strokeColor="@android:color/white"
         android:strokeWidth="2"
         android:strokeLineCap="round"

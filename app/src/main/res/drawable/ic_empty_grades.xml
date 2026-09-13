@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lucide "award" (ISC), 48dp for empty states. -->
+<!-- Lucide "award" (ISC). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp"
     android:height="48dp"
@@ -7,13 +7,13 @@
     android:viewportHeight="24"
     android:tint="?attr/colorControlNormal">
     <path
-        android:pathData="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"
+        android:pathData="m 15.477 12.89 1.515 8.526 a .5 .5 0 0 1 -.81 .47 l -3.58 -2.687 a 1 1 0 0 0 -1.197 0 l -3.586 2.686 a .5 .5 0 0 1 -.81 -.469 l 1.514 -8.526"
         android:strokeColor="@android:color/white"
         android:strokeWidth="1.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M6,8a6,6 0 1,0 12,0a6,6 0 1,0 -12,0"
+        android:pathData="M 6 8 a 6 6 0 1 0 12 0 a 6 6 0 1 0 -12 0"
         android:strokeColor="@android:color/white"
         android:strokeWidth="1.5"
         android:strokeLineCap="round"
