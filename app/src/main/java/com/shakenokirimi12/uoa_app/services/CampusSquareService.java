@@ -2,6 +2,7 @@ package com.shakenokirimi12.uoa_app.services;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
@@ -31,6 +32,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class CampusSquareService {
+    private static final String TAG = "CampusSquareService";
     private static final String DEFAULT_BASE_URL = "https://csweb.u-aizu.ac.jp/campusweb";
 
     /** 大学側が URL を変えたときにフラグだけで追従できるようにする (iOS と同じ)。 */
@@ -761,82 +763,154 @@ public class CampusSquareService {
         return m.find() ? m.group(1) : null;
     }
 
+    /**
+     * 施設利用状況。ログイン済みなら CampusSquare 内部の参照画面 (KHW0001300) を使う。
+     * 公開版 (KHW0001310) は授業以外の予約が「予約済(学内)」「予約済(学生)」に伏せられるが、
+     * 内部版は同じ表で利用者名まで出る。資格情報が無い・無効・内部版が失敗したときは公開版に落とす
+     * (iOS の fetchFacilityUsage と同じ方針)。
+     */
     public void fetchFacilityUsage(String dateStr, ServiceCallback<List<FacilityUsage>> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("campussquare_facility_usage_enabled")) {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
         }
         executor.execute(() -> {
-            try {
-                OkHttpClient noRedirect = NetworkClient.getNoRedirectClient();
-                OkHttpClient client = NetworkClient.getNoCookieClient();
+            PreferenceManager prefs = PreferenceManager.getInstance();
+            if (prefs.hasCredentials() && !prefs.isCredentialsInvalid()) {
+                try {
+                    String username = prefs.getUsername().trim();
+                    String password = prefs.getPassword().trim();
+                    List<FacilityUsage> facilities = withSession(username, password, true,
+                            cookie -> fetchFacilityUsageWithSession(cookie, dateStr));
+                    postSuccess(callback, facilities);
+                    return;
+                } catch (Exception e) {
+                    Log.d(TAG, "internal facility usage failed; falling back to public view", e);
+                }
+            }
+            fetchPublicFacilityUsage(dateStr, callback);
+        });
+    }
 
-                // GET initial flow page (no login required)
-                Request flowReq = new Request.Builder()
-                        .url(baseUrl() + "/campussquare.do?_flowId=KHW0001310-flow")
-                        .header("User-Agent", NetworkClient.getUserAgent())
-                        .build();
+    /**
+     * 内部版。未認証ページを掴んだら SessionExpiredException で withSession に再ログインさせる。
+     * 表が 1 行も取れなかったときは例外にして公開版へ落とす (空の結果を正として返さない)。
+     */
+    private List<FacilityUsage> fetchFacilityUsageWithSession(String cookie, String dateStr) throws Exception {
+        OkHttpClient client = NetworkClient.getNoCookieClient();
+        Request flowReq = new Request.Builder()
+                .url(baseUrl() + "/campussquare.do?_flowId=KHW0001300-flow")
+                .header("User-Agent", NetworkClient.getUserAgent())
+                .header("Cookie", cookie)
+                .build();
+        String html;
+        try (Response resp = client.newCall(flowReq).execute()) {
+            html = resp.body().string();
+            if (!resp.isSuccessful() || looksUnauthenticated(html, resp.request().url().toString())) {
+                throw new SessionExpiredException();
+            }
+        }
 
-                String html;
-                String sid = null;
-                try (Response resp = noRedirect.newCall(flowReq).execute()) {
-                    String newSid = extractSessionId(resp);
-                    if (newSid != null) sid = newSid;
-                    String location = resp.header("Location");
-                    if (location != null) {
-                        String redirectUrl = resolveUrl(location);
-                        Request.Builder rb = new Request.Builder()
-                                .url(redirectUrl)
-                                .header("User-Agent", NetworkClient.getUserAgent());
-                        if (sid != null) rb.header("Cookie", "JSESSIONID=" + sid);
-                        try (Response r2 = noRedirect.newCall(rb.build()).execute()) {
-                            String ns = extractSessionId(r2);
-                            if (ns != null) sid = ns;
-                            String loc2 = r2.header("Location");
-                            if (loc2 != null) {
-                                Request.Builder rb2 = new Request.Builder()
-                                        .url(resolveUrl(loc2))
-                                        .header("User-Agent", NetworkClient.getUserAgent());
-                                if (sid != null) rb2.header("Cookie", "JSESSIONID=" + sid);
-                                try (Response r3 = client.newCall(rb2.build()).execute()) {
-                                    html = r3.body().string();
-                                }
-                            } else {
-                                html = r2.body().string();
+        if (dateStr != null && !dateStr.isEmpty()) {
+            String flowKey = extractMatch(html, "_flowExecutionKey\"\\s*value=\"([^\"]+)\"");
+            if (flowKey == null) {
+                flowKey = extractMatch(html, "_flowExecutionKey=([a-zA-Z0-9_-]+)");
+            }
+            if (flowKey == null) {
+                throw new IOException("内部版の施設利用状況ページからフローキーを取得できませんでした");
+            }
+            Request dateReq = new Request.Builder()
+                    .url(baseUrl() + "/campussquare.do?_flowExecutionKey=" + flowKey
+                            + "&_eventId=show&displayDate=" + dateStr)
+                    .header("User-Agent", NetworkClient.getUserAgent())
+                    .header("Cookie", cookie)
+                    .build();
+            try (Response resp = client.newCall(dateReq).execute()) {
+                html = resp.body().string();
+                if (!resp.isSuccessful() || looksUnauthenticated(html, resp.request().url().toString())) {
+                    throw new SessionExpiredException();
+                }
+            }
+        }
+
+        List<FacilityUsage> facilities = parseFacilityUsage(html);
+        if (facilities.isEmpty()) {
+            throw new IOException("内部版の施設利用状況を解析できませんでした");
+        }
+        return facilities;
+    }
+
+    /** 公開版 (ログイン不要)。KHW0001310 は KHW0001300&_gakunaiNetwork=true へリダイレクトされる。 */
+    private void fetchPublicFacilityUsage(String dateStr, ServiceCallback<List<FacilityUsage>> callback) {
+        try {
+            OkHttpClient noRedirect = NetworkClient.getNoRedirectClient();
+            OkHttpClient client = NetworkClient.getNoCookieClient();
+
+            // GET initial flow page (no login required)
+            Request flowReq = new Request.Builder()
+                    .url(baseUrl() + "/campussquare.do?_flowId=KHW0001310-flow")
+                    .header("User-Agent", NetworkClient.getUserAgent())
+                    .build();
+
+            String html;
+            String sid = null;
+            try (Response resp = noRedirect.newCall(flowReq).execute()) {
+                String newSid = extractSessionId(resp);
+                if (newSid != null) sid = newSid;
+                String location = resp.header("Location");
+                if (location != null) {
+                    String redirectUrl = resolveUrl(location);
+                    Request.Builder rb = new Request.Builder()
+                            .url(redirectUrl)
+                            .header("User-Agent", NetworkClient.getUserAgent());
+                    if (sid != null) rb.header("Cookie", "JSESSIONID=" + sid);
+                    try (Response r2 = noRedirect.newCall(rb.build()).execute()) {
+                        String ns = extractSessionId(r2);
+                        if (ns != null) sid = ns;
+                        String loc2 = r2.header("Location");
+                        if (loc2 != null) {
+                            Request.Builder rb2 = new Request.Builder()
+                                    .url(resolveUrl(loc2))
+                                    .header("User-Agent", NetworkClient.getUserAgent());
+                            if (sid != null) rb2.header("Cookie", "JSESSIONID=" + sid);
+                            try (Response r3 = client.newCall(rb2.build()).execute()) {
+                                html = r3.body().string();
                             }
+                        } else {
+                            html = r2.body().string();
                         }
-                    } else {
+                    }
+                } else {
+                    html = resp.body().string();
+                }
+            }
+
+            // If date is specified, navigate to that date
+            if (dateStr != null && !dateStr.isEmpty()) {
+                String flowKey = extractMatch(html,
+                        "_flowExecutionKey\"\\s*value=\"([^\"]+)\"");
+                if (flowKey == null) {
+                    flowKey = extractMatch(html, "_flowExecutionKey=([a-zA-Z0-9_-]+)");
+                }
+                if (flowKey != null && sid != null) {
+                    String dateUrl = baseUrl() + "/campussquare.do?_flowExecutionKey="
+                            + flowKey + "&_eventId=show&displayDate=" + dateStr;
+                    Request dateReq = new Request.Builder()
+                            .url(dateUrl)
+                            .header("User-Agent", NetworkClient.getUserAgent())
+                            .header("Cookie", "JSESSIONID=" + sid)
+                            .build();
+                    try (Response resp = client.newCall(dateReq).execute()) {
                         html = resp.body().string();
                     }
                 }
-
-                // If date is specified, navigate to that date
-                if (dateStr != null && !dateStr.isEmpty()) {
-                    String flowKey = extractMatch(html,
-                            "_flowExecutionKey\"\\s*value=\"([^\"]+)\"");
-                    if (flowKey == null) {
-                        flowKey = extractMatch(html, "_flowExecutionKey=([a-zA-Z0-9_-]+)");
-                    }
-                    if (flowKey != null && sid != null) {
-                        String dateUrl = baseUrl() + "/campussquare.do?_flowExecutionKey="
-                                + flowKey + "&_eventId=show&displayDate=" + dateStr;
-                        Request dateReq = new Request.Builder()
-                                .url(dateUrl)
-                                .header("User-Agent", NetworkClient.getUserAgent())
-                                .header("Cookie", "JSESSIONID=" + sid)
-                                .build();
-                        try (Response resp = client.newCall(dateReq).execute()) {
-                            html = resp.body().string();
-                        }
-                    }
-                }
-
-                List<FacilityUsage> facilities = parseFacilityUsage(html);
-                postSuccess(callback, facilities);
-            } catch (Exception e) {
-                postError(callback, e.getMessage());
             }
-        });
+
+            List<FacilityUsage> facilities = parseFacilityUsage(html);
+                postSuccess(callback, facilities);
+        } catch (Exception e) {
+            postError(callback, e.getMessage());
+        }
     }
 
     private List<FacilityUsage> parseFacilityUsage(String html) {

@@ -3,12 +3,14 @@ package com.shakenokirimi12.uoa_app.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.annotation.Nullable;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
-import com.shakenokirimi12.uoa_app.data.models.GakushokuMenuItem;
+import com.shakenokirimi12.uoa_app.data.models.GakushokuMenu;
 import com.shakenokirimi12.uoa_app.data.models.Grade;
 import com.shakenokirimi12.uoa_app.data.models.MoodleCourse;
 
@@ -22,7 +24,8 @@ public class DataCache {
     private static final String KEY_ASSIGNMENTS = "assignments";
     private static final String KEY_COURSES = "courses";
     private static final String KEY_GRADES = "grades";
-    private static final String KEY_MENU = "menu";
+    // "menu" held the v1 list; a new key keeps an old build's cache from being read as v2 or as fresh.
+    private static final String KEY_MENU = "menu_v2";
     // "<dataset>_fetched_at": epoch ms of the last successful save. Lives in the same prefs so
     // clearAll() (logout) drops it together with the data.
     private static final String FETCHED_AT_SUFFIX = "_fetched_at";
@@ -102,15 +105,23 @@ public class DataCache {
         return loadList(KEY_GRADES, new TypeToken<List<Grade>>() {}.getType());
     }
 
-    public void saveMenu(List<GakushokuMenuItem> menu) {
+    public void saveMenu(GakushokuMenu menu) {
         prefs.edit()
                 .putString(KEY_MENU, gson.toJson(menu))
                 .putLong(KEY_MENU + FETCHED_AT_SUFFIX, System.currentTimeMillis())
                 .apply();
     }
 
-    public List<GakushokuMenuItem> loadMenu() {
-        return loadList(KEY_MENU, new TypeToken<List<GakushokuMenuItem>>() {}.getType());
+    /** null when nothing is cached or the cached JSON is unreadable. */
+    @Nullable
+    public GakushokuMenu loadMenu() {
+        String json = prefs.getString(KEY_MENU, null);
+        if (json == null || json.isEmpty()) return null;
+        try {
+            return gson.fromJson(json, GakushokuMenu.class);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**

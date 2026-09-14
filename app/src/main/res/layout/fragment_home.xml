@@ -307,39 +307,19 @@
                         tools:visibility="visible">
 
                         <TextView
-                            android:id="@+id/text_menu_lunch"
+                            android:id="@+id/text_menu_headline"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
                             android:textColor="?attr/colorOnSurface"
-                            tools:text="ランチ: カレーライス" />
+                            android:textStyle="bold"
+                            tools:text="鶏のマヨネーズ焼き" />
 
-                        <TextView
-                            android:id="@+id/text_menu_fish"
+                        <LinearLayout
+                            android:id="@+id/layout_menu_rows"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
-                            android:textColor="?attr/colorOnSurface"
-                            tools:text="お魚: 焼き鮭定食" />
-
-                        <TextView
-                            android:id="@+id/text_menu_salad"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
-                            android:textColor="?attr/colorOnSurface"
-                            tools:text="サラダ: シーザーサラダ" />
-
-                        <TextView
-                            android:id="@+id/text_menu_dinner"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
-                            android:textColor="?attr/colorOnSurface"
-                            tools:text="夕食: 唐揚げ定食" />
+                            android:orientation="vertical" />
                     </LinearLayout>
 
                     <!-- Loading / empty -->

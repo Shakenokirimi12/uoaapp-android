@@ -22,7 +22,7 @@ import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
-import com.shakenokirimi12.uoa_app.data.models.GakushokuMenuItem;
+import com.shakenokirimi12.uoa_app.data.models.GakushokuMenu;
 import com.shakenokirimi12.uoa_app.data.models.GroupedClass;
 import com.shakenokirimi12.uoa_app.services.CampusSquareService;
 import com.shakenokirimi12.uoa_app.services.GakushokuService;
@@ -33,6 +33,7 @@ import com.shakenokirimi12.uoa_app.ui.ClassDetailDialog;
 import com.shakenokirimi12.uoa_app.ui.ClassLocationDialog;
 import com.shakenokirimi12.uoa_app.ui.adapters.AssignmentAdapter;
 import com.shakenokirimi12.uoa_app.ui.adapters.ClassAdapter;
+import com.shakenokirimi12.uoa_app.ui.adapters.MenuAdapter;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -64,10 +65,8 @@ public class HomeFragment extends Fragment {
     private View cardGakushoku;
     private LinearLayout layoutMenuContent;
     private TextView textMenuLoading;
-    private TextView textMenuLunch;
-    private TextView textMenuFish;
-    private TextView textMenuSalad;
-    private TextView textMenuDinner;
+    private TextView textMenuHeadline;
+    private LinearLayout layoutMenuRows;
 
     private ClassAdapter classAdapter;
     private AssignmentAdapter assignmentAdapter;
@@ -113,10 +112,8 @@ public class HomeFragment extends Fragment {
         cardGakushoku = view.findViewById(R.id.card_gakushoku);
         layoutMenuContent = view.findViewById(R.id.layout_menu_content);
         textMenuLoading = view.findViewById(R.id.text_menu_loading);
-        textMenuLunch = view.findViewById(R.id.text_menu_lunch);
-        textMenuFish = view.findViewById(R.id.text_menu_fish);
-        textMenuSalad = view.findViewById(R.id.text_menu_salad);
-        textMenuDinner = view.findViewById(R.id.text_menu_dinner);
+        textMenuHeadline = view.findViewById(R.id.text_menu_headline);
+        layoutMenuRows = view.findViewById(R.id.layout_menu_rows);
 
         classAdapter = new ClassAdapter();
         classAdapter.setOnClassClickListener(cls ->
@@ -367,18 +364,19 @@ public class HomeFragment extends Fragment {
         layoutMenuContent.setVisibility(View.GONE);
 
         DataCache cache = DataCache.getInstance(requireContext());
-        if (!force && cache.isFresh(DataCache.Dataset.MENU, DataCache.MENU_MAX_AGE_MS)) {
-            showTodayMenu(cache.loadMenu());
+        GakushokuMenu cached = cache.loadMenu();
+        if (!force && cached != null && cache.isFresh(DataCache.Dataset.MENU, DataCache.MENU_MAX_AGE_MS)) {
+            showTodayMenu(cached);
             return;
         }
 
-        gakushokuService.fetchMenu(new ServiceCallback<List<GakushokuMenuItem>>() {
+        gakushokuService.fetchMenu(new ServiceCallback<GakushokuMenu>() {
             @Override
-            public void onSuccess(List<GakushokuMenuItem> items) {
+            public void onSuccess(GakushokuMenu menu) {
                 if (!isAdded()) return;
                 // Saving here lets the Gakushoku tab reuse it within its own cache window.
-                DataCache.getInstance(requireContext()).saveMenu(items);
-                showTodayMenu(items);
+                DataCache.getInstance(requireContext()).saveMenu(menu);
+                showTodayMenu(menu);
             }
 
             @Override
@@ -389,40 +387,19 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    private void showTodayMenu(List<GakushokuMenuItem> items) {
-        Calendar cal = Calendar.getInstance();
-        int todayDay = cal.get(Calendar.DAY_OF_MONTH);
-        GakushokuMenuItem todayMenu = null;
-        for (GakushokuMenuItem item : items) {
-            if (item.getDate() != null && item.getDate().contains(todayDay + "日")) {
-                todayMenu = item;
-                break;
-            }
+    private void showTodayMenu(GakushokuMenu menu) {
+        GakushokuMenu.Day today = menu.today();
+        if (today == null || !today.hasContent()) {
+            textMenuLoading.setText("本日の掲載はありません");
+            return;
         }
-        if (todayMenu != null) {
-            showMenuPreview(todayMenu);
-        } else {
-            textMenuLoading.setText("今日のメニューはありません");
-        }
-    }
-
-    private void showMenuPreview(GakushokuMenuItem menu) {
         textMenuLoading.setVisibility(View.GONE);
         layoutMenuContent.setVisibility(View.VISIBLE);
 
-        setMenuLine(textMenuLunch, "ランチ: ", menu.getLunch());
-        setMenuLine(textMenuFish, "お魚: ", menu.getFish());
-        setMenuLine(textMenuSalad, "サラダ: ", menu.getSalad());
-        setMenuLine(textMenuDinner, "夕食: ", menu.getDinner());
-    }
-
-    private void setMenuLine(TextView tv, String prefix, String content) {
-        if (content != null && !content.trim().isEmpty() && !content.trim().equals("---")) {
-            tv.setText(prefix + content.trim());
-            tv.setVisibility(View.VISIBLE);
-        } else {
-            tv.setVisibility(View.GONE);
-        }
+        String main = today.lunchMain();
+        textMenuHeadline.setVisibility(main != null ? View.VISIBLE : View.GONE);
+        textMenuHeadline.setText(main);
+        MenuAdapter.bindCategoryRows(layoutMenuRows, today);
     }
 
     private void startClassNotification(List<CalendarEvent> events) {

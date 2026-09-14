@@ -17,12 +17,10 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.material.color.MaterialColors;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.DataCache;
-import com.shakenokirimi12.uoa_app.data.models.GakushokuMenuItem;
+import com.shakenokirimi12.uoa_app.data.models.GakushokuMenu;
 import com.shakenokirimi12.uoa_app.services.GakushokuService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
 import com.shakenokirimi12.uoa_app.ui.adapters.MenuAdapter;
-
-import java.util.List;
 
 public class GakushokuFragment extends Fragment {
 
@@ -53,9 +51,9 @@ public class GakushokuFragment extends Fragment {
                 MaterialColors.getColor(view, androidx.appcompat.R.attr.colorPrimary));
         swipeRefresh.setOnRefreshListener(() -> loadMenu(true));
 
-        List<GakushokuMenuItem> cached = DataCache.getInstance(requireContext()).loadMenu();
-        if (!cached.isEmpty()) {
-            menuAdapter.setItems(cached);
+        GakushokuMenu cached = DataCache.getInstance(requireContext()).loadMenu();
+        if (cached != null) {
+            menuAdapter.setWeeks(cached.weeksSortedFromToday());
         }
         updateEmptyState();
 
@@ -64,18 +62,19 @@ public class GakushokuFragment extends Fragment {
 
     /** @param force true for pull-to-refresh; false skips the fetch while the cache is fresh (menu changes daily at most). */
     private void loadMenu(boolean force) {
-        if (!force && DataCache.getInstance(requireContext()).isFresh(DataCache.Dataset.MENU, DataCache.MENU_MAX_AGE_MS)) {
+        DataCache cache = DataCache.getInstance(requireContext());
+        if (!force && cache.loadMenu() != null && cache.isFresh(DataCache.Dataset.MENU, DataCache.MENU_MAX_AGE_MS)) {
             return;
         }
         swipeRefresh.setRefreshing(true);
-        gakushokuService.fetchMenu(new ServiceCallback<List<GakushokuMenuItem>>() {
+        gakushokuService.fetchMenu(new ServiceCallback<GakushokuMenu>() {
             @Override
-            public void onSuccess(List<GakushokuMenuItem> items) {
+            public void onSuccess(GakushokuMenu menu) {
                 if (!isAdded()) return;
-                menuAdapter.setItems(items);
+                menuAdapter.setWeeks(menu.weeksSortedFromToday());
                 updateEmptyState();
                 swipeRefresh.setRefreshing(false);
-                DataCache.getInstance(requireContext()).saveMenu(items);
+                DataCache.getInstance(requireContext()).saveMenu(menu);
             }
 
             @Override
