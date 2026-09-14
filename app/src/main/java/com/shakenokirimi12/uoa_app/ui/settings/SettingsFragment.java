@@ -381,6 +381,10 @@ public class SettingsFragment extends Fragment {
                             // OkHttp の cookie と WebView の cookie は別の入れ物。片方だけ消しても、
                             // 次のユーザーがアプリ内ブラウザを開いたときに前のセッションが使われる。
                             com.shakenokirimi12.uoa_app.services.NetworkClient.clearCookies();
+                            // 「10 分以内に検証済み」の記録も消す。残すと次のユーザーが空の cookie jar のまま
+                            // ログイン済み扱いになる。
+                            MoodleService.clearSession();
+                            com.shakenokirimi12.uoa_app.services.CampusSquareService.clearSession();
                             com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity.clearWebSession();
                             startActivity(new Intent(requireActivity(), OnboardingActivity.class));
                             requireActivity().finish();
@@ -491,6 +495,8 @@ public class SettingsFragment extends Fragment {
                             if (result) {
                                 prefs.setUsername(newUser);
                                 prefs.setPassword(newPass);
+                                // 別アカウントかもしれない。前のユーザーの CampusSquare セッションを引き継がない。
+                                com.shakenokirimi12.uoa_app.services.CampusSquareService.clearSession();
                                 textUsername.setText(newUser);
                                 Toast.makeText(requireContext(), "ログイン情報を更新しました", Toast.LENGTH_SHORT).show();
                             } else {

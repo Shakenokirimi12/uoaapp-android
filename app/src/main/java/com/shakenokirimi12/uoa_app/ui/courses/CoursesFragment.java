@@ -117,7 +117,7 @@ public class CoursesFragment extends Fragment {
             android.widget.Toast.makeText(requireContext(), com.shakenokirimi12.uoa_app.services.AuthErrors.INVALID_CREDENTIALS_MESSAGE, android.widget.Toast.LENGTH_LONG).show();
             return;
         }
-        moodleService.login(user, pass, new ServiceCallback<Boolean>() {
+        moodleService.ensureLoggedIn(user, pass, true, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 if (!isAdded()) return;

@@ -73,10 +73,27 @@ public class CampusSquareService {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    /** 手持ちのセッションを捨てて必ずログインし直す (資格情報の確認用)。通常の取得は fetch* が内部で行う。 */
     public void login(String username, String password, ServiceCallback<Boolean> callback) {
         executor.execute(() -> {
             try {
-                authenticatedCookieHeader(username, password);
+                LoginMethod method = resolveLoginMethod();
+                coordinator.forceLogin(method, () -> freshLogin(method, username, password));
+                postSuccess(callback, true);
+            } catch (Exception e) {
+                postError(callback, e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * 必要ならログインして、認証済みであることを確認する。既に 10 分以内に検証済みなら通信しない。
+     * userInitiated=false (SyncWorker) は直前の障害系失敗から 60 秒間は再ログインを試みない。
+     */
+    public void ensureLoggedIn(String username, String password, boolean userInitiated, ServiceCallback<Boolean> callback) {
+        executor.execute(() -> {
+            try {
+                authenticatedCookieHeader(username, password, userInitiated);
                 postSuccess(callback, true);
             } catch (Exception e) {
                 postError(callback, e.getMessage());
@@ -98,31 +115,86 @@ public class CampusSquareService {
                 ? LoginMethod.IDP : LoginMethod.LEGACY;
     }
 
+    // ---- Session reuse (iOS の SessionCoordinator / withSession と同じ方針) ----
+    //
+    // 状態はプロセスで 1 つ。各画面と SyncWorker が持つ別インスタンスからの同時呼び出しでも
+    // ログインは単一飛行になる。旧方式の JSESSIONID もここに保持する (以前は取得のたびに
+    // ログインし直していた)。IdP 方式の cookie は前回プロセスの分が PreferenceManager にも残るので、
+    // メモリに無いときはそれを候補として probe してからログインする。
+    private static final SessionCoordinator<String> coordinator = new SessionCoordinator<>();
+
+    /** 取得の途中で未認証ページを掴んだことを withSession に伝える。 */
+    static final class SessionExpiredException extends Exception {
+        SessionExpiredException() { super("CampusSquare のセッションが切れました"); }
+    }
+
+    private interface SessionBody<T> { T run(String cookieHeader) throws Exception; }
+
     /**
      * 旧方式は JSESSIONID 単体、新方式は SeciossIdPClient が集めた複数 cookie (AWS ALB のスティッキー
      * セッション cookie 等を含み得る) を Cookie ヘッダごと必要とする。この違いを fetchGrades /
      * fetchCalendarEvents から隠し、どちらもそのまま Cookie ヘッダに載せられる文字列を返す。
      */
-    private String authenticatedCookieHeader(String username, String password) throws Exception {
-        if (resolveLoginMethod() == LoginMethod.LEGACY) {
+    private String authenticatedCookieHeader(String username, String password, boolean userInitiated) throws Exception {
+        LoginMethod method = resolveLoginMethod();
+        String candidate = null;
+        if (method == LoginMethod.IDP) {
+            String cached = PreferenceManager.getInstance().getCsIdpSessionCookieHeader();
+            if (!cached.isEmpty()) candidate = cached;
+        }
+        return coordinator.session(method, userInitiated, candidate, this::probeSession,
+                () -> freshLogin(method, username, password));
+    }
+
+    private String freshLogin(LoginMethod method, String username, String password) throws Exception {
+        if (method == LoginMethod.LEGACY) {
             return "JSESSIONID=" + doLogin(username, password);
         }
-        // iOS は毎回ログインし直すが、Android は IdP 経由の OTP 往復 (最大 30 秒) を避けるため
-        // キャッシュしたセッションが生きていればそれを使う。死んでいたら捨てて取り直す。
-        String cached = PreferenceManager.getInstance().getCsIdpSessionCookieHeader();
-        if (!cached.isEmpty()) {
-            if (isSessionAlive(cached)) return cached;
-            clearIdpSession();
-        }
+        // ここに来るのは永続化した cookie も死んでいたとき。捨ててから取り直す。
+        PreferenceManager.getInstance().setCsIdpSessionCookieHeader(null);
         return loginViaIdPAutomatic(null, username, password);
     }
 
     /**
-     * IdP セッションの生存確認。旧方式の Step 4 と同じ page=main を見る。IdP 化後の CampusSquare で
-     * このページ・文言がどうなるかは 2026-09-14 時点で未確認なので、URL は `campussquare_session_check_url`
-     * フラグで差し替えられるようにしておく。
+     * 取得処理を認証済みセッションで実行し、途中で未認証ページを掴んだ (SessionExpiredException) 場合だけ
+     * 1 回、ログインし直して再実行する。
      */
-    private boolean isSessionAlive(String cookieHeader) {
+    private <T> T withSession(String username, String password, boolean userInitiated, SessionBody<T> body) throws Exception {
+        String cookie = authenticatedCookieHeader(username, password, userInitiated);
+        try {
+            return body.run(cookie);
+        } catch (SessionExpiredException e) {
+            coordinator.invalidate(cookie);
+            String fresh = authenticatedCookieHeader(username, password, userInitiated);
+            return body.run(fresh);
+        }
+    }
+
+    /**
+     * 未認証で返ってくるページの形 (2026-09-14 実測): 旧ログインフォーム (userName+password) /
+     * SECIOSS の tenantlogin へのリダイレクト / [SSO-Error] / 「認証エラー」ページ。
+     * 認証済みポータルの HTML は手元に無いため、マーカーはログインフォーム一式のように
+     * 認証後には現れにくい組み合わせに限っている。url が取れない場合はホスト判定を飛ばす。
+     */
+    static boolean looksUnauthenticated(String html, String url, String expectedHost) {
+        if (url != null && !url.isEmpty()) {
+            if (!url.contains(expectedHost) || url.contains("tenantlogin")) return true;
+        }
+        if (html.contains("name=\"userName\"") && html.contains("name=\"password\"")) return true;
+        return html.contains("[SSO-Error]") || html.contains("<title>認証エラー");
+    }
+
+    private static boolean looksUnauthenticated(String html, String url) {
+        okhttp3.HttpUrl cs = okhttp3.HttpUrl.parse(baseUrl());
+        return looksUnauthenticated(html, url, cs != null ? cs.host() : "csweb.u-aizu.ac.jp");
+    }
+
+    /**
+     * セッションの生存確認 (1 リクエスト)。旧方式の Step 4 と同じ page=main を見る。IdP 化後の
+     * CampusSquare でこのページがどうなるかは 2026-09-14 時点で未確認なので、URL は
+     * `campussquare_session_check_url` フラグで差し替えられるようにしておく。
+     */
+    private String probeSession(String cookieHeader) {
         String url = AppConfigService.getInstance().stringFlag("campussquare_session_check_url",
                 baseUrl() + "/campusportal.do?page=main");
         Request req = new Request.Builder()
@@ -132,15 +204,17 @@ public class CampusSquareService {
                 .build();
         try (Response resp = NetworkClient.getNoCookieClient().newCall(req).execute()) {
             String html = resp.body() != null ? resp.body().string() : "";
-            return resp.isSuccessful() && containsAnySuccessMarker(html);
+            boolean alive = resp.isSuccessful() && !looksUnauthenticated(html, resp.request().url().toString());
+            return alive ? cookieHeader : null;
         } catch (IOException e) {
-            return false;
+            return null;
         }
     }
 
-    /** セッション切れ等で無効化する。次回同期時に再ログインが必要と判断させる。 */
-    public static void clearIdpSession() {
+    /** ログアウト時に呼ぶ。永続化した IdP cookie とメモリ上のセッション状態を両方捨てる。 */
+    public static void clearSession() {
         PreferenceManager.getInstance().setCsIdpSessionCookieHeader(null);
+        coordinator.reset();
     }
 
     // ---- IdP (SECIOSS) login ----
@@ -389,82 +463,21 @@ public class CampusSquareService {
     }
 
     public void fetchGrades(String username, String password, ServiceCallback<List<Grade>> callback) {
+        fetchGrades(username, password, true, callback);
+    }
+
+    public void fetchGrades(String username, String password, boolean userInitiated, ServiceCallback<List<Grade>> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("campussquare_grades_enabled")) {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
         }
         executor.execute(() -> {
             try {
-                String cookie = authenticatedCookieHeader(username, password);
-
-                // Navigate to grades tab
-                Request tabReq = new Request.Builder()
-                        .url(baseUrl() + "/campusportal.do?page=main&tabId=si")
-                        .header("User-Agent", NetworkClient.getUserAgent())
-                        .header("Cookie", cookie)
-                        .header("Referer", baseUrl() + "/campusportal.do?page=main")
-                        .build();
-                try (Response r = NetworkClient.getNoCookieClient().newCall(tabReq).execute()) {
-                    r.body().string();
-                }
-                Thread.sleep(300);
-
-                // Start grade flow
-                OkHttpClient noRedirect = NetworkClient.getNoRedirectClient();
-                Request flowReq = new Request.Builder()
-                        .url(baseUrl() + "/campussquare.do?_flowId=SIW0001200-flow")
-                        .header("User-Agent", NetworkClient.getUserAgent())
-                        .header("Cookie", cookie)
-                        .header("sec-fetch-dest", "iframe")
-                        .header("Referer", baseUrl() + "/campusportal.do?page=main&tabId=si")
-                        .build();
-
-                String flowHtml;
-                String flowKey = null;
-                try (Response resp = noRedirect.newCall(flowReq).execute()) {
-                    String location = resp.header("Location");
-                    flowKey = extractFlowKey(location);
-                    if (flowKey != null && location != null) {
-                        String redirectUrl = resolveUrl(location);
-                        Request follow = new Request.Builder()
-                                .url(redirectUrl)
-                                .header("User-Agent", NetworkClient.getUserAgent())
-                                .header("Cookie", cookie)
-                                .build();
-                        try (Response r2 = NetworkClient.getNoCookieClient().newCall(follow).execute()) {
-                            flowHtml = r2.body().string();
-                        }
-                    } else {
-                        flowHtml = resp.body().string();
-                    }
-                }
-
-                if (flowKey == null) {
-                    flowKey = extractMatch(flowHtml, "_flowExecutionKey\"\\s*value=\"([a-zA-Z0-9_-]+)\"");
-                }
-
-                if (flowKey == null) {
+                List<Grade> grades = withSession(username, password, userInitiated, this::fetchGradesWithSession);
+                if (grades == null) {
                     postError(callback, "成績ページのフローキー取得に失敗しました");
                     return;
                 }
-
-                // POST to display grades
-                String postBody = "_flowExecutionKey=" + flowKey + "&_eventId=display";
-                Request gradePost = new Request.Builder()
-                        .url(baseUrl() + "/campussquare.do")
-                        .header("User-Agent", NetworkClient.getUserAgent())
-                        .header("Cookie", cookie)
-                        .header("Content-Type", "application/x-www-form-urlencoded")
-                        .header("Referer", baseUrl() + "/campussquare.do?_flowId=SIW0001200-flow&_flowExecutionKey=" + flowKey)
-                        .post(RequestBody.create(postBody, FORM))
-                        .build();
-
-                String gradesHtml;
-                try (Response resp = NetworkClient.getNoCookieClient().newCall(gradePost).execute()) {
-                    gradesHtml = resp.body().string();
-                }
-
-                List<Grade> grades = parseGrades(gradesHtml);
                 postSuccess(callback, grades);
             } catch (Exception e) {
                 postError(callback, e.getMessage());
@@ -472,7 +485,86 @@ public class CampusSquareService {
         });
     }
 
+    /** フローキーが取れなかったときは null (呼び出し側が既存の文言でエラーにする)。 */
+    private List<Grade> fetchGradesWithSession(String cookie) throws Exception {
+        // Navigate to grades tab
+        Request tabReq = new Request.Builder()
+                .url(baseUrl() + "/campusportal.do?page=main&tabId=si")
+                .header("User-Agent", NetworkClient.getUserAgent())
+                .header("Cookie", cookie)
+                .header("Referer", baseUrl() + "/campusportal.do?page=main")
+                .build();
+        try (Response r = NetworkClient.getNoCookieClient().newCall(tabReq).execute()) {
+            String tabHtml = r.body().string();
+            if (!r.isSuccessful() || looksUnauthenticated(tabHtml, r.request().url().toString())) {
+                throw new SessionExpiredException();
+            }
+        }
+        Thread.sleep(300);
+
+        // Start grade flow
+        OkHttpClient noRedirect = NetworkClient.getNoRedirectClient();
+        Request flowReq = new Request.Builder()
+                .url(baseUrl() + "/campussquare.do?_flowId=SIW0001200-flow")
+                .header("User-Agent", NetworkClient.getUserAgent())
+                .header("Cookie", cookie)
+                .header("sec-fetch-dest", "iframe")
+                .header("Referer", baseUrl() + "/campusportal.do?page=main&tabId=si")
+                .build();
+
+        String flowHtml;
+        String flowKey = null;
+        try (Response resp = noRedirect.newCall(flowReq).execute()) {
+            String location = resp.header("Location");
+            flowKey = extractFlowKey(location);
+            if (flowKey != null && location != null) {
+                String redirectUrl = resolveUrl(location);
+                Request follow = new Request.Builder()
+                        .url(redirectUrl)
+                        .header("User-Agent", NetworkClient.getUserAgent())
+                        .header("Cookie", cookie)
+                        .build();
+                try (Response r2 = NetworkClient.getNoCookieClient().newCall(follow).execute()) {
+                    flowHtml = r2.body().string();
+                }
+            } else {
+                flowHtml = resp.body().string();
+            }
+        }
+
+        if (flowKey == null) {
+            flowKey = extractMatch(flowHtml, "_flowExecutionKey\"\\s*value=\"([a-zA-Z0-9_-]+)\"");
+        }
+
+        if (flowKey == null) {
+            return null;
+        }
+
+        // POST to display grades
+        String postBody = "_flowExecutionKey=" + flowKey + "&_eventId=display";
+        Request gradePost = new Request.Builder()
+                .url(baseUrl() + "/campussquare.do")
+                .header("User-Agent", NetworkClient.getUserAgent())
+                .header("Cookie", cookie)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Referer", baseUrl() + "/campussquare.do?_flowId=SIW0001200-flow&_flowExecutionKey=" + flowKey)
+                .post(RequestBody.create(postBody, FORM))
+                .build();
+
+        String gradesHtml;
+        try (Response resp = NetworkClient.getNoCookieClient().newCall(gradePost).execute()) {
+            gradesHtml = resp.body().string();
+        }
+
+        return parseGrades(gradesHtml);
+    }
+
     public void fetchCalendarEvents(String username, String password,
+                                    ServiceCallback<List<CalendarEvent>> callback) {
+        fetchCalendarEvents(username, password, true, callback);
+    }
+
+    public void fetchCalendarEvents(String username, String password, boolean userInitiated,
                                     ServiceCallback<List<CalendarEvent>> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("campussquare_calendar_enabled")) {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
@@ -480,57 +572,66 @@ public class CampusSquareService {
         }
         executor.execute(() -> {
             try {
-                String cookie = authenticatedCookieHeader(username, password);
-
-                // Navigate to calendar tab
-                Request tabReq = new Request.Builder()
-                        .url(baseUrl() + "/campusportal.do?page=main&tabId=po")
-                        .header("User-Agent", NetworkClient.getUserAgent())
-                        .header("Cookie", cookie)
-                        .header("Referer", baseUrl() + "/campusportal.do?page=main")
-                        .build();
-                try (Response r = NetworkClient.getNoCookieClient().newCall(tabReq).execute()) {
-                    r.body().string();
-                }
-                Thread.sleep(300);
-
-                // Get calendar URL
-                Request calReq = new Request.Builder()
-                        .url(baseUrl() + "/campussquare.do?_flowId=POW2401000-flow")
-                        .header("User-Agent", NetworkClient.getUserAgent())
-                        .header("Cookie", cookie)
-                        .header("sec-fetch-dest", "iframe")
-                        .header("Referer", baseUrl() + "/campusportal.do?page=main&tabId=po")
-                        .build();
-
-                String calHtml;
-                try (Response resp = NetworkClient.getNoCookieClient().newCall(calReq).execute()) {
-                    calHtml = resp.body().string();
-                }
-
-                String icsUrl = extractMatch(calHtml, "id=\"calendarNm\"[^>]*value=\"([^\"]+)\"");
-                if (icsUrl == null || icsUrl.isEmpty()) {
+                List<CalendarEvent> events = withSession(username, password, userInitiated, this::fetchCalendarEventsWithSession);
+                if (events == null) {
                     postError(callback, "カレンダーURLの取得に失敗しました");
                     return;
                 }
-
-                // Fetch ICS file
-                Request icsReq = new Request.Builder()
-                        .url(icsUrl)
-                        .header("User-Agent", NetworkClient.getUserAgent())
-                        .build();
-
-                String icsContent;
-                try (Response resp = NetworkClient.getNoCookieClient().newCall(icsReq).execute()) {
-                    icsContent = resp.body().string();
-                }
-
-                List<CalendarEvent> events = parseICS(icsContent);
                 postSuccess(callback, events);
             } catch (Exception e) {
                 postError(callback, e.getMessage());
             }
         });
+    }
+
+    /** ICS の URL が取れなかったときは null (呼び出し側が既存の文言でエラーにする)。 */
+    private List<CalendarEvent> fetchCalendarEventsWithSession(String cookie) throws Exception {
+        // Navigate to calendar tab
+        Request tabReq = new Request.Builder()
+                .url(baseUrl() + "/campusportal.do?page=main&tabId=po")
+                .header("User-Agent", NetworkClient.getUserAgent())
+                .header("Cookie", cookie)
+                .header("Referer", baseUrl() + "/campusportal.do?page=main")
+                .build();
+        try (Response r = NetworkClient.getNoCookieClient().newCall(tabReq).execute()) {
+            String tabHtml = r.body().string();
+            if (!r.isSuccessful() || looksUnauthenticated(tabHtml, r.request().url().toString())) {
+                throw new SessionExpiredException();
+            }
+        }
+        Thread.sleep(300);
+
+        // Get calendar URL
+        Request calReq = new Request.Builder()
+                .url(baseUrl() + "/campussquare.do?_flowId=POW2401000-flow")
+                .header("User-Agent", NetworkClient.getUserAgent())
+                .header("Cookie", cookie)
+                .header("sec-fetch-dest", "iframe")
+                .header("Referer", baseUrl() + "/campusportal.do?page=main&tabId=po")
+                .build();
+
+        String calHtml;
+        try (Response resp = NetworkClient.getNoCookieClient().newCall(calReq).execute()) {
+            calHtml = resp.body().string();
+        }
+
+        String icsUrl = extractMatch(calHtml, "id=\"calendarNm\"[^>]*value=\"([^\"]+)\"");
+        if (icsUrl == null || icsUrl.isEmpty()) {
+            return null;
+        }
+
+        // Fetch ICS file
+        Request icsReq = new Request.Builder()
+                .url(icsUrl)
+                .header("User-Agent", NetworkClient.getUserAgent())
+                .build();
+
+        String icsContent;
+        try (Response resp = NetworkClient.getNoCookieClient().newCall(icsReq).execute()) {
+            icsContent = resp.body().string();
+        }
+
+        return parseICS(icsContent);
     }
 
     private List<Grade> parseGrades(String html) {

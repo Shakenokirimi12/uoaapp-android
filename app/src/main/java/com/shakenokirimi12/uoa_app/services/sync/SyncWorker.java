@@ -98,7 +98,7 @@ public class SyncWorker extends Worker {
         // 1. Moodle
         if (AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
             AtomicReference<String> loginError = new AtomicReference<>();
-            if (await(latch -> moodle.login(user, pass, new ServiceCallback<Boolean>() {
+            if (await(latch -> moodle.ensureLoggedIn(user, pass, false, new ServiceCallback<Boolean>() {
                 @Override public void onSuccess(Boolean r) { latch.countDown(); }
                 @Override public void onError(String m) { loginError.set(m); latch.countDown(); }
             }))) {
@@ -137,7 +137,7 @@ public class SyncWorker extends Worker {
         if (AppConfigService.getInstance().isFeatureEnabled("campussquare_calendar_enabled")) {
             AtomicReference<List<CalendarEvent>> fetched = new AtomicReference<>();
             AtomicReference<String> csError = new AtomicReference<>();
-            await(latch -> campusSquare.fetchCalendarEvents(user, pass, new ServiceCallback<List<CalendarEvent>>() {
+            await(latch -> campusSquare.fetchCalendarEvents(user, pass, false, new ServiceCallback<List<CalendarEvent>>() {
                 @Override public void onSuccess(List<CalendarEvent> r) { fetched.set(r); latch.countDown(); }
                 @Override public void onError(String m) { csError.set(m); latch.countDown(); }
             }));

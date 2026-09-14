@@ -261,14 +261,10 @@ public class CourseDetailFragment extends Fragment {
                 showContentsMessage(message);
             }
         };
-        if (service.hasSession()) {
-            service.fetchCourseContents(courseId, onContents);
-            return;
-        }
-        // Reached this screen before any other tab logged in (e.g. cold start straight
-        // into a course via the courses cache): log in first, like the tabs do.
+        // 直近 10 分以内に他のタブが検証済みなら通信せずに通る。そうでなければ (コース一覧の
+        // キャッシュから直接この画面に来た場合など) 必要に応じてログインする。
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
-        service.login(prefs.getUsername(), prefs.getPassword(), new ServiceCallback<Boolean>() {
+        service.ensureLoggedIn(prefs.getUsername(), prefs.getPassword(), true, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean ok) {
                 if (!isAdded()) return;

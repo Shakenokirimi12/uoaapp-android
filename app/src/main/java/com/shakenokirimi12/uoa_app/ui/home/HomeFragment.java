@@ -291,7 +291,7 @@ public class HomeFragment extends Fragment {
             }
         });
 
-        moodleService.login(user, pass, new ServiceCallback<Boolean>() {
+        moodleService.ensureLoggedIn(user, pass, true, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 if (!isAdded()) return;
