@@ -69,7 +69,42 @@
         <action android:id="@+id/action_settings_to_nav_settings" app:destination="@id/navigation_nav_settings" />
         <action android:id="@+id/action_settings_to_campus_map" app:destination="@id/navigation_campus_map" />
         <action android:id="@+id/action_settings_to_notification_debug" app:destination="@id/navigation_notification_debug" />
+        <action android:id="@+id/action_settings_to_idp_tutorial" app:destination="@id/navigation_idp_tutorial" />
+        <action android:id="@+id/action_settings_to_idp_login" app:destination="@id/navigation_idp_login" />
+        <action android:id="@+id/action_settings_to_idp_otp_registration" app:destination="@id/navigation_idp_otp_registration" />
     </fragment>
+
+    <!-- ── IdP (SECIOSS) login. Entries are shown only while the idp_login_ui_enabled flag is true. ── -->
+
+    <fragment
+        android:id="@+id/navigation_idp_tutorial"
+        android:name="com.shakenokirimi12.uoa_app.ui.idp.IdPTutorialFragment"
+        android:label="IdPログインについて"
+        tools:layout="@layout/fragment_idp_tutorial">
+        <argument android:name="next_action" app:argType="string" android:defaultValue="login" />
+        <action
+            android:id="@+id/action_idp_tutorial_to_login"
+            app:destination="@id/navigation_idp_login"
+            app:popUpTo="@id/navigation_idp_tutorial"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_idp_tutorial_to_otp_registration"
+            app:destination="@id/navigation_idp_otp_registration"
+            app:popUpTo="@id/navigation_idp_tutorial"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_idp_login"
+        android:name="com.shakenokirimi12.uoa_app.ui.idp.IdPLoginFragment"
+        android:label="IdPログイン"
+        tools:layout="@layout/fragment_idp_login" />
+
+    <fragment
+        android:id="@+id/navigation_idp_otp_registration"
+        android:name="com.shakenokirimi12.uoa_app.ui.idp.IdPOtpRegistrationFragment"
+        android:label="ワンタイムパスワード設定"
+        tools:layout="@layout/fragment_idp_otp_registration" />
 
     <!-- ── Academic ── -->
 

@@ -8,6 +8,11 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.data.models.MoodleCourse;
+import com.shakenokirimi12.uoa_app.data.PreferenceManager;
+import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
+import com.shakenokirimi12.uoa_app.services.idp.MarkerList;
+import com.shakenokirimi12.uoa_app.services.idp.SeciossError;
+import com.shakenokirimi12.uoa_app.services.idp.SeciossIdPClient;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -67,6 +72,71 @@ public class MoodleService {
         return sesskey != null && !sesskey.isEmpty();
     }
 
+    // ---- Login Method Switch (iOS の MoodleService.LoginMethod と同じ) ----
+
+    /** 既定は legacy。`moodle_login_method` フラグを `idp` にすると新方式へ切り替えられる。 */
+    public enum LoginMethod { LEGACY, IDP }
+
+    public static LoginMethod resolveLoginMethod() {
+        return "idp".equals(AppConfigService.getInstance().flagValue("moodle_login_method"))
+                ? LoginMethod.IDP : LoginMethod.LEGACY;
+    }
+
+    // ---- IdP (SAML) Login ----
+
+    private final SeciossIdPClient seciossClient = new SeciossIdPClient();
+
+    /**
+     * Moodle は SAML2 認証プラグイン (auth_saml2) で CampusSquare と同じ SECIOSS テナントに接続済み。
+     * このURLで tenantlogin.cgi の sessid/back/tenant フォームまで到達することを iOS 側で確認済み
+     * (2026-09-08)。テナントが同一なので CampusSquare 向けと同じ SeciossIdPClient をそのまま使う。
+     */
+    private static String samlEntryUrl() { return baseUrl() + "/auth/saml2/login.php"; }
+
+    /**
+     * Moodle コア標準のログアウト URL (login/logout.php) の有無で認証済み判定する。この URL パスは言語
+     * 非依存。実接続時のマーカーが違った場合は `moodle_success_markers` フラグで上書きできる。
+     */
+    private static final String[] DEFAULT_SUCCESS_MARKERS = {"login/logout.php"};
+
+    private static boolean containsAnySuccessMarker(String html) {
+        return MarkerList.containsAnyIgnoreCase(html, MarkerList.parse(
+                AppConfigService.getInstance().flagValue("moodle_success_markers"), DEFAULT_SUCCESS_MARKERS));
+    }
+
+    /**
+     * OTP はメール (IMAP) 自動取得。login() の呼び出し元 (バックグラウンド同期) には OTP 入力を待ち受ける
+     * UI が無いため、CampusSquare の loginViaIdPAutomatic と同じ方式にする。
+     * 成功した cookie だけを共有 cookie jar へ注入する。順序が逆だと、ログイン失敗時にも IdP 側の cookie が
+     * 残り、以降のリクエストに無関係なセッションが乗る。
+     */
+    private void loginViaIdP(String username, String password) throws Exception {
+        String uid = username.trim();
+        String pass = password.trim();
+        SeciossIdPClient.Session session;
+        try {
+            session = seciossClient.login(samlEntryUrl(), uid, pass, () -> {
+                if (!PreferenceManager.getInstance().isOtpAutoFetchEnabled()) {
+                    throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
+                }
+                return new ImapOtpFetcher().fetchOtpCode(uid, pass, 30);
+            });
+        } catch (SeciossError e) {
+            if (e.kind == SeciossError.Kind.INVALID_CREDENTIALS) {
+                throw new Exception(INVALID_CREDENTIALS_MESSAGE);
+            }
+            throw new Exception(e.loginMessage(), e);
+        }
+        if (!containsAnySuccessMarker(session.finalHtml)) {
+            throw new Exception("SAML経由でのログイン後、Moodleへの復帰が確認できませんでした");
+        }
+        okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl());
+        String host = base != null ? base.host() : "elms.u-aizu.ac.jp";
+        boolean secure = base == null || base.isHttps();
+        int dropped = NetworkClient.injectCookieHeader(host, secure, session.cookieHeader);
+        if (dropped > 0) Log.w(TAG, "IdP session: " + dropped + " cookie(s) could not be imported");
+    }
+
     public void login(String username, String password, ServiceCallback<Boolean> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
@@ -78,57 +148,62 @@ public class MoodleService {
 
                 Log.d(TAG, "Starting login for: " + username);
 
-                // GET login page for logintoken
-                Request getLogin = new Request.Builder()
-                        .url(baseUrl() + "/login/index.php")
-                        .header("User-Agent", NetworkClient.getUserAgent())
-                        .build();
+                if (resolveLoginMethod() == LoginMethod.IDP) {
+                    // IdP 経由でセッション cookie を得たら、以降 (/my/ で sesskey 取得) は旧方式と共通。
+                    loginViaIdP(username, password);
+                } else {
+                    // GET login page for logintoken
+                    Request getLogin = new Request.Builder()
+                            .url(baseUrl() + "/login/index.php")
+                            .header("User-Agent", NetworkClient.getUserAgent())
+                            .build();
 
-                String loginHtml;
-                try (Response resp = client.newCall(getLogin).execute()) {
-                    loginHtml = resp.body().string();
-                    Log.d(TAG, "Login page loaded, status: " + resp.code());
-                }
+                    String loginHtml;
+                    try (Response resp = client.newCall(getLogin).execute()) {
+                        loginHtml = resp.body().string();
+                        Log.d(TAG, "Login page loaded, status: " + resp.code());
+                    }
 
-                String loginToken = extractMatch(loginHtml,
-                        "name=\"logintoken\"\\s+value=\"([^\"]+)\"");
-                Log.d(TAG, "logintoken: " + (loginToken != null ? "found" : "not found"));
+                    String loginToken = extractMatch(loginHtml,
+                            "name=\"logintoken\"\\s+value=\"([^\"]+)\"");
+                    Log.d(TAG, "logintoken: " + (loginToken != null ? "found" : "not found"));
 
-                // POST login
-                StringBuilder body = new StringBuilder();
-                body.append("username=").append(urlEncode(username.trim()));
-                body.append("&password=").append(urlEncode(password.trim()));
-                if (loginToken != null) {
-                    body.append("&logintoken=").append(urlEncode(loginToken));
-                }
+                    // POST login
+                    StringBuilder body = new StringBuilder();
+                    body.append("username=").append(urlEncode(username.trim()));
+                    body.append("&password=").append(urlEncode(password.trim()));
+                    if (loginToken != null) {
+                        body.append("&logintoken=").append(urlEncode(loginToken));
+                    }
 
-                Request postLogin = new Request.Builder()
-                        .url(baseUrl() + "/login/index.php")
-                        .header("User-Agent", NetworkClient.getUserAgent())
-                        .post(RequestBody.create(body.toString(), FORM))
-                        .build();
+                    Request postLogin = new Request.Builder()
+                            .url(baseUrl() + "/login/index.php")
+                            .header("User-Agent", NetworkClient.getUserAgent())
+                            .post(RequestBody.create(body.toString(), FORM))
+                            .build();
 
-                String responseHtml;
-                String finalUrl;
-                try (Response resp = client.newCall(postLogin).execute()) {
-                    responseHtml = resp.body().string();
-                    finalUrl = resp.request().url().toString();
-                    Log.d(TAG, "POST login response, final URL: " + finalUrl
-                            + ", status: " + resp.code());
-                }
+                    String responseHtml;
+                    String finalUrl;
+                    try (Response resp = client.newCall(postLogin).execute()) {
+                        responseHtml = resp.body().string();
+                        finalUrl = resp.request().url().toString();
+                        Log.d(TAG, "POST login response, final URL: " + finalUrl
+                                + ", status: " + resp.code());
+                    }
 
-                // Check for login failure in the response HTML content.
-                // <script> を除いてから見る。この判定は「自動同期の恒久停止」に使われるため、
-                // ページの JS 内に同じ文言が文字列として埋まっているだけで、正しいパスワードの
-                // ユーザーまで止めてしまう誤検知を避ける (iOS 側で実例あり)。
-                String bodyWithoutScripts = AuthErrors.withoutScripts(responseHtml);
-                if (bodyWithoutScripts.contains("Invalid login")
-                        || bodyWithoutScripts.contains("ログインが無効です")
-                        || bodyWithoutScripts.contains("invalidlogin")
-                        || bodyWithoutScripts.contains("id=\"loginerrormessage\"")) {
-                    Log.e(TAG, "Login failed: invalid credentials");
-                    postError(callback, INVALID_CREDENTIALS_MESSAGE);
-                    return;
+                    // Check for login failure in the response HTML content.
+                    // <script> を除いてから見る。この判定は「自動同期の恒久停止」に使われるため、
+                    // ページの JS 内に同じ文言が文字列として埋まっているだけで、正しいパスワードの
+                    // ユーザーまで止めてしまう誤検知を避ける (iOS 側で実例あり)。
+                    String bodyWithoutScripts = AuthErrors.withoutScripts(responseHtml);
+                    if (bodyWithoutScripts.contains("Invalid login")
+                            || bodyWithoutScripts.contains("ログインが無効です")
+                            || bodyWithoutScripts.contains("invalidlogin")
+                            || bodyWithoutScripts.contains("id=\"loginerrormessage\"")) {
+                        Log.e(TAG, "Login failed: invalid credentials");
+                        postError(callback, INVALID_CREDENTIALS_MESSAGE);
+                        return;
+                    }
                 }
 
                 // GET /my/ to extract sesskey and userid
@@ -173,7 +248,13 @@ public class MoodleService {
                 postSuccess(callback, true);
             } catch (Exception e) {
                 Log.e(TAG, "Login exception", e);
-                postError(callback, "接続エラー: " + e.getMessage());
+                // IdP 経由の ID/PW 誤りは例外で上がってくる。接頭辞を付けると AuthErrors の判定に
+                // 一致しなくなり、誤ったパスワードで自動同期が回り続ける。
+                if (AuthErrors.isInvalidCredentials(e.getMessage())) {
+                    postError(callback, INVALID_CREDENTIALS_MESSAGE);
+                } else {
+                    postError(callback, "接続エラー: " + e.getMessage());
+                }
             }
         });
     }

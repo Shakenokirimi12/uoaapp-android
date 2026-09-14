@@ -38,6 +38,9 @@ public class PreferenceManager {
     private static final String KEY_OTHER_TABS = "other_tabs";
     private static final String KEY_REVIEW_CONSENT = "review_consent_given";
     private static final String KEY_REVIEW_USER_ID = "review_user_id";
+    private static final String KEY_HAS_SEEN_IDP_TUTORIAL = "has_seen_idp_tutorial";
+    private static final String KEY_OTP_AUTO_FETCH_ENABLED = "otp_auto_fetch_enabled";
+    private static final String KEY_CS_IDP_SESSION_COOKIE_HEADER = "cs_idp_session_cookie_header";
 
     private static PreferenceManager instance;
     private final SharedPreferences prefs;
@@ -98,9 +101,24 @@ public class PreferenceManager {
         return instance;
     }
 
+    /**
+     * Context を持たないサービス層 (CampusSquareService / MoodleService) から使う。
+     * UoaApplication.onCreate で必ず初期化されるので、通常は null にならない。
+     */
+    public static synchronized PreferenceManager getInstance() {
+        if (instance == null) {
+            throw new IllegalStateException("PreferenceManager is not initialized; call getInstance(Context) first");
+        }
+        return instance;
+    }
+
     // Credentials
     public String getUsername() { return encryptedPrefs.getString(KEY_USERNAME, ""); }
-    public void setUsername(String username) { encryptedPrefs.edit().putString(KEY_USERNAME, username).apply(); }
+    public void setUsername(String username) {
+        encryptedPrefs.edit().putString(KEY_USERNAME, username).apply();
+        // 別のアカウントに切り替えたとき、前のユーザーの IdP セッションを引き継がない。
+        setCsIdpSessionCookieHeader(null);
+    }
 
     public String getPassword() { return encryptedPrefs.getString(KEY_PASSWORD, ""); }
     public void setPassword(String password) {
@@ -221,6 +239,32 @@ public class PreferenceManager {
     // Review internal user ID (stored securely)
     public String getReviewUserId() { return encryptedPrefs.getString(KEY_REVIEW_USER_ID, ""); }
     public void setReviewUserId(String id) { encryptedPrefs.edit().putString(KEY_REVIEW_USER_ID, id).apply(); }
+
+    // IdP (SECIOSS) login。iOS の SettingsStore.hasSeenIdPTutorial / otpAutoFetchEnabled と同じ既定値。
+    public boolean hasSeenIdPTutorial() { return prefs.getBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, false); }
+    public void setHasSeenIdPTutorial(boolean seen) { prefs.edit().putBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, seen).apply(); }
+
+    /**
+     * IdP ログインでワンタイムパスワードが必要なとき、メール (IMAP) から自動取得してよいか。
+     * 既定は false (手動入力)。メールの自動読み取りはユーザーが IdP チュートリアルで明示的に
+     * 選んだときだけ行う。
+     */
+    public boolean isOtpAutoFetchEnabled() { return prefs.getBoolean(KEY_OTP_AUTO_FETCH_ENABLED, false); }
+    public void setOtpAutoFetchEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_OTP_AUTO_FETCH_ENABLED, enabled).apply(); }
+
+    /**
+     * IdP 経由で得た CampusSquare のセッション Cookie ヘッダ。iOS は Keychain に置いている。
+     * セッション自体が資格情報に相当するので暗号化側に入れる。空文字なら無し。
+     */
+    public String getCsIdpSessionCookieHeader() { return encryptedPrefs.getString(KEY_CS_IDP_SESSION_COOKIE_HEADER, ""); }
+    public void setCsIdpSessionCookieHeader(String header) {
+        if (header == null || header.isEmpty()) {
+            encryptedPrefs.edit().remove(KEY_CS_IDP_SESSION_COOKIE_HEADER).apply();
+        } else {
+            encryptedPrefs.edit().putString(KEY_CS_IDP_SESSION_COOKIE_HEADER, header).apply();
+        }
+    }
+    public boolean hasCsIdpSession() { return !getCsIdpSessionCookieHeader().isEmpty(); }
 
     // Reset
     public void clearAll() {

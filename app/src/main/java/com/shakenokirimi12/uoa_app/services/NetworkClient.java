@@ -79,6 +79,42 @@ public class NetworkClient {
         return cookies != null ? new ArrayList<>(cookies) : new ArrayList<>();
     }
 
+    /**
+     * SeciossIdPClient は cookie を自前で管理していて、共有の cookie jar を通らない。
+     * IdP 経由で得た Moodle のセッション cookie (MoodleSession 等) をここへ入れないと、
+     * 以降の getCookieClient() 経由のリクエストが未ログイン扱いになる (iOS の
+     * MoodleService.injectCookiesIntoSharedStorage と同じ役割)。
+     * 1 件でも壊れた値があっても他は入れる。落とした件数は呼び出し元へ返す。
+     */
+    public static synchronized int injectCookieHeader(String host, boolean secure, String cookieHeader) {
+        List<Cookie> parsed = new ArrayList<>();
+        int dropped = 0;
+        for (String pair : cookieHeader.split(";")) {
+            String trimmed = pair.trim();
+            int eq = trimmed.indexOf('=');
+            if (eq <= 0) continue;
+            try {
+                Cookie.Builder b = new Cookie.Builder()
+                        .name(trimmed.substring(0, eq))
+                        .value(trimmed.substring(eq + 1))
+                        .domain(host)
+                        .path("/");
+                if (secure) b.secure();
+                parsed.add(b.build());
+            } catch (IllegalArgumentException e) {
+                dropped++;
+            }
+        }
+        List<Cookie> existing = cookieStore.get(host);
+        Map<String, Cookie> merged = new HashMap<>();
+        if (existing != null) {
+            for (Cookie c : existing) merged.put(c.name(), c);
+        }
+        for (Cookie c : parsed) merged.put(c.name(), c);
+        cookieStore.put(host, new ArrayList<>(merged.values()));
+        return dropped;
+    }
+
     public static void clearCookies() {
         cookieStore.clear();
     }

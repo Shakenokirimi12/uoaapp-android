@@ -3,9 +3,14 @@ package com.shakenokirimi12.uoa_app.services;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
 import com.shakenokirimi12.uoa_app.data.models.FacilityUsage;
 import com.shakenokirimi12.uoa_app.data.models.Grade;
+import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
+import com.shakenokirimi12.uoa_app.services.idp.MarkerList;
+import com.shakenokirimi12.uoa_app.services.idp.SeciossError;
+import com.shakenokirimi12.uoa_app.services.idp.SeciossIdPClient;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -68,17 +73,227 @@ public class CampusSquareService {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    private String sessionId = "";
-
     public void login(String username, String password, ServiceCallback<Boolean> callback) {
         executor.execute(() -> {
             try {
-                sessionId = doLogin(username, password);
+                authenticatedCookieHeader(username, password);
                 postSuccess(callback, true);
             } catch (Exception e) {
                 postError(callback, e.getMessage());
             }
         });
+    }
+
+    // ---- Login Method Switch (iOS の CampusSquareService.LoginMethod と同じ) ----
+
+    /**
+     * 成績・カレンダー取得が旧方式 (生 POST) と新方式 (IdP 経由) のどちらでログインするかの明示的な
+     * 切り替え。`campussquare_login_method` フラグを `idp` にすると審査を経ずに新方式へ切り替えられる
+     * (問題があれば `legacy` に戻すだけで良い)。未設定・不正な値は安全側 (legacy) に倒す。
+     */
+    public enum LoginMethod { LEGACY, IDP }
+
+    public static LoginMethod resolveLoginMethod() {
+        return "idp".equals(AppConfigService.getInstance().flagValue("campussquare_login_method"))
+                ? LoginMethod.IDP : LoginMethod.LEGACY;
+    }
+
+    /**
+     * 旧方式は JSESSIONID 単体、新方式は SeciossIdPClient が集めた複数 cookie (AWS ALB のスティッキー
+     * セッション cookie 等を含み得る) を Cookie ヘッダごと必要とする。この違いを fetchGrades /
+     * fetchCalendarEvents から隠し、どちらもそのまま Cookie ヘッダに載せられる文字列を返す。
+     */
+    private String authenticatedCookieHeader(String username, String password) throws Exception {
+        if (resolveLoginMethod() == LoginMethod.LEGACY) {
+            return "JSESSIONID=" + doLogin(username, password);
+        }
+        // iOS は毎回ログインし直すが、Android は IdP 経由の OTP 往復 (最大 30 秒) を避けるため
+        // キャッシュしたセッションが生きていればそれを使う。死んでいたら捨てて取り直す。
+        String cached = PreferenceManager.getInstance().getCsIdpSessionCookieHeader();
+        if (!cached.isEmpty()) {
+            if (isSessionAlive(cached)) return cached;
+            clearIdpSession();
+        }
+        return loginViaIdPAutomatic(null, username, password);
+    }
+
+    /**
+     * IdP セッションの生存確認。旧方式の Step 4 と同じ page=main を見る。IdP 化後の CampusSquare で
+     * このページ・文言がどうなるかは 2026-09-14 時点で未確認なので、URL は `campussquare_session_check_url`
+     * フラグで差し替えられるようにしておく。
+     */
+    private boolean isSessionAlive(String cookieHeader) {
+        String url = AppConfigService.getInstance().stringFlag("campussquare_session_check_url",
+                baseUrl() + "/campusportal.do?page=main");
+        Request req = new Request.Builder()
+                .url(url)
+                .header("User-Agent", NetworkClient.getUserAgent())
+                .header("Cookie", cookieHeader)
+                .build();
+        try (Response resp = NetworkClient.getNoCookieClient().newCall(req).execute()) {
+            String html = resp.body() != null ? resp.body().string() : "";
+            return resp.isSuccessful() && containsAnySuccessMarker(html);
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /** セッション切れ等で無効化する。次回同期時に再ログインが必要と判断させる。 */
+    public static void clearIdpSession() {
+        PreferenceManager.getInstance().setCsIdpSessionCookieHeader(null);
+    }
+
+    // ---- IdP (SECIOSS) login ----
+
+    private final SeciossIdPClient seciossClient = new SeciossIdPClient();
+
+    /**
+     * SeciossIdPClient 自体は SECIOSS 側の成功マーカーしか見ていない。CampusSquare へ実際に戻って
+     * こられたかは別に確認する。CampusSquare 側の成功マーカー文言は実接続で判明するまで未確認なので、
+     * `campussquare_success_markers` フラグ (カンマ区切り、既定は "ログアウト,Logout") で追従できる。
+     */
+    private static final String[] DEFAULT_SUCCESS_MARKERS = {"ログアウト", "Logout"};
+
+    private static boolean containsAnySuccessMarker(String html) {
+        return MarkerList.containsAnyIgnoreCase(html, MarkerList.parse(
+                AppConfigService.getInstance().flagValue("campussquare_success_markers"), DEFAULT_SUCCESS_MARKERS));
+    }
+
+    /**
+     * IdP (SECIOSS) 経由でログインし、CampusSquare のセッション Cookie ヘッダを返す (キャッシュにも保存)。
+     * entryUrl が null なら resolveCampusSquareEntryUrl() の結果を使う。otpCode は OTP が要求された
+     * 場合にのみ呼ばれる (UI 入力待ちや IMAP 自動取得)。
+     * ID/PW 誤りは AuthErrors.INVALID_CREDENTIALS_MESSAGE の Exception に変換して投げる。既存の
+     * onError 側 (markInvalidIfCredentialsError) がそのまま自動同期を止められるようにするため。
+     */
+    public String loginViaIdP(String entryUrl, String username, String password,
+                              SeciossIdPClient.OtpCodeProvider otpCode) throws Exception {
+        String uid = username.trim();
+        String pass = password.trim();
+        String resolvedEntry = entryUrl != null ? entryUrl : resolveCampusSquareEntryUrl();
+        SeciossIdPClient.Session session;
+        try {
+            session = seciossClient.login(resolvedEntry, uid, pass, otpCode);
+        } catch (SeciossError e) {
+            if (e.kind == SeciossError.Kind.INVALID_CREDENTIALS) {
+                throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
+            }
+            throw new Exception(e.loginMessage(), e);
+        }
+        // マーカーだけだと IdP 側のページ (エラー画面にも「ログアウト」がある) を成功と誤認する。
+        // 復帰先が CampusSquare 自身のホストであることも要求する。
+        okhttp3.HttpUrl finalUrl = okhttp3.HttpUrl.parse(session.finalUrl);
+        okhttp3.HttpUrl csUrl = okhttp3.HttpUrl.parse(baseUrl());
+        String finalHost = finalUrl != null ? finalUrl.host().toLowerCase() : "";
+        String csHost = csUrl != null ? csUrl.host().toLowerCase() : "csweb.u-aizu.ac.jp";
+        if (!finalHost.equals(csHost)) {
+            throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+                    "CampusSquareへ戻れていない(final=" + session.finalUrl + ")").loginMessage());
+        }
+        if (!containsAnySuccessMarker(session.finalHtml)) {
+            throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+                    "CampusSquareへの復帰後、成功マーカーが見つからない").loginMessage());
+        }
+        PreferenceManager.getInstance().setCsIdpSessionCookieHeader(session.cookieHeader);
+        return session.cookieHeader;
+    }
+
+    /**
+     * OTP をメール (stdmsv1.u-aizu.ac.jp、AINS ID/PW 共通) から自動取得してログインする。人手を介さず
+     * バックグラウンドでも完結できるが、メール到着が遅いと最大 30 秒待つ。
+     */
+    public String loginViaIdPAutomatic(String entryUrl, String username, String password) throws Exception {
+        return loginViaIdP(entryUrl, username, password, () -> {
+            // メール自動読み取りはユーザーが IdP チュートリアルで明示的に許可した場合のみ行う。
+            if (!PreferenceManager.getInstance().isOtpAutoFetchEnabled()) {
+                throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
+            }
+            return new ImapOtpFetcher().fetchOtpCode(username.trim(), password.trim(), 30);
+        });
+    }
+
+    /**
+     * CampusSquare 側の未認証入口の形は実接続まで不明。他大学の SECIOSS 導入事例で観測できた 2 パターンを
+     * 両方実装し、`campussquare_entry_pattern` フラグで切り替える (iOS と同じ)。
+     * - direct (既定): entryUrl への初回アクセスで即座にログインフォーム (sessid/back/tenant) が現れる想定。
+     * - selection_page: entryUrl は「SSO ログイン」等を選ばせる画面で、該当リンクまたは GET フォームを辿る。
+     *   POST フォームはフィールド構成を決め打ちしたくないため対象外。
+     * 想定外の画面だった場合は下流の SeciossIdPClient が MISSING_FIELD/UNRECOGNIZED_STATE で明示的に失敗する。
+     */
+    private static final String[] DEFAULT_ENTRY_LINK_HINTS = {"SSO", "シングルサインオン", "統合認証", "SECIOSS", "証明書"};
+
+    private String resolveCampusSquareEntryUrl() {
+        AppConfigService flags = AppConfigService.getInstance();
+        String base = flags.flagValue("campussquare_entry_url");
+        if (base == null || base.trim().isEmpty()) base = baseUrl() + "/campusportal.do?locale=ja_JP";
+        if (!"selection_page".equals(flags.flagValue("campussquare_entry_pattern"))) return base;
+
+        java.util.List<String> hints = MarkerList.parse(flags.flagValue("campussquare_entry_link_hints"), DEFAULT_ENTRY_LINK_HINTS);
+        Request req = new Request.Builder().url(base).header("User-Agent", NetworkClient.getUserAgent()).build();
+        try (Response resp = NetworkClient.getNoCookieClient().newCall(req).execute()) {
+            if (!resp.isSuccessful() || resp.body() == null) return base;
+            String html = resp.body().string();
+            String target = findMatchingLink(html, hints, base);
+            if (target == null) target = findMatchingGetFormSubmission(html, hints, base);
+            if (target != null) return target;
+        } catch (IOException e) {
+            // 取得に失敗したら base のまま返す。下流が sessid 等を見つけられず MISSING_FIELD として明示的に失敗する。
+        }
+        return base;
+    }
+
+    /** ヒント語との一致は大文字小文字を区別しない (実際の文言の表記揺れに強くするため)。 */
+    static String findMatchingLink(String html, java.util.List<String> hints, String baseUrl) {
+        Matcher m = Pattern.compile("<a[^>]*href=\"([^\"]+)\"[^>]*>([^<]*)</a>").matcher(html);
+        while (m.find()) {
+            String href = m.group(1);
+            String text = m.group(2);
+            if (MarkerList.containsAnyIgnoreCase(text, hints) || MarkerList.containsAnyIgnoreCase(href, hints)) {
+                return resolveAgainst(baseUrl, href);
+            }
+        }
+        return null;
+    }
+
+    /** <form method="get"> のうち、フォーム内にヒント語を含むものを action + hidden input から 1 本の URL にする。 */
+    static String findMatchingGetFormSubmission(String html, java.util.List<String> hints, String baseUrl) {
+        Matcher form = Pattern.compile("<form\\b([^>]*)>(.*?)</form>", Pattern.DOTALL).matcher(html);
+        while (form.find()) {
+            String attrs = form.group(1);
+            String body = form.group(2);
+            if (!MarkerList.containsAnyIgnoreCase(body, hints)) continue;
+            String action = extractMatchIgnoreCase(attrs, "action=\"([^\"]+)\"");
+            if (action == null) continue;
+            String method = extractMatchIgnoreCase(attrs, "method=\"([^\"]+)\"");
+            if (method != null && !"get".equalsIgnoreCase(method)) continue;
+
+            StringBuilder query = new StringBuilder();
+            Matcher input = Pattern.compile("<input[^>]*>").matcher(body);
+            while (input.find()) {
+                String tag = input.group();
+                String name = extractMatchIgnoreCase(tag, "name=\"([^\"]+)\"");
+                if (name == null) continue;
+                String value = extractMatchIgnoreCase(tag, "value=\"([^\"]*)\"");
+                if (query.length() > 0) query.append('&');
+                // iOS と同じく空白は %20 (URLEncoder は "+" にするので使わない)。
+                query.append(name).append('=').append(SeciossIdPClient.urlEncode(value != null ? value : ""));
+            }
+            String actionUrl = resolveAgainst(baseUrl, action);
+            if (query.length() == 0) return actionUrl;
+            return actionUrl + (actionUrl.contains("?") ? "&" : "?") + query;
+        }
+        return null;
+    }
+
+    private static String extractMatchIgnoreCase(String text, String regex) {
+        Matcher m = Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(text);
+        return m.find() ? m.group(1) : null;
+    }
+
+    private static String resolveAgainst(String baseUrl, String relative) {
+        okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl);
+        okhttp3.HttpUrl resolved = base != null ? base.resolve(relative) : null;
+        return resolved != null ? resolved.toString() : relative;
     }
 
     private String doLogin(String username, String password) throws Exception {
@@ -174,13 +389,13 @@ public class CampusSquareService {
         }
         executor.execute(() -> {
             try {
-                String sid = doLogin(username, password);
+                String cookie = authenticatedCookieHeader(username, password);
 
                 // Navigate to grades tab
                 Request tabReq = new Request.Builder()
                         .url(baseUrl() + "/campusportal.do?page=main&tabId=si")
                         .header("User-Agent", NetworkClient.getUserAgent())
-                        .header("Cookie", "JSESSIONID=" + sid)
+                        .header("Cookie", cookie)
                         .header("Referer", baseUrl() + "/campusportal.do?page=main")
                         .build();
                 try (Response r = NetworkClient.getNoCookieClient().newCall(tabReq).execute()) {
@@ -193,7 +408,7 @@ public class CampusSquareService {
                 Request flowReq = new Request.Builder()
                         .url(baseUrl() + "/campussquare.do?_flowId=SIW0001200-flow")
                         .header("User-Agent", NetworkClient.getUserAgent())
-                        .header("Cookie", "JSESSIONID=" + sid)
+                        .header("Cookie", cookie)
                         .header("sec-fetch-dest", "iframe")
                         .header("Referer", baseUrl() + "/campusportal.do?page=main&tabId=si")
                         .build();
@@ -208,7 +423,7 @@ public class CampusSquareService {
                         Request follow = new Request.Builder()
                                 .url(redirectUrl)
                                 .header("User-Agent", NetworkClient.getUserAgent())
-                                .header("Cookie", "JSESSIONID=" + sid)
+                                .header("Cookie", cookie)
                                 .build();
                         try (Response r2 = NetworkClient.getNoCookieClient().newCall(follow).execute()) {
                             flowHtml = r2.body().string();
@@ -232,7 +447,7 @@ public class CampusSquareService {
                 Request gradePost = new Request.Builder()
                         .url(baseUrl() + "/campussquare.do")
                         .header("User-Agent", NetworkClient.getUserAgent())
-                        .header("Cookie", "JSESSIONID=" + sid)
+                        .header("Cookie", cookie)
                         .header("Content-Type", "application/x-www-form-urlencoded")
                         .header("Referer", baseUrl() + "/campussquare.do?_flowId=SIW0001200-flow&_flowExecutionKey=" + flowKey)
                         .post(RequestBody.create(postBody, FORM))
@@ -259,13 +474,13 @@ public class CampusSquareService {
         }
         executor.execute(() -> {
             try {
-                String sid = doLogin(username, password);
+                String cookie = authenticatedCookieHeader(username, password);
 
                 // Navigate to calendar tab
                 Request tabReq = new Request.Builder()
                         .url(baseUrl() + "/campusportal.do?page=main&tabId=po")
                         .header("User-Agent", NetworkClient.getUserAgent())
-                        .header("Cookie", "JSESSIONID=" + sid)
+                        .header("Cookie", cookie)
                         .header("Referer", baseUrl() + "/campusportal.do?page=main")
                         .build();
                 try (Response r = NetworkClient.getNoCookieClient().newCall(tabReq).execute()) {
@@ -277,7 +492,7 @@ public class CampusSquareService {
                 Request calReq = new Request.Builder()
                         .url(baseUrl() + "/campussquare.do?_flowId=POW2401000-flow")
                         .header("User-Agent", NetworkClient.getUserAgent())
-                        .header("Cookie", "JSESSIONID=" + sid)
+                        .header("Cookie", cookie)
                         .header("sec-fetch-dest", "iframe")
                         .header("Referer", baseUrl() + "/campusportal.do?page=main&tabId=po")
                         .build();
