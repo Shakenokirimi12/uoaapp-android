@@ -51,7 +51,7 @@ public class GakushokuFragment extends Fragment {
 
         swipeRefresh.setColorSchemeColors(
                 MaterialColors.getColor(view, androidx.appcompat.R.attr.colorPrimary));
-        swipeRefresh.setOnRefreshListener(this::loadMenu);
+        swipeRefresh.setOnRefreshListener(() -> loadMenu(true));
 
         List<GakushokuMenuItem> cached = DataCache.getInstance(requireContext()).loadMenu();
         if (!cached.isEmpty()) {
@@ -59,10 +59,14 @@ public class GakushokuFragment extends Fragment {
         }
         updateEmptyState();
 
-        loadMenu();
+        loadMenu(false);
     }
 
-    private void loadMenu() {
+    /** @param force true for pull-to-refresh; false skips the fetch while the cache is fresh (menu changes daily at most). */
+    private void loadMenu(boolean force) {
+        if (!force && DataCache.getInstance(requireContext()).isFresh(DataCache.Dataset.MENU, DataCache.MENU_MAX_AGE_MS)) {
+            return;
+        }
         swipeRefresh.setRefreshing(true);
         gakushokuService.fetchMenu(new ServiceCallback<List<GakushokuMenuItem>>() {
             @Override

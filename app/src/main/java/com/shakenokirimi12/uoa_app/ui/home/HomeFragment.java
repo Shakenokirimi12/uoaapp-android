@@ -162,8 +162,8 @@ public class HomeFragment extends Fragment {
         swipeRefresh.setColorSchemeColors(
                 MaterialColors.getColor(swipeRefresh, androidx.appcompat.R.attr.colorPrimary));
         swipeRefresh.setOnRefreshListener(() -> {
-            syncData();
-            loadCafeteriaMenu();
+            syncData(true);
+            loadCafeteriaMenu(true);
         });
 
         DataCache cache = DataCache.getInstance(requireContext());
@@ -173,8 +173,10 @@ public class HomeFragment extends Fragment {
             filterAndDisplay();
         }
 
-        syncData();
-        loadCafeteriaMenu();
+        // Every tab switch recreates this fragment; hitting CampusSquare / Moodle each time is
+        // needless load on the university servers, so automatic loads honor the cache age.
+        syncData(false);
+        loadCafeteriaMenu(false);
     }
 
     private void onDateChanged() {
@@ -246,10 +248,21 @@ public class HomeFragment extends Fragment {
         textAssignmentCount.setText(String.valueOf(dayAssignments.size()));
     }
 
-    private void syncData() {
-        syncStatusBar.setVisibility(View.VISIBLE);
-        textSyncStatus.setText(R.string.home_sync_status);
-        swipeRefresh.setRefreshing(true);
+    /** Number of in-flight fetches started by syncData(); the spinner stays until it reaches 0. */
+    private int pendingFetches = 0;
+
+    private void fetchFinished() {
+        if (--pendingFetches > 0) return;
+        pendingFetches = 0;
+        swipeRefresh.setRefreshing(false);
+        syncStatusBar.setVisibility(View.GONE);
+    }
+
+    /**
+     * @param force true for pull-to-refresh: always fetch. false for automatic loads: skip each
+     *              dataset that was fetched (by this screen or SyncWorker) within the cache window.
+     */
+    private void syncData(boolean force) {
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
         String user = prefs.getUsername();
         String pass = prefs.getPassword();
@@ -264,6 +277,22 @@ public class HomeFragment extends Fragment {
             return;
         }
 
+        DataCache cache = DataCache.getInstance(requireContext());
+        boolean fetchEvents = force || !cache.isFresh(DataCache.Dataset.EVENTS, DataCache.DEFAULT_MAX_AGE_MS);
+        boolean fetchAssignments = force || !cache.isFresh(DataCache.Dataset.ASSIGNMENTS, DataCache.DEFAULT_MAX_AGE_MS);
+        if (!fetchEvents) {
+            // Only this screen starts the class notification service; keep doing so from the cache.
+            startClassNotification(allEvents);
+        }
+        if (!fetchEvents && !fetchAssignments) {
+            swipeRefresh.setRefreshing(false);
+            return;
+        }
+
+        syncStatusBar.setVisibility(View.VISIBLE);
+        textSyncStatus.setText(R.string.home_sync_status);
+        swipeRefresh.setRefreshing(true);
+
         // ID/PW 誤りが確定している間は自動でログインを試みない。画面を開くたびに
         // 誤ったパスワードで認証すると、大学側でアカウントがロックされうる。
         if (prefs.isCredentialsInvalid()) {
@@ -273,7 +302,10 @@ public class HomeFragment extends Fragment {
             return;
         }
 
-        csService.fetchCalendarEvents(user, pass, new ServiceCallback<List<CalendarEvent>>() {
+        // += so a pull-to-refresh during an in-flight sync does not hide the spinner early.
+        pendingFetches += (fetchEvents ? 1 : 0) + (fetchAssignments ? 1 : 0);
+
+        if (fetchEvents) csService.fetchCalendarEvents(user, pass, new ServiceCallback<List<CalendarEvent>>() {
             @Override
             public void onSuccess(List<CalendarEvent> events) {
                 if (!isAdded()) return;
@@ -282,16 +314,18 @@ public class HomeFragment extends Fragment {
                 startClassNotification(events);
                 DataCache.getInstance(requireContext()).saveEvents(events);
                 com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(requireContext());
+                fetchFinished();
             }
 
             @Override
             public void onError(String message) {
                 if (!isAdded()) return;
                 textNoClasses.setVisibility(View.VISIBLE);
+                fetchFinished();
             }
         });
 
-        moodleService.ensureLoggedIn(user, pass, true, new ServiceCallback<Boolean>() {
+        if (fetchAssignments) moodleService.ensureLoggedIn(user, pass, true, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 if (!isAdded()) return;
@@ -301,8 +335,7 @@ public class HomeFragment extends Fragment {
                         if (!isAdded()) return;
                         allAssignments = assignments;
                         filterAndDisplay();
-                        swipeRefresh.setRefreshing(false);
-                        syncStatusBar.setVisibility(View.GONE);
+                        fetchFinished();
                         prefs.setLastSync(System.currentTimeMillis());
                         showLastSyncTime();
                         DataCache.getInstance(requireContext()).saveAssignments(assignments);
@@ -313,8 +346,7 @@ public class HomeFragment extends Fragment {
                     @Override
                     public void onError(String message) {
                         if (!isAdded()) return;
-                        swipeRefresh.setRefreshing(false);
-                        syncStatusBar.setVisibility(View.GONE);
+                        fetchFinished();
                         showError(message);
                     }
                 });
@@ -324,35 +356,29 @@ public class HomeFragment extends Fragment {
             public void onError(String message) {
                 if (!isAdded()) return;
                 MoodleService.markInvalidIfCredentialsError(requireContext(), message);
-                swipeRefresh.setRefreshing(false);
-                syncStatusBar.setVisibility(View.GONE);
+                fetchFinished();
                 showError(message);
             }
         });
     }
 
-    private void loadCafeteriaMenu() {
+    private void loadCafeteriaMenu(boolean force) {
         textMenuLoading.setVisibility(View.VISIBLE);
         layoutMenuContent.setVisibility(View.GONE);
+
+        DataCache cache = DataCache.getInstance(requireContext());
+        if (!force && cache.isFresh(DataCache.Dataset.MENU, DataCache.MENU_MAX_AGE_MS)) {
+            showTodayMenu(cache.loadMenu());
+            return;
+        }
 
         gakushokuService.fetchMenu(new ServiceCallback<List<GakushokuMenuItem>>() {
             @Override
             public void onSuccess(List<GakushokuMenuItem> items) {
                 if (!isAdded()) return;
-                Calendar cal = Calendar.getInstance();
-                int todayDay = cal.get(Calendar.DAY_OF_MONTH);
-                GakushokuMenuItem todayMenu = null;
-                for (GakushokuMenuItem item : items) {
-                    if (item.getDate() != null && item.getDate().contains(todayDay + "日")) {
-                        todayMenu = item;
-                        break;
-                    }
-                }
-                if (todayMenu != null) {
-                    showMenuPreview(todayMenu);
-                } else {
-                    textMenuLoading.setText("今日のメニューはありません");
-                }
+                // Saving here lets the Gakushoku tab reuse it within its own cache window.
+                DataCache.getInstance(requireContext()).saveMenu(items);
+                showTodayMenu(items);
             }
 
             @Override
@@ -361,6 +387,23 @@ public class HomeFragment extends Fragment {
                 textMenuLoading.setText("メニュー取得失敗");
             }
         });
+    }
+
+    private void showTodayMenu(List<GakushokuMenuItem> items) {
+        Calendar cal = Calendar.getInstance();
+        int todayDay = cal.get(Calendar.DAY_OF_MONTH);
+        GakushokuMenuItem todayMenu = null;
+        for (GakushokuMenuItem item : items) {
+            if (item.getDate() != null && item.getDate().contains(todayDay + "日")) {
+                todayMenu = item;
+                break;
+            }
+        }
+        if (todayMenu != null) {
+            showMenuPreview(todayMenu);
+        } else {
+            textMenuLoading.setText("今日のメニューはありません");
+        }
     }
 
     private void showMenuPreview(GakushokuMenuItem menu) {

@@ -81,7 +81,7 @@ public class CoursesFragment extends Fragment {
         });
 
         swipeRefresh.setColorSchemeColors(MaterialColors.getColor(view, androidx.appcompat.R.attr.colorPrimary));
-        swipeRefresh.setOnRefreshListener(this::loadCourses);
+        swipeRefresh.setOnRefreshListener(() -> loadCourses(true));
 
         List<MoodleCourse> cached = DataCache.getInstance(requireContext()).loadCourses();
         if (!cached.isEmpty()) {
@@ -90,7 +90,7 @@ public class CoursesFragment extends Fragment {
         // The observer only fires on adapter changes; with no cache nothing changes yet.
         updateEmptyState();
 
-        loadCourses();
+        loadCourses(false);
     }
 
     private void updateEmptyState() {
@@ -100,7 +100,11 @@ public class CoursesFragment extends Fragment {
         textEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
     }
 
-    private void loadCourses() {
+    /** @param force true for pull-to-refresh; false skips the fetch while the cache is fresh. */
+    private void loadCourses(boolean force) {
+        if (!force && DataCache.getInstance(requireContext()).isFresh(DataCache.Dataset.COURSES, DataCache.DEFAULT_MAX_AGE_MS)) {
+            return;
+        }
         swipeRefresh.setRefreshing(true);
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
         String user = prefs.getUsername();

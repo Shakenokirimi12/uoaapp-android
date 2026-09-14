@@ -93,23 +93,30 @@ public class CalendarFragment extends Fragment {
         loadData();
     }
 
+    /** Automatic load only (no pull-to-refresh here): each dataset is skipped while the cache is fresh. */
     private void loadData() {
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
         String user = prefs.getUsername();
         String pass = prefs.getPassword();
         if (user.isEmpty()) return;
 
+        DataCache cache = DataCache.getInstance(requireContext());
+        boolean fetchEvents = !cache.isFresh(DataCache.Dataset.EVENTS, DataCache.DEFAULT_MAX_AGE_MS);
+        boolean fetchAssignments = !cache.isFresh(DataCache.Dataset.ASSIGNMENTS, DataCache.DEFAULT_MAX_AGE_MS);
+        if (!fetchEvents && !fetchAssignments) return;
+
         // ID/PW 誤りが確定している間は自動でログインを試みない (アカウントロック対策)。
         if (com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(requireContext()).isCredentialsInvalid()) {
             android.widget.Toast.makeText(requireContext(), com.shakenokirimi12.uoa_app.services.AuthErrors.INVALID_CREDENTIALS_MESSAGE, android.widget.Toast.LENGTH_LONG).show();
             return;
         }
-        csService.fetchCalendarEvents(user, pass, new ServiceCallback<List<CalendarEvent>>() {
+        if (fetchEvents) csService.fetchCalendarEvents(user, pass, new ServiceCallback<List<CalendarEvent>>() {
             @Override
             public void onSuccess(List<CalendarEvent> events) {
                 if (!isAdded()) return;
                 allEvents = events;
                 updateList();
+                DataCache.getInstance(requireContext()).saveEvents(events);
             }
             @Override
             public void onError(String message) {
@@ -119,7 +126,7 @@ public class CalendarFragment extends Fragment {
             }
         });
 
-        moodleService.ensureLoggedIn(user, pass, true, new ServiceCallback<Boolean>() {
+        if (fetchAssignments) moodleService.ensureLoggedIn(user, pass, true, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 if (!isAdded()) return;
@@ -129,6 +136,7 @@ public class CalendarFragment extends Fragment {
                         if (!isAdded()) return;
                         allAssignments = assignments;
                         updateList();
+                        DataCache.getInstance(requireContext()).saveAssignments(assignments);
                     }
                     @Override
                     public void onError(String msg) {}

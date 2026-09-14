@@ -26,7 +26,7 @@ import javax.net.ssl.SSLSocketFactory;
 /**
  * stdmsv1.u-aizu.ac.jp (Dovecot, IMAP4rev1, AUTH=PLAIN、IMAPS/993) から IdP のワンタイムパスワード
  * メールを取り出す最小限の IMAP クライアント。iOS の IMAPOTPFetcher の移植。
- * RFC 3501 全体は実装せず、LOGIN -> SELECT -> UID SEARCH -> UID FETCH -> LOGOUT の一直線だけを
+ * RFC 3501 全体は実装せず、LOGIN -> SELECT -> (UID SEARCH を繰り返し) -> UID FETCH -> LOGOUT だけを
  * サポートする。AINS ID/パスワードは CampusSquare/IdP ログインと共通 (別のメールアカウント設定は無い)。
  * ID/PW/OTP コードの値はログに出さない。
  */
@@ -41,6 +41,7 @@ public final class ImapOtpFetcher {
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int READ_TIMEOUT_MS = 15_000;
     private static final long RETRY_INTERVAL_MS = 3_000L;
+    private static final int MAX_RECONNECTS = 3;
 
     private final String host;
     private final int port;
@@ -56,63 +57,105 @@ public final class ImapOtpFetcher {
 
     /**
      * motp.cgi でメール送信を依頼した直後に呼ぶ想定。配信まで数秒かかることがあるので、timeout 内は
-     * 数秒おきに接続し直して探す (IDLE で待ち受ける方式は使わない)。
+     * 数秒おきに探す (IDLE で待ち受ける方式は使わない)。
+     * 接続は 1 本だけ張り、LOGIN/SELECT は最初の 1 回。以降は UID SEARCH だけを繰り返す。以前は
+     * ポーリングごとに TLS 接続と LOGIN をやり直していて、メールサーバーに 30 秒で 10 回ログインしていた。
+     * 接続が切れた (IOException) ときだけ張り直し、それも MAX_RECONNECTS 回まで。
      */
     @NonNull
     public String fetchOtpCode(@NonNull String uid, @NonNull String pass, long timeoutSeconds) throws Exception {
         long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
         Exception lastError = new ImapException("mailNotFound");
-        while (true) {
-            try {
-                return attemptFetch(uid, pass);
-            } catch (Exception e) {
-                lastError = e;
+        int reconnects = 0;
+        ImapStream stream = null;
+        try {
+            while (true) {
+                try {
+                    if (stream == null) {
+                        // LOGIN/SELECT の失敗 (ImapException) はここで抜ける。ID/PW 誤りを 3 秒おきに
+                        // 試し直すとアカウントロックの危険があるので再試行しない。
+                        stream = openAndSelect(uid, pass);
+                    }
+                    String code = searchAndFetch(stream);
+                    if (code != null) return code;
+                    lastError = new ImapException("mailNotFound");
+                } catch (IOException e) {
+                    lastError = e;
+                    closeQuietly(stream);
+                    stream = null;
+                    if (++reconnects > MAX_RECONNECTS) throw e;
+                } catch (ImapException e) {
+                    if (stream == null) throw e;
+                    // codeNotFound 等: メールはあるが本文から取れない。配信途中の可能性もあるので待つ。
+                    lastError = e;
+                }
                 if (System.currentTimeMillis() >= deadline) throw lastError;
                 Thread.sleep(RETRY_INTERVAL_MS);
+            }
+        } finally {
+            if (stream != null) {
+                stream.sendQuietly(stream.nextTag() + " LOGOUT");
+                stream.close();
             }
         }
     }
 
-    private String attemptFetch(String uid, String pass) throws Exception {
-        try (ImapStream stream = new ImapStream(host, port)) {
+    /** 接続して LOGIN + SELECT INBOX まで済ませる。失敗したら接続を閉じてから投げる。 */
+    private ImapStream openAndSelect(String uid, String pass) throws IOException, ImapException {
+        ImapStream stream = new ImapStream(host, port);
+        try {
             stream.readLine(); // "* OK ... Dovecot ready."
 
-            stream.send("a1 LOGIN " + quote(uid) + " " + quote(pass));
-            stream.readUntilTagged("a1");
+            String tag = stream.nextTag();
+            stream.send(tag + " LOGIN " + quote(uid) + " " + quote(pass));
+            stream.readUntilTagged(tag);
 
-            stream.send("a2 SELECT INBOX");
-            stream.readUntilTagged("a2");
-
-            stream.send("a3 UID SEARCH UNSEEN FROM \"" + OTP_SENDER + "\" SINCE " + imapDate(new Date()));
-            List<String> searchLines = stream.readUntilTagged("a3");
-            String targetUid = lastUid(searchLines);
-            if (targetUid == null) {
-                stream.sendQuietly("a9 LOGOUT");
-                throw new ImapException("mailNotFound");
-            }
-
-            stream.send("a4 UID FETCH " + targetUid + " (BODY.PEEK[TEXT])");
-            String body = stream.readFetchBody("a4");
-
-            String code = extractCode(body);
-            if (code == null) {
-                stream.sendQuietly("a9 LOGOUT");
-                throw new ImapException("codeNotFound");
-            }
-
-            // 読み取り済みの OTP メールは削除する (ユーザー了承済み、2026-09-07)。
-            // 抽出に失敗した場合は消さずに残す (デバッグのため)。
-            try {
-                stream.send("a5 UID STORE " + targetUid + " +FLAGS (\\Deleted)");
-                stream.readUntilTagged("a5");
-                stream.send("a6 EXPUNGE");
-                stream.readUntilTagged("a6");
-            } catch (Exception ignored) {
-                // 削除に失敗してもコードは取れているので、ログインを優先する。
-            }
-            stream.sendQuietly("a9 LOGOUT");
-            return code;
+            tag = stream.nextTag();
+            stream.send(tag + " SELECT INBOX");
+            stream.readUntilTagged(tag);
+            return stream;
+        } catch (IOException | ImapException e) {
+            stream.close();
+            throw e;
         }
+    }
+
+    /**
+     * 選択済みの INBOX で OTP メールを 1 回探す。見つからなければ null。見つかればコードを返し、
+     * そのメールを削除する。
+     */
+    @Nullable
+    private String searchAndFetch(ImapStream stream) throws IOException, ImapException {
+        String tag = stream.nextTag();
+        stream.send(tag + " UID SEARCH UNSEEN FROM \"" + OTP_SENDER + "\" SINCE " + imapDate(new Date()));
+        List<String> searchLines = stream.readUntilTagged(tag);
+        String targetUid = lastUid(searchLines);
+        if (targetUid == null) return null;
+
+        tag = stream.nextTag();
+        stream.send(tag + " UID FETCH " + targetUid + " (BODY.PEEK[TEXT])");
+        String body = stream.readFetchBody(tag);
+
+        String code = extractCode(body);
+        if (code == null) throw new ImapException("codeNotFound");
+
+        // 読み取り済みの OTP メールは削除する (ユーザー了承済み、2026-09-07)。
+        // 抽出に失敗した場合は消さずに残す (デバッグのため)。
+        try {
+            tag = stream.nextTag();
+            stream.send(tag + " UID STORE " + targetUid + " +FLAGS (\\Deleted)");
+            stream.readUntilTagged(tag);
+            tag = stream.nextTag();
+            stream.send(tag + " EXPUNGE");
+            stream.readUntilTagged(tag);
+        } catch (Exception ignored) {
+            // 削除に失敗してもコードは取れているので、ログインを優先する。
+        }
+        return code;
+    }
+
+    private static void closeQuietly(@Nullable ImapStream stream) {
+        if (stream != null) stream.close();
     }
 
     // ---- Parsing helpers (pure, unit-tested) ----
@@ -162,6 +205,7 @@ public final class ImapOtpFetcher {
         private final SSLSocket socket;
         private final InputStream in;
         private final OutputStream out;
+        private int tagSeq = 0;
 
         ImapStream(String host, int port) throws IOException {
             SSLSocket s = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
@@ -175,6 +219,11 @@ public final class ImapOtpFetcher {
             socket = s;
             in = new BufferedInputStream(s.getInputStream());
             out = s.getOutputStream();
+        }
+
+        /** 1 接続で複数コマンドを送るので、タグは使い捨てにして応答の取り違えを防ぐ。 */
+        String nextTag() {
+            return "a" + (++tagSeq);
         }
 
         void send(String line) throws IOException {

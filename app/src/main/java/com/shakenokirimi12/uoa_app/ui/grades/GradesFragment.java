@@ -52,7 +52,7 @@ public class GradesFragment extends Fragment {
 
         swipeRefresh.setColorSchemeColors(
                 MaterialColors.getColor(view, androidx.appcompat.R.attr.colorPrimary));
-        swipeRefresh.setOnRefreshListener(this::loadGrades);
+        swipeRefresh.setOnRefreshListener(() -> loadGrades(true));
 
         List<Grade> cached = DataCache.getInstance(requireContext()).loadGrades();
         if (!cached.isEmpty()) {
@@ -60,10 +60,14 @@ public class GradesFragment extends Fragment {
         }
         updateEmptyState();
 
-        loadGrades();
+        loadGrades(false);
     }
 
-    private void loadGrades() {
+    /** @param force true for pull-to-refresh; false skips the fetch while the cache is fresh. */
+    private void loadGrades(boolean force) {
+        if (!force && DataCache.getInstance(requireContext()).isFresh(DataCache.Dataset.GRADES, DataCache.DEFAULT_MAX_AGE_MS)) {
+            return;
+        }
         swipeRefresh.setRefreshing(true);
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
         String user = prefs.getUsername();

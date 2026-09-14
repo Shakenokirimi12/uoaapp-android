@@ -23,6 +23,23 @@ public class DataCache {
     private static final String KEY_COURSES = "courses";
     private static final String KEY_GRADES = "grades";
     private static final String KEY_MENU = "menu";
+    // "<dataset>_fetched_at": epoch ms of the last successful save. Lives in the same prefs so
+    // clearAll() (logout) drops it together with the data.
+    private static final String FETCHED_AT_SUFFIX = "_fetched_at";
+
+    /** Datasets that carry a "fetched at" timestamp. */
+    public enum Dataset {
+        EVENTS(KEY_EVENTS), ASSIGNMENTS(KEY_ASSIGNMENTS), COURSES(KEY_COURSES),
+        GRADES(KEY_GRADES), MENU(KEY_MENU);
+
+        final String key;
+        Dataset(String key) { this.key = key; }
+    }
+
+    /** CampusSquare / Moodle data: automatic (non pull-to-refresh) loads reuse the cache within this age. */
+    public static final long DEFAULT_MAX_AGE_MS = 15 * 60_000L;
+    /** The cafeteria menu changes at most daily, so a longer window is fine. */
+    public static final long MENU_MAX_AGE_MS = 60 * 60_000L;
 
     private static DataCache instance;
     private final SharedPreferences prefs;
@@ -42,7 +59,10 @@ public class DataCache {
     }
 
     public void saveEvents(List<CalendarEvent> events) {
-        prefs.edit().putString(KEY_EVENTS, gson.toJson(events)).apply();
+        prefs.edit()
+                .putString(KEY_EVENTS, gson.toJson(events))
+                .putLong(KEY_EVENTS + FETCHED_AT_SUFFIX, System.currentTimeMillis())
+                .apply();
     }
 
     public List<CalendarEvent> loadEvents() {
@@ -50,7 +70,10 @@ public class DataCache {
     }
 
     public void saveAssignments(List<Assignment> assignments) {
-        prefs.edit().putString(KEY_ASSIGNMENTS, gson.toJson(assignments)).apply();
+        prefs.edit()
+                .putString(KEY_ASSIGNMENTS, gson.toJson(assignments))
+                .putLong(KEY_ASSIGNMENTS + FETCHED_AT_SUFFIX, System.currentTimeMillis())
+                .apply();
     }
 
     public List<Assignment> loadAssignments() {
@@ -58,7 +81,10 @@ public class DataCache {
     }
 
     public void saveCourses(List<MoodleCourse> courses) {
-        prefs.edit().putString(KEY_COURSES, gson.toJson(courses)).apply();
+        prefs.edit()
+                .putString(KEY_COURSES, gson.toJson(courses))
+                .putLong(KEY_COURSES + FETCHED_AT_SUFFIX, System.currentTimeMillis())
+                .apply();
     }
 
     public List<MoodleCourse> loadCourses() {
@@ -66,7 +92,10 @@ public class DataCache {
     }
 
     public void saveGrades(List<Grade> grades) {
-        prefs.edit().putString(KEY_GRADES, gson.toJson(grades)).apply();
+        prefs.edit()
+                .putString(KEY_GRADES, gson.toJson(grades))
+                .putLong(KEY_GRADES + FETCHED_AT_SUFFIX, System.currentTimeMillis())
+                .apply();
     }
 
     public List<Grade> loadGrades() {
@@ -74,13 +103,29 @@ public class DataCache {
     }
 
     public void saveMenu(List<GakushokuMenuItem> menu) {
-        prefs.edit().putString(KEY_MENU, gson.toJson(menu)).apply();
+        prefs.edit()
+                .putString(KEY_MENU, gson.toJson(menu))
+                .putLong(KEY_MENU + FETCHED_AT_SUFFIX, System.currentTimeMillis())
+                .apply();
     }
 
     public List<GakushokuMenuItem> loadMenu() {
         return loadList(KEY_MENU, new TypeToken<List<GakushokuMenuItem>>() {}.getType());
     }
 
+    /**
+     * true if the dataset was saved within the last maxAgeMs. Never fetched (or cleared) reads as
+     * stale, so the first load after login / logout always hits the network.
+     */
+    public boolean isFresh(Dataset dataset, long maxAgeMs) {
+        long fetchedAt = prefs.getLong(dataset.key + FETCHED_AT_SUFFIX, 0L);
+        if (fetchedAt <= 0) return false;
+        long age = System.currentTimeMillis() - fetchedAt;
+        // A clock set backwards makes age negative; treat that as stale rather than fresh forever.
+        return age >= 0 && age < maxAgeMs;
+    }
+
+    /** Clears data and the fetched-at timestamps (both live in the same prefs). */
     public void clearAll() {
         prefs.edit().clear().apply();
     }
