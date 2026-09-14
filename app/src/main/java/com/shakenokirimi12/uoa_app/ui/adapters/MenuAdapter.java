@@ -29,16 +29,47 @@ public class MenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     private final List<Row> rows = new ArrayList<>();
+    private List<GakushokuMenu.Week> weeks = new ArrayList<>();
+    // 過ぎた日のメニューは見ても仕方がないので既定では隠し、週見出しのタップで開く。
+    private boolean showPast = false;
 
     public void setWeeks(List<GakushokuMenu.Week> weeks) {
+        this.weeks = weeks;
+        rebuild();
+    }
+
+    private void rebuild() {
         rows.clear();
         for (GakushokuMenu.Week week : weeks) {
             if (week.days().isEmpty()) continue;
+            List<GakushokuMenu.Day> visible = new ArrayList<>();
+            for (GakushokuMenu.Day day : week.days()) {
+                if (showPast || !GakushokuMenu.isPast(week, day)) visible.add(day);
+            }
+            if (visible.isEmpty()) continue;
             rows.add(new Row(week, null));
-            for (GakushokuMenu.Day day : week.days()) rows.add(new Row(null, day));
+            for (GakushokuMenu.Day day : visible) rows.add(new Row(null, day));
         }
         notifyDataSetChanged();
     }
+
+    /** Number of days hidden because they are already over. */
+    public int hiddenPastCount() {
+        if (showPast) return 0;
+        int n = 0;
+        for (GakushokuMenu.Week week : weeks) {
+            for (GakushokuMenu.Day day : week.days()) if (GakushokuMenu.isPast(week, day)) n++;
+        }
+        return n;
+    }
+
+    public void setShowPast(boolean show) {
+        if (showPast == show) return;
+        showPast = show;
+        rebuild();
+    }
+
+    public boolean isShowPast() { return showPast; }
 
     @Override
     public int getItemViewType(int position) {

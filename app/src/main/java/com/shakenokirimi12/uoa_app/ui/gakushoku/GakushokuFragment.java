@@ -26,6 +26,7 @@ public class GakushokuFragment extends Fragment {
 
     private SwipeRefreshLayout swipeRefresh;
     private TextView textEmpty;
+    private com.google.android.material.button.MaterialButton buttonShowPast;
     private final MenuAdapter menuAdapter = new MenuAdapter();
     private final GakushokuService gakushokuService = new GakushokuService();
 
@@ -50,6 +51,11 @@ public class GakushokuFragment extends Fragment {
         swipeRefresh.setColorSchemeColors(
                 MaterialColors.getColor(view, androidx.appcompat.R.attr.colorPrimary));
         swipeRefresh.setOnRefreshListener(() -> loadMenu(true));
+        buttonShowPast = view.findViewById(R.id.button_show_past);
+        buttonShowPast.setOnClickListener(v -> {
+            menuAdapter.setShowPast(true);
+            updateEmptyState();
+        });
 
         GakushokuMenu cached = DataCache.getInstance(requireContext()).loadMenu();
         if (cached != null) {
@@ -90,5 +96,10 @@ public class GakushokuFragment extends Fragment {
     private void updateEmptyState() {
         if (textEmpty == null) return;
         textEmpty.setVisibility(menuAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+        if (buttonShowPast != null) {
+            int hidden = menuAdapter.hiddenPastCount();
+            buttonShowPast.setVisibility(hidden > 0 ? View.VISIBLE : View.GONE);
+            buttonShowPast.setText("過ぎた " + hidden + " 日分を表示");
+        }
     }
 }

@@ -119,6 +119,14 @@ public class GakushokuMenu {
         return result;
     }
 
+    /** true when the day is before today (Asia/Tokyo). Used to hide past days by default. */
+    public static boolean isPast(Week w, Day d) {
+        Calendar now = todayInTokyo();
+        int todayMonth = now.get(Calendar.MONTH) + 1;
+        int todayDay = now.get(Calendar.DAY_OF_MONTH);
+        return dayKey(w.monthOf(d), d.day, todayMonth) < dayKey(todayMonth, todayDay, todayMonth);
+    }
+
     /** true when every listed day of the week is before today. */
     private static boolean endsBefore(Week w, int todayMonth, int todayDay) {
         if (w.days().isEmpty()) return true;
