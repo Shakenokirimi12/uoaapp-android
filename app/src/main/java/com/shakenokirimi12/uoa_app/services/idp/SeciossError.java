@@ -89,6 +89,9 @@ public final class SeciossError extends Exception {
             case INTERACTIVE_LOGIN_REQUIRED:
                 return "ワンタイムパスワードの入力が必要です。";
             case ACCESS_DENIED:
+                if ("campussquare_sso_error".equals(detail)) {
+                    return "CampusSquare 側でこのアカウントのシングルサインオンがまだ有効になっていません。大学側の移行作業が完了するまで利用できません。";
+                }
                 return "大学の認証システム(IdP)がこのサービスへのアクセスを許可していません(" + detail + ")。大学側の設定が完了するまで利用できません。";
             case INVALID_CREDENTIALS:
             default:

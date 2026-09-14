@@ -190,6 +190,12 @@ public class CampusSquareService {
             throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
                     "CampusSquareへ戻れていない(final=" + session.finalUrl + ")").loginMessage());
         }
+        // 2026-09-14 実測: SP まで戻れても CampusSquare 本体が
+        // "[SSO-Error] あなたは現在このシステムを利用することができません" を返す段階がある
+        // (SP 側のユーザー紐付けが未開放)。一般エラーではなく明示する。
+        if (session.finalHtml.contains("[SSO-Error]") || session.finalHtml.contains("このシステムを利用することができません")) {
+            throw new Exception(new SeciossError(SeciossError.Kind.ACCESS_DENIED, "campussquare_sso_error").loginMessage());
+        }
         if (!containsAnySuccessMarker(session.finalHtml)) {
             throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
                     "CampusSquareへの復帰後、成功マーカーが見つからない").loginMessage());
