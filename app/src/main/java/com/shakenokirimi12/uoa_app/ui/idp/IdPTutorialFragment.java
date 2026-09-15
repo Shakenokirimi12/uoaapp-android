@@ -20,14 +20,15 @@ import com.shakenokirimi12.uoa_app.data.PreferenceManager;
  * IdP (SECIOSS) ログインへの切り替えを、初めて迎えるユーザーに説明する画面 (iOS の IdPTutorialView 相当)。
  * iOS はページ送り形式だが、Android は 1 枚のスクロール画面にしている (カード単位で区切れば情報量は
  * 収まり、ViewPager2 とインジケータを増やす理由が無いため)。
- * 引数 next_action ("login" / "otp_registration") で、「今すぐ」を押したときに進む先を決める。
+ * 引数 next_action ("login" / "otp_registration") で、「今すぐ」を押したときの動作を決める。
+ * login の場合は画面を出さずに同期を 1 回走らせるだけ (ログインは同期の裏で完結する)。
  */
 public class IdPTutorialFragment extends Fragment {
     public static final String ARG_NEXT_ACTION = "next_action";
     public static final String ACTION_LOGIN = "login";
     public static final String ACTION_OTP_REGISTRATION = "otp_registration";
 
-    private boolean otpAutoFetchChoice = false;
+    private boolean otpAutoFetchChoice = true;
     private MaterialRadioButton radioAuto;
     private MaterialRadioButton radioManual;
 
@@ -47,7 +48,8 @@ public class IdPTutorialFragment extends Fragment {
         radioManual = view.findViewById(R.id.radio_otp_manual);
         view.findViewById(R.id.row_otp_auto).setOnClickListener(v -> setChoice(true));
         view.findViewById(R.id.row_otp_manual).setOnClickListener(v -> setChoice(false));
-        setChoice(false);
+        // 既定は自動取得 (PreferenceManager.isOtpAutoFetchEnabled の既定と揃える)。
+        setChoice(true);
 
         MaterialButton startNow = view.findViewById(R.id.button_start_now);
         startNow.setText(ACTION_OTP_REGISTRATION.equals(nextAction) ? "今すぐ設定する" : "今すぐログインする");
@@ -70,9 +72,13 @@ public class IdPTutorialFragment extends Fragment {
             nav.popBackStack();
             return;
         }
-        // チュートリアル自身をスタックから外して次の画面へ (戻るで設定画面に戻れるように)。
-        nav.navigate(ACTION_OTP_REGISTRATION.equals(nextAction)
-                ? R.id.action_idp_tutorial_to_otp_registration
-                : R.id.action_idp_tutorial_to_login);
+        if (ACTION_OTP_REGISTRATION.equals(nextAction)) {
+            // チュートリアル自身をスタックから外して次の画面へ (戻るで設定画面に戻れるように)。
+            nav.navigate(R.id.action_idp_tutorial_to_otp_registration);
+            return;
+        }
+        // ログインは同期の裏で完結する。専用のログイン画面は出さず、普通に同期する (iOS と同じ)。
+        nav.popBackStack();
+        com.shakenokirimi12.uoa_app.services.sync.SyncScheduler.syncNow(requireContext().getApplicationContext());
     }
 }

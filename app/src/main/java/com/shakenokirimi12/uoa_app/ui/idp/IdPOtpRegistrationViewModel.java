@@ -33,7 +33,9 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
     private static final String DOMAIN = "@u-aizu.ac.jp";
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private final SeciossIdPClient client = new SeciossIdPClient();
+    /** startOnce でトンネルを張ってから差し替える。登録の HTTP は全部トンネル経由。 */
+    private SeciossIdPClient client = new SeciossIdPClient();
+    @Nullable private com.shakenokirimi12.uoa_app.services.idp.CampusSshSocksTunnel tunnel;
     private final MutableLiveData<Stage> stage = new MutableLiveData<>(Stage.CHECKING);
     private final MutableLiveData<String> failureMessage = new MutableLiveData<>();
     private final MutableLiveData<Boolean> autoFetchingEmailCode = new MutableLiveData<>(false);
@@ -69,8 +71,19 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
         stage.setValue(Stage.CHECKING);
         executor.execute(() -> {
             try {
+                // OTP の登録は学内ネットワークからしか通らない。大学の SSH ゲートウェイ (AINS ID/PW 共通)
+                // へトンネルを張り、その SOCKS 経由で叩いて学内アクセス扱いにする。
+                tunnel = com.shakenokirimi12.uoa_app.services.idp.CampusSshSocksTunnel.open(this.uid, this.pass);
+                client = new SeciossIdPClient(tunnel.proxy());
                 session = client.beginOtpRegistration(SeciossRegistrationSession.ENTRY_URL, this.uid, this.pass);
                 stage.postValue(Stage.CHOOSING_METHOD);
+            } catch (com.jcraft.jsch.JSchException e) {
+                String gateway = com.shakenokirimi12.uoa_app.services.idp.CampusSshSocksTunnel.GATEWAY_HOST;
+                String msg = e.getMessage() != null && e.getMessage().contains("Auth")
+                        ? "学内ゲートウェイ (" + gateway + ") への SSH 認証に失敗しました。AINS のパスワードが正しいか確認してください。"
+                        : "学内ゲートウェイ (" + gateway + ") へ接続できませんでした: " + e.getMessage();
+                failureMessage.postValue(msg);
+                stage.postValue(Stage.FAILURE);
             } catch (SeciossError e) {
                 if (e.kind == SeciossError.Kind.OTP_ALREADY_CONFIGURED) {
                     stage.postValue(Stage.ALREADY_CONFIGURED);
@@ -143,6 +156,10 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
     public void proceedAfterConfirmation() {
         stage.setValue(Stage.WAITING_FOR_CODE);
         if (method != Method.EMAIL) return;
+        // メールの自動読み取りは、チュートリアルで明示的に同意した場合だけ。未同意なら手入力に任せる。
+        // iOS (IdPOTPRegistrationFlow) はこの画面だけ同意を見ずに常に取りに行くので、そちらが直るまで
+        // 挙動が食い違う。同意を取っていない受信箱へ接続しない側に揃える。
+        if (!com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance().isOtpAutoFetchEnabled()) return;
         autoFetchingEmailCode.setValue(true);
         executor.execute(() -> {
             try {
@@ -202,5 +219,6 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
     @Override
     protected void onCleared() {
         executor.shutdownNow();
+        if (tunnel != null) tunnel.close();
     }
 }

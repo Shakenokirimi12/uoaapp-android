@@ -8,10 +8,11 @@ import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
 import com.shakenokirimi12.uoa_app.data.models.FacilityUsage;
 import com.shakenokirimi12.uoa_app.data.models.Grade;
-import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
 import com.shakenokirimi12.uoa_app.services.idp.MarkerList;
+import com.shakenokirimi12.uoa_app.services.idp.OtpPromptCoordinator;
 import com.shakenokirimi12.uoa_app.services.idp.SeciossError;
 import com.shakenokirimi12.uoa_app.services.idp.SeciossIdPClient;
+import com.shakenokirimi12.uoa_app.services.idp.SeciossSsoStore;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -181,6 +182,7 @@ public class CampusSquareService {
     /** ログアウト時に呼ぶ。永続化した IdP cookie とメモリ上のセッション状態を両方捨てる。 */
     public static void clearSession() {
         PreferenceManager.getInstance().setCsIdpSessionCookieHeader(null);
+        SeciossSsoStore.getInstance().clear();
         coordinator.reset();
     }
 
@@ -216,6 +218,8 @@ public class CampusSquareService {
         try {
             session = seciossClient.login(resolvedEntry, uid, pass, otpCode);
         } catch (SeciossError e) {
+            // OTP 未設定はここでしか分からない。設定画面を探させず、その場で登録画面を開く。
+            com.shakenokirimi12.uoa_app.services.idp.OtpRegistrationLauncher.launchIfNeeded(e);
             if (e.kind == SeciossError.Kind.INVALID_CREDENTIALS) {
                 throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
             }
@@ -251,17 +255,12 @@ public class CampusSquareService {
     }
 
     /**
-     * OTP をメール (stdmsv1.u-aizu.ac.jp、AINS ID/PW 共通) から自動取得してログインする。人手を介さず
-     * バックグラウンドでも完結できるが、メール到着が遅いと最大 30 秒待つ。
+     * OTP の取得は OtpPromptCoordinator に任せる (同意済みならメールから自動取得、無理ならアプリが
+     * 前面にいるときだけ入力ダイアログ、それも無理なら INTERACTIVE_LOGIN_REQUIRED)。
      */
     public String loginViaIdPAutomatic(String entryUrl, String username, String password) throws Exception {
-        return loginViaIdP(entryUrl, username, password, () -> {
-            // メール自動読み取りはユーザーが IdP チュートリアルで明示的に許可した場合のみ行う。
-            if (!PreferenceManager.getInstance().isOtpAutoFetchEnabled()) {
-                throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
-            }
-            return new ImapOtpFetcher().fetchOtpCode(username.trim(), password.trim(), 30);
-        });
+        return loginViaIdP(entryUrl, username, password,
+                () -> OtpPromptCoordinator.getInstance().code(username.trim(), password.trim()));
     }
 
     /**

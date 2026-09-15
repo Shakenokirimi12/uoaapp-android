@@ -10,6 +10,7 @@ lifecycle = "2.11.0"
 recyclerview = "1.4.0"
 swiperefreshlayout = "1.1.0"
 okhttp = "4.12.0"
+jsch = "0.2.25"
 gson = "2.10.1"
 constraintlayout = "2.2.2"
 playServicesLocation = "21.4.0"
@@ -33,6 +34,8 @@ lifecycle-livedata = { group = "androidx.lifecycle", name = "lifecycle-livedata"
 recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
 swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+# Maintained JSch fork (modern KEX/ciphers). Used only for the campus SSH tunnel (OTP registration).
+jsch = { group = "com.github.mwiede", name = "jsch", version.ref = "jsch" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }

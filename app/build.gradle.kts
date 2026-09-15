@@ -76,6 +76,7 @@ dependencies {
 
     // Network
     implementation(libs.okhttp)
+    implementation(libs.jsch)
     implementation(libs.gson)
 
     // ConstraintLayout

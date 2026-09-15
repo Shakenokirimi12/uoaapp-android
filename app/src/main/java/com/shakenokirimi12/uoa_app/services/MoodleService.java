@@ -9,7 +9,7 @@ import com.google.gson.reflect.TypeToken;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.data.models.MoodleCourse;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
-import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
+import com.shakenokirimi12.uoa_app.services.idp.OtpPromptCoordinator;
 import com.shakenokirimi12.uoa_app.services.idp.MarkerList;
 import com.shakenokirimi12.uoa_app.services.idp.SeciossError;
 import com.shakenokirimi12.uoa_app.services.idp.SeciossIdPClient;
@@ -84,6 +84,7 @@ public class MoodleService {
         sesskey = "";
         userid = "";
         coordinator.reset();
+        PreferenceManager.getInstance().setMoodleSessionCookieHeader(null);
     }
 
     /**
@@ -103,12 +104,16 @@ public class MoodleService {
 
     // ---- Login Method Switch (iOS の MoodleService.LoginMethod と同じ) ----
 
-    /** 既定は legacy。`moodle_login_method` フラグを `idp` にすると新方式へ切り替えられる。 */
+    /**
+     * 既定は idp。大学が 2026-09-15 に学務系の認証を SAML へ切り替えたので、旧方式は素の
+     * login/index.php では通らない。フラグ (`moodle_login_method`) を `legacy` にすれば戻せる。
+     * コード側の既定を legacy のままにすると、フラグを取得する前の起動直後の同期が必ず旧方式で走る。
+     */
     public enum LoginMethod { LEGACY, IDP }
 
     public static LoginMethod resolveLoginMethod() {
-        return "idp".equals(AppConfigService.getInstance().flagValue("moodle_login_method"))
-                ? LoginMethod.IDP : LoginMethod.LEGACY;
+        return "legacy".equals(AppConfigService.getInstance().flagValue("moodle_login_method"))
+                ? LoginMethod.LEGACY : LoginMethod.IDP;
     }
 
     // ---- IdP (SAML) Login ----
@@ -138,8 +143,8 @@ public class MoodleService {
     }
 
     /**
-     * OTP はメール (IMAP) 自動取得。login() の呼び出し元 (バックグラウンド同期) には OTP 入力を待ち受ける
-     * UI が無いため、CampusSquare の loginViaIdPAutomatic と同じ方式にする。
+     * OTP の取得は CampusSquare と同じく OtpPromptCoordinator に任せる (同意済みならメールから自動取得、
+     * アプリが前面にいれば入力ダイアログ、バックグラウンド同期なら INTERACTIVE_LOGIN_REQUIRED)。
      * 成功した cookie だけを共有 cookie jar へ注入する。順序が逆だと、ログイン失敗時にも IdP 側の cookie が
      * 残り、以降のリクエストに無関係なセッションが乗る。
      */
@@ -148,13 +153,11 @@ public class MoodleService {
         String pass = password.trim();
         SeciossIdPClient.Session session;
         try {
-            session = seciossClient.login(samlEntryUrl(), uid, pass, () -> {
-                if (!PreferenceManager.getInstance().isOtpAutoFetchEnabled()) {
-                    throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
-                }
-                return new ImapOtpFetcher().fetchOtpCode(uid, pass, 30);
-            });
+            session = seciossClient.login(samlEntryUrl(), uid, pass,
+                    () -> OtpPromptCoordinator.getInstance().code(uid, pass));
         } catch (SeciossError e) {
+            // OTP 未設定はここでしか分からない。設定画面を探させず、その場で登録画面を開く。
+            com.shakenokirimi12.uoa_app.services.idp.OtpRegistrationLauncher.launchIfNeeded(e);
             if (e.kind == SeciossError.Kind.INVALID_CREDENTIALS) {
                 throw new Exception(INVALID_CREDENTIALS_MESSAGE);
             }
@@ -227,8 +230,25 @@ public class MoodleService {
     }
 
     private String ensureSession(String username, String password, boolean userInitiated) throws Exception {
-        return coordinator.session(resolveLoginMethod(), userInitiated, null,
+        // プロセス起動直後は cookie jar が空。前回の Moodle セッションを持ち越していれば、まずそれを
+        // 入れて生存確認 (probe) にかける。生きていれば IdP ログイン (約 5 秒 + 大学側にログイン記録) を
+        // 丸ごと省ける。死んでいれば probe が null を返して普通にログインする。
+        String candidate = null;
+        String host = moodleHost();
+        if (!NetworkClient.hasCookies(host)) {
+            String stored = PreferenceManager.getInstance().getMoodleSessionCookieHeader();
+            if (!stored.isEmpty()) {
+                NetworkClient.injectCookieHeader(host, true, stored);
+                candidate = "restored";
+            }
+        }
+        return coordinator.session(resolveLoginMethod(), userInitiated, candidate,
                 key -> probeDashboardQuietly(), () -> doLogin(username, password));
+    }
+
+    private static String moodleHost() {
+        okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl());
+        return base != null ? base.host() : "elms.u-aizu.ac.jp";
     }
 
     /**
@@ -331,6 +351,8 @@ public class MoodleService {
 
         String key = probeDashboard();
         Log.d(TAG, "Login successful");
+        // 次回起動で使い回すために保存する (ensureSession の candidate)。
+        PreferenceManager.getInstance().setMoodleSessionCookieHeader(NetworkClient.exportCookieHeader(moodleHost()));
         return key;
     }
 

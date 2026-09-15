@@ -1,6 +1,7 @@
 package com.shakenokirimi12.uoa_app.services.idp;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
@@ -32,5 +33,21 @@ public class ImapOtpFetcherTest {
     @Test
     public void quote_escapesBackslashAndQuote() {
         assertEquals("\"a\\\\b\\\"c\"", ImapOtpFetcher.quote("a\\b\"c"));
+    }
+
+    @Test
+    public void parsesInternalDate() {
+        Long at = ImapOtpFetcher.parseInternalDate(java.util.Arrays.asList(
+                "* 5 FETCH (UID 123 INTERNALDATE \"15-Sep-2026 14:23:45 +0900\")"));
+        assertNotNull(at);
+        // 2026-09-15 14:23:45 +0900 = 2026-09-15 05:23:45 UTC
+        assertEquals(1789449825000L, (long) at);
+    }
+
+    @Test
+    public void returnsNullForMissingOrMalformedInternalDate() {
+        assertNull(ImapOtpFetcher.parseInternalDate(java.util.Arrays.asList("* 5 FETCH (UID 123)")));
+        assertNull(ImapOtpFetcher.parseInternalDate(java.util.Arrays.asList(
+                "* 5 FETCH (INTERNALDATE \"not a date\")")));
     }
 }

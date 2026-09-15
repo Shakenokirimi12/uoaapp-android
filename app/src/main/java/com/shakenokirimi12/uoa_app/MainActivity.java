@@ -44,12 +44,18 @@ public class MainActivity extends AppCompatActivity {
         NavController navController = navHostFragment.getNavController();
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        // 下タブを設定どおりに組み、NavigationUI と結ぶ。この結線 (setupWithNavController) は
+        // navController へ OnDestinationChangedListener を毎回追加する実装なので、起動時に 1 回だけ。
+        // タブ構成を変えたときは refreshBottomTabs() でメニュー項目だけ差し替える (再結線しない)。
+        com.shakenokirimi12.uoa_app.ui.util.MainTabs.applyTo(bottomNav, PreferenceManager.getInstance(this));
         NavigationUI.setupWithNavController(bottomNav, navController);
-        // The top app bar follows the destination: tab labels on the four roots, a back
-        // arrow plus the nav_graph label everywhere else. Screens used to have no title at all.
         com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        // 上バーの「戻る」はタブの根では出さない。どのタブが下に出ていても根として扱えるよう、
+        // 取りうるタブの遷移先すべて (+その他) をトップレベルにしておく。こうすればタブ構成を
+        // 変えても再結線が要らない。
         androidx.navigation.ui.AppBarConfiguration appBarConfiguration =
-                new androidx.navigation.ui.AppBarConfiguration.Builder(bottomNav.getMenu()).build();
+                new androidx.navigation.ui.AppBarConfiguration.Builder(
+                        com.shakenokirimi12.uoa_app.ui.util.MainTabs.allRootDestinationIds()).build();
         NavigationUI.setupWithNavController(toolbar, navController, appBarConfiguration);
         EdgeToEdge.apply(this, findViewById(R.id.container), bottomNav);
 
@@ -72,6 +78,14 @@ public class MainActivity extends AppCompatActivity {
                 });
         requestNotificationPermissionIfNeeded();
 
+        // debug ビルド限定: adb から OTP 登録画面 (SSH トンネル経由) を直接開いて確認するための入口。
+        //   adb shell am start -n com.shakenokirimi12.uoa_app/.MainActivity --ez open_otp_registration true
+        // 本番では設定画面からの導線を持たず、ログイン時の OTP 未設定検知でしか開かない。
+        if (BuildConfig.DEBUG && savedInstanceState == null
+                && getIntent() != null && getIntent().getBooleanExtra("open_otp_registration", false)) {
+            openOtpRegistration();
+        }
+
         // Start geofencing if enabled
         if (prefs.isAutoAttendanceEnabled()) {
             LocationGeofenceService.startGeofencing(this, 37.5234, 139.9388, 200);
@@ -90,6 +104,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** API 33 以降は許可が無いと通知が一切出ない。これまでどこでも求めていなかった。 */
+    /**
+     * 下タブを「タブの表示設定」どおりに組み直し、NavigationUI と結び直す。起動時と、設定画面で
+     * タブを入れ替えたときに呼ぶ。トップバーの「戻る」を出さない画面 (= タブの根) も同時に更新する。
+     */
+    public void refreshBottomTabs() {
+        // メニュー項目だけ差し替える。NavigationUI との結線は onCreate で済ませてあり、item id を
+        // 遷移先 id に合わせているので、項目を入れ替えても既存のリスナーがそのまま遷移させる。
+        // ここで setupWithNavController を呼ぶとリスナーが多重登録される (タブ編集のたびに増える)。
+        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        com.shakenokirimi12.uoa_app.ui.util.MainTabs.applyTo(bottomNav, PreferenceManager.getInstance(this));
+    }
+
+    /** ログイン中に OTP 未設定と分かったときに呼ばれる (OtpRegistrationLauncher)。既に開いていれば何もしない。 */
+    public void openOtpRegistration() {
+        if (isFinishing() || isDestroyed()) return;
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.nav_host_fragment);
+        if (navHostFragment == null) return;
+        NavController navController = navHostFragment.getNavController();
+        androidx.navigation.NavDestination current = navController.getCurrentDestination();
+        if (current != null && current.getId() == R.id.navigation_idp_otp_registration) return;
+        navController.navigate(R.id.navigation_idp_otp_registration);
+    }
+
     private void requestNotificationPermissionIfNeeded() {
         if (android.os.Build.VERSION.SDK_INT < 33) return;
         if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)

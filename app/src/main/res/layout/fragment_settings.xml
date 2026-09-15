@@ -75,45 +75,6 @@
                         android:src="@drawable/ic_edit"
                         app:tint="?attr/colorOnSurfaceVariant" />
                 </LinearLayout>
-
-                <!-- IdP (SECIOSS) login. Hidden until the idp_login_ui_enabled flag is true (same as iOS). -->
-                <LinearLayout
-                    android:id="@+id/group_idp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone"
-                    tools:visibility="visible">
-
-                    <com.google.android.material.divider.MaterialDivider
-                        style="@style/Widget.Uoa.Divider"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
-
-                    <TextView
-                        android:id="@+id/button_idp_login"
-                        style="@style/Widget.Uoa.ListRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:drawableStart="@drawable/ic_key_round"
-                        android:drawableEnd="@drawable/ic_chevron_right"
-                        tools:text="IdPでログイン" />
-
-                    <com.google.android.material.divider.MaterialDivider
-                        style="@style/Widget.Uoa.Divider"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
-
-                    <TextView
-                        android:id="@+id/button_idp_otp_registration"
-                        style="@style/Widget.Uoa.ListRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:drawableStart="@drawable/ic_qr_code"
-                        android:drawableEnd="@drawable/ic_chevron_right"
-                        android:text="ワンタイムパスワードを設定" />
-                </LinearLayout>
-
                 <com.google.android.material.divider.MaterialDivider
                     android:id="@+id/divider_logout"
                     style="@style/Widget.Uoa.Divider"

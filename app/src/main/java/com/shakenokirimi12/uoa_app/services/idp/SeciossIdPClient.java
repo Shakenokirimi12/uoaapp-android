@@ -109,13 +109,29 @@ public final class SeciossIdPClient {
     }
 
     private final String userAgent;
+    /** 全リクエストをこのプロキシ経由にする (OTP 登録を学内 SSH トンネル経由で行うため)。null なら直接。 */
+    @Nullable private final java.net.Proxy proxy;
 
     public SeciossIdPClient() {
-        this(NetworkClient.getUserAgent());
+        this(NetworkClient.getUserAgent(), null);
     }
 
     public SeciossIdPClient(@NonNull String userAgent) {
+        this(userAgent, null);
+    }
+
+    public SeciossIdPClient(@Nullable java.net.Proxy proxy) {
+        this(NetworkClient.getUserAgent(), proxy);
+    }
+
+    public SeciossIdPClient(@NonNull String userAgent, @Nullable java.net.Proxy proxy) {
         this.userAgent = userAgent;
+        this.proxy = proxy;
+    }
+
+    private okhttp3.OkHttpClient httpClient() {
+        okhttp3.OkHttpClient base = NetworkClient.getNoRedirectClient();
+        return proxy == null ? base : base.newBuilder().proxy(proxy).build();
     }
 
     // ---- HTTP ----
@@ -174,10 +190,19 @@ public final class SeciossIdPClient {
             } else {
                 rb.get();
             }
-            try (Response resp = NetworkClient.getNoRedirectClient().newCall(rb.build()).execute()) {
+            try (Response resp = httpClient().newCall(rb.build()).execute()) {
+                Map<String, String> seciossCookies = new LinkedHashMap<>();
+                // 素の endsWith だと "evil-secioss.com" のような別ドメインの cookie まで SSO
+                // ストアに取り込んでしまう。ドメイン境界まで見る。
+                String hopHost = parsed.host().toLowerCase(java.util.Locale.ROOT);
+                boolean fromIdP = hopHost.equals("secioss.com") || hopHost.endsWith(".secioss.com");
                 for (Cookie c : Cookie.parseAll(parsed, resp.headers())) {
                     jar.put(c.name(), c.value());
+                    // この 302 も含めた各ホップで IdP が出した cookie だけを SSO ストアへ渡す。
+                    // 最終ホップだけを見ると、SP へ戻る途中の 302 で発行された SSO cookie を取り逃がす。
+                    if (fromIdP) seciossCookies.put(c.name(), c.value());
                 }
+                if (!seciossCookies.isEmpty()) SeciossSsoStore.getInstance().merge(seciossCookies);
                 String location = resp.header("Location");
                 if (resp.isRedirect() && location != null) {
                     HttpUrl next = parsed.resolve(location);
@@ -410,10 +435,21 @@ public final class SeciossIdPClient {
      * login() と beginOtpRegistration() の共通部分。
      */
     private PostPasswordState authenticateUpToOtpDecision(@NonNull String entryUrl, @NonNull String uid,
-                                                          @NonNull String pass) throws SeciossError, IOException {
-        HttpResult entry = get(entryUrl, Collections.emptyMap(), Collections.emptyMap());
+                                                          @NonNull String pass, boolean useStoredSso)
+            throws SeciossError, IOException {
+        // 保持している SSO セッションを載せて入口を叩く。IdP 側で生きていれば、ログインフォームでは
+        // なく SAMLResponse の自動 submit が返ってきて、パスワードも OTP も要求されずに SP へ戻れる。
+        Map<String, String> initialCookies = useStoredSso
+                ? SeciossSsoStore.getInstance().current() : Collections.emptyMap();
+        HttpResult entry = get(entryUrl, initialCookies, Collections.emptyMap());
         if (entry.status != 200) {
             throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, entry.status, "entry page (" + entryUrl + ")");
+        }
+        if (extractField("sessid", entry.html) == null) {
+            // ログインフォームが無い = 既存の SSO セッションで通った可能性が高い。中継を追って SP まで
+            // 戻す。想定と違う画面なら、呼び出し側 (成功マーカー / ホスト検証) が弾く。
+            HttpResult passthrough = followAutoSubmitRelays(entry);
+            return new PostPasswordState(passthrough, extractField("FunctionID", passthrough.html));
         }
         String sessid = extractField("sessid", entry.html);
         String back = extractField("back", entry.html);
@@ -453,7 +489,7 @@ public final class SeciossIdPClient {
     @NonNull
     public Session login(@NonNull String entryUrl, @NonNull String uid, @NonNull String pass,
                          @NonNull OtpCodeProvider otpCode) throws Exception {
-        PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass);
+        PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass, true);
         HttpResult current = state.result;
 
         if (current.html.contains(OTP_NOT_CONFIGURED_MARKER)) {
@@ -519,9 +555,22 @@ public final class SeciossIdPClient {
     @NonNull
     public SeciossRegistrationSession beginOtpRegistration(@NonNull String entryUrl, @NonNull String uid,
                                                            @NonNull String pass) throws Exception {
-        PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass);
+        // OTP の設定状況はパスワード直後の画面でしか分からない。SSO セッションを載せると IdP が
+        // そこを飛ばしてポータルのメニュー (FunctionID=menu) へ通してしまい、判定できない
+        // (2026-09-15 エミュレータで実測)。ここだけは必ずパスワードから入る。
+        PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass, false);
         if (!state.result.html.contains(OTP_NOT_CONFIGURED_MARKER)) {
+            // OTP 要求フォーム (allotplogin) が出た = 既に設定済み。
             if ("allotplogin".equals(state.functionId)) {
+                throw new SeciossError(SeciossError.Kind.OTP_ALREADY_CONFIGURED);
+            }
+            // 学内アクセス (SSH トンネル) だと OTP を挟まずポータル (FunctionID=menu / index.php) まで
+            // 通ることがある。そこまで通れたなら、このアカウントは既に使える状態 = 追加設定は不要。
+            boolean reachedPortal = "menu".equals(state.functionId)
+                    || state.result.url.contains("index.php")
+                    || state.result.html.contains("ログアウト")
+                    || state.result.html.contains("Logout");
+            if (reachedPortal) {
                 throw new SeciossError(SeciossError.Kind.OTP_ALREADY_CONFIGURED);
             }
             throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,

@@ -115,6 +115,23 @@ public class NetworkClient {
         return dropped;
     }
 
+    /** ホストの cookie を "a=b; c=d" 形式で取り出す (永続化用)。無ければ空文字。 */
+    public static synchronized String exportCookieHeader(String host) {
+        List<Cookie> cookies = cookieStore.get(host);
+        if (cookies == null || cookies.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (Cookie c : cookies) {
+            if (sb.length() > 0) sb.append("; ");
+            sb.append(c.name()).append('=').append(c.value());
+        }
+        return sb.toString();
+    }
+
+    public static synchronized boolean hasCookies(String host) {
+        List<Cookie> cookies = cookieStore.get(host);
+        return cookies != null && !cookies.isEmpty();
+    }
+
     public static void clearCookies() {
         cookieStore.clear();
     }

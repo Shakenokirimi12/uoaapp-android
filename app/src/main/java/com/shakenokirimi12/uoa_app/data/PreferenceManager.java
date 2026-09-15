@@ -40,6 +40,8 @@ public class PreferenceManager {
     private static final String KEY_HAS_SEEN_IDP_TUTORIAL = "has_seen_idp_tutorial";
     private static final String KEY_OTP_AUTO_FETCH_ENABLED = "otp_auto_fetch_enabled";
     private static final String KEY_CS_IDP_SESSION_COOKIE_HEADER = "cs_idp_session_cookie_header";
+    private static final String KEY_IDP_SSO_COOKIE_HEADER = "idp_sso_cookie_header";
+    private static final String KEY_MOODLE_SESSION_COOKIE_HEADER = "moodle_session_cookie_header";
 
     private static PreferenceManager instance;
     private final SharedPreferences prefs;
@@ -117,6 +119,8 @@ public class PreferenceManager {
         encryptedPrefs.edit().putString(KEY_USERNAME, username).apply();
         // 別のアカウントに切り替えたとき、前のユーザーの IdP セッションを引き継がない。
         setCsIdpSessionCookieHeader(null);
+        setIdpSsoCookieHeader(null);
+        setMoodleSessionCookieHeader(null);
     }
 
     public String getPassword() { return encryptedPrefs.getString(KEY_PASSWORD, ""); }
@@ -241,10 +245,10 @@ public class PreferenceManager {
 
     /**
      * IdP ログインでワンタイムパスワードが必要なとき、メール (IMAP) から自動取得してよいか。
-     * 既定は false (手動入力)。メールの自動読み取りはユーザーが IdP チュートリアルで明示的に
-     * 選んだときだけ行う。
+     * 既定は true (2026-09-15 の判断: 同期のたびに手入力を求めると実用にならない)。
+     * IdP チュートリアルで手動入力に切り替えられる。
      */
-    public boolean isOtpAutoFetchEnabled() { return prefs.getBoolean(KEY_OTP_AUTO_FETCH_ENABLED, false); }
+    public boolean isOtpAutoFetchEnabled() { return prefs.getBoolean(KEY_OTP_AUTO_FETCH_ENABLED, true); }
     public void setOtpAutoFetchEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_OTP_AUTO_FETCH_ENABLED, enabled).apply(); }
 
     /**
@@ -260,6 +264,33 @@ public class PreferenceManager {
         }
     }
     public boolean hasCsIdpSession() { return !getCsIdpSessionCookieHeader().isEmpty(); }
+
+    /**
+     * IdP (slink.secioss.com) 自体の SSO セッション cookie ヘッダ。SP のセッションとは別物で、
+     * これが生きている間は入口を叩くだけでパスワードも OTP も要求されずに SP へ戻れる。
+     * SP のセッションと同じく資格情報に相当するので暗号化側へ入れる。
+     */
+    /**
+     * Moodle (elms) のセッション cookie ヘッダ。起動のたびに IdP からログインし直す (約 5 秒) のを
+     * 避けるために持ち越す。CampusSquare 側の cs_idp_session_cookie_header と同じ扱い。
+     */
+    public String getMoodleSessionCookieHeader() { return encryptedPrefs.getString(KEY_MOODLE_SESSION_COOKIE_HEADER, ""); }
+    public void setMoodleSessionCookieHeader(String header) {
+        if (header == null || header.isEmpty()) {
+            encryptedPrefs.edit().remove(KEY_MOODLE_SESSION_COOKIE_HEADER).apply();
+        } else {
+            encryptedPrefs.edit().putString(KEY_MOODLE_SESSION_COOKIE_HEADER, header).apply();
+        }
+    }
+
+    public String getIdpSsoCookieHeader() { return encryptedPrefs.getString(KEY_IDP_SSO_COOKIE_HEADER, ""); }
+    public void setIdpSsoCookieHeader(String header) {
+        if (header == null || header.isEmpty()) {
+            encryptedPrefs.edit().remove(KEY_IDP_SSO_COOKIE_HEADER).apply();
+        } else {
+            encryptedPrefs.edit().putString(KEY_IDP_SSO_COOKIE_HEADER, header).apply();
+        }
+    }
 
     // Reset
     public void clearAll() {

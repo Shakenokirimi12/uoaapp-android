@@ -172,18 +172,8 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.button_logout).setVisibility(loggedIn ? View.VISIBLE : View.GONE);
         view.findViewById(R.id.divider_logout).setVisibility(loggedIn ? View.VISIBLE : View.GONE);
 
-        // IdP (SECIOSS) login。CampusSquare/Moodle の IdP 接続はまだ本番で検証できていないため、
-        // 一般ユーザーに使わせて混乱させないよう `idp_login_ui_enabled` フラグでこの 2 行自体を隠す
-        // (審査なしに後で解禁できる)。デバッグモードでは出さず、フラグ単独で判定する (iOS と同じ)。
-        View groupIdp = view.findViewById(R.id.group_idp);
-        TextView buttonIdpLogin = view.findViewById(R.id.button_idp_login);
-        TextView buttonIdpOtp = view.findViewById(R.id.button_idp_otp_registration);
-        buttonIdpLogin.setText(prefs.hasCsIdpSession() ? "IdPログインをやり直す" : "IdPでログイン");
-        buttonIdpLogin.setOnClickListener(v -> startIdpAction(v, false));
-        buttonIdpOtp.setOnClickListener(v -> startIdpAction(v, true));
-        boolean hasCredentials = prefs.hasCredentials();
-        buttonIdpLogin.setEnabled(hasCredentials);
-        buttonIdpOtp.setEnabled(hasCredentials);
+        // IdP (SECIOSS) 関連の手動導線は置かない。ログインは同期の裏で完結し、OTP 未設定は
+        // ログイン時に検知して自動で登録画面へ案内する (OtpRegistrationLauncher、iOS と同じ)。
 
         // Academic navigation
         view.findViewById(R.id.button_grades).setOnClickListener(v ->
@@ -201,7 +191,6 @@ public class SettingsFragment extends Fragment {
             int vis = flags.isFeatureEnabled("campus_map_enabled") ? View.VISIBLE : View.GONE;
             view.findViewById(R.id.button_campus_map).setVisibility(vis);
             view.findViewById(R.id.divider_campus_map).setVisibility(vis);
-            groupIdp.setVisibility(flags.isFlagEnabled("idp_login_ui_enabled") ? View.VISIBLE : View.GONE);
         });
 
         // Notification switches
@@ -352,28 +341,6 @@ public class SettingsFragment extends Fragment {
                         })
                         .setNegativeButton(R.string.cancel, null)
                         .show());
-    }
-
-    /**
-     * IdP 関連の画面へ。初回はチュートリアル (OTP メール自動取得の同意を含む) を先に見せ、
-     * その「今すぐ」から目的の画面へ進む (iOS の startIdPLogin / startIdPOTPRegistration と同じ)。
-     */
-    private void startIdpAction(View v, boolean otpRegistration) {
-        if (!prefs.hasCredentials()) {
-            Toast.makeText(requireContext(), "先にアカウント情報を設定してください", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (prefs.hasSeenIdPTutorial()) {
-            Navigation.findNavController(v).navigate(otpRegistration
-                    ? R.id.action_settings_to_idp_otp_registration
-                    : R.id.action_settings_to_idp_login);
-            return;
-        }
-        Bundle args = new Bundle();
-        args.putString(com.shakenokirimi12.uoa_app.ui.idp.IdPTutorialFragment.ARG_NEXT_ACTION, otpRegistration
-                ? com.shakenokirimi12.uoa_app.ui.idp.IdPTutorialFragment.ACTION_OTP_REGISTRATION
-                : com.shakenokirimi12.uoa_app.ui.idp.IdPTutorialFragment.ACTION_LOGIN);
-        Navigation.findNavController(v).navigate(R.id.action_settings_to_idp_tutorial, args);
     }
 
     private void showTimePicker(TextView textLunchTime) {

@@ -64,10 +64,28 @@ public final class ImapOtpFetcher {
      */
     @NonNull
     public String fetchOtpCode(@NonNull String uid, @NonNull String pass, long timeoutSeconds) throws Exception {
+        return fetchOtpCode(uid, pass, timeoutSeconds, System.currentTimeMillis());
+    }
+
+    /**
+     * @param requestedAt motp.cgi にメール送信を頼んだ時刻 (epoch ミリ秒)。この時刻以降に届いたメールだけを
+     *                    今回のコードとみなす。入力ダイアログから後追いで自動取得へ切り替えた場合など、
+     *                    送信からこの呼び出しまでに間が空くときは必ず渡すこと (呼び出し時刻を使うと、
+     *                    その間に届いた目当てのメールを「古い」と判定して取りこぼす)。
+     */
+    @NonNull
+    public String fetchOtpCode(@NonNull String uid, @NonNull String pass, long timeoutSeconds,
+                               long requestedAt) throws Exception {
+        long startedAt = requestedAt;
         long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
         Exception lastError = new ImapException("mailNotFound");
         int reconnects = 0;
         ImapStream stream = null;
+        // 「今から届くメール」だけを受け取るための下限。motp.cgi を叩いた直後に呼ばれるので、この時点で
+        // 受信箱にある OTP メールは全部古い = 使えないコード。
+        // 既読 (\Seen) かどうかで絞らないのは、ユーザーがメールアプリで先に開くと UNSEEN 検索に掛からず、
+        // 取得も削除もできなくなっていたため (2026-09-15 実測: 受信箱に既読の OTP メールが 8 件残っていた)。
+        int floorUid = -1;
         try {
             while (true) {
                 try {
@@ -76,7 +94,8 @@ public final class ImapOtpFetcher {
                         // 試し直すとアカウントロックの危険があるので再試行しない。
                         stream = openAndSelect(uid, pass);
                     }
-                    String code = searchAndFetch(stream);
+                    if (floorUid < 0) floorUid = resolveFloorUid(stream, startedAt);
+                    String code = searchAndFetch(stream, floorUid);
                     if (code != null) return code;
                     lastError = new ImapException("mailNotFound");
                 } catch (IOException e) {
@@ -121,16 +140,54 @@ public final class ImapOtpFetcher {
     }
 
     /**
-     * 選択済みの INBOX で OTP メールを 1 回探す。見つからなければ null。見つかればコードを返し、
-     * そのメールを削除する。
+     * 下限 UID を決める。原則は「今受信箱にある一番新しい OTP メール」だが、TLS ハンドシェイク +
+     * LOGIN + SELECT を待つ間に目当てのメールが届いてしまうと、それ自身を下限にしてしまって
+     * 「自分より新しい UID」が永久に現れず、コードが届いているのに 30 秒待って諦めることになる。
+     * 最新メールの到着時刻 (INTERNALDATE) がこの呼び出しの開始以降なら、それが今要求したメール
+     * なので 1 つ手前を下限にする。
+     */
+    private int resolveFloorUid(ImapStream stream, long startedAt) throws IOException, ImapException {
+        String latest = searchLatestUid(stream);
+        if (latest == null) return 0;
+        int latestUid = Integer.parseInt(latest);
+        Long arrivedAt = internalDate(stream, latest);
+        // INTERNALDATE は秒精度なので、startedAt も秒に切り下げてから比べる。ミリ秒のまま比べると、
+        // startedAt と同じ秒の中で届いたメールが「開始より前」に見えて取りこぼす。
+        long startedSecond = startedAt / 1000L * 1000L;
+        // 取れなかった (書式が想定外) ときは従来どおり最新メールを下限にする。誤って古いコードを
+        // 使うより、手入力に落ちる方が安全。
+        if (arrivedAt != null && arrivedAt >= startedSecond) return latestUid - 1;
+        return latestUid;
+    }
+
+    /** 指定 UID のメールがサーバーに届いた時刻 (epoch ミリ秒)。取れなければ null。 */
+    @Nullable
+    private Long internalDate(ImapStream stream, String targetUid) throws IOException, ImapException {
+        String tag = stream.nextTag();
+        stream.send(tag + " UID FETCH " + targetUid + " (INTERNALDATE)");
+        return parseInternalDate(stream.readUntilTagged(tag));
+    }
+
+    /** 受信箱にある OTP メールのうち一番新しい UID。無ければ null。 */
+    @Nullable
+    private String searchLatestUid(ImapStream stream) throws IOException, ImapException {
+        String tag = stream.nextTag();
+        stream.send(tag + " UID SEARCH FROM \"" + OTP_SENDER + "\" SINCE " + imapDate(new Date()));
+        return lastUid(stream.readUntilTagged(tag));
+    }
+
+    /**
+     * 選択済みの INBOX で OTP メールを 1 回探す。floorUid より新しいものが無ければ null。見つかれば
+     * コードを返し、そのメールを削除する。
      */
     @Nullable
-    private String searchAndFetch(ImapStream stream) throws IOException, ImapException {
-        String tag = stream.nextTag();
-        stream.send(tag + " UID SEARCH UNSEEN FROM \"" + OTP_SENDER + "\" SINCE " + imapDate(new Date()));
-        List<String> searchLines = stream.readUntilTagged(tag);
-        String targetUid = lastUid(searchLines);
+    private String searchAndFetch(ImapStream stream, int floorUid) throws IOException, ImapException {
+        String targetUid = searchLatestUid(stream);
         if (targetUid == null) return null;
+        // 下限以下は今回要求したコードではない (期限切れの古いメール)。
+        if (Integer.parseInt(targetUid) <= floorUid) return null;
+
+        String tag;
 
         tag = stream.nextTag();
         stream.send(tag + " UID FETCH " + targetUid + " (BODY.PEEK[TEXT])");
@@ -148,8 +205,10 @@ public final class ImapOtpFetcher {
             tag = stream.nextTag();
             stream.send(tag + " EXPUNGE");
             stream.readUntilTagged(tag);
-        } catch (Exception ignored) {
-            // 削除に失敗してもコードは取れているので、ログインを優先する。
+        } catch (Exception e) {
+            // 削除に失敗してもコードは取れているので、ログインは続ける。ただし黙って捨てると
+            // 「メールが消えない」ときに原因が分からなくなるので必ずログへ残す (コードは出さない)。
+            android.util.Log.w("ImapOtpFetcher", "OTPメールの削除に失敗: " + e);
         }
         return code;
     }
@@ -183,6 +242,24 @@ public final class ImapOtpFetcher {
                 }
             }
             if (max >= 0) return String.valueOf(max);
+        }
+        return null;
+    }
+
+    /**
+     * "* 5 FETCH (UID 123 INTERNALDATE \"15-Sep-2026 14:23:45 +0900\")" から到着時刻を取る。
+     * 取れなければ null (呼び出し側が従来の下限にフォールバックする)。
+     */
+    @Nullable
+    static Long parseInternalDate(@NonNull List<String> lines) {
+        for (String line : lines) {
+            Matcher m = Pattern.compile("INTERNALDATE \"([^\"]+)\"").matcher(line);
+            if (!m.find()) continue;
+            try {
+                return new SimpleDateFormat("dd-MMM-yyyy HH:mm:ss Z", Locale.US).parse(m.group(1)).getTime();
+            } catch (java.text.ParseException e) {
+                return null;
+            }
         }
         return null;
     }
