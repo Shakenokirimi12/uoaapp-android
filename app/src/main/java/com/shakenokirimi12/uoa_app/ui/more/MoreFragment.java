@@ -31,14 +31,22 @@ public class MoreFragment extends Fragment {
         // 前面復帰の取り直しで入口が消えるようにするため。
         com.shakenokirimi12.uoa_app.services.AppConfigService flags =
                 com.shakenokirimi12.uoa_app.services.AppConfigService.getInstance();
+        // 下タブに出している機能はここに重ねて出さない (タブの表示設定、iOS と同じ)。
+        com.shakenokirimi12.uoa_app.data.PreferenceManager prefs =
+                com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(requireContext());
         flags.config().observe(getViewLifecycleOwner(), config -> {
-            // Hide the adjacent divider together with the row so the card has no stray hairline.
-            int reviews = flags.isFeatureEnabled("review_enabled") ? View.VISIBLE : View.GONE;
-            view.findViewById(R.id.button_reviews).setVisibility(reviews);
-            view.findViewById(R.id.divider_reviews).setVisibility(reviews);
-            int campusMap = flags.isFeatureEnabled("campus_map_enabled") ? View.VISIBLE : View.GONE;
-            view.findViewById(R.id.button_campus_map).setVisibility(campusMap);
-            view.findViewById(R.id.divider_campus_map).setVisibility(campusMap);
+            boolean reviews = flags.isFeatureEnabled("review_enabled")
+                    && !com.shakenokirimi12.uoa_app.ui.util.MainTabs.isInMainTabs(prefs, "reviews");
+            view.findViewById(R.id.button_reviews).setVisibility(reviews ? View.VISIBLE : View.GONE);
+            view.findViewById(R.id.button_grades).setVisibility(
+                    com.shakenokirimi12.uoa_app.ui.util.MainTabs.isInMainTabs(prefs, "grades") ? View.GONE : View.VISIBLE);
+            view.findViewById(R.id.button_gakushoku).setVisibility(
+                    com.shakenokirimi12.uoa_app.ui.util.MainTabs.isInMainTabs(prefs, "gakushoku") ? View.GONE : View.VISIBLE);
+            view.findViewById(R.id.button_facilities).setVisibility(
+                    com.shakenokirimi12.uoa_app.ui.util.MainTabs.isInMainTabs(prefs, "facilities") ? View.GONE : View.VISIBLE);
+            view.findViewById(R.id.button_campus_map).setVisibility(
+                    flags.isFeatureEnabled("campus_map_enabled") ? View.VISIBLE : View.GONE);
+            hideOrphanDividers((ViewGroup) view.findViewById(R.id.button_grades).getParent());
         });
 
         view.findViewById(R.id.button_reviews).setOnClickListener(v ->
@@ -55,5 +63,26 @@ public class MoreFragment extends Fragment {
                 Navigation.findNavController(v).navigate(R.id.action_more_to_notifications));
         view.findViewById(R.id.button_settings).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_more_to_settings));
+    }
+
+    /**
+     * カード内の区切り線は「見えている行と行の間」にだけ出す。行を隠すと隣の線が浮くので、
+     * 行ごとに線の id を対応付けるのではなく、並びを見て決める。
+     */
+    private static void hideOrphanDividers(ViewGroup card) {
+        View lastVisibleRow = null;
+        View pendingDivider = null;
+        for (int i = 0; i < card.getChildCount(); i++) {
+            View child = card.getChildAt(i);
+            if (child instanceof com.google.android.material.divider.MaterialDivider) {
+                child.setVisibility(View.GONE);
+                if (lastVisibleRow != null) pendingDivider = child;
+                continue;
+            }
+            if (child.getVisibility() != View.VISIBLE) continue;
+            if (lastVisibleRow != null && pendingDivider != null) pendingDivider.setVisibility(View.VISIBLE);
+            lastVisibleRow = child;
+            pendingDivider = null;
+        }
     }
 }

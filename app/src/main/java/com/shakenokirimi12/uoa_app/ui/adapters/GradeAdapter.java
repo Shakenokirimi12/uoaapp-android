@@ -39,18 +39,14 @@ public class GradeAdapter extends RecyclerView.Adapter<GradeAdapter.ViewHolder> 
         Grade g = items.get(position);
         holder.textCourseName.setText(g.getCourseName());
 
+        // 科目コードは学生には意味が無いので出さない (2026-09-15 のフィードバック)。
         StringBuilder meta = new StringBuilder();
-        if (g.getSubjectCode() != null && !g.getSubjectCode().isEmpty()) {
-            meta.append(g.getSubjectCode());
-        }
         if (g.getYear() != null && !g.getYear().isEmpty()) {
-            if (meta.length() > 0) meta.append("  ");
             meta.append(g.getYear());
             if (g.getSemester() != null && !g.getSemester().isEmpty()) {
                 meta.append(" ").append(g.getSemester());
             }
         } else if (g.getSemester() != null && !g.getSemester().isEmpty()) {
-            if (meta.length() > 0) meta.append("  ");
             meta.append(g.getSemester());
         }
         holder.textMeta.setText(meta.toString());
@@ -60,15 +56,18 @@ public class GradeAdapter extends RecyclerView.Adapter<GradeAdapter.ViewHolder> 
         if (g.getCredits() != null && !g.getCredits().isEmpty()) {
             detail.append(g.getCredits()).append("単位");
         }
-        if (g.getScore() != null && !g.getScore().isEmpty()) {
+        // CampusSquare は履修中の科目の点数欄に「履修中」と入れてくる。数値でなければ点数としては
+        // 出さない (右のチップに状態として出るので重複する)。
+        if (g.getScore() != null && g.getScore().matches("\\d+(\\.\\d+)?")) {
             if (detail.length() > 0) detail.append("  ");
             detail.append("点数: ").append(g.getScore());
         }
         holder.textCredits.setText(detail.toString());
         holder.textCredits.setVisibility(detail.length() > 0 ? View.VISIBLE : View.GONE);
 
+        // 2 文字で切ると「履修中」が「履修」になる。評価は元々 2 文字以内なので切らずに出す。
         String grade = g.getGrade() != null ? g.getGrade() : "?";
-        holder.textGradeChip.setText(grade.length() > 2 ? grade.substring(0, 2) : grade);
+        holder.textGradeChip.setText(grade);
 
         Context ctx = holder.itemView.getContext();
         // mutate(): the shape drawable's constant state is shared across rows.

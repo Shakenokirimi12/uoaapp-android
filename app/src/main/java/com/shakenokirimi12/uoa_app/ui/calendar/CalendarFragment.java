@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CalendarView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -34,7 +33,7 @@ import java.util.List;
 
 public class CalendarFragment extends Fragment {
 
-    private CalendarView calendarView;
+    private MonthCalendarView calendarView;
     private TabLayout tabLayout;
     private RecyclerView recyclerEvents;
     private TextView textEmpty;
@@ -69,10 +68,12 @@ public class CalendarFragment extends Fragment {
         classAdapter.setOnClassClickListener(cls ->
                 ClassDetailDialog.show(requireContext(), cls));
 
-        calendarView.setOnDateChangeListener((cv, year, month, dayOfMonth) -> {
+        calendarView.setOnDateSelectedListener((year, month, dayOfMonth) -> {
             selectedDate.set(year, month, dayOfMonth);
             updateList();
         });
+        calendarView.setSelectedDate(selectedDate.get(Calendar.YEAR), selectedDate.get(Calendar.MONTH),
+                selectedDate.get(Calendar.DAY_OF_MONTH));
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
@@ -150,7 +151,26 @@ public class CalendarFragment extends Fragment {
         });
     }
 
+    /** 授業のある日と課題の締切日に点を付ける (iOS の markedDates と同じ)。 */
+    private void updateMarks() {
+        java.util.Map<Long, Integer> marks = new java.util.HashMap<>();
+        for (CalendarEvent e : allEvents) {
+            if (e.getDtstart() == null) continue;
+            long key = MonthCalendarView.dayKey(e.getDtstart().getTime());
+            Integer cur = marks.get(key);
+            marks.put(key, (cur != null ? cur : 0) | MonthCalendarView.MARK_CLASS);
+        }
+        for (Assignment a : allAssignments) {
+            if (a.getDueDate() <= 0) continue;
+            long key = MonthCalendarView.dayKey(a.getDueDate() * 1000);
+            Integer cur = marks.get(key);
+            marks.put(key, (cur != null ? cur : 0) | MonthCalendarView.MARK_ASSIGNMENT);
+        }
+        calendarView.setMarks(marks);
+    }
+
     private void updateList() {
+        updateMarks();
         int tab = tabLayout.getSelectedTabPosition();
 
         selectedDate.set(Calendar.HOUR_OF_DAY, 0);

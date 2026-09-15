@@ -6,53 +6,55 @@
   theme, the legacy names at the bottom keep old code (R.color.primary etc.) working.
 -->
 <resources>
-    <color name="md_primary">#1F6A60</color>
+    <!-- Medium-contrast variant (2026-09-15): text/outline roles moved 2-3 tones darker and the
+         ground slightly more tinted so white cards separate. The base tonal-spot palette was too soft. -->
+    <color name="md_primary">#00564D</color>
     <color name="md_on_primary">#FFFFFF</color>
     <color name="md_primary_container">#A9F0E3</color>
-    <color name="md_on_primary_container">#075C53</color>
-    <color name="md_secondary">#4B645F</color>
+    <color name="md_on_primary_container">#003B34</color>
+    <color name="md_secondary">#2F4944</color>
     <color name="md_on_secondary">#FFFFFF</color>
     <color name="md_secondary_container">#CCE8E2</color>
-    <color name="md_on_secondary_container">#3D5752</color>
-    <color name="md_tertiary">#336578</color>
+    <color name="md_on_secondary_container">#22403B</color>
+    <color name="md_tertiary">#1C4E60</color>
     <color name="md_on_tertiary">#FFFFFF</color>
     <color name="md_tertiary_container">#B5E7FD</color>
-    <color name="md_on_tertiary_container">#225668</color>
-    <color name="md_error">#A83836</color>
+    <color name="md_on_tertiary_container">#073E50</color>
+    <color name="md_error">#8C1D1D</color>
     <color name="md_on_error">#FFFFFF</color>
     <color name="md_error_container">#FFDAD6</color>
-    <color name="md_on_error_container">#6E0A12</color>
-    <color name="md_background">#F6FAF8</color>
-    <color name="md_on_background">#2A3432</color>
-    <color name="md_surface">#F6FAF8</color>
-    <color name="md_on_surface">#2A3432</color>
-    <color name="md_surface_variant">#DAE5E1</color>
-    <color name="md_on_surface_variant">#56615F</color>
-    <color name="md_outline">#727D7A</color>
-    <color name="md_outline_variant">#A9B4B1</color>
+    <color name="md_on_error_container">#4E0007</color>
+    <color name="md_background">#F2F7F5</color>
+    <color name="md_on_background">#131C1A</color>
+    <color name="md_surface">#F2F7F5</color>
+    <color name="md_on_surface">#131C1A</color>
+    <color name="md_surface_variant">#D1DCD9</color>
+    <color name="md_on_surface_variant">#3E4947</color>
+    <color name="md_outline">#5A6663</color>
+    <color name="md_outline_variant">#99A4A1</color>
     <color name="md_inverse_surface">#2A3432</color>
     <color name="md_inverse_on_surface">#EEF5F2</color>
     <color name="md_inverse_primary">#9CD1C7</color>
-    <color name="md_surface_dim">#D1DCD9</color>
-    <color name="md_surface_bright">#F6FAF8</color>
+    <color name="md_surface_dim">#C6D1CE</color>
+    <color name="md_surface_bright">#F2F7F5</color>
     <color name="md_surface_container_lowest">#FFFFFF</color>
-    <color name="md_surface_container_low">#EEF5F2</color>
-    <color name="md_surface_container">#E7F0ED</color>
-    <color name="md_surface_container_high">#E1EAE7</color>
-    <color name="md_surface_container_highest">#DAE5E1</color>
-    <color name="md_surface_tint">#1F6A60</color>
+    <color name="md_surface_container_low">#E9F0ED</color>
+    <color name="md_surface_container">#E1EAE7</color>
+    <color name="md_surface_container_high">#D9E3E0</color>
+    <color name="md_surface_container_highest">#D1DCD9</color>
+    <color name="md_surface_tint">#00564D</color>
 
     <!-- Semantic accents that M3 has no role for. -->
-    <color name="warning">#8A5A00</color>
+    <color name="warning">#6E4700</color>
     <color name="warning_container">#FFE1A8</color>
     <color name="on_warning_container">#3D2800</color>
-    <color name="success">#2E6B3A</color>
+    <color name="success">#1F5A2B</color>
     <color name="success_container">#BDEFC3</color>
     <color name="rating_star">#E0A100</color>
 
     <!-- Legacy names kept for Java code and layouts not yet migrated. -->
     <color name="primary">@color/md_primary</color>
-    <color name="primary_dark">#134F47</color>
+    <color name="primary_dark">#003B34</color>
     <color name="primary_light">@color/md_primary_container</color>
     <color name="accent">@color/md_tertiary</color>
     <color name="white">#FFFFFF</color>

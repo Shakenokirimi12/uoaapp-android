@@ -30,6 +30,17 @@
             app:dividerInsetEnd="0dp"
             app:dividerInsetStart="0dp" />
 
+        <!-- 見出しは昼のメイン。夕食の行と区別が付くようラベルを置く。 -->
+        <TextView
+            android:id="@+id/text_menu_lunch_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="昼食"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
         <TextView
             android:id="@+id/text_menu_headline"
             android:layout_width="match_parent"

@@ -54,6 +54,9 @@
     <!-- Onboarding -->
     <string name="onboarding_welcome">UoA非公式アプリへようこそ</string>
     <string name="onboarding_disclaimer">このアプリは会津大学の非公式アプリです。\n大学とは一切の関係がありません。</string>
+    <!-- 「同意して続ける」の対象を明示する。プライバシーポリシーのページは無いので、同意内容はこの場に書く。 -->
+    <string name="onboarding_consent_title">続ける前に</string>
+    <string name="onboarding_consent_body">「同意して続ける」を押すと、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquare へあなたの代わりにログインするためだけに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールから自動取得する機能は既定で有効ですが、後から設定でオフにできます。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
     <string name="onboarding_agree">同意して続ける</string>
     <string name="onboarding_login_title">ログイン</string>
     <string name="onboarding_login_desc">Moodle / CampusSquare のアカウントでログインしてください。</string>

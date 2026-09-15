@@ -160,6 +160,9 @@ public class NavSettingsFragment extends Fragment {
     private void saveTabs() {
         prefs.setMainTabs(String.join(",", mainTabs));
         prefs.setOtherTabs(String.join(",", otherTabs));
+        if (getActivity() instanceof com.shakenokirimi12.uoa_app.MainActivity) {
+            ((com.shakenokirimi12.uoa_app.MainActivity) getActivity()).refreshBottomTabs();
+        }
     }
 
     private int dp(int value) {

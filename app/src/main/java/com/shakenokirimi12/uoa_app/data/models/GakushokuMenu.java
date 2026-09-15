@@ -127,6 +127,12 @@ public class GakushokuMenu {
         return dayKey(w.monthOf(d), d.day, todayMonth) < dayKey(todayMonth, todayDay, todayMonth);
     }
 
+    /** true when the day is today (Asia/Tokyo). The list highlights it with an outline. */
+    public static boolean isToday(Week w, Day d) {
+        Calendar now = todayInTokyo();
+        return w.monthOf(d) == now.get(Calendar.MONTH) + 1 && d.day == now.get(Calendar.DAY_OF_MONTH);
+    }
+
     /** true when every listed day of the week is before today. */
     private static boolean endsBefore(Week w, int todayMonth, int todayDay) {
         if (w.days().isEmpty()) return true;

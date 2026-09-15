@@ -286,9 +286,16 @@ public class HomeFragment extends Fragment {
             return;
         }
 
-        syncStatusBar.setVisibility(View.VISIBLE);
-        textSyncStatus.setText(R.string.home_sync_status);
-        swipeRefresh.setRefreshing(true);
+        // 進行中の表示は 1 つだけ。引っ張って更新したときは SwipeRefresh の輪、自動更新のときは
+        // 上の「同期中...」帯。両方出すと輪が帯の上に重なる。
+        if (force) {
+            swipeRefresh.setRefreshing(true);
+            syncStatusBar.setVisibility(View.GONE);
+        } else {
+            swipeRefresh.setRefreshing(false);
+            syncStatusBar.setVisibility(View.VISIBLE);
+            textSyncStatus.setText(R.string.home_sync_status);
+        }
 
         // ID/PW 誤りが確定している間は自動でログインを試みない。画面を開くたびに
         // 誤ったパスワードで認証すると、大学側でアカウントがロックされうる。
@@ -398,6 +405,7 @@ public class HomeFragment extends Fragment {
 
         String main = today.lunchMain();
         textMenuHeadline.setVisibility(main != null ? View.VISIBLE : View.GONE);
+        layoutMenuContent.findViewById(R.id.text_menu_lunch_label).setVisibility(main != null ? View.VISIBLE : View.GONE);
         textMenuHeadline.setText(main);
         MenuAdapter.bindCategoryRows(layoutMenuRows, today);
     }

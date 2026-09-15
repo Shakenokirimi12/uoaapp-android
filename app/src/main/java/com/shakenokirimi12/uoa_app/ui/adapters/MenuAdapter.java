@@ -25,7 +25,12 @@ public class MenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private static final class Row {
         final GakushokuMenu.Week week;
         final GakushokuMenu.Day day;
-        Row(GakushokuMenu.Week week, GakushokuMenu.Day day) { this.week = week; this.day = day; }
+        final boolean isToday;
+        Row(GakushokuMenu.Week week, GakushokuMenu.Day day, boolean isToday) {
+            this.week = week;
+            this.day = day;
+            this.isToday = isToday;
+        }
     }
 
     private final List<Row> rows = new ArrayList<>();
@@ -47,8 +52,8 @@ public class MenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 if (showPast || !GakushokuMenu.isPast(week, day)) visible.add(day);
             }
             if (visible.isEmpty()) continue;
-            rows.add(new Row(week, null));
-            for (GakushokuMenu.Day day : visible) rows.add(new Row(null, day));
+            rows.add(new Row(week, null, false));
+            for (GakushokuMenu.Day day : visible) rows.add(new Row(null, day, GakushokuMenu.isToday(week, day)));
         }
         notifyDataSetChanged();
     }
@@ -95,11 +100,18 @@ public class MenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
         DayHolder h = (DayHolder) holder;
         GakushokuMenu.Day day = row.day;
-        h.textDate.setText(day.dateString);
+        h.textDate.setText(row.isToday ? day.dateString + "  今日" : day.dateString);
+        // 今日のカードだけ枠線を付けて、一覧の中で目に留まるようにする。
+        com.google.android.material.card.MaterialCardView card =
+                (com.google.android.material.card.MaterialCardView) h.itemView;
+        int primary = com.google.android.material.color.MaterialColors.getColor(card, androidx.appcompat.R.attr.colorPrimary);
+        card.setStrokeColor(primary);
+        card.setStrokeWidth(row.isToday ? Math.round(2 * card.getResources().getDisplayMetrics().density) : 0);
         String main = day.lunchMain();
         boolean hasMenu = day.hasContent();
         h.textNone.setVisibility(hasMenu ? View.GONE : View.VISIBLE);
         h.textHeadline.setVisibility(hasMenu && main != null ? View.VISIBLE : View.GONE);
+        h.textLunchLabel.setVisibility(hasMenu && main != null ? View.VISIBLE : View.GONE);
         h.textHeadline.setText(main);
         if (hasMenu) {
             bindCategoryRows(h.layoutRows, day);
@@ -123,6 +135,7 @@ public class MenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
      */
     public static void bindCategoryRows(LinearLayout container, GakushokuMenu.Day day) {
         container.removeAllViews();
+        // 見出し (lunchMain) は昼のメイン (レイアウト側に「昼食」ラベル)。副菜〜サラダも昼、夕食だけ別。
         addCategoryRow(container, "副菜", day.lunchSides());
         addCategoryRow(container, "麺類", day.noodles);
         addCategoryRow(container, "魚", day.fish);
@@ -150,6 +163,7 @@ public class MenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     static class DayHolder extends RecyclerView.ViewHolder {
         final TextView textDate;
         final TextView textHeadline;
+        final TextView textLunchLabel;
         final LinearLayout layoutRows;
         final TextView textNone;
 
@@ -157,6 +171,7 @@ public class MenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             super(view);
             textDate = view.findViewById(R.id.text_menu_date);
             textHeadline = view.findViewById(R.id.text_menu_headline);
+            textLunchLabel = view.findViewById(R.id.text_menu_lunch_label);
             layoutRows = view.findViewById(R.id.layout_menu_rows);
             textNone = view.findViewById(R.id.text_menu_none);
         }
