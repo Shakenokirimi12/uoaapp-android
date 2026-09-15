@@ -59,13 +59,29 @@ public final class SeciossIdPClient {
          * SP (CampusSquare) へ本当に戻ったかは呼び出し側がこの URL のホストで判定する。
          */
         @NonNull public final String finalUrl;
+        /** 最後のホップの HTTP ステータス。SP の 503 はメンテナンスページ (Moodle、2026-09-15 実測)。 */
+        public final int finalStatus;
         @NonNull public final String cookieHeader;
 
-        Session(@NonNull String finalHtml, @NonNull String finalUrl, @NonNull String cookieHeader) {
+        Session(@NonNull String finalHtml, @NonNull String finalUrl, int finalStatus, @NonNull String cookieHeader) {
             this.finalHtml = finalHtml;
             this.finalUrl = finalUrl;
+            this.finalStatus = finalStatus;
             this.cookieHeader = cookieHeader;
         }
+    }
+
+    /**
+     * SP 側のメンテナンスページか (Moodle: HTTP 503 + 「メンテナンスモード」、2026-09-15 実測)。
+     * このページにも「ログアウト」リンクが含まれるため、呼び出し側は成功マーカーより先にこれを見ること。
+     */
+    public static boolean isMaintenancePage(int status, @NonNull String html) {
+        // 本文一致だと通常画面のお知らせで誤検出しうるので、503 か <title> だけを見る。
+        if (status == 503) return true;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("<title>([^<]*)</title>").matcher(html);
+        if (!m.find()) return false;
+        String title = m.group(1).toLowerCase(java.util.Locale.ROOT);
+        return title.contains("メンテナンスモード") || title.contains("maintenance");
     }
 
     /**
@@ -257,7 +273,7 @@ public final class SeciossIdPClient {
      * FunctionID だけでは SP 未登録・テナント違い・アカウント停止のどれかが分からないため、本文を添える。
      */
     @NonNull
-    static String visibleExcerpt(@NonNull String html, int limit) {
+    public static String visibleExcerpt(@NonNull String html, int limit) {
         String t = html.replaceAll("(?is)<(script|style)[^>]*>.*?</\\1>", " ");
         t = t.replaceAll("<[^>]+>", " ");
         t = t.replace("&nbsp;", " ");
@@ -369,8 +385,10 @@ public final class SeciossIdPClient {
                 String target = resolve(current.url, relay.redirectGetUrl);
                 hop = get(target, current.cookies, Collections.singletonMap("Referer", current.url));
             }
-            if (hop.status != 200) break;
+            // 200 以外でもそのホップの内容を返す。SP のメンテナンスページ (503) を捨てて手前の
+            // 中継フォームを返すと、呼び出し側が原因を判別できない。
             current = hop;
+            if (hop.status != 200) break;
         }
         return current;
     }
@@ -453,7 +471,7 @@ public final class SeciossIdPClient {
                         "post-login screen(FunctionID=" + state.functionId + ", url=" + current.url + ") "
                                 + visibleExcerpt(current.html, 400));
             }
-            return new Session(current.html, current.url, cookieHeader(current.cookies));
+            return new Session(current.html, current.url, current.status, cookieHeader(current.cookies));
         }
 
         String otpSessid = extractField("sessid", current.html);
@@ -489,7 +507,7 @@ public final class SeciossIdPClient {
         if (relayed.html.contains(SESSION_TIMED_OUT_MARKER)) {
             throw new SeciossError(SeciossError.Kind.SESSION_TIMED_OUT);
         }
-        return new Session(relayed.html, relayed.url, cookieHeader(relayed.cookies));
+        return new Session(relayed.html, relayed.url, relayed.status, cookieHeader(relayed.cookies));
     }
 
     /**

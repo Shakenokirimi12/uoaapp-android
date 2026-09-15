@@ -120,7 +120,11 @@ public class MoodleService {
      * このURLで tenantlogin.cgi の sessid/back/tenant フォームまで到達することを iOS 側で確認済み
      * (2026-09-08)。テナントが同一なので CampusSquare 向けと同じ SeciossIdPClient をそのまま使う。
      */
-    private static String samlEntryUrl() { return baseUrl() + "/auth/saml2/login.php"; }
+    private static String samlEntryUrl() {
+        // 2026-09-15 実測: 303 で SECIOSS へ飛び、RelayState は elms に戻る。変わったときのために
+        // `moodle_entry_url` フラグで差し替えられる (CampusSquare と同じ考え方)。
+        return AppConfigService.getInstance().stringFlag("moodle_entry_url", baseUrl() + "/auth/saml2/login.php");
+    }
 
     /**
      * Moodle コア標準のログアウト URL (login/logout.php) の有無で認証済み判定する。この URL パスは言語
@@ -156,11 +160,29 @@ public class MoodleService {
             }
             throw new Exception(e.loginMessage(), e);
         }
-        if (!containsAnySuccessMarker(session.finalHtml)) {
-            throw new Exception("SAML経由でのログイン後、Moodleへの復帰が確認できませんでした");
+        // 2026-09-15 実測の反省点: (1) メンテナンスページにも "logout" が含まれるのでマーカーより先に見る、
+        // (2) IdP 側のページで止まっても復帰先ホストで弾く、(3) login/index.php へ戻された = SP 側で
+        // このユーザーが未開放。
+        if (SeciossIdPClient.isMaintenancePage(session.finalStatus, session.finalHtml)) {
+            throw new Exception(new SeciossError(SeciossError.Kind.MAINTENANCE,
+                    SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).loginMessage());
         }
         okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl());
         String host = base != null ? base.host() : "elms.u-aizu.ac.jp";
+        okhttp3.HttpUrl finalUrl = okhttp3.HttpUrl.parse(session.finalUrl);
+        String finalHost = finalUrl != null ? finalUrl.host().toLowerCase() : "";
+        if (!finalHost.equals(host.toLowerCase())) {
+            throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+                    "Moodle へ戻れていない(final=" + session.finalUrl + ")").loginMessage());
+        }
+        if (session.finalUrl.contains("login/index.php")) {
+            throw new Exception(new SeciossError(SeciossError.Kind.ACCESS_DENIED, "moodle_login_page").loginMessage());
+        }
+        if (!containsAnySuccessMarker(session.finalHtml)) {
+            throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+                    "Moodle への復帰後、成功マーカーが見つからない(url=" + session.finalUrl + ") "
+                            + SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).loginMessage());
+        }
         boolean secure = base == null || base.isHttps();
         int dropped = NetworkClient.injectCookieHeader(host, secure, session.cookieHeader);
         if (dropped > 0) Log.w(TAG, "IdP session: " + dropped + " cookie(s) could not be imported");

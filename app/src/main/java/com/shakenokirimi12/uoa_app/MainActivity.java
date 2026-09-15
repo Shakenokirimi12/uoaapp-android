@@ -53,6 +53,13 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupWithNavController(toolbar, navController, appBarConfiguration);
         EdgeToEdge.apply(this, findViewById(R.id.container), bottomNav);
 
+        // CampusSquare は 2026-09-15 以降 IdP 経由しか無い (旧フォーム消滅)。OTP メール自動取得の同意を
+        // 含むチュートリアルを、この端末でまだ見せていなければリモート設定を待たずに初回起動で出す
+        // (iOS の idPTutorialPresented と同じ)。回転などの再生成では出し直さない。
+        if (savedInstanceState == null && !prefs.hasSeenIdPTutorial()) {
+            navController.navigate(R.id.navigation_idp_tutorial);
+        }
+
         // Register device for push notifications
         PushNotificationService pushService = PushNotificationService.shared(this);
         pushService.registerDevice(prefs.getFcmToken().isEmpty() ? null : prefs.getFcmToken());

@@ -140,6 +140,27 @@ public class SeciossIdPClientTest {
     }
 
     @Test
+    public void isMaintenancePage_status503OrJapaneseMarkers() {
+        // Moodle のメンテナンスページは 503 で、本文に「ログアウト」も含む (2026-09-15 実測)。
+        assertTrue(SeciossIdPClient.isMaintenancePage(503, "<a href=\"login/logout.php\">ログアウト</a>"));
+        assertTrue(SeciossIdPClient.isMaintenancePage(200, "<html><head><title>メンテナンスモード | aizu</title></head></html>"));
+        // 本文にお知らせとして含まれるだけなら通常画面
+        assertFalse(SeciossIdPClient.isMaintenancePage(200, "<title>ダッシュボード</title><p>現在メンテナンス中です。</p>"));
+        assertFalse(SeciossIdPClient.isMaintenancePage(200, "<a href=\"login/logout.php\">ログアウト</a>"));
+        assertFalse(SeciossIdPClient.isMaintenancePage(404, "Not Found"));
+    }
+
+    @Test
+    public void maintenanceError_loginAndRegistrationMessages() {
+        SeciossError e = new SeciossError(SeciossError.Kind.MAINTENANCE, "メンテナンスモード しばらくお待ちください");
+        assertTrue(e.loginMessage().startsWith("大学のシステムがメンテナンス中です。終了後にもう一度お試しください。"));
+        assertTrue(e.loginMessage().contains("しばらくお待ちください"));
+        assertTrue(e.registrationMessage().startsWith("大学のシステムがメンテナンス中です。"));
+        assertTrue(new SeciossError(SeciossError.Kind.ACCESS_DENIED, "moodle_login_page")
+                .loginMessage().startsWith("Moodle 側でこのアカウントのシングルサインオン"));
+    }
+
+    @Test
     public void classifyErrorPage_nonErrorUrlIsNull() {
         assertNull(SeciossIdPClient.classifyErrorPage("https://csweb.u-aizu.ac.jp/campusweb/campusportal.do", "ログアウト"));
     }

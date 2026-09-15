@@ -41,28 +41,10 @@ public class CampusSquareService {
     }
 
     /**
-     * baseUrl() の scheme://host 部分。Origin ヘッダとルート相対リダイレクトの解決に使う。
+     * baseUrl() の scheme://host 部分。ルート相対リダイレクトの解決に使う。
      * ここを固定文字列にしておくと、フラグでホストを差し替えたときに
      * リダイレクト先だけ旧ホストへ戻ってセッションが分裂する。
      */
-    /**
-     * ID/PW 誤りの文言。iOS と同じ既定値で、`campussquare_auth_failure_markers` フラグ
-     * (カンマ区切り) で審査なしに上書きできる。大学側が文言を変えたときの逃げ道。
-     */
-    private static final String DEFAULT_AUTH_FAILURE_MARKER = "ユーザ名またはパスワードの入力に誤りがあります";
-
-    private static boolean containsAuthFailureMarker(String html) {
-        String raw = AppConfigService.getInstance().flagValue("campussquare_auth_failure_markers");
-        java.util.List<String> markers = new java.util.ArrayList<>();
-        if (raw != null) {
-            for (String m : raw.split(",")) if (!m.trim().isEmpty()) markers.add(m.trim());
-        }
-        if (markers.isEmpty()) markers.add(DEFAULT_AUTH_FAILURE_MARKER);
-        String body = AuthErrors.withoutScripts(html);
-        for (String m : markers) if (body.contains(m)) return true;
-        return false;
-    }
-
     private static String baseOrigin() {
         String url = baseUrl();
         int schemeEnd = url.indexOf("://");
@@ -79,8 +61,7 @@ public class CampusSquareService {
     public void login(String username, String password, ServiceCallback<Boolean> callback) {
         executor.execute(() -> {
             try {
-                LoginMethod method = resolveLoginMethod();
-                coordinator.forceLogin(method, () -> freshLogin(method, username, password));
+                coordinator.forceLogin(SESSION_KIND, () -> freshLogin(username, password));
                 postSuccess(callback, true);
             } catch (Exception e) {
                 postError(callback, e.getMessage());
@@ -103,27 +84,19 @@ public class CampusSquareService {
         });
     }
 
-    // ---- Login Method Switch (iOS の CampusSquareService.LoginMethod と同じ) ----
-
-    /**
-     * 成績・カレンダー取得が旧方式 (生 POST) と新方式 (IdP 経由) のどちらでログインするかの明示的な
-     * 切り替え。`campussquare_login_method` フラグを `idp` にすると審査を経ずに新方式へ切り替えられる
-     * (問題があれば `legacy` に戻すだけで良い)。未設定・不正な値は安全側 (legacy) に倒す。
-     */
-    public enum LoginMethod { LEGACY, IDP }
-
-    public static LoginMethod resolveLoginMethod() {
-        return "idp".equals(AppConfigService.getInstance().flagValue("campussquare_login_method"))
-                ? LoginMethod.IDP : LoginMethod.LEGACY;
-    }
-
     // ---- Session reuse (iOS の SessionCoordinator / withSession と同じ方針) ----
     //
     // 状態はプロセスで 1 つ。各画面と SyncWorker が持つ別インスタンスからの同時呼び出しでも
-    // ログインは単一飛行になる。旧方式の JSESSIONID もここに保持する (以前は取得のたびに
-    // ログインし直していた)。IdP 方式の cookie は前回プロセスの分が PreferenceManager にも残るので、
+    // ログインは単一飛行になる。IdP 方式の cookie は前回プロセスの分が PreferenceManager にも残るので、
     // メモリに無いときはそれを候補として probe してからログインする。
     private static final SessionCoordinator<String> coordinator = new SessionCoordinator<>();
+
+    /**
+     * SessionCoordinator に渡す「ログイン方式」。CampusSquare は 2026-09-15 に旧フォーム
+     * (campusportal.do への生 POST) が消えて IdP 経由しか無くなったので 1 種類だけ。
+     * 方式の引数自体は Moodle (moodle_login_method で切替中) が使うので残っている。
+     */
+    private static final Object SESSION_KIND = "idp";
 
     /** 取得の途中で未認証ページを掴んだことを withSession に伝える。 */
     static final class SessionExpiredException extends Exception {
@@ -133,25 +106,17 @@ public class CampusSquareService {
     private interface SessionBody<T> { T run(String cookieHeader) throws Exception; }
 
     /**
-     * 旧方式は JSESSIONID 単体、新方式は SeciossIdPClient が集めた複数 cookie (AWS ALB のスティッキー
-     * セッション cookie 等を含み得る) を Cookie ヘッダごと必要とする。この違いを fetchGrades /
-     * fetchCalendarEvents から隠し、どちらもそのまま Cookie ヘッダに載せられる文字列を返す。
+     * SeciossIdPClient が集めた複数 cookie (AWS ALB のスティッキーセッション cookie や Shibboleth の
+     * _shibsession_ を含む) を、そのまま Cookie ヘッダに載せられる文字列で返す。
      */
     private String authenticatedCookieHeader(String username, String password, boolean userInitiated) throws Exception {
-        LoginMethod method = resolveLoginMethod();
-        String candidate = null;
-        if (method == LoginMethod.IDP) {
-            String cached = PreferenceManager.getInstance().getCsIdpSessionCookieHeader();
-            if (!cached.isEmpty()) candidate = cached;
-        }
-        return coordinator.session(method, userInitiated, candidate, this::probeSession,
-                () -> freshLogin(method, username, password));
+        String cached = PreferenceManager.getInstance().getCsIdpSessionCookieHeader();
+        String candidate = cached.isEmpty() ? null : cached;
+        return coordinator.session(SESSION_KIND, userInitiated, candidate, this::probeSession,
+                () -> freshLogin(username, password));
     }
 
-    private String freshLogin(LoginMethod method, String username, String password) throws Exception {
-        if (method == LoginMethod.LEGACY) {
-            return "JSESSIONID=" + doLogin(username, password);
-        }
+    private String freshLogin(String username, String password) throws Exception {
         // ここに来るのは永続化した cookie も死んでいたとき。捨ててから取り直す。
         PreferenceManager.getInstance().setCsIdpSessionCookieHeader(null);
         return loginViaIdPAutomatic(null, username, password);
@@ -192,7 +157,7 @@ public class CampusSquareService {
     }
 
     /**
-     * セッションの生存確認 (1 リクエスト)。旧方式の Step 4 と同じ page=main を見る。IdP 化後の
+     * セッションの生存確認 (1 リクエスト)。ポータルの page=main を見る。IdP 化後の
      * CampusSquare でこのページがどうなるかは 2026-09-14 時点で未確認なので、URL は
      * `campussquare_session_check_url` フラグで差し替えられるようにしておく。
      */
@@ -265,6 +230,11 @@ public class CampusSquareService {
         if (!finalHost.equals(csHost)) {
             throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
                     "CampusSquareへ戻れていない(final=" + session.finalUrl + ")").loginMessage());
+        }
+        // メンテナンスページにも「ログアウト」が含まれるため、成功マーカーより先に見る (Moodle で 2026-09-15 実測)。
+        if (SeciossIdPClient.isMaintenancePage(session.finalStatus, session.finalHtml)) {
+            throw new Exception(new SeciossError(SeciossError.Kind.MAINTENANCE,
+                    SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).loginMessage());
         }
         // 2026-09-14 実測: SP まで戻れても CampusSquare 本体が
         // "[SSO-Error] あなたは現在このシステムを利用することができません" を返す段階がある
@@ -376,92 +346,6 @@ public class CampusSquareService {
         okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl);
         okhttp3.HttpUrl resolved = base != null ? base.resolve(relative) : null;
         return resolved != null ? resolved.toString() : relative;
-    }
-
-    private String doLogin(String username, String password) throws Exception {
-        OkHttpClient noRedirect = NetworkClient.getNoRedirectClient();
-
-        // Step 1: GET portal page for rwfHash + initial JSESSIONID
-        Request getPortal = new Request.Builder()
-                .url(baseUrl() + "/campusportal.do?locale=ja_JP")
-                .header("User-Agent", NetworkClient.getUserAgent())
-                .build();
-
-        String portalHtml;
-        String initialSid;
-        try (Response resp = noRedirect.newCall(getPortal).execute()) {
-            // Follow redirects manually for initial page
-            Response finalResp = followRedirectsManually(resp);
-            portalHtml = finalResp.body().string();
-            initialSid = extractSessionId(finalResp);
-            finalResp.close();
-        }
-
-        String rwfHash = extractMatch(portalHtml, "'rwfHash'\\s*:\\s*'([a-f0-9]+)'");
-        if (rwfHash == null || initialSid == null || initialSid.isEmpty()) {
-            throw new Exception("ポータルページの読み込みに失敗しました");
-        }
-
-        // Step 2: POST login
-        String body = "wfId=nwf_PTW0000002_login" +
-                "&userName=" + urlEncode(username.trim()) +
-                "&password=" + urlEncode(password.trim()) +
-                "&locale=ja_JP&undefined=&action=rwf&tabId=home&page=&rwfHash=" + rwfHash;
-
-        Request postLogin = new Request.Builder()
-                .url(baseUrl() + "/campusportal.do")
-                .header("User-Agent", NetworkClient.getUserAgent())
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("Cookie", "JSESSIONID=" + initialSid)
-                .header("Referer", baseUrl() + "/campusportal.do?locale=ja_JP")
-                .header("Origin", baseOrigin())
-                .post(RequestBody.create(body, FORM))
-                .build();
-
-        String authSid;
-        String locationHeader;
-        try (Response resp = noRedirect.newCall(postLogin).execute()) {
-            String newSid = extractSessionId(resp);
-            authSid = (newSid != null && !newSid.isEmpty()) ? newSid : initialSid;
-            locationHeader = resp.header("Location");
-            // ID/PW 誤りはログイン POST の応答本文にだけ現れる (page=main には出ない。iOS で実測)。
-            // 見逃すと Step 4 の「ログインに失敗」に紛れ、誤ったパスワードで自動同期が回り続ける。
-            String loginBody = resp.body() != null ? resp.body().string() : "";
-            if (containsAuthFailureMarker(loginBody)) {
-                throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
-            }
-        }
-
-        // Step 3: Follow redirect if present
-        if (locationHeader != null && !locationHeader.isEmpty()) {
-            String redirectUrl = resolveUrl(locationHeader);
-            Request followRedirect = new Request.Builder()
-                    .url(redirectUrl)
-                    .header("User-Agent", NetworkClient.getUserAgent())
-                    .header("Cookie", "JSESSIONID=" + authSid)
-                    .header("Referer", baseUrl() + "/campusportal.do")
-                    .build();
-            try (Response resp = NetworkClient.getNoCookieClient().newCall(followRedirect).execute()) {
-                resp.body().string();
-            }
-        }
-
-        // Step 4: Verify login
-        Request verifyReq = new Request.Builder()
-                .url(baseUrl() + "/campusportal.do?page=main")
-                .header("User-Agent", NetworkClient.getUserAgent())
-                .header("Cookie", "JSESSIONID=" + authSid)
-                .header("Referer", baseUrl() + "/campusportal.do")
-                .build();
-
-        try (Response resp = NetworkClient.getNoCookieClient().newCall(verifyReq).execute()) {
-            String verifyHtml = resp.body().string();
-            if (!verifyHtml.contains("ログアウト") && !verifyHtml.contains("Logout")) {
-                throw new Exception("CampusSquare ログインに失敗しました");
-            }
-        }
-
-        return authSid;
     }
 
     public void fetchGrades(String username, String password, ServiceCallback<List<Grade>> callback) {
@@ -720,25 +604,6 @@ public class CampusSquareService {
         }
     }
 
-    private Response followRedirectsManually(Response resp) throws IOException {
-        while (resp.isRedirect()) {
-            String location = resp.header("Location");
-            if (location == null) break;
-            String newSid = extractSessionId(resp);
-            String url = resolveUrl(location);
-            resp.close();
-
-            Request.Builder builder = new Request.Builder()
-                    .url(url)
-                    .header("User-Agent", NetworkClient.getUserAgent());
-            if (newSid != null && !newSid.isEmpty()) {
-                builder.header("Cookie", "JSESSIONID=" + newSid);
-            }
-            resp = NetworkClient.getNoRedirectClient().newCall(builder.build()).execute();
-        }
-        return resp;
-    }
-
     private static String extractSessionId(Response resp) {
         String setCookie = resp.header("Set-Cookie");
         if (setCookie == null) return null;
@@ -985,11 +850,6 @@ public class CampusSquareService {
             }
         }
         return facilities;
-    }
-
-    private static String urlEncode(String s) {
-        try { return java.net.URLEncoder.encode(s, "UTF-8"); }
-        catch (Exception e) { return s; }
     }
 
     private static String stripTags(String html) {

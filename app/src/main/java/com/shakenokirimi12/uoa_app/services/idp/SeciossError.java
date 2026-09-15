@@ -43,7 +43,13 @@ public final class SeciossError extends Exception {
          * 「アクセスが許可されていません」、2026-09-14 に CampusSquare 経由で実測)。大学側が SP を開放する
          * までリトライしても無駄。detail にエラーコード (msg) を持つ。
          */
-        ACCESS_DENIED
+        ACCESS_DENIED,
+        /**
+         * SP がメンテナンス中 (HTTP 503 / 「メンテナンスモード」ページ、2026-09-15 に Moodle で実測)。
+         * ログイン自体は成功していても中身は取れないので、資格情報エラーやマーカー不在と区別して伝える。
+         * detail にページの可視テキストの抜粋を持つ。
+         */
+        MAINTENANCE
     }
 
     @NonNull public final Kind kind;
@@ -88,7 +94,12 @@ public final class SeciossError extends Exception {
                 return "IdP側のセッションがタイムアウトしました。もう一度ログインからやり直してください。";
             case INTERACTIVE_LOGIN_REQUIRED:
                 return "ワンタイムパスワードの入力が必要です。";
+            case MAINTENANCE:
+                return "大学のシステムがメンテナンス中です。終了後にもう一度お試しください。\n" + detail;
             case ACCESS_DENIED:
+                if ("moodle_login_page".equals(detail)) {
+                    return "Moodle 側でこのアカウントのシングルサインオンがまだ有効になっていません。大学側の移行作業が完了するまで利用できません。";
+                }
                 if ("campussquare_sso_error".equals(detail)) {
                     return "CampusSquare 側でこのアカウントのシングルサインオンがまだ有効になっていません。大学側の移行作業が完了するまで利用できません。";
                 }
@@ -119,6 +130,8 @@ public final class SeciossError extends Exception {
                 return "IdP側のセッションがタイムアウトしました。もう一度やり直してください。";
             case INTERACTIVE_LOGIN_REQUIRED:
                 return "ワンタイムパスワードの入力が必要です。設定画面から手動でログインしてください。";
+            case MAINTENANCE:
+                return "大学のシステムがメンテナンス中です。終了後にもう一度お試しください。\n" + detail;
             case ACCESS_DENIED:
                 return "大学の認証システム(IdP)がアクセスを許可していません(" + detail + ")。";
             case INVALID_CREDENTIALS:
