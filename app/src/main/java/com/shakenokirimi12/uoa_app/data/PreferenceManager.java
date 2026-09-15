@@ -33,7 +33,6 @@ public class PreferenceManager {
     private static final String KEY_BG_NOTIFY_FAILURE = "bg_notify_failure";
     private static final String KEY_BG_NOTIFY_NOCHANGE = "bg_notify_nochange";
     private static final String KEY_LUNCH_NOTIFY_TIME = "lunch_notify_time";
-    private static final String KEY_DEBUG_MODE = "debug_mode";
     private static final String KEY_MAIN_TABS = "main_tabs";
     private static final String KEY_OTHER_TABS = "other_tabs";
     private static final String KEY_REVIEW_CONSENT = "review_consent_given";
@@ -220,10 +219,6 @@ public class PreferenceManager {
     // Lunch notify time (HH:mm)
     public String getLunchNotifyTime() { return prefs.getString(KEY_LUNCH_NOTIFY_TIME, "11:30"); }
     public void setLunchNotifyTime(String time) { prefs.edit().putString(KEY_LUNCH_NOTIFY_TIME, time).apply(); }
-
-    // Debug mode
-    public boolean isDebugMode() { return prefs.getBoolean(KEY_DEBUG_MODE, false); }
-    public void setDebugMode(boolean enabled) { prefs.edit().putBoolean(KEY_DEBUG_MODE, enabled).apply(); }
 
     // Tab ordering (comma-separated tab names)
     public String getMainTabs() { return prefs.getString(KEY_MAIN_TABS, "home,calendar,courses,gakushoku"); }

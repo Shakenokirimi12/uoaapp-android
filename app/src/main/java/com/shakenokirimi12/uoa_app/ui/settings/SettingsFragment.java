@@ -1,8 +1,6 @@
 package com.shakenokirimi12.uoa_app.ui.settings;
 
 import android.app.Activity;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,7 +15,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.NotificationCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
@@ -42,7 +39,6 @@ public class SettingsFragment extends Fragment {
     private TextView textUsername;
     private MaterialSwitch switchAutoAttendance;
     private TextView textLocationWarning;
-    private int versionTapCount = 0;
 
     // ---- 位置情報の許可 ----
     //
@@ -319,48 +315,13 @@ public class SettingsFragment extends Fragment {
             restoreLauncher.launch(intent);
         });
 
-        // Debug section
-        View sectionDebug = view.findViewById(R.id.section_debug);
-        if (prefs.isDebugMode()) {
-            sectionDebug.setVisibility(View.VISIBLE);
-        }
-
-        view.findViewById(R.id.button_test_notification).setOnClickListener(v -> {
-            sendTestNotification();
-            Toast.makeText(requireContext(), "テスト通知を送信しました", Toast.LENGTH_SHORT).show();
-        });
-
-        view.findViewById(R.id.button_force_sync).setOnClickListener(v -> {
-            // 定期ワーカーと同じ SyncWorker を 1 回だけ即時実行する。以前は Toast を出すだけで
-            // 何も起きていなかった。
-            androidx.work.WorkManager.getInstance(requireContext()).enqueueUniqueWork(
-                    "manual_sync", androidx.work.ExistingWorkPolicy.KEEP,
-                    new androidx.work.OneTimeWorkRequest.Builder(
-                            com.shakenokirimi12.uoa_app.services.sync.SyncWorker.class).build());
-            Toast.makeText(requireContext(), "バックグラウンド同期を開始しました", Toast.LENGTH_SHORT).show();
-        });
-
+        // Block list
         view.findViewById(R.id.button_block_list).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_block_list));
 
-        view.findViewById(R.id.button_notification_debug).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_settings_to_notification_debug));
-
-        // Version with hidden debug mode toggle
+        // Version
         TextView textVersion = view.findViewById(R.id.text_version);
         textVersion.setText(getString(R.string.settings_version) + " " + BuildConfig.VERSION_NAME);
-        textVersion.setOnClickListener(v -> {
-            versionTapCount++;
-            if (versionTapCount >= 10) {
-                boolean newState = !prefs.isDebugMode();
-                prefs.setDebugMode(newState);
-                sectionDebug.setVisibility(newState ? View.VISIBLE : View.GONE);
-                Toast.makeText(requireContext(),
-                        newState ? "デバッグモードを有効にしました" : "デバッグモードを無効にしました",
-                        Toast.LENGTH_SHORT).show();
-                versionTapCount = 0;
-            }
-        });
 
         // Logout
         view.findViewById(R.id.button_logout).setOnClickListener(v ->
@@ -441,27 +402,6 @@ public class SettingsFragment extends Fragment {
         });
 
         picker.show(getParentFragmentManager(), "lunch_time_picker");
-    }
-
-    private void sendTestNotification() {
-        NotificationManager nm = (NotificationManager) requireContext()
-                .getSystemService(android.content.Context.NOTIFICATION_SERVICE);
-        String channelId = "debug_test";
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    channelId, "デバッグテスト", NotificationManager.IMPORTANCE_DEFAULT);
-            nm.createNotificationChannel(channel);
-        }
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(requireContext(), channelId)
-                .setSmallIcon(R.drawable.ic_stat_notification)
-                .setContentTitle("テスト通知")
-                .setContentText("この通知が見えていれば、通知機能は正常です。")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setAutoCancel(true);
-
-        nm.notify(9999, builder.build());
     }
 
     private void showEditAccountDialog() {

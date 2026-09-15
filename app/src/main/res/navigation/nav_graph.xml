@@ -68,7 +68,6 @@
         <action android:id="@+id/action_settings_to_notify_times" app:destination="@id/navigation_notify_times" />
         <action android:id="@+id/action_settings_to_nav_settings" app:destination="@id/navigation_nav_settings" />
         <action android:id="@+id/action_settings_to_campus_map" app:destination="@id/navigation_campus_map" />
-        <action android:id="@+id/action_settings_to_notification_debug" app:destination="@id/navigation_notification_debug" />
         <action android:id="@+id/action_settings_to_idp_tutorial" app:destination="@id/navigation_idp_tutorial" />
         <action android:id="@+id/action_settings_to_idp_login" app:destination="@id/navigation_idp_login" />
         <action android:id="@+id/action_settings_to_idp_otp_registration" app:destination="@id/navigation_idp_otp_registration" />
@@ -203,12 +202,6 @@
         android:id="@+id/navigation_campus_map"
         android:name="com.shakenokirimi12.uoa_app.ui.map.CampusMapFragment"
         android:label="キャンパスマップ" />
-
-    <fragment
-        android:id="@+id/navigation_notification_debug"
-        android:name="com.shakenokirimi12.uoa_app.ui.debug.NotificationDebugFragment"
-        android:label="通知診断" />
-
 
     <fragment
         android:id="@+id/navigation_block_list"

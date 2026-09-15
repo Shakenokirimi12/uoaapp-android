@@ -33,7 +33,7 @@ import java.util.List;
  */
 public final class AssignmentCountdownNotifier {
     public static final String CHANNEL_ID = "assignment_countdown";
-    // 他の固定 ID (1001 授業, 4100 同期, 9999 テスト通知) と重ならない範囲に置く。
+    // 他の固定 ID (1001 授業, 4100 同期) と重ならない範囲に置く。
     private static final int ID_BASE = 700_000;
     private static final long LEAD_MS = 2 * 60 * 60_000L;
     private static final String PREF_ACTIVE_IDS = "countdown_active_ids";
