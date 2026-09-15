@@ -1,0 +1,13 @@
+appId: com.shakenokirimi12.uoa_app
+name: 成績一覧が開き履修中まで表示される
+---
+- launchApp:
+    clearState: false
+- tapOn: "その他"
+- tapOn: "成績一覧"
+- assertVisible: "成績"
+# 成績は CampusSquare へ IdP ログインしてから取得する。履修中は一覧下部なので現れるまでスクロール
+- scrollUntilVisible:
+    element: "履修中"
+    direction: DOWN
+    timeout: 60000

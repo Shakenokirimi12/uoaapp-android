@@ -1,0 +1,12 @@
+appId: com.shakenokirimi12.uoa_app
+name: 学食に昼食/夕食の区別が出る
+---
+- launchApp:
+    clearState: false
+- tapOn: "その他"
+- tapOn: "学食メニュー"
+# 昼と夜が区別できること (昼食ラベル + 夕食行)。今日カードの枠線と「今日」ラベルは視覚要素。
+- extendedWaitUntil:
+    visible: "昼食"
+    timeout: 20000
+- assertVisible: "夕食"

@@ -1,0 +1,24 @@
+appId: com.shakenokirimi12.uoa_app
+name: スモークテスト - 全タブが開いてクラッシュしない (Android)
+---
+- launchApp:
+    clearState: false
+- assertVisible: "ホーム"
+- assertVisible: "授業"
+- assertVisible: "課題〆切"
+
+- tapOn: "カレンダー"
+- assertVisible: "カレンダー"
+
+- tapOn: "履修"
+
+# 施設利用はタブの表示設定で下タブに出している (既定)
+- tapOn: "施設利用"
+
+- tapOn: "その他"
+- assertVisible: "授業評価"
+- assertVisible: "成績一覧"
+- assertVisible: "設定"
+
+- tapOn: "ホーム"
+- assertVisible: "授業"
