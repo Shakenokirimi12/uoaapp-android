@@ -39,6 +39,8 @@ import okhttp3.Response;
  */
 public final class SeciossIdPClient {
     private static final MediaType FORM = MediaType.parse("application/x-www-form-urlencoded");
+    /** IdP のホスト。保持している SSO cookie を「サーバが実際に発行するのと同じ表現」で仕立て直すのに使う。 */
+    private static final String IDP_HOST = "slink.secioss.com";
     private static final String TENANT_LOGIN_URL = "https://slink.secioss.com/pub/tenantlogin.cgi";
     private static final String MOTP_URL = "https://slink.secioss.com/pub/motp.cgi";
     private static final String ALL_OTP_LOGIN_URL = "https://slink.secioss.com/pub/allotplogin.cgi";
@@ -140,9 +142,11 @@ public final class SeciossIdPClient {
         final int status;
         @NonNull final String url;
         @NonNull final String html;
-        @NonNull final Map<String, String> cookies;
+        /** ホスト情報を持ったまま持ち回る。ホスト別に分けないと、secioss と SP が同名 cookie
+         * (AWS ALB の AWSALB 等) を出したとき互いに上書きし合って SAML が無限リダイレクトになる。 */
+        @NonNull final List<Cookie> cookies;
 
-        HttpResult(int status, @NonNull String url, @NonNull String html, @NonNull Map<String, String> cookies) {
+        HttpResult(int status, @NonNull String url, @NonNull String html, @NonNull List<Cookie> cookies) {
             this.status = status;
             this.url = url;
             this.html = html;
@@ -150,12 +154,12 @@ public final class SeciossIdPClient {
         }
     }
 
-    HttpResult get(@NonNull String url, @NonNull Map<String, String> cookies,
+    HttpResult get(@NonNull String url, @NonNull List<Cookie> cookies,
                    @NonNull Map<String, String> extraHeaders) throws IOException {
         return request(url, "GET", null, cookies, extraHeaders);
     }
 
-    HttpResult postForm(@NonNull String url, @NonNull String body, @NonNull Map<String, String> cookies,
+    HttpResult postForm(@NonNull String url, @NonNull String body, @NonNull List<Cookie> cookies,
                         @NonNull String referer) throws IOException {
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put("Content-Type", "application/x-www-form-urlencoded");
@@ -166,13 +170,17 @@ public final class SeciossIdPClient {
     /**
      * リダイレクトは自前で追う。共有 cookie jar を使わず、途中の各応答の Set-Cookie を集めて次のホップへ
      * 送る。AWS ALB のスティッキーセッション cookie を引き継がないと、多段リクエストが別バックエンドに
-     * 割り振られて sessid ベースのサーバ側セッションが見つからなくなることがある (iOS 側の HAR で観測)。
-     * cookie は iOS と同じく名前だけをキーにした 1 つの辞書で持つ (ホスト別には分けない)。
+     * 割り振られて sessid ベースのサーバ側セッションが見つからなくなることがある。
+     *
+     * cookie は必ずホスト (ドメイン) 単位で持ち、そのホストにだけ送る。名前だけの辞書で全ホストへ
+     * 無差別に送っていた頃は、IdP(secioss) と SP(csweb/elms) が同名 cookie (AWSALB 等) を出すと
+     * 互いに上書きし合い、両方の ALB スティッキーが壊れて SAML が延々リダイレクトし続け、端末側で
+     * -1007 (リダイレクト過多) になっていた (2026-09-15、実機のセルラー回線で発生)。
      */
     private HttpResult request(@NonNull String url, @NonNull String method, @Nullable String body,
-                               @NonNull Map<String, String> cookies,
+                               @NonNull List<Cookie> cookies,
                                @NonNull Map<String, String> extraHeaders) throws IOException {
-        Map<String, String> jar = new LinkedHashMap<>(cookies);
+        List<Cookie> jar = new ArrayList<>(cookies);
         String currentUrl = url;
         String currentMethod = method;
         String currentBody = body;
@@ -184,25 +192,27 @@ public final class SeciossIdPClient {
                 if ("Content-Type".equalsIgnoreCase(h.getKey()) && currentBody == null) continue;
                 rb.header(h.getKey(), h.getValue());
             }
-            if (!jar.isEmpty()) rb.header("Cookie", cookieHeader(jar));
+            // このホストに一致する cookie だけを送る (Cookie.matches がドメイン/パス/secure を見る)。
+            String header = cookieHeaderFor(jar, parsed);
+            if (!header.isEmpty()) rb.header("Cookie", header);
             if ("POST".equals(currentMethod)) {
                 rb.post(RequestBody.create(currentBody != null ? currentBody : "", FORM));
             } else {
                 rb.get();
             }
             try (Response resp = httpClient().newCall(rb.build()).execute()) {
-                Map<String, String> seciossCookies = new LinkedHashMap<>();
+                List<Cookie> received = Cookie.parseAll(parsed, resp.headers());
+                mergeCookies(jar, received);
+                // この 302 も含めた各ホップで IdP が出した cookie だけを SSO ストアへ渡す。
+                // 最終ホップだけを見ると、SP へ戻る途中の 302 で発行された SSO cookie を取り逃がす。
                 // 素の endsWith だと "evil-secioss.com" のような別ドメインの cookie まで SSO
                 // ストアに取り込んでしまう。ドメイン境界まで見る。
                 String hopHost = parsed.host().toLowerCase(java.util.Locale.ROOT);
-                boolean fromIdP = hopHost.equals("secioss.com") || hopHost.endsWith(".secioss.com");
-                for (Cookie c : Cookie.parseAll(parsed, resp.headers())) {
-                    jar.put(c.name(), c.value());
-                    // この 302 も含めた各ホップで IdP が出した cookie だけを SSO ストアへ渡す。
-                    // 最終ホップだけを見ると、SP へ戻る途中の 302 で発行された SSO cookie を取り逃がす。
-                    if (fromIdP) seciossCookies.put(c.name(), c.value());
+                if (hopHost.equals("secioss.com") || hopHost.endsWith(".secioss.com")) {
+                    Map<String, String> seciossCookies = new LinkedHashMap<>();
+                    for (Cookie c : received) seciossCookies.put(c.name(), c.value());
+                    if (!seciossCookies.isEmpty()) SeciossSsoStore.getInstance().merge(seciossCookies);
                 }
-                if (!seciossCookies.isEmpty()) SeciossSsoStore.getInstance().merge(seciossCookies);
                 String location = resp.header("Location");
                 if (resp.isRedirect() && location != null) {
                     HttpUrl next = parsed.resolve(location);
@@ -221,6 +231,66 @@ public final class SeciossIdPClient {
             }
         }
         throw new IOException("too many redirects: " + url);
+    }
+
+    /**
+     * 受信 cookie を jar に取り込む。同じ (name, domain, path) の cookie だけを最新で置き換え、
+     * ホスト (domain) が違えば同名でも別 cookie として残す。
+     *
+     * ここが名前だけをキーにしていた頃、IdP(secioss) と SP(csweb/elms) が同名 cookie (AWSALB 等) を
+     * 出すと互いに上書きし合い、両方の ALB スティッキーが壊れて SAML が延々リダイレクトし、端末側で
+     * -1007 (リダイレクト過多)・データ「何も出ない」になっていた。このメソッドの不変条件
+     * (同名・別ホストは共存する / 同名・同ホストは置き換わる) は SeciossCookieJarTest で固定している。
+     */
+    static void mergeCookies(@NonNull List<Cookie> jar, @NonNull List<Cookie> received) {
+        for (Cookie c : received) {
+            jar.removeIf(existing -> existing.name().equals(c.name())
+                    && existing.domain().equals(c.domain()) && existing.path().equals(c.path()));
+            jar.add(c);
+        }
+    }
+
+    /** jar のうち url に一致する cookie を "a=b; c=d" で返す。無ければ空文字。 */
+    static String cookieHeaderFor(@NonNull List<Cookie> jar, @NonNull HttpUrl url) {
+        StringBuilder sb = new StringBuilder();
+        for (Cookie c : jar) {
+            if (!c.matches(url)) continue;
+            if (sb.length() > 0) sb.append("; ");
+            sb.append(c.name()).append('=').append(c.value());
+        }
+        return sb.toString();
+    }
+
+    /**
+     * SSO ストアの平文 cookie (secioss のもの) を、IdP ホストへ送られる cookie に仕立てる。
+     *
+     * ドメイン cookie (.secioss.com) ではなく、IdP ホスト限定 (host-only) で作る。slink.secioss.com が
+     * 出す cookie は Domain 属性なし = host-only で発行されるため (2026-09-07 の実機 HAR で AWSALB /
+     * AWSALBCORS / AWSALBTG / samsessid / auth_tkt / _saml_idp / _saml_sp / secioss_tenant 等 15 種すべてに
+     * Domain 属性なしを確認)、サーバ由来の新しい cookie を Cookie.parseAll すると domain は
+     * "slink.secioss.com" になる。seed を ".secioss.com" ドメインで作ると mergeCookies の (name, domain, path)
+     * 一致が崩れて古い seed 値が消えず、同名 cookie が 2 つ送られて ALB スティッキーをまた壊す。発行元と同じ
+     * host-only 表現で作れば、再ログイン時に古い seed が新しい値へ確実に置き換わる。SSO ストアは名前と値しか
+     * 保持しないので domain を復元できないが、この経路で踏む secioss ホストは slink のみ (他の *.secioss.com
+     * サブドメインを経由する導線は現状コード上に存在しない)。
+     */
+    static List<Cookie> seedSecioss(@NonNull Map<String, String> stored) {
+        List<Cookie> out = new ArrayList<>();
+        for (Map.Entry<String, String> e : stored.entrySet()) {
+            out.add(new Cookie.Builder()
+                    .name(e.getKey()).value(e.getValue())
+                    .hostOnlyDomain(IDP_HOST).path("/").build());
+        }
+        return out;
+    }
+
+    /**
+     * Session に載せる cookie ヘッダ。呼び出し側 (CampusSquare/Moodle) はこれを SP のホストの
+     * cookie jar へ入れて以降の取得に使うので、最終ホップ (SP) に一致する cookie だけを返す。
+     */
+    private static String sessionCookieHeader(@NonNull HttpResult result) {
+        HttpUrl url = HttpUrl.parse(result.url);
+        return url != null ? cookieHeaderFor(result.cookies, url) : "";
     }
 
     /** UTF-8 として読めなければ Shift_JIS (iOS と同じ順序)。 */
@@ -439,8 +509,8 @@ public final class SeciossIdPClient {
             throws SeciossError, IOException {
         // 保持している SSO セッションを載せて入口を叩く。IdP 側で生きていれば、ログインフォームでは
         // なく SAMLResponse の自動 submit が返ってきて、パスワードも OTP も要求されずに SP へ戻れる。
-        Map<String, String> initialCookies = useStoredSso
-                ? SeciossSsoStore.getInstance().current() : Collections.emptyMap();
+        List<Cookie> initialCookies = useStoredSso
+                ? seedSecioss(SeciossSsoStore.getInstance().current()) : Collections.emptyList();
         HttpResult entry = get(entryUrl, initialCookies, Collections.emptyMap());
         if (entry.status != 200) {
             throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, entry.status, "entry page (" + entryUrl + ")");
@@ -507,7 +577,7 @@ public final class SeciossIdPClient {
                         "post-login screen(FunctionID=" + state.functionId + ", url=" + current.url + ") "
                                 + visibleExcerpt(current.html, 400));
             }
-            return new Session(current.html, current.url, current.status, cookieHeader(current.cookies));
+            return new Session(current.html, current.url, current.status, sessionCookieHeader(current));
         }
 
         String otpSessid = extractField("sessid", current.html);
@@ -543,7 +613,7 @@ public final class SeciossIdPClient {
         if (relayed.html.contains(SESSION_TIMED_OUT_MARKER)) {
             throw new SeciossError(SeciossError.Kind.SESSION_TIMED_OUT);
         }
-        return new Session(relayed.html, relayed.url, relayed.status, cookieHeader(relayed.cookies));
+        return new Session(relayed.html, relayed.url, relayed.status, sessionCookieHeader(relayed));
     }
 
     /**
@@ -577,6 +647,6 @@ public final class SeciossIdPClient {
                     "registration entry screen(FunctionID=" + state.functionId + ")");
         }
         // iOS と同じく、登録セッションは空の cookie から始める (ユーザーポータル側で改めて確立される)。
-        return new SeciossRegistrationSession(this, new LinkedHashMap<>());
+        return new SeciossRegistrationSession(this, new ArrayList<>());
     }
 }

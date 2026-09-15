@@ -4,7 +4,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.Collections;
-import java.util.Map;
+import java.util.List;
+
+import okhttp3.Cookie;
 
 /**
  * OTP 登録の多段フロー (方式選択 -> 確認 -> 送信/QR 取得 -> コード確認 -> 登録完了) を、呼び出し側 (UI) が
@@ -20,9 +22,9 @@ public final class SeciossRegistrationSession {
     private static final String COMPLETION_MARKER = "設定が完了しました";
 
     private final SeciossIdPClient client;
-    private Map<String, String> cookies;
+    private List<Cookie> cookies;
 
-    SeciossRegistrationSession(@NonNull SeciossIdPClient client, @NonNull Map<String, String> cookies) {
+    SeciossRegistrationSession(@NonNull SeciossIdPClient client, @NonNull List<Cookie> cookies) {
         this.client = client;
         this.cookies = cookies;
     }
