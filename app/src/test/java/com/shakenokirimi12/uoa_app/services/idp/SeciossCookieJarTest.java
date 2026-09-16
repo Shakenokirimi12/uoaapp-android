@@ -7,9 +7,8 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import okhttp3.Cookie;
 import okhttp3.Headers;
@@ -24,7 +23,7 @@ import okhttp3.HttpUrl;
  * 「何も出ない」状態になっていた (2026-09-15、実機のセルラー回線で発生)。
  *
  * cookie はホスト (ドメイン) 単位で保持し、そのホストにだけ送る、という不変条件をここで固定する。
- * SeciossIdPClient.mergeCookies / cookieHeaderFor / seedSecioss を直接叩くので HTTP は不要。
+ * SeciossIdPClient.mergeCookies / cookieHeaderFor / SeciossSsoStore.toCookies を直接叩くので HTTP は不要。
  */
 public class SeciossCookieJarTest {
 
@@ -66,6 +65,33 @@ public class SeciossCookieJarTest {
                 HttpUrl.parse("https://other.secioss.com/x")).isEmpty());
     }
 
+    /**
+     * SAML は使い捨てのリクエスト状態 cookie を期限切れ Set-Cookie で削除する。これを jar に積むと
+     * 削除済み cookie を送り返し続け、毎ホップ増殖して SP↔IdP の 302/307 ループになる。
+     */
+    @Test
+    public void expiredSetCookie_deletesFromJar_andIsNotSent() {
+        List<Cookie> jar = new ArrayList<>();
+        SeciossIdPClient.mergeCookies(jar, received(IDP, "_opensaml_req_ss:mem:abc=state1; Path=/"));
+        assertEquals("_opensaml_req_ss:mem:abc=state1", SeciossIdPClient.cookieHeaderFor(jar, IDP));
+
+        // サーバからの削除指示 (過去の Expires)。
+        SeciossIdPClient.mergeCookies(jar, received(IDP,
+                "_opensaml_req_ss:mem:abc=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"));
+
+        assertEquals(0, jar.size());
+        assertTrue(SeciossIdPClient.cookieHeaderFor(jar, IDP).isEmpty());
+    }
+
+    /** セッション cookie (Expires 無し) は期限切れ扱いにしない。 */
+    @Test
+    public void sessionCookie_isNotTreatedAsExpired() {
+        List<Cookie> jar = new ArrayList<>();
+        SeciossIdPClient.mergeCookies(jar, received(IDP, "sessid=abc; Path=/"));
+        assertEquals(1, jar.size());
+        assertEquals("sessid=abc", SeciossIdPClient.cookieHeaderFor(jar, IDP));
+    }
+
     @Test
     public void sameNameSameHost_replacedNotDuplicated() {
         // 同じ (name, domain, path) は最新で置き換わり、ヘッダに二重に載らない。
@@ -80,10 +106,9 @@ public class SeciossCookieJarTest {
     @Test
     public void seededSsoCookies_reachIdpHost_butNotSp() {
         // SSO ストアの平文 cookie を仕立て直したものが、IdP(slink.secioss.com) へは送られ、SP へは送られない。
-        Map<String, String> stored = new LinkedHashMap<>();
-        stored.put("AWSALB", "STORED");
-        stored.put("SSOSESSIONID", "sso-xyz");
-        List<Cookie> seeded = SeciossIdPClient.seedSecioss(stored);
+        List<Cookie> seeded = SeciossSsoStore.toCookies(Arrays.asList(
+                new SeciossSsoStore.StoredCookie("AWSALB", "STORED", "/", System.currentTimeMillis() + 3600_000, System.currentTimeMillis()),
+                new SeciossSsoStore.StoredCookie("SSOSESSIONID", "sso-xyz", "/", -1, System.currentTimeMillis())));
 
         String toIdp = SeciossIdPClient.cookieHeaderFor(seeded, IDP);
         assertTrue(toIdp.contains("AWSALB=STORED"));
@@ -97,7 +122,7 @@ public class SeciossCookieJarTest {
         // 置き換わらねばならない。seed を ".secioss.com" ドメインで作ると発行元(host-only の
         // "slink.secioss.com")と domain 表現が食い違い、mergeCookies が古い値を消さず、
         // "AWSALB=STORED; AWSALB=FRESH" と二重に送って ALB スティッキーをまた壊す。
-        List<Cookie> jar = new ArrayList<>(SeciossIdPClient.seedSecioss(single("AWSALB", "STORED")));
+        List<Cookie> jar = new ArrayList<>(SeciossSsoStore.toCookies(single("AWSALB", "STORED")));
         // AWS ALB は Domain 属性なし = host-only で AWSALB を発行する。
         SeciossIdPClient.mergeCookies(jar, received(IDP, "AWSALB=FRESH; Path=/"));
 
@@ -108,7 +133,7 @@ public class SeciossCookieJarTest {
     @Test
     public void spCookie_doesNotLeakBackIntoIdpSeedOrRequests() {
         // SP が同名 AWSALB を出しても、IdP へ送る cookie は SSO seed 由来の値のまま。
-        List<Cookie> jar = new ArrayList<>(SeciossIdPClient.seedSecioss(single("AWSALB", "IDPSEED")));
+        List<Cookie> jar = new ArrayList<>(SeciossSsoStore.toCookies(single("AWSALB", "IDPSEED")));
         SeciossIdPClient.mergeCookies(jar, received(SP, "AWSALB=SPVALUE; Path=/"));
 
         assertEquals("AWSALB=IDPSEED", SeciossIdPClient.cookieHeaderFor(jar, IDP));
@@ -116,9 +141,7 @@ public class SeciossCookieJarTest {
         assertFalse(SeciossIdPClient.cookieHeaderFor(jar, IDP).contains("SPVALUE"));
     }
 
-    private static Map<String, String> single(String k, String v) {
-        Map<String, String> m = new LinkedHashMap<>();
-        m.put(k, v);
-        return m;
+    private static List<SeciossSsoStore.StoredCookie> single(String k, String v) {
+        return Arrays.asList(new SeciossSsoStore.StoredCookie(k, v, "/", -1, System.currentTimeMillis()));
     }
 }

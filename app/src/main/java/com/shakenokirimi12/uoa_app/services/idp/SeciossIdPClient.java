@@ -209,9 +209,8 @@ public final class SeciossIdPClient {
                 // ストアに取り込んでしまう。ドメイン境界まで見る。
                 String hopHost = parsed.host().toLowerCase(java.util.Locale.ROOT);
                 if (hopHost.equals("secioss.com") || hopHost.endsWith(".secioss.com")) {
-                    Map<String, String> seciossCookies = new LinkedHashMap<>();
-                    for (Cookie c : received) seciossCookies.put(c.name(), c.value());
-                    if (!seciossCookies.isEmpty()) SeciossSsoStore.getInstance().merge(seciossCookies);
+                    // 属性 (path / expires) ごと渡す: ストアはセッション cookie と期限付き cookie を区別して保持する。
+                    SeciossSsoStore.getInstance().merge(received);
                 }
                 String location = resp.header("Location");
                 if (resp.isRedirect() && location != null) {
@@ -243,45 +242,44 @@ public final class SeciossIdPClient {
      * (同名・別ホストは共存する / 同名・同ホストは置き換わる) は SeciossCookieJarTest で固定している。
      */
     static void mergeCookies(@NonNull List<Cookie> jar, @NonNull List<Cookie> received) {
+        mergeCookies(jar, received, System.currentTimeMillis());
+    }
+
+    /**
+     * 期限切れの Set-Cookie は「削除指示」なので、古いものを消したうえで jar に積まない。ここを積んで
+     * いたため、SAML が使い捨てするリクエスト状態 cookie (_opensaml_req_ss:mem:<毎回別のID>) が削除されず
+     * 毎ホップ増殖し、削除済み cookie を送り返してサーバが状態不整合と判断 → SP と IdP の間で 302/307 が
+     * 延々ピンポンしてリダイレクト過多になっていた (2026-09-16 の iOS 実機ログで、1 ホップごとに
+     * request_bytes が 552→2810 と単調増加するのを確認)。動作する Python 参照 (http.cookiejar) は期限切れを
+     * 正しく捨てるため、同じサーバでも成功していた。
+     */
+    static void mergeCookies(@NonNull List<Cookie> jar, @NonNull List<Cookie> received, long now) {
         for (Cookie c : received) {
             jar.removeIf(existing -> existing.name().equals(c.name())
                     && existing.domain().equals(c.domain()) && existing.path().equals(c.path()));
+            if (isExpired(c, now)) continue;
             jar.add(c);
         }
     }
 
-    /** jar のうち url に一致する cookie を "a=b; c=d" で返す。無ければ空文字。 */
+    /** サーバが「削除」を指示した cookie か。セッション cookie (persistent でない) は期限なし。 */
+    static boolean isExpired(@NonNull Cookie cookie, long now) {
+        return cookie.persistent() && cookie.expiresAt() <= now;
+    }
+
+    /** jar のうち url に一致し、かつ期限切れでない cookie を "a=b; c=d" で返す。無ければ空文字。 */
     static String cookieHeaderFor(@NonNull List<Cookie> jar, @NonNull HttpUrl url) {
+        return cookieHeaderFor(jar, url, System.currentTimeMillis());
+    }
+
+    static String cookieHeaderFor(@NonNull List<Cookie> jar, @NonNull HttpUrl url, long now) {
         StringBuilder sb = new StringBuilder();
         for (Cookie c : jar) {
-            if (!c.matches(url)) continue;
+            if (!c.matches(url) || isExpired(c, now)) continue;
             if (sb.length() > 0) sb.append("; ");
             sb.append(c.name()).append('=').append(c.value());
         }
         return sb.toString();
-    }
-
-    /**
-     * SSO ストアの平文 cookie (secioss のもの) を、IdP ホストへ送られる cookie に仕立てる。
-     *
-     * ドメイン cookie (.secioss.com) ではなく、IdP ホスト限定 (host-only) で作る。slink.secioss.com が
-     * 出す cookie は Domain 属性なし = host-only で発行されるため (2026-09-07 の実機 HAR で AWSALB /
-     * AWSALBCORS / AWSALBTG / samsessid / auth_tkt / _saml_idp / _saml_sp / secioss_tenant 等 15 種すべてに
-     * Domain 属性なしを確認)、サーバ由来の新しい cookie を Cookie.parseAll すると domain は
-     * "slink.secioss.com" になる。seed を ".secioss.com" ドメインで作ると mergeCookies の (name, domain, path)
-     * 一致が崩れて古い seed 値が消えず、同名 cookie が 2 つ送られて ALB スティッキーをまた壊す。発行元と同じ
-     * host-only 表現で作れば、再ログイン時に古い seed が新しい値へ確実に置き換わる。SSO ストアは名前と値しか
-     * 保持しないので domain を復元できないが、この経路で踏む secioss ホストは slink のみ (他の *.secioss.com
-     * サブドメインを経由する導線は現状コード上に存在しない)。
-     */
-    static List<Cookie> seedSecioss(@NonNull Map<String, String> stored) {
-        List<Cookie> out = new ArrayList<>();
-        for (Map.Entry<String, String> e : stored.entrySet()) {
-            out.add(new Cookie.Builder()
-                    .name(e.getKey()).value(e.getValue())
-                    .hostOnlyDomain(IDP_HOST).path("/").build());
-        }
-        return out;
     }
 
     /**
@@ -510,7 +508,7 @@ public final class SeciossIdPClient {
         // 保持している SSO セッションを載せて入口を叩く。IdP 側で生きていれば、ログインフォームでは
         // なく SAMLResponse の自動 submit が返ってきて、パスワードも OTP も要求されずに SP へ戻れる。
         List<Cookie> initialCookies = useStoredSso
-                ? seedSecioss(SeciossSsoStore.getInstance().current()) : Collections.emptyList();
+                ? SeciossSsoStore.getInstance().current() : Collections.emptyList();
         HttpResult entry = get(entryUrl, initialCookies, Collections.emptyMap());
         if (entry.status != 200) {
             throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, entry.status, "entry page (" + entryUrl + ")");

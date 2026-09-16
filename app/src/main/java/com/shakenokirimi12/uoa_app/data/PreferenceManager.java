@@ -119,7 +119,8 @@ public class PreferenceManager {
         encryptedPrefs.edit().putString(KEY_USERNAME, username).apply();
         // 別のアカウントに切り替えたとき、前のユーザーの IdP セッションを引き継がない。
         setCsIdpSessionCookieHeader(null);
-        setIdpSsoCookieHeader(null);
+        // メモリ上のセッション cookie も含めて消す (ストアはプロセス内に写しを持つ)。
+        com.shakenokirimi12.uoa_app.services.idp.SeciossSsoStore.getInstance().clear();
         setMoodleSessionCookieHeader(null);
     }
 
