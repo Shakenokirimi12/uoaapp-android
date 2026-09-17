@@ -28,7 +28,7 @@ import com.shakenokirimi12.uoa_app.services.CampusSquareService;
 import com.shakenokirimi12.uoa_app.services.GakushokuService;
 import com.shakenokirimi12.uoa_app.services.MoodleService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
-import com.shakenokirimi12.uoa_app.services.notification.ClassNotificationService;
+import com.shakenokirimi12.uoa_app.services.notification.ClassLiveUpdate;
 import com.shakenokirimi12.uoa_app.ui.ClassDetailDialog;
 import com.shakenokirimi12.uoa_app.ui.ClassLocationDialog;
 import com.shakenokirimi12.uoa_app.ui.adapters.AssignmentAdapter;
@@ -278,8 +278,9 @@ public class HomeFragment extends Fragment {
         boolean fetchEvents = force || !cache.isFresh(DataCache.Dataset.EVENTS, DataCache.DEFAULT_MAX_AGE_MS);
         boolean fetchAssignments = force || !cache.isFresh(DataCache.Dataset.ASSIGNMENTS, DataCache.DEFAULT_MAX_AGE_MS);
         if (!fetchEvents) {
-            // Only this screen starts the class notification service; keep doing so from the cache.
-            startClassNotification(allEvents);
+            // キャッシュから組み直す。通知自体はプロセスが死んでいても残るので、ここでは
+            // 今の時刻に合っているかの確認と、次の切り替わりのアラームの張り直しになる。
+            ClassLiveUpdate.refresh(requireContext());
         }
         if (!fetchEvents && !fetchAssignments) {
             swipeRefresh.setRefreshing(false);
@@ -315,8 +316,9 @@ public class HomeFragment extends Fragment {
                 if (!isAdded()) return;
                 allEvents = events;
                 filterAndDisplay();
-                startClassNotification(events);
+                // ClassLiveUpdate はキャッシュを読むので、保存してから呼ぶ。
                 DataCache.getInstance(requireContext()).saveEvents(events);
+                ClassLiveUpdate.refresh(requireContext());
                 com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(requireContext());
                 fetchFinished();
             }
@@ -408,28 +410,6 @@ public class HomeFragment extends Fragment {
         layoutMenuContent.findViewById(R.id.text_menu_lunch_label).setVisibility(main != null ? View.VISIBLE : View.GONE);
         textMenuHeadline.setText(main);
         MenuAdapter.bindCategoryRows(layoutMenuRows, today);
-    }
-
-    private void startClassNotification(List<CalendarEvent> events) {
-        if (!isAdded()) return;
-        Calendar todayStart = Calendar.getInstance();
-        todayStart.set(Calendar.HOUR_OF_DAY, 0);
-        todayStart.set(Calendar.MINUTE, 0);
-        todayStart.set(Calendar.SECOND, 0);
-        long start = todayStart.getTimeInMillis();
-        todayStart.add(Calendar.DAY_OF_YEAR, 1);
-        long end = todayStart.getTimeInMillis();
-
-        List<CalendarEvent> todayClasses = new ArrayList<>();
-        for (CalendarEvent e : events) {
-            if (e.getDtstart() == null) continue;
-            long t = e.getDtstart().getTime();
-            if (t >= start && t < end) todayClasses.add(e);
-        }
-
-        if (!todayClasses.isEmpty()) {
-            ClassNotificationService.updateEvents(requireContext(), todayClasses);
-        }
     }
 
     private void showError(String message) {

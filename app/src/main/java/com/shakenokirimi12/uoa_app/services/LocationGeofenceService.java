@@ -20,6 +20,7 @@ import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationServices;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.AttendanceManager;
+import com.shakenokirimi12.uoa_app.services.notification.ClassLiveUpdate;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
 import com.shakenokirimi12.uoa_app.data.models.MoodleCourse;
@@ -168,12 +169,13 @@ public class LocationGeofenceService {
 
     private static void notifyRegistered(Context ctx, MoodleCourse matched) {
         try {
-            // チャンネルは ClassNotificationService が作るが、それが一度も起動していない端末では
+            // チャンネルは ClassLiveUpdate が作るが、授業の常駐通知が一度も出ていない端末では
             // 存在せず通知が黙って落ちる。ここでも作る (既にあれば何もしない)。
             android.app.NotificationManager nm = (android.app.NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
             nm.createNotificationChannel(new android.app.NotificationChannel(
-                    "class_ongoing", "授業", android.app.NotificationManager.IMPORTANCE_LOW));
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, "class_ongoing")
+                    ClassLiveUpdate.CHANNEL_ID, ctx.getString(R.string.class_channel_name),
+                    android.app.NotificationManager.IMPORTANCE_LOW));
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, ClassLiveUpdate.CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_stat_calendar)
                     .setContentTitle("自動出席登録完了")
                     .setContentText(matched.getFullname() + " の出席を自動登録しました。")

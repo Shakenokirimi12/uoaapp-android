@@ -143,6 +143,8 @@ public class SyncWorker extends Worker {
             }));
             if (fetched.get() != null) {
                 cache.saveEvents(fetched.get());
+                // アプリを開かない日でも、授業の常駐通知を今日の時間割で組み直す。
+                com.shakenokirimi12.uoa_app.services.notification.ClassLiveUpdate.refresh(ctx);
                 com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(ctx);
             } else {
                 anyFailure = true;
