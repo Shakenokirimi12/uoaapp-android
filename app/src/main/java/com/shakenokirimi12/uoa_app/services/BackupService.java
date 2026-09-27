@@ -39,12 +39,14 @@ public class BackupService {
     private static final String[] SETTINGS_KEYS = {
             "onboarding_done",
             "notify_assignments", "notify_grades", "notify_lunch", "lunch_notify_time",
+            "notify_class_changes",
             "selected_notify_times", "custom_notify_times",
             "bg_notify_change", "bg_notify_success", "bg_notify_failure", "bg_notify_nochange",
             "sync_interval", "auto_attendance_enabled",
             "main_tabs", "other_tabs",
             "has_seen_idp_tutorial", "otp_auto_fetch_enabled",
             "review_consent_given", "review_guidelines_accepted",
+            // device_calendar_sync は入れない。カレンダー権限は端末ごとで、復元先で許可を取り直す必要がある。
     };
 
     public static void exportTo(Context ctx, Uri uri) throws Exception {

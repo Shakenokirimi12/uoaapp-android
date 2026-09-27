@@ -2,10 +2,6 @@ package com.shakenokirimi12.uoa_app.data;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import androidx.security.crypto.EncryptedSharedPreferences;
-import androidx.security.crypto.MasterKeys;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 
 public class PreferenceManager {
     private static final String PREF_NAME = "uoa_app_prefs";
@@ -20,6 +16,8 @@ public class PreferenceManager {
     private static final String KEY_NOTIFY_ASSIGNMENTS = "notify_assignments";
     private static final String KEY_NOTIFY_GRADES = "notify_grades";
     private static final String KEY_NOTIFY_LUNCH = "notify_lunch";
+    private static final String KEY_NOTIFY_CLASS_CHANGES = "notify_class_changes";
+    private static final String KEY_DEVICE_CALENDAR_SYNC = "device_calendar_sync";
     private static final String KEY_MOODLE_TOKEN = "moodle_token";
     private static final String KEY_ICS_URL = "ics_url";
     private static final String KEY_LAST_SYNC = "last_sync";
@@ -45,26 +43,17 @@ public class PreferenceManager {
 
     private static PreferenceManager instance;
     private final SharedPreferences prefs;
-    private SharedPreferences encryptedPrefs;
+    // 資格情報とセッション cookie。名前はバックアップ除外の設定 (res/xml) と揃える。
+    static final String SECURE_PREF_NAME = "uoa_app_secure_store";
+    private static final String SECURE_KEY_ALIAS = "uoa_app_secure_store_key";
+    private final SecureStore secure;
 
     private PreferenceManager(Context context) {
         Context appContext = context.getApplicationContext();
         prefs = appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        
-        try {
-            String masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
-            encryptedPrefs = EncryptedSharedPreferences.create(
-                    "uoa_app_secure_prefs",
-                    masterKeyAlias,
-                    appContext,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            );
-        } catch (GeneralSecurityException | IOException e) {
-            e.printStackTrace();
-            encryptedPrefs = prefs; // Fallback
-        }
+        secure = new SecureStore(appContext, SECURE_PREF_NAME, SECURE_KEY_ALIAS);
 
+        LegacyEncryptedPrefsMigration.migrateIfNeeded(appContext, secure);
         migrateLegacyCredentials();
     }
 
@@ -74,17 +63,15 @@ public class PreferenceManager {
             String legacyPassword = prefs.getString(KEY_PASSWORD, "");
             String legacyMoodleToken = prefs.getString(KEY_MOODLE_TOKEN, "");
 
-            SharedPreferences.Editor secEdit = encryptedPrefs.edit();
             if (!legacyUsername.isEmpty()) {
-                secEdit.putString(KEY_USERNAME, legacyUsername);
+                secure.putString(KEY_USERNAME, legacyUsername);
             }
             if (!legacyPassword.isEmpty()) {
-                secEdit.putString(KEY_PASSWORD, legacyPassword);
+                secure.putString(KEY_PASSWORD, legacyPassword);
             }
             if (!legacyMoodleToken.isEmpty()) {
-                secEdit.putString(KEY_MOODLE_TOKEN, legacyMoodleToken);
+                secure.putString(KEY_MOODLE_TOKEN, legacyMoodleToken);
             }
-            secEdit.apply();
 
             // Delete plain text legacy credentials
             prefs.edit()
@@ -114,18 +101,18 @@ public class PreferenceManager {
     }
 
     // Credentials
-    public String getUsername() { return encryptedPrefs.getString(KEY_USERNAME, ""); }
+    public String getUsername() { return secure.getString(KEY_USERNAME, ""); }
     public void setUsername(String username) {
-        encryptedPrefs.edit().putString(KEY_USERNAME, username).apply();
+        secure.putString(KEY_USERNAME, username);
         // 別のアカウントに切り替えたとき、前のユーザーの IdP セッションを引き継がない。
         setCsIdpSessionCookieHeader(null);
         setIdpSsoCookieHeader(null);
         setMoodleSessionCookieHeader(null);
     }
 
-    public String getPassword() { return encryptedPrefs.getString(KEY_PASSWORD, ""); }
+    public String getPassword() { return secure.getString(KEY_PASSWORD, ""); }
     public void setPassword(String password) {
-        encryptedPrefs.edit().putString(KEY_PASSWORD, password).apply();
+        secure.putString(KEY_PASSWORD, password);
         // 入力し直したら「資格情報が不正」の判定を解除して同期を再開できるようにする。
         setCredentialsInvalid(false);
     }
@@ -169,9 +156,17 @@ public class PreferenceManager {
     public boolean isLunchNotifyEnabled() { return prefs.getBoolean(KEY_NOTIFY_LUNCH, false); }
     public void setLunchNotifyEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_NOTIFY_LUNCH, enabled).apply(); }
 
+    /** 休講・教室変更・補講を時間割の差分から見つけて通知するか。 */
+    public boolean isClassChangeNotifyEnabled() { return prefs.getBoolean(KEY_NOTIFY_CLASS_CHANGES, true); }
+    public void setClassChangeNotifyEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_NOTIFY_CLASS_CHANGES, enabled).apply(); }
+
+    /** 時間割を端末のカレンダー (CalendarContract) に書き出すか。カレンダー権限が要るのでオプトイン。 */
+    public boolean isDeviceCalendarSyncEnabled() { return prefs.getBoolean(KEY_DEVICE_CALENDAR_SYNC, false); }
+    public void setDeviceCalendarSyncEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_DEVICE_CALENDAR_SYNC, enabled).apply(); }
+
     // Moodle
-    public String getMoodleToken() { return encryptedPrefs.getString(KEY_MOODLE_TOKEN, ""); }
-    public void setMoodleToken(String token) { encryptedPrefs.edit().putString(KEY_MOODLE_TOKEN, token).apply(); }
+    public String getMoodleToken() { return secure.getString(KEY_MOODLE_TOKEN, ""); }
+    public void setMoodleToken(String token) { secure.putString(KEY_MOODLE_TOKEN, token); }
 
     // ICS
     public String getIcsUrl() { return prefs.getString(KEY_ICS_URL, ""); }
@@ -236,8 +231,8 @@ public class PreferenceManager {
     public void setReviewConsentGiven(boolean given) { prefs.edit().putBoolean(KEY_REVIEW_CONSENT, given).apply(); }
 
     // Review internal user ID (stored securely)
-    public String getReviewUserId() { return encryptedPrefs.getString(KEY_REVIEW_USER_ID, ""); }
-    public void setReviewUserId(String id) { encryptedPrefs.edit().putString(KEY_REVIEW_USER_ID, id).apply(); }
+    public String getReviewUserId() { return secure.getString(KEY_REVIEW_USER_ID, ""); }
+    public void setReviewUserId(String id) { secure.putString(KEY_REVIEW_USER_ID, id); }
 
     // IdP (SECIOSS) login。iOS の SettingsStore.hasSeenIdPTutorial / otpAutoFetchEnabled と同じ既定値。
     public boolean hasSeenIdPTutorial() { return prefs.getBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, false); }
@@ -255,12 +250,12 @@ public class PreferenceManager {
      * IdP 経由で得た CampusSquare のセッション Cookie ヘッダ。iOS は Keychain に置いている。
      * セッション自体が資格情報に相当するので暗号化側に入れる。空文字なら無し。
      */
-    public String getCsIdpSessionCookieHeader() { return encryptedPrefs.getString(KEY_CS_IDP_SESSION_COOKIE_HEADER, ""); }
+    public String getCsIdpSessionCookieHeader() { return secure.getString(KEY_CS_IDP_SESSION_COOKIE_HEADER, ""); }
     public void setCsIdpSessionCookieHeader(String header) {
         if (header == null || header.isEmpty()) {
-            encryptedPrefs.edit().remove(KEY_CS_IDP_SESSION_COOKIE_HEADER).apply();
+            secure.remove(KEY_CS_IDP_SESSION_COOKIE_HEADER);
         } else {
-            encryptedPrefs.edit().putString(KEY_CS_IDP_SESSION_COOKIE_HEADER, header).apply();
+            secure.putString(KEY_CS_IDP_SESSION_COOKIE_HEADER, header);
         }
     }
     public boolean hasCsIdpSession() { return !getCsIdpSessionCookieHeader().isEmpty(); }
@@ -274,27 +269,27 @@ public class PreferenceManager {
      * Moodle (elms) のセッション cookie ヘッダ。起動のたびに IdP からログインし直す (約 5 秒) のを
      * 避けるために持ち越す。CampusSquare 側の cs_idp_session_cookie_header と同じ扱い。
      */
-    public String getMoodleSessionCookieHeader() { return encryptedPrefs.getString(KEY_MOODLE_SESSION_COOKIE_HEADER, ""); }
+    public String getMoodleSessionCookieHeader() { return secure.getString(KEY_MOODLE_SESSION_COOKIE_HEADER, ""); }
     public void setMoodleSessionCookieHeader(String header) {
         if (header == null || header.isEmpty()) {
-            encryptedPrefs.edit().remove(KEY_MOODLE_SESSION_COOKIE_HEADER).apply();
+            secure.remove(KEY_MOODLE_SESSION_COOKIE_HEADER);
         } else {
-            encryptedPrefs.edit().putString(KEY_MOODLE_SESSION_COOKIE_HEADER, header).apply();
+            secure.putString(KEY_MOODLE_SESSION_COOKIE_HEADER, header);
         }
     }
 
-    public String getIdpSsoCookieHeader() { return encryptedPrefs.getString(KEY_IDP_SSO_COOKIE_HEADER, ""); }
+    public String getIdpSsoCookieHeader() { return secure.getString(KEY_IDP_SSO_COOKIE_HEADER, ""); }
     public void setIdpSsoCookieHeader(String header) {
         if (header == null || header.isEmpty()) {
-            encryptedPrefs.edit().remove(KEY_IDP_SSO_COOKIE_HEADER).apply();
+            secure.remove(KEY_IDP_SSO_COOKIE_HEADER);
         } else {
-            encryptedPrefs.edit().putString(KEY_IDP_SSO_COOKIE_HEADER, header).apply();
+            secure.putString(KEY_IDP_SSO_COOKIE_HEADER, header);
         }
     }
 
     // Reset
     public void clearAll() {
         prefs.edit().clear().apply();
-        encryptedPrefs.edit().clear().apply();
+        secure.clear();
     }
 }

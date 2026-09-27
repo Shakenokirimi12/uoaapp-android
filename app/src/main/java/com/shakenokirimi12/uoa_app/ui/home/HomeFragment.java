@@ -316,10 +316,7 @@ public class HomeFragment extends Fragment {
                 if (!isAdded()) return;
                 allEvents = events;
                 filterAndDisplay();
-                // ClassLiveUpdate はキャッシュを読むので、保存してから呼ぶ。
-                DataCache.getInstance(requireContext()).saveEvents(events);
-                ClassLiveUpdate.refresh(requireContext());
-                com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(requireContext());
+                com.shakenokirimi12.uoa_app.services.sync.TimetableUpdates.onFetched(requireContext(), events);
                 fetchFinished();
             }
 

@@ -117,7 +117,7 @@ public class CalendarFragment extends Fragment {
                 if (!isAdded()) return;
                 allEvents = events;
                 updateList();
-                DataCache.getInstance(requireContext()).saveEvents(events);
+                com.shakenokirimi12.uoa_app.services.sync.TimetableUpdates.onFetched(requireContext(), events);
             }
             @Override
             public void onError(String message) {

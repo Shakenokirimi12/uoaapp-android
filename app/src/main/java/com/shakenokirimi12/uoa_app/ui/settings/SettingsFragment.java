@@ -31,6 +31,7 @@ import com.shakenokirimi12.uoa_app.services.BackupService;
 import com.shakenokirimi12.uoa_app.services.LocationGeofenceService;
 import com.shakenokirimi12.uoa_app.services.MoodleService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
+import com.shakenokirimi12.uoa_app.services.calendar.DeviceCalendarSync;
 import com.shakenokirimi12.uoa_app.ui.onboarding.OnboardingActivity;
 
 public class SettingsFragment extends Fragment {
@@ -38,6 +39,7 @@ public class SettingsFragment extends Fragment {
     private PreferenceManager prefs;
     private TextView textUsername;
     private MaterialSwitch switchAutoAttendance;
+    private MaterialSwitch switchDeviceCalendar;
     private TextView textLocationWarning;
 
     // ---- 位置情報の許可 ----
@@ -116,11 +118,38 @@ public class SettingsFragment extends Fragment {
         textLocationWarning.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
+    // ---- 端末カレンダーへの書き出し (オプトイン) ----
+
+    private final ActivityResultLauncher<String[]> calendarPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                if (!isAdded()) return;
+                if (DeviceCalendarSync.hasPermission(requireContext())) {
+                    switchDeviceCalendar.setChecked(true);
+                } else {
+                    Toast.makeText(requireContext(), "カレンダーへのアクセスを許可しないと、端末のカレンダーには表示できません", Toast.LENGTH_LONG).show();
+                }
+            });
+
+    private void setDeviceCalendarEnabled(boolean enabled) {
+        prefs.setDeviceCalendarSyncEnabled(enabled);
+        if (enabled) {
+            DeviceCalendarSync.syncFromCacheAsync(requireContext());
+        } else {
+            DeviceCalendarSync.removeAsync(requireContext());
+        }
+    }
+
     @Override
     public void onResume() {
         super.onResume();
         // 設定アプリから戻ってきたときに反映する。
         updateLocationWarning();
+        // 設定アプリでカレンダー権限を取り消された場合は、スイッチも OFF に揃える。
+        if (switchDeviceCalendar != null && prefs.isDeviceCalendarSyncEnabled()
+                && !DeviceCalendarSync.hasPermission(requireContext())) {
+            prefs.setDeviceCalendarSyncEnabled(false);
+            switchDeviceCalendar.setChecked(false);
+        }
     }
 
     private final ActivityResultLauncher<Intent> backupLauncher =
@@ -211,6 +240,11 @@ public class SettingsFragment extends Fragment {
         switchGrade.setOnCheckedChangeListener((v, checked) ->
                 prefs.setGradeNotifyEnabled(checked));
 
+        MaterialSwitch switchClassChange = view.findViewById(R.id.switch_class_change_notify);
+        switchClassChange.setChecked(prefs.isClassChangeNotifyEnabled());
+        switchClassChange.setOnCheckedChangeListener((v, checked) ->
+                prefs.setClassChangeNotifyEnabled(checked));
+
         // Lunch notify with time picker
         View layoutLunchTime = view.findViewById(R.id.layout_lunch_time);
         TextView textLunchTime = view.findViewById(R.id.text_lunch_time);
@@ -284,6 +318,20 @@ public class SettingsFragment extends Fragment {
         textLocationWarning.setOnClickListener(v -> requestBackgroundLocation());
         updateLocationWarning();
 
+        // Device calendar. Opt-in: nothing is written until the user turns this on and grants access.
+        switchDeviceCalendar = view.findViewById(R.id.switch_device_calendar);
+        switchDeviceCalendar.setChecked(prefs.isDeviceCalendarSyncEnabled()
+                && DeviceCalendarSync.hasPermission(requireContext()));
+        switchDeviceCalendar.setOnCheckedChangeListener((v, checked) -> {
+            if (checked && !DeviceCalendarSync.hasPermission(requireContext())) {
+                // 許可の結果が返るまで OFF のままにしておく。
+                switchDeviceCalendar.setChecked(false);
+                calendarPermissionLauncher.launch(DeviceCalendarSync.PERMISSIONS);
+                return;
+            }
+            if (checked != prefs.isDeviceCalendarSyncEnabled()) setDeviceCalendarEnabled(checked);
+        });
+
         // Navigation customization
         view.findViewById(R.id.button_nav_settings).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_nav_settings));
@@ -322,6 +370,9 @@ public class SettingsFragment extends Fragment {
                             // 「サーバーが予約を持っている」記録の両方を消すので、後から呼ぶと
                             // 取り消しは早期 return し、古い deviceId の予約が二度と触れなくなる。
                             com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.clear(requireContext());
+                            // 端末カレンダーに書き出した前のユーザーの時間割も消す。
+                            DeviceCalendarSync.removeAsync(requireContext());
+                            com.shakenokirimi12.uoa_app.services.wear.WearTimetableSync.clear(requireContext());
                             prefs.clearAll();
                             DataCache.getInstance(requireContext()).clearAll();
                             // キャッシュを捨てたら、それを映しているウィジェットと通知も片付ける。
@@ -382,8 +433,19 @@ public class SettingsFragment extends Fragment {
                 .setTitle("アカウント情報の変更")
                 .setView(dialogView)
                 .setPositiveButton("保存", (dialog, which) -> {
-                    String newUser = editUsername.getText().toString().trim();
+                    String newUser = com.shakenokirimi12.uoa_app.data.CredentialInput.normalizeUsername(editUsername.getText().toString());
                     String newPass = editPassword.getText().toString().trim();
+                    String odd = com.shakenokirimi12.uoa_app.data.CredentialInput.firstNonAscii(newPass);
+                    if (odd != null) {
+                        // 送る前に確かめてもらう (オンボーディングと同じ)。ダイアログは閉じたので入力し直してもらう。
+                        new MaterialAlertDialogBuilder(requireContext())
+                                .setTitle("パスワードを確認してください")
+                                .setMessage(com.shakenokirimi12.uoa_app.data.CredentialInput.nonAsciiWarning(odd)
+                                        + "\n\nもう一度「アカウント」から入力してください。")
+                                .setPositiveButton(R.string.ok, null)
+                                .show();
+                        return;
+                    }
                     if (newUser.isEmpty()) {
                         Toast.makeText(requireContext(), "ユーザー名を入力してください", Toast.LENGTH_SHORT).show();
                         return;
