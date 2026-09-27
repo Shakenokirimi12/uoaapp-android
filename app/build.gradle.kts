@@ -19,8 +19,9 @@ android {
         applicationId = "com.shakenokirimi12.uoa_app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "2.0_bata.0.1"
+        // gradle.properties の uoaVersionCode / uoaVersionName を変える (wear と共有)。
+        versionCode = providers.gradleProperty("uoaVersionCode").get().toInt()
+        versionName = providers.gradleProperty("uoaVersionName").get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -93,6 +94,9 @@ dependencies {
 
     // Background sync
     implementation(libs.work.runtime)
+
+    // Wear OS へ時間割を送る (Data Layer)
+    implementation(libs.play.services.wearable)
 
     // Push (FCM)。app/google-services.json が必要 (Firebase コンソールから取得、gitignore 済み)
     implementation(platform(libs.firebase.bom))

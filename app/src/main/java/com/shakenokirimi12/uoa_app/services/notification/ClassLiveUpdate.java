@@ -140,6 +140,8 @@ public final class ClassLiveUpdate {
                 .setUsesChronometer(true)
                 .setChronometerCountDown(true)
                 .setRequestPromotedOngoing(true)
+                // 時計には Wear アプリ (wear/…/ClassOngoingActivity) が自前で出す。転送されると二重になる。
+                .setLocalOnly(true)
                 .build();
     }
 

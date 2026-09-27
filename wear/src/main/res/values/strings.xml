@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UoA 時間割</string>
+    <string name="tile_label">次の授業</string>
+    <string name="complication_label">次の授業</string>
+    <string name="shortcut_complication_label">UoA 時間割を開く</string>
+</resources>

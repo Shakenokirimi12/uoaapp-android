@@ -1,6 +1,8 @@
 package com.shakenokirimi12.uoa_app.services;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -37,5 +39,28 @@ public class CampusSquareServiceTest {
     public void ssoErrorAndAuthErrorPage_areUnauthenticated() {
         assertTrue(CampusSquareService.looksUnauthenticated("<p>[SSO-Error] あなたは現在このシステムを利用することができません</p>", PORTAL, HOST));
         assertTrue(CampusSquareService.looksUnauthenticated("<html><head><title>認証エラー</title></head></html>", PORTAL, HOST));
+    }
+
+    @Test
+    public void parseGrades_readsCreditsFromHeaderColumn() {
+        String html = "<table><tr><th>単位修得状況</th><th>合計</th></tr><tr><td>x</td></tr></table>"
+                + "<table><tr><th>No.</th><th>年度</th><th>学期</th><th>科目コード</th><th>科目名</th>"
+                + "<th>教員</th><th>点数</th><th>評価</th><th>単位数</th></tr>"
+                + "<tr><td>1</td><td>2025</td><td>前期</td><td>FU01</td><td>線形代数</td>"
+                + "<td>山田</td><td>85</td><td>A</td><td>2</td></tr></table>";
+        java.util.List<com.shakenokirimi12.uoa_app.data.models.Grade> g = CampusSquareService.parseGrades(html);
+        assertEquals(1, g.size());
+        assertEquals("線形代数", g.get(0).getCourseName());
+        assertEquals("A", g.get(0).getGrade());
+        assertEquals("2", g.get(0).getCredits());
+    }
+
+    @Test
+    public void parseGrades_withoutCreditsHeader_leavesCreditsEmpty() {
+        String html = "<tr><td>1</td><td>2025</td><td>前期</td><td>FU01</td><td>線形代数</td>"
+                + "<td>山田</td><td>85</td><td>A</td></tr>";
+        java.util.List<com.shakenokirimi12.uoa_app.data.models.Grade> g = CampusSquareService.parseGrades(html);
+        assertEquals(1, g.size());
+        assertNull(g.get(0).getCredits());
     }
 }

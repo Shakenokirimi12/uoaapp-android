@@ -9,6 +9,12 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- 時間割を端末のカレンダーに書き出す (設定でオプトインしたときだけ実行時に求める) -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- 端末カレンダー用アカウントの同期設定 (インストール時に自動で許可される) -->
+    <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
 
     <application
         android:allowBackup="true"
@@ -67,6 +73,28 @@
         <receiver
             android:name=".services.LocationGeofenceService$GeofenceReceiver"
             android:exported="false" />
+
+        <!-- 端末カレンダー連携: Google カレンダーに表示させるための専用アカウント (DeviceCalendarSync) -->
+        <service
+            android:name=".services.calendar.CalendarAccountService$AuthenticatorService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accounts.AccountAuthenticator" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accounts.AccountAuthenticator"
+                android:resource="@xml/calendar_authenticator" />
+        </service>
+        <service
+            android:name=".services.calendar.CalendarAccountService$SyncService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.content.SyncAdapter" />
+            </intent-filter>
+            <meta-data
+                android:name="android.content.SyncAdapter"
+                android:resource="@xml/calendar_syncadapter" />
+        </service>
 
     </application>
 </manifest>

@@ -17,6 +17,7 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.button.MaterialButton;
 import com.shakenokirimi12.uoa_app.MainActivity;
 import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.data.CredentialInput;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.services.MoodleService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
@@ -52,6 +53,8 @@ public class OnboardingActivity extends AppCompatActivity {
             public void onPageSelected(int position) {
                 if (position == PAGE_LOGIN) {
                     buttonNext.setText(R.string.onboarding_login_button);
+                    View loginPage = viewPager.findViewWithTag("page_login");
+                    if (loginPage != null) relayoutFields(loginPage);
                 } else {
                     buttonNext.setText(R.string.onboarding_agree);
                 }
@@ -68,6 +71,13 @@ public class OnboardingActivity extends AppCompatActivity {
         });
     }
 
+    private static void relayoutFields(View loginPage) {
+        loginPage.post(() -> {
+            loginPage.findViewById(R.id.layout_username).requestLayout();
+            loginPage.findViewById(R.id.layout_password).requestLayout();
+        });
+    }
+
     private void attemptLogin() {
         View loginPage = viewPager.findViewWithTag("page_login");
         if (loginPage == null) return;
@@ -75,7 +85,7 @@ public class OnboardingActivity extends AppCompatActivity {
         EditText editUsername = loginPage.findViewById(R.id.edit_username);
         EditText editPassword = loginPage.findViewById(R.id.edit_password);
 
-        String username = editUsername.getText().toString().trim();
+        String username = CredentialInput.normalizeUsername(editUsername.getText().toString());
         String password = editPassword.getText().toString().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
@@ -83,7 +93,23 @@ public class OnboardingActivity extends AppCompatActivity {
                     Toast.LENGTH_SHORT).show();
             return;
         }
+        editUsername.setText(username);
 
+        String odd = CredentialInput.firstNonAscii(password);
+        if (odd != null) {
+            // 誤った文字のまま送ると ID/PW 誤りになり、繰り返すとアカウントがロックされうる。送る前に確かめてもらう。
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle("パスワードを確認してください")
+                    .setMessage(CredentialInput.nonAsciiWarning(odd))
+                    .setPositiveButton("修正する", null)
+                    .setNegativeButton("このまま送信", (d, w) -> login(username, password))
+                    .show();
+            return;
+        }
+        login(username, password);
+    }
+
+    private void login(String username, String password) {
         buttonNext.setEnabled(false);
         buttonNext.setText("ログイン中…");
 
@@ -124,6 +150,13 @@ public class OnboardingActivity extends AppCompatActivity {
             } else {
                 View view = inflater.inflate(R.layout.page_onboarding_login, parent, false);
                 view.setTag("page_login");
+                // ViewPager2 がページを画面外で先に測ると、TextInputLayout が先頭アイコン分の余白を
+                // 入れる前にヒントの位置を決めてしまい、アイコンがヒントの 1 文字目に重なる。
+                // 画面に付いたら測り直させる (フォーカスなどで再レイアウトされると直っていた)。
+                view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                    @Override public void onViewAttachedToWindow(@NonNull View v) { relayoutFields(v); }
+                    @Override public void onViewDetachedFromWindow(@NonNull View v) {}
+                });
                 return new RecyclerView.ViewHolder(view) {};
             }
         }

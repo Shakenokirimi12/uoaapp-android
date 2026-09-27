@@ -7,6 +7,7 @@ import android.util.Log;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
 import com.shakenokirimi12.uoa_app.data.models.FacilityUsage;
+import com.shakenokirimi12.uoa_app.data.models.CreditSummary;
 import com.shakenokirimi12.uoa_app.data.models.Grade;
 import com.shakenokirimi12.uoa_app.services.idp.MarkerList;
 import com.shakenokirimi12.uoa_app.services.idp.OtpPromptCoordinator;
@@ -370,8 +371,97 @@ public class CampusSquareService {
         });
     }
 
+    /**
+     * 単位修得状況照会 (SIW0001300) から、大学が出している累積 GPA・修得単位数・学期ごとの GPA を取る。
+     * 成績と同じ killswitch (campussquare_grades_enabled) に従う。
+     */
+    public void fetchCreditSummary(String username, String password, ServiceCallback<CreditSummary> callback) {
+        if (!AppConfigService.getInstance().isFeatureEnabled("campussquare_grades_enabled")) {
+            callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                // spanType=0: 「過去を含めた全成績」(範囲指定画面の既定)
+                CreditSummary summary = withSession(username, password, true, cookie -> {
+                    String html = fetchSeisekiDisplay(cookie, "SIW0001300-flow", "&spanType=0");
+                    return html == null ? null : parseCreditSummary(html);
+                });
+                if (summary == null || summary.isEmpty()) {
+                    postError(callback, "単位修得状況を取得できませんでした");
+                    return;
+                }
+                postSuccess(callback, summary);
+            } catch (Exception e) {
+                postError(callback, e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * 単位修得状況照会の HTML から集計を読む。見出し (th) の直後の td を値とする:
+     * 「累積ＧＰＡ」「修得単位数」(「26.0 注意）卒業要件以外の…」のように注記が続く) と、
+     * 「年度」行 + 学期ごとの行からなる GPA の表 (年度が複数なら列が増える)。
+     */
+    static CreditSummary parseCreditSummary(String html) {
+        CreditSummary out = new CreditSummary();
+        Matcher rows = Pattern.compile("<tr[^>]*>(.*?)</tr>", Pattern.DOTALL).matcher(html);
+        List<String> years = null;
+        while (rows.find()) {
+            List<String[]> cells = new ArrayList<>(); // {tag, text}
+            Matcher c = Pattern.compile("<(t[hd])[^>]*>(.*?)</t[hd]>", Pattern.DOTALL).matcher(rows.group(1));
+            while (c.find()) cells.add(new String[] { c.group(1), stripTags(c.group(2)).trim() });
+
+            for (int i = 0; i + 1 < cells.size(); i++) {
+                if (!"th".equals(cells.get(i)[0]) || !"td".equals(cells.get(i + 1)[0])) continue;
+                String head = cells.get(i)[1].replace("ＧＰＡ", "GPA");
+                if (head.contains("累積GPA")) out.cumulativeGpa = leadingNumber(cells.get(i + 1)[1]);
+                else if (head.contains("修得単位数")) out.earnedCredits = leadingNumber(cells.get(i + 1)[1]);
+            }
+
+            // 学期ごとの GPA 表: 先頭が th「年度」の行で列 (年度) を決め、続く th+td… の行を学期として読む。
+            if (!cells.isEmpty() && "th".equals(cells.get(0)[0])) {
+                String head = cells.get(0)[1];
+                if (head.equals("年度")) {
+                    years = new ArrayList<>();
+                    for (int i = 1; i < cells.size(); i++) years.add(cells.get(i)[1]);
+                } else if (years != null && head.contains("学期")) {
+                    for (int i = 1; i < cells.size() && i - 1 < years.size(); i++) {
+                        Double gpa = leadingNumber(cells.get(i)[1]);
+                        if (gpa != null) out.terms.add(new CreditSummary.TermGpa(years.get(i - 1), head, gpa));
+                    }
+                } else {
+                    years = null;
+                }
+            }
+        }
+        // 表は学期ごとの行に年度が横に並ぶので、古い順 (年度→学期) に並べ直す。
+        java.util.Collections.sort(out.terms, (a, b) -> {
+            int y = a.year.compareTo(b.year);
+            return y != 0 ? y : java.text.Normalizer.normalize(a.term, java.text.Normalizer.Form.NFKC)
+                    .compareTo(java.text.Normalizer.normalize(b.term, java.text.Normalizer.Form.NFKC));
+        });
+        return out;
+    }
+
+    private static Double leadingNumber(String s) {
+        Matcher m = Pattern.compile("^\\s*(\\d+(?:\\.\\d+)?)").matcher(
+                java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFKC));
+        return m.find() ? Double.parseDouble(m.group(1)) : null;
+    }
+
     /** フローキーが取れなかったときは null (呼び出し側が既存の文言でエラーにする)。 */
     private List<Grade> fetchGradesWithSession(String cookie) throws Exception {
+        String html = fetchSeisekiDisplay(cookie, "SIW0001200-flow", "");
+        return html == null ? null : parseGrades(html);
+    }
+
+    /**
+     * 「成績・試験」タブの照会画面 (履修成績照会 SIW0001200 / 単位修得状況照会 SIW0001300) を開き、
+     * 範囲指定画面で「画面に表示する」(_eventId=display) を押した後の HTML を返す。
+     * 両画面とも範囲・出力先指示のフォームが同じ形 (2026-09-27 に実画面で確認)。フローキーが取れなければ null。
+     */
+    private String fetchSeisekiDisplay(String cookie, String flowId, String extraParams) throws Exception {
         // Navigate to grades tab
         Request tabReq = new Request.Builder()
                 .url(baseUrl() + "/campusportal.do?page=main&tabId=si")
@@ -390,7 +480,7 @@ public class CampusSquareService {
         // Start grade flow
         OkHttpClient noRedirect = NetworkClient.getNoRedirectClient();
         Request flowReq = new Request.Builder()
-                .url(baseUrl() + "/campussquare.do?_flowId=SIW0001200-flow")
+                .url(baseUrl() + "/campussquare.do?_flowId=" + flowId)
                 .header("User-Agent", NetworkClient.getUserAgent())
                 .header("Cookie", cookie)
                 .header("sec-fetch-dest", "iframe")
@@ -426,22 +516,19 @@ public class CampusSquareService {
         }
 
         // POST to display grades
-        String postBody = "_flowExecutionKey=" + flowKey + "&_eventId=display";
+        String postBody = "_flowExecutionKey=" + flowKey + "&_eventId=display" + extraParams;
         Request gradePost = new Request.Builder()
                 .url(baseUrl() + "/campussquare.do")
                 .header("User-Agent", NetworkClient.getUserAgent())
                 .header("Cookie", cookie)
                 .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("Referer", baseUrl() + "/campussquare.do?_flowId=SIW0001200-flow&_flowExecutionKey=" + flowKey)
+                .header("Referer", baseUrl() + "/campussquare.do?_flowId=" + flowId + "&_flowExecutionKey=" + flowKey)
                 .post(RequestBody.create(postBody, FORM))
                 .build();
 
-        String gradesHtml;
         try (Response resp = NetworkClient.getNoCookieClient().newCall(gradePost).execute()) {
-            gradesHtml = resp.body().string();
+            return resp.body().string();
         }
-
-        return parseGrades(gradesHtml);
     }
 
     public void fetchCalendarEvents(String username, String password,
@@ -519,8 +606,28 @@ public class CampusSquareService {
         return parseICS(icsContent);
     }
 
-    private List<Grade> parseGrades(String html) {
+    /**
+     * 列の位置は実測に合わせた固定値 (1 年度, 2 学期, 3 科目コード, 4 科目名, 5 教員, 6 点数, 7 評価)。
+     * 単位数だけは位置を確かめられていないので、見出し行 (th) に「単位」を含む列があればそこから読む。
+     * 見出しが無い・見つからないときは単位を空のままにする (GPA は単純平均に落ちる)。
+     */
+    static List<Grade> parseGrades(String html) {
         List<Grade> grades = new ArrayList<>();
+        int creditsCol = -1;
+        Matcher headerMatcher = Pattern.compile("<tr[^>]*>((?:(?!</tr>).)*?<th.*?)</tr>", Pattern.DOTALL).matcher(html);
+        while (creditsCol < 0 && headerMatcher.find()) {
+            // 単位の集計表など、成績一覧以外の表の見出しを拾わないよう「科目」のある見出しに限る。
+            if (!stripTags(headerMatcher.group(1)).contains("科目")) continue;
+            Matcher th = Pattern.compile("<t[hd][^>]*>(.*?)</t[hd]>", Pattern.DOTALL).matcher(headerMatcher.group(1));
+            int i = 0;
+            while (th.find()) {
+                if (stripTags(th.group(1)).contains("単位")) {
+                    creditsCol = i;
+                    break;
+                }
+                i++;
+            }
+        }
         Matcher rowMatcher = Pattern.compile("<tr[^>]*>(.*?)</tr>", Pattern.DOTALL).matcher(html);
 
         while (rowMatcher.find()) {
@@ -547,6 +654,7 @@ public class CampusSquareService {
                     g.setGrade(gradeStr.isEmpty() ? "履修中" : gradeStr);
                     g.setYear(year);
                     g.setSemester(semester);
+                    if (creditsCol >= 0 && creditsCol < cells.size()) g.setCredits(cells.get(creditsCol));
                     grades.add(g);
                 }
             }
