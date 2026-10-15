@@ -37,6 +37,7 @@ public class PreferenceManager {
     private static final String KEY_OTHER_TABS = "other_tabs";
     private static final String KEY_REVIEW_CONSENT = "review_consent_given";
     private static final String KEY_REVIEW_USER_ID = "review_user_id";
+    private static final String KEY_REVIEW_TOKEN = "review_token";
     private static final String KEY_HAS_SEEN_IDP_TUTORIAL = "has_seen_idp_tutorial";
     private static final String KEY_OTP_AUTO_FETCH_ENABLED = "otp_auto_fetch_enabled";
     private static final String KEY_CS_IDP_SESSION_COOKIE_HEADER = "cs_idp_session_cookie_header";
@@ -116,11 +117,25 @@ public class PreferenceManager {
     // Credentials
     public String getUsername() { return encryptedPrefs.getString(KEY_USERNAME, ""); }
     public void setUsername(String username) {
+        // 授業評価のアカウント (userId とトークン) は学籍番号に紐づく。別の学籍番号に切り替えたのに残すと、
+        // 新しいユーザーが前のユーザーとして投稿・編集・ブロックできてしまう。同じ人の再保存
+        // (前後の空白や大文字小文字だけの違い) では消さない。消すと引き継ぎ済みのアカウントに戻れなくなる。
+        if (!normalizeUsername(username).equals(normalizeUsername(getUsername()))) {
+            encryptedPrefs.edit().remove(KEY_REVIEW_USER_ID).remove(KEY_REVIEW_TOKEN).apply();
+            // 同意 (学籍番号ハッシュの送信) とガイドライン承諾も本人のもの。残すと新しいユーザーの
+            // 学籍番号ハッシュが、本人が同意する前に一覧の読み込みで送られる。
+            prefs.edit().remove(KEY_REVIEW_CONSENT).remove(KEY_REVIEW_GUIDELINES_ACCEPTED).apply();
+        }
         encryptedPrefs.edit().putString(KEY_USERNAME, username).apply();
         // 別のアカウントに切り替えたとき、前のユーザーの IdP セッションを引き継がない。
         setCsIdpSessionCookieHeader(null);
         setIdpSsoCookieHeader(null);
         setMoodleSessionCookieHeader(null);
+    }
+
+    /** 同じ大学アカウントかの判定用。前後の空白と大文字小文字の違いは同じ人として扱う。 */
+    public static String normalizeUsername(String username) {
+        return username == null ? "" : username.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     public String getPassword() { return encryptedPrefs.getString(KEY_PASSWORD, ""); }
@@ -239,6 +254,22 @@ public class PreferenceManager {
     public String getReviewUserId() { return encryptedPrefs.getString(KEY_REVIEW_USER_ID, ""); }
     public void setReviewUserId(String id) { encryptedPrefs.edit().putString(KEY_REVIEW_USER_ID, id).apply(); }
 
+    /**
+     * 授業評価サーバーの認証トークン (Authorization: Bearer)。userId はもう資格情報ではなく、
+     * 書き込みはすべてこのトークンで本人確認される。サーバーは一度発行したトークンを差し替えないので、
+     * 失うと同じアカウントには戻れない。資格情報として暗号化側に置く。null / 空文字で削除。
+     */
+    public String getReviewToken() { return encryptedPrefs.getString(KEY_REVIEW_TOKEN, ""); }
+    public boolean setReviewToken(String token) {
+        if (token == null || token.isEmpty()) {
+            encryptedPrefs.edit().remove(KEY_REVIEW_TOKEN).apply();
+            return true;
+        }
+        // 書き込み失敗に気づけるよう commit で同期的に保存する (呼び出しはバックグラウンドスレッド)。
+        // apply だと保存前にプロセスが落ちたときサーバー側だけ発行済みになり、claim は 409 で二度と受け取れない。
+        return encryptedPrefs.edit().putString(KEY_REVIEW_TOKEN, token).commit();
+    }
+
     // IdP (SECIOSS) login。iOS の SettingsStore.hasSeenIdPTutorial / otpAutoFetchEnabled と同じ既定値。
     public boolean hasSeenIdPTutorial() { return prefs.getBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, false); }
     public void setHasSeenIdPTutorial(boolean seen) { prefs.edit().putBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, seen).apply(); }
@@ -293,6 +324,8 @@ public class PreferenceManager {
     }
 
     // Reset
+    // 授業評価の userId とトークンはどちらも encryptedPrefs にあるので、ここで対にして消える
+    // (片方だけ残すと、次のユーザーが前のユーザーのアカウントで投稿・ブロックできてしまう)。
     public void clearAll() {
         prefs.edit().clear().apply();
         encryptedPrefs.edit().clear().apply();

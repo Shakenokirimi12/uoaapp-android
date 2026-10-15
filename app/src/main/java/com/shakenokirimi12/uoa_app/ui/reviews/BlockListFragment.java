@@ -15,12 +15,16 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.button.MaterialButton;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
+import com.shakenokirimi12.uoa_app.data.models.ReviewBlock;
 import com.shakenokirimi12.uoa_app.services.ReviewService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
 
 import java.util.List;
 
-/** ブロック中のユーザー一覧と解除 (iOS の BlockListView)。 */
+/**
+ * ブロック中のユーザー一覧と解除 (iOS の BlockListView)。
+ * 相手の投稿者 ID はサーバーが返さない (資格情報として悪用されていたため) ので、ブロックした日だけを出す。
+ */
 public class BlockListFragment extends Fragment {
     private final ReviewService reviewService = new ReviewService();
     private LinearLayout list;
@@ -41,49 +45,49 @@ public class BlockListFragment extends Fragment {
     }
 
     private void load() {
-        String userId = PreferenceManager.getInstance(requireContext()).getReviewUserId();
-        if (userId.isEmpty()) {
+        // 授業評価を使ったことが無ければブロックも無い。ここで登録まで走らせてアカウントを作らないよう、先に返す
+        if (PreferenceManager.getInstance(requireContext()).getReviewUserId().isEmpty()) {
             render(java.util.Collections.emptyList());
             return;
         }
-        reviewService.fetchBlockedUsers(userId, new ServiceCallback<List<String>>() {
+        reviewService.fetchBlocks(new ServiceCallback<List<ReviewBlock>>() {
             @Override
-            public void onSuccess(List<String> ids) {
-                if (isAdded()) render(ids);
+            public void onSuccess(List<ReviewBlock> blocks) {
+                if (isAdded() && getView() != null) render(blocks);
             }
 
             @Override
             public void onError(String message) {
-                if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
             }
         });
     }
 
-    private void render(List<String> ids) {
+    private void render(List<ReviewBlock> blocks) {
         list.removeAllViews();
-        empty.setVisibility(ids.isEmpty() ? View.VISIBLE : View.GONE);
+        empty.setVisibility(blocks.isEmpty() ? View.VISIBLE : View.GONE);
         LayoutInflater inflater = LayoutInflater.from(requireContext());
-        for (String id : ids) {
+        for (ReviewBlock block : blocks) {
             View row = inflater.inflate(R.layout.item_blocked_user, list, false);
-            // 生の ID を丸ごと出す必要は無い。先頭だけで識別できれば十分
-            String shown = id.length() > 12 ? id.substring(0, 12) + "..." : id;
-            ((TextView) row.findViewById(R.id.text_user_id)).setText(shown);
-            ((MaterialButton) row.findViewById(R.id.button_unblock)).setOnClickListener(v -> unblock(id));
+            TextView date = row.findViewById(R.id.text_blocked_at);
+            String formatted = block.getFormattedDate();
+            date.setText(formatted.isEmpty() ? "" : formatted + " にブロック");
+            date.setVisibility(formatted.isEmpty() ? View.GONE : View.VISIBLE);
+            ((MaterialButton) row.findViewById(R.id.button_unblock)).setOnClickListener(v -> unblock(block.getId()));
             list.addView(row);
         }
     }
 
-    private void unblock(String targetUserId) {
-        String userId = PreferenceManager.getInstance(requireContext()).getReviewUserId();
-        reviewService.unblockUser(targetUserId, userId, new ServiceCallback<Boolean>() {
+    private void unblock(String blockId) {
+        reviewService.unblock(blockId, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
-                if (isAdded()) load();
+                if (isAdded() && getView() != null) load();
             }
 
             @Override
             public void onError(String message) {
-                if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                if (isAdded()) Toast.makeText(requireContext(), "ブロックを解除できませんでした: " + message, Toast.LENGTH_LONG).show();
             }
         });
     }
