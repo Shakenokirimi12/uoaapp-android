@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -16,7 +15,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.Review;
@@ -26,12 +24,14 @@ import com.shakenokirimi12.uoa_app.ui.adapters.ReviewAdapter;
 
 import java.util.List;
 
-public class InstructorReviewsFragment extends Fragment {
+public class InstructorReviewsFragment extends Fragment implements ReviewActionMenu.Host {
 
     private String courseId;
     private String instructorName;
     private SwipeRefreshLayout swipeRefresh;
     private ReviewAdapter adapter;
+    /** 最後に始めた読み込みの番号。重なった読み込みの古い結果で一覧を上書きしないために使う。 */
+    private int loadGeneration;
     private final ReviewService reviewService = new ReviewService();
 
     @Nullable
@@ -52,7 +52,6 @@ public class InstructorReviewsFragment extends Fragment {
         }
 
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
-        String userId = prefs.getReviewUserId();
 
         TextView textCourseName = view.findViewById(R.id.text_course_name);
         textCourseName.setText(instructorName);
@@ -63,7 +62,8 @@ public class InstructorReviewsFragment extends Fragment {
         view.findViewById(R.id.tab_review_type).setVisibility(View.GONE);
 
         view.findViewById(R.id.button_write_review).setOnClickListener(v -> {
-            if (userId.isEmpty()) {
+            // 授業評価のアカウント (トークン) は投稿時に用意される。必要なのは学内システムのログインだけ。
+            if (prefs.getUsername().isEmpty()) {
                 Toast.makeText(requireContext(), "ログインが必要です", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -80,68 +80,48 @@ public class InstructorReviewsFragment extends Fragment {
 
         adapter = new ReviewAdapter();
         adapter.setOnMenuClickListener((review, anchor) ->
-                showReviewMenu(review, anchor, userId));
+                ReviewActionMenu.show(this, reviewService, review, anchor));
         recycler.setAdapter(adapter);
 
         swipeRefresh.setColorSchemeResources(R.color.primary);
-        swipeRefresh.setOnRefreshListener(() -> loadReviews(userId));
+        swipeRefresh.setOnRefreshListener(this::loadReviews);
 
-        loadReviews(userId);
+        loadReviews();
     }
 
-    private void loadReviews(String userId) {
+    @Override
+    public void reloadReviews() {
+        if (getView() != null) loadReviews();
+    }
+
+    @Override
+    public void openEditor(Review review) {
+        View v = getView();
+        if (v == null) return;
+        // 一覧に出るのは授業レビューなので、そのレビュー自身の授業として編集する。担当教員もページの教員名ではなく
+        // レビューの欄を渡す。共同担当 ("A, B") のレビューを A のページから編集して "A" だけで上書きすると、
+        // B の集計から外れてしまうため (iOS と同じ)。
+        Navigation.findNavController(v).navigate(R.id.action_instructor_reviews_to_write,
+                WriteReviewFragment.editArgs(review, review.getCourseId(), review.getCourseName()));
+    }
+
+    private void loadReviews() {
+        int generation = ++loadGeneration;
         swipeRefresh.setRefreshing(true);
-        reviewService.getReviews(courseId, userId, new ServiceCallback<List<Review>>() {
+        reviewService.getReviews(courseId, new ServiceCallback<List<Review>>() {
             @Override
             public void onSuccess(List<Review> reviews) {
-                if (!isAdded()) return;
+                if (!isAdded() || getView() == null || generation != loadGeneration) return;
                 adapter.setItems(reviews);
                 swipeRefresh.setRefreshing(false);
             }
             @Override
             public void onError(String message) {
-                if (!isAdded()) return;
+                if (!isAdded() || getView() == null || generation != loadGeneration) return;
                 swipeRefresh.setRefreshing(false);
+                // 黙って空の一覧にすると「レビューが無い」と区別できないので、理由を出す
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });
-    }
-
-    private void showReviewMenu(Review review, View anchor, String userId) {
-        PopupMenu popup = new PopupMenu(requireContext(), anchor);
-        popup.getMenu().add(0, 1, 0, "不適切な投稿を報告する");
-        popup.getMenu().add(0, 2, 0, "このユーザーをブロック");
-        popup.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == 1) {
-                reviewService.reportReview(review.getId(), userId, "inappropriate",
-                        new ServiceCallback<Boolean>() {
-                            @Override public void onSuccess(Boolean r) {
-                                if (isAdded()) Toast.makeText(requireContext(), "報告しました", Toast.LENGTH_SHORT).show();
-                            }
-                            @Override public void onError(String msg) {
-                                if (isAdded()) Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                return true;
-            } else if (item.getItemId() == 2) {
-                new MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("ブロック")
-                        .setMessage("このユーザーの投稿を非表示にしますか？")
-                        .setPositiveButton("ブロック", (d, w) ->
-                                reviewService.blockUser(review.getInternalUserId(), userId,
-                                        new ServiceCallback<Boolean>() {
-                                            @Override public void onSuccess(Boolean r) {
-                                                if (isAdded()) { Toast.makeText(requireContext(), "ブロックしました", Toast.LENGTH_SHORT).show(); loadReviews(userId); }
-                                            }
-                                            @Override public void onError(String msg) {
-                                                if (isAdded()) Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
-                                            }
-                                        }))
-                        .setNegativeButton(R.string.cancel, null)
-                        .show();
-                return true;
-            }
-            return false;
-        });
-        popup.show();
     }
 }

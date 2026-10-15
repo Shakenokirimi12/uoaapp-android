@@ -20,7 +20,7 @@
             style="@style/Widget.Uoa.IconContainer"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:contentDescription="@string/block_list_user_id"
+            android:contentDescription="@string/block_list_blocked_user"
             android:src="@drawable/ic_user" />
 
         <LinearLayout
@@ -33,18 +33,17 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/block_list_user_id"
-                android:textAppearance="?attr/textAppearanceLabelMedium"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:text="@string/block_list_blocked_user"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurface" />
 
             <TextView
-                android:id="@+id/text_user_id"
+                android:id="@+id/text_blocked_at"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurface"
-                tools:text="a1b2c3d4e5f6" />
+                android:textAppearance="?attr/textAppearanceLabelMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                tools:text="2026-10-01 にブロック" />
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton

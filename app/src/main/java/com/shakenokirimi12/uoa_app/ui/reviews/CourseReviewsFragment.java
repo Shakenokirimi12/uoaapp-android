@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,7 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.button.MaterialButton;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.Review;
@@ -29,12 +28,20 @@ import com.shakenokirimi12.uoa_app.ui.adapters.ReviewAdapter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CourseReviewsFragment extends Fragment {
+public class CourseReviewsFragment extends Fragment implements ReviewActionMenu.Host {
 
     private String courseId;
     private String courseName;
     private SwipeRefreshLayout swipeRefresh;
     private ReviewAdapter adapter;
+    private MaterialButton buttonWrite;
+    /** 読み込んだ一覧の中の自分のレビュー。あれば「レビューを書く」を編集に切り替える (1授業1件のため)。 */
+    @Nullable private Review myReview;
+    /**
+     * 最後に始めた読み込みの番号。引っ張って更新した直後にブロックの読み直しが重なったとき、
+     * 先に始めた古い結果で新しい一覧を上書きしないために使う。
+     */
+    private int loadGeneration;
     private final ReviewService reviewService = new ReviewService();
 
     @Nullable
@@ -55,7 +62,6 @@ public class CourseReviewsFragment extends Fragment {
         }
 
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
-        String userId = prefs.getReviewUserId();
 
         TextView textCourseName = view.findViewById(R.id.text_course_name);
         TextView textAvgRating = view.findViewById(R.id.text_avg_rating);
@@ -78,8 +84,16 @@ public class CourseReviewsFragment extends Fragment {
             }
         });
 
-        view.findViewById(R.id.button_write_review).setOnClickListener(v -> {
-            if (userId.isEmpty()) {
+        buttonWrite = view.findViewById(R.id.button_write_review);
+        // 画面を作り直したときは前回の判定を持ち越さない (読み込みが終わるまでは新規投稿として扱う)
+        myReview = null;
+        buttonWrite.setOnClickListener(v -> {
+            if (myReview != null) {
+                openEditor(myReview);
+                return;
+            }
+            // 授業評価のアカウント (トークン) は投稿時に用意される。必要なのは学内システムのログインだけ。
+            if (prefs.getUsername().isEmpty()) {
                 Toast.makeText(requireContext(), "ログインが必要です", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -96,26 +110,47 @@ public class CourseReviewsFragment extends Fragment {
 
         adapter = new ReviewAdapter();
         adapter.setOnMenuClickListener((review, anchor) ->
-                showReviewMenu(review, anchor, userId));
+                ReviewActionMenu.show(this, reviewService, review, anchor));
         recycler.setAdapter(adapter);
 
         swipeRefresh.setColorSchemeResources(R.color.primary);
-        swipeRefresh.setOnRefreshListener(() -> loadReviews(userId));
+        swipeRefresh.setOnRefreshListener(this::loadReviews);
 
-        loadReviews(userId);
+        loadReviews();
     }
 
-    private void loadReviews(String userId) {
+    @Override
+    public void reloadReviews() {
+        if (getView() != null) loadReviews();
+    }
+
+    @Override
+    public void openEditor(Review review) {
+        View v = getView();
+        if (v == null) return;
+        // 担当教員はページの値ではなくレビュー自身の欄を渡す (iOS と同じ)
+        Navigation.findNavController(v).navigate(R.id.action_course_reviews_to_write,
+                WriteReviewFragment.editArgs(review, courseId, courseName));
+    }
+
+    private void loadReviews() {
+        int generation = ++loadGeneration;
         swipeRefresh.setRefreshing(true);
-        reviewService.getReviews(courseId, userId, new ServiceCallback<List<Review>>() {
+        reviewService.getReviews(courseId, new ServiceCallback<List<Review>>() {
             @Override
             public void onSuccess(List<Review> reviews) {
-                if (!isAdded()) return;
+                // 画面が作り直された (投稿画面から戻った等) か、後から始めた読み込みがあれば捨てる
+                if (!isAdded() || getView() == null || generation != loadGeneration) return;
                 // Filter to course reviews only
                 List<Review> courseOnly = new ArrayList<>();
+                Review mine = null;
                 for (Review r : reviews) {
-                    if (!"instructor".equals(r.getReviewType())) courseOnly.add(r);
+                    if ("instructor".equals(r.getReviewType())) continue;
+                    courseOnly.add(r);
+                    if (mine == null && r.isMine()) mine = r;
                 }
+                myReview = mine;
+                buttonWrite.setText(mine != null ? "編集する" : "レビューを書く");
                 adapter.setItems(courseOnly);
                 updateSummary(courseOnly);
                 swipeRefresh.setRefreshing(false);
@@ -123,7 +158,7 @@ public class CourseReviewsFragment extends Fragment {
 
             @Override
             public void onError(String message) {
-                if (!isAdded()) return;
+                if (!isAdded() || getView() == null || generation != loadGeneration) return;
                 swipeRefresh.setRefreshing(false);
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
@@ -145,65 +180,6 @@ public class CourseReviewsFragment extends Fragment {
         double avg = sum / reviews.size();
         textAvgRating.setText(starsFor(avg) + " " + String.format(java.util.Locale.JAPAN, "%.1f", avg));
         textReviewCount.setText(reviews.size() + "件のレビュー");
-    }
-
-    private void showReviewMenu(Review review, View anchor, String userId) {
-        PopupMenu popup = new PopupMenu(requireContext(), anchor);
-        popup.getMenu().add(0, 1, 0, "不適切な投稿を報告する");
-        popup.getMenu().add(0, 2, 0, "このユーザーをブロック");
-
-        popup.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == 1) {
-                showReportDialog(review, userId);
-                return true;
-            } else if (item.getItemId() == 2) {
-                blockUser(review, userId);
-                return true;
-            }
-            return false;
-        });
-        popup.show();
-    }
-
-    private void showReportDialog(Review review, String userId) {
-        String[] reasons = {"不適切な内容", "スパム", "ハラスメント", "その他"};
-        String[] reasonKeys = {"inappropriate", "spam", "harassment", "other"};
-
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("不適切な投稿を報告する")
-                .setItems(reasons, (d, which) ->
-                        reviewService.reportReview(review.getId(), userId, reasonKeys[which],
-                                new ServiceCallback<Boolean>() {
-                                    @Override public void onSuccess(Boolean r) {
-                                        if (isAdded()) Toast.makeText(requireContext(), "報告しました", Toast.LENGTH_SHORT).show();
-                                    }
-                                    @Override public void onError(String msg) {
-                                        if (isAdded()) Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
-                                    }
-                                }))
-                .setNegativeButton(R.string.cancel, null)
-                .show();
-    }
-
-    private void blockUser(Review review, String userId) {
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("ブロック")
-                .setMessage("このユーザーの投稿を非表示にしますか？")
-                .setPositiveButton("ブロック", (d, w) ->
-                        reviewService.blockUser(review.getInternalUserId(), userId,
-                                new ServiceCallback<Boolean>() {
-                                    @Override public void onSuccess(Boolean r) {
-                                        if (isAdded()) {
-                                            Toast.makeText(requireContext(), "ブロックしました", Toast.LENGTH_SHORT).show();
-                                            loadReviews(userId);
-                                        }
-                                    }
-                                    @Override public void onError(String msg) {
-                                        if (isAdded()) Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
-                                    }
-                                }))
-                .setNegativeButton(R.string.cancel, null)
-                .show();
     }
 
     private String starsFor(double rating) {

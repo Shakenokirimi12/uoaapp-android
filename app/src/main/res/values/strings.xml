@@ -129,7 +129,7 @@
     <string name="block_list_empty">ブロック中のユーザーはいません</string>
     <string name="block_list_hint">ブロックしたユーザーの投稿は非表示になります</string>
     <string name="block_list_unblock">ブロック解除</string>
-    <string name="block_list_user_id">ユーザー ID</string>
+    <string name="block_list_blocked_user">ブロックしたユーザー</string>
     <string name="settings_reviews_section">授業評価</string>
     <string name="settings_block_list">ブロック中のユーザー</string>
     <!-- Widget -->

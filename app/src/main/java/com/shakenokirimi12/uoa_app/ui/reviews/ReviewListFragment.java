@@ -26,7 +26,6 @@ import com.shakenokirimi12.uoa_app.services.ReviewService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
 import com.shakenokirimi12.uoa_app.ui.adapters.ReviewCourseAdapter;
 
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -179,8 +178,8 @@ public class ReviewListFragment extends Fragment implements ReviewGuidelinesDial
         // subject code so it lines up with reviews written from iOS.
         buttonWriteCourse.setOnClickListener(v -> showTakenCoursePicker(v));
 
-        if (prefs.getReviewUserId().isEmpty() && !prefs.getUsername().isEmpty()) {
-            registerUser(prefs);
+        if (!prefs.getUsername().isEmpty()) {
+            prepareSession();
         }
 
         view.findViewById(R.id.swipe_refresh).setEnabled(false);
@@ -270,22 +269,22 @@ public class ReviewListFragment extends Fragment implements ReviewGuidelinesDial
         });
     }
 
-    private void registerUser(PreferenceManager prefs) {
-        String deviceId = prefs.getDeviceId();
-        String studentHash = sha256(prefs.getUsername());
-        reviewService.register(deviceId, studentHash, new ServiceCallback<String>() {
-            @Override public void onSuccess(String userId) { prefs.setReviewUserId(userId); }
-            @Override public void onError(String message) {}
+    /**
+     * 未登録なら登録し、旧バージョンで登録済み (トークン無し) ならトークンを引き継ぐ。
+     * 登録済みならサーバーには問い合わせない。失敗の理由 (引き継ぎ済み・試行回数超過・利用停止) は
+     * 黙って捨てるとその後の投稿や報告が全部失敗する理由が分からなくなるので表示する。
+     */
+    private void prepareSession() {
+        reviewService.prepareSession(new ServiceCallback<Boolean>() {
+            @Override public void onSuccess(Boolean result) {}
+            @Override public void onError(String message) {
+                if (!isAdded()) return;
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("授業評価")
+                        .setMessage(message)
+                        .setPositiveButton("OK", null)
+                        .show();
+            }
         });
-    }
-
-    private String sha256(String input) {
-        try {
-            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(input.getBytes("UTF-8"));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (Exception e) { return input; }
     }
 }
