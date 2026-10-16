@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.tabs.TabLayout;
 import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.ui.util.FetchStatus;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
@@ -41,6 +42,8 @@ public class CalendarFragment extends Fragment {
     private View fetchNotice;
     private boolean eventsFailed;
     private boolean assignmentsFailed;
+    /** 未ログイン。「授業はありません」と言わない。 */
+    private boolean notLoggedIn;
     private final Calendar selectedDate = Calendar.getInstance();
 
     private List<CalendarEvent> allEvents = new ArrayList<>();
@@ -92,9 +95,10 @@ public class CalendarFragment extends Fragment {
         DataCache cache = DataCache.getInstance(requireContext());
         allEvents = cache.loadEvents();
         allAssignments = cache.loadAssignments();
-        if (!allEvents.isEmpty() || !allAssignments.isEmpty()) {
-            updateList();
-        }
+        // 空でも描く。キャッシュが新しいと loadData は取得を飛ばして何も描かないので、ここで描かないと
+        // 空表示の文言すら出ない白い画面になる (SyncWorker が空の一覧を保存した直後など)。
+        notLoggedIn = PreferenceManager.getInstance(requireContext()).getUsername().isEmpty();
+        updateList();
 
         loadData();
     }
@@ -216,9 +220,8 @@ public class CalendarFragment extends Fragment {
             List<GroupedClass> grouped = GroupedClass.groupBySubject(dayEvents);
             recyclerEvents.setAdapter(classAdapter);
             classAdapter.setItems(grouped);
-            boolean unknown = eventsFailed
-                    && DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.EVENTS) == 0;
-            showEmpty(grouped.isEmpty(), unknown ? R.string.classes_unavailable : R.string.calendar_no_classes);
+            showEmpty(grouped.isEmpty(), emptyKind(eventsFailed, DataCache.Dataset.EVENTS),
+                    R.string.classes_unavailable, R.string.calendar_no_classes);
         } else {
             List<Assignment> dayAssignments = new ArrayList<>();
             for (Assignment a : allAssignments) {
@@ -227,27 +230,36 @@ public class CalendarFragment extends Fragment {
             }
             recyclerEvents.setAdapter(assignmentAdapter);
             assignmentAdapter.setItems(dayAssignments);
-            boolean unknown = assignmentsFailed
-                    && DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.ASSIGNMENTS) == 0;
-            showEmpty(dayAssignments.isEmpty(), unknown ? R.string.assignments_unavailable : R.string.calendar_no_assignments);
+            showEmpty(dayAssignments.isEmpty(), emptyKind(assignmentsFailed, DataCache.Dataset.ASSIGNMENTS),
+                    R.string.assignments_unavailable, R.string.calendar_no_assignments);
         }
     }
 
     /** 失敗した側のうち、古い方の最終更新時刻を出す。どちらも成功していれば消す。 */
     private void updateFetchNotice() {
         if (!eventsFailed && !assignmentsFailed) {
-            com.shakenokirimi12.uoa_app.ui.util.FetchStatus.hide(fetchNotice);
+            FetchStatus.hide(fetchNotice);
             return;
         }
         DataCache cache = DataCache.getInstance(requireContext());
         long events = eventsFailed ? cache.fetchedAt(DataCache.Dataset.EVENTS) : Long.MAX_VALUE;
         long assignments = assignmentsFailed ? cache.fetchedAt(DataCache.Dataset.ASSIGNMENTS) : Long.MAX_VALUE;
-        com.shakenokirimi12.uoa_app.ui.util.FetchStatus.showFailure(fetchNotice, Math.min(events, assignments));
+        FetchStatus.showFailure(fetchNotice, Math.min(events, assignments));
     }
 
-    private void showEmpty(boolean empty, int messageRes) {
-        textEmpty.setText(messageRes);
-        textEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+    private FetchStatus.Empty emptyKind(boolean failed, DataCache.Dataset dataset) {
+        return FetchStatus.emptyKind(!notLoggedIn, failed, DataCache.getInstance(requireContext()).fetchedAt(dataset));
+    }
+
+    /** 空の一覧の文言。取得中 (LOADING) は何も出さない。 */
+    private void showEmpty(boolean empty, FetchStatus.Empty kind, int unavailableRes, int noneRes) {
+        switch (kind) {
+            case NOT_LOGGED_IN: textEmpty.setText(R.string.not_logged_in_empty); break;
+            case UNAVAILABLE: textEmpty.setText(unavailableRes); break;
+            case NONE: textEmpty.setText(noneRes); break;
+            default: break;
+        }
+        textEmpty.setVisibility(empty && kind != FetchStatus.Empty.LOADING ? View.VISIBLE : View.GONE);
         recyclerEvents.setVisibility(empty ? View.GONE : View.VISIBLE);
     }
 }

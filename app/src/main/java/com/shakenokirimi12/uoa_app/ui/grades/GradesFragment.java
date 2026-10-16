@@ -17,6 +17,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.color.MaterialColors;
 import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.ui.util.FetchStatus;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.Grade;
@@ -31,8 +32,8 @@ public class GradesFragment extends Fragment {
     private SwipeRefreshLayout swipeRefresh;
     private TextView textEmpty;
     private View fetchNotice;
-    /** 取得に失敗し、まだ一度も取れていない。「成績データがありません」とは言わない。 */
-    private boolean failedWithoutData;
+    /** 直近の取得が失敗した (キャッシュは出したまま帯で知らせる)。 */
+    private boolean failed;
     private final GradeAdapter gradeAdapter = new GradeAdapter();
     private final CampusSquareService csService = new CampusSquareService();
 
@@ -87,18 +88,21 @@ public class GradesFragment extends Fragment {
         if (com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(requireContext()).isCredentialsInvalid()) {
             if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
             android.widget.Toast.makeText(requireContext(), com.shakenokirimi12.uoa_app.services.AuthErrors.INVALID_CREDENTIALS_MESSAGE, android.widget.Toast.LENGTH_LONG).show();
+            // 取りに行かなかったのも「取れていない」。ホーム・カレンダーと同じく帯と空表示で知らせる。
+            showFetchFailure();
             return;
         }
         csService.fetchGrades(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<List<Grade>>() {
             @Override
             public void onSuccess(List<Grade> grades) {
                 if (!isAdded()) return;
+                // 先に保存する。空表示の判定は保存時刻 (fetchedAt) を見るので、後だと空の一覧が「取得中」扱いになる。
+                DataCache.getInstance(requireContext()).saveGrades(grades);
                 gradeAdapter.setItems(grades);
-                failedWithoutData = false;
-                com.shakenokirimi12.uoa_app.ui.util.FetchStatus.hide(fetchNotice);
+                failed = false;
+                FetchStatus.hide(fetchNotice);
                 updateEmptyState();
                 swipeRefresh.setRefreshing(false);
-                DataCache.getInstance(requireContext()).saveGrades(grades);
             }
 
             @Override
@@ -106,11 +110,7 @@ public class GradesFragment extends Fragment {
                 swipeRefresh.setRefreshing(false);
                 if (!isAdded()) return;
                 com.shakenokirimi12.uoa_app.services.AuthErrors.markInvalidIfCredentialsError(requireContext(), message);
-                // キャッシュは出したまま、いつの情報かを帯で示す。
-                long fetchedAt = DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.GRADES);
-                failedWithoutData = fetchedAt == 0;
-                com.shakenokirimi12.uoa_app.ui.util.FetchStatus.showFailure(fetchNotice, fetchedAt);
-                updateEmptyState();
+                showFetchFailure();
                 if (com.shakenokirimi12.uoa_app.services.AuthErrors.isInvalidCredentials(message)) {
                     Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
                 }
@@ -118,9 +118,23 @@ public class GradesFragment extends Fragment {
         });
     }
 
+    /** キャッシュは出したまま、いつの情報かを帯で示す。 */
+    private void showFetchFailure() {
+        failed = true;
+        FetchStatus.showFailure(fetchNotice, DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.GRADES));
+        updateEmptyState();
+    }
+
+    /** 一度も取れていないのに「成績データがありません」とは言わない。取得中は何も出さない。 */
     private void updateEmptyState() {
         if (textEmpty == null) return;
-        textEmpty.setText(failedWithoutData ? "成績を取得できませんでした" : "成績データがありません");
-        textEmpty.setVisibility(gradeAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+        FetchStatus.Empty kind = FetchStatus.emptyKind(
+                !PreferenceManager.getInstance(requireContext()).getUsername().isEmpty(), failed,
+                DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.GRADES));
+        if (kind == FetchStatus.Empty.NOT_LOGGED_IN) textEmpty.setText(R.string.not_logged_in_empty);
+        else if (kind == FetchStatus.Empty.UNAVAILABLE) textEmpty.setText("成績を取得できませんでした");
+        else if (kind == FetchStatus.Empty.NONE) textEmpty.setText("成績データがありません");
+        boolean empty = gradeAdapter.getItemCount() == 0;
+        textEmpty.setVisibility(empty && kind != FetchStatus.Empty.LOADING ? View.VISIBLE : View.GONE);
     }
 }

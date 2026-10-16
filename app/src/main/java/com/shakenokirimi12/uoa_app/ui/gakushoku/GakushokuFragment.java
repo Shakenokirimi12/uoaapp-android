@@ -5,7 +5,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,11 +20,15 @@ import com.shakenokirimi12.uoa_app.data.models.GakushokuMenu;
 import com.shakenokirimi12.uoa_app.services.GakushokuService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
 import com.shakenokirimi12.uoa_app.ui.adapters.MenuAdapter;
+import com.shakenokirimi12.uoa_app.ui.util.FetchStatus;
 
 public class GakushokuFragment extends Fragment {
 
     private SwipeRefreshLayout swipeRefresh;
     private TextView textEmpty;
+    private View fetchNotice;
+    /** 直近の取得が失敗した (キャッシュは出したまま帯で知らせる)。 */
+    private boolean failed;
     private com.google.android.material.button.MaterialButton buttonShowPast;
     private final MenuAdapter menuAdapter = new MenuAdapter();
     private final GakushokuService gakushokuService = new GakushokuService();
@@ -44,6 +47,7 @@ public class GakushokuFragment extends Fragment {
 
         swipeRefresh = view.findViewById(R.id.swipe_refresh);
         textEmpty = view.findViewById(R.id.text_empty);
+        fetchNotice = view.findViewById(R.id.fetch_notice);
         RecyclerView recyclerMenu = view.findViewById(R.id.recycler_menu);
         recyclerMenu.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerMenu.setAdapter(menuAdapter);
@@ -77,25 +81,38 @@ public class GakushokuFragment extends Fragment {
             @Override
             public void onSuccess(GakushokuMenu menu) {
                 if (!isAdded()) return;
+                // 先に保存する。空表示の判定は保存時刻 (fetchedAt) を見るので、後だと空のメニューが「取得中」扱いになる。
+                DataCache.getInstance(requireContext()).saveMenu(menu);
+                failed = false;
+                FetchStatus.hide(fetchNotice);
                 menuAdapter.setWeeks(menu.weeksSortedFromToday());
                 updateEmptyState();
                 swipeRefresh.setRefreshing(false);
-                DataCache.getInstance(requireContext()).saveMenu(menu);
             }
 
             @Override
             public void onError(String message) {
                 swipeRefresh.setRefreshing(false);
-                if (isAdded()) {
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-                }
+                if (!isAdded()) return;
+                // 以前は Toast だけで、空表示は「メニューがありません」のままだった (取れなかっただけなのに)。
+                // 他の画面と同じく、キャッシュは出したまま帯で最終更新を示す。
+                failed = true;
+                FetchStatus.showFailure(fetchNotice,
+                        DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.MENU));
+                updateEmptyState();
             }
         });
     }
 
     private void updateEmptyState() {
         if (textEmpty == null) return;
-        textEmpty.setVisibility(menuAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+        // 学食はログイン不要。一度も取れていなければ「メニューがありません」とは言わない。
+        FetchStatus.Empty kind = FetchStatus.emptyKind(true, failed,
+                DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.MENU));
+        if (kind == FetchStatus.Empty.UNAVAILABLE) textEmpty.setText("メニューを取得できませんでした");
+        else if (kind == FetchStatus.Empty.NONE) textEmpty.setText("メニューがありません");
+        boolean empty = menuAdapter.getItemCount() == 0;
+        textEmpty.setVisibility(empty && kind != FetchStatus.Empty.LOADING ? View.VISIBLE : View.GONE);
         if (buttonShowPast != null) {
             int hidden = menuAdapter.hiddenPastCount();
             buttonShowPast.setVisibility(hidden > 0 ? View.VISIBLE : View.GONE);

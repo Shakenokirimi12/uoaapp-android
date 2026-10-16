@@ -23,6 +23,29 @@ import java.util.TimeZone;
 public final class FetchStatus {
     private FetchStatus() {}
 
+    /** 一覧が空のときに何と言うか。 */
+    public enum Empty {
+        /** 未ログイン。「ログインすると表示されます」。 */
+        NOT_LOGGED_IN,
+        /** まだ一度も取れておらず、取得中。何も言わない (「ありません」は事実と違いうる)。 */
+        LOADING,
+        /** 取得に失敗し、一度も取れていない。「〜を取得できませんでした」。 */
+        UNAVAILABLE,
+        /** 取れたデータが空。「〜はありません」と言ってよい。 */
+        NONE
+    }
+
+    /**
+     * 空の一覧に出す状態。キャッシュが新しくて取得を飛ばした場合も、取れたことがある (lastFetchedAt > 0)
+     * なら NONE になる。lastFetchedAt はその一覧の元データを最後に保存した時刻 (DataCache.fetchedAt)。
+     */
+    @NonNull
+    public static Empty emptyKind(boolean loggedIn, boolean failed, long lastFetchedAt) {
+        if (!loggedIn) return Empty.NOT_LOGGED_IN;
+        if (lastFetchedAt > 0) return Empty.NONE;
+        return failed ? Empty.UNAVAILABLE : Empty.LOADING;
+    }
+
     /** 「取得できませんでした（最終更新 10/16 12:34）」。一度も取れていなければその旨。 */
     @NonNull
     public static String failureText(long lastFetchedAt, long now, @NonNull TimeZone zone) {

@@ -16,6 +16,13 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
+            <!-- 取得に失敗したとき「取得できませんでした（最終更新 …）」を出す (FetchStatus)。 -->
+            <include
+                android:id="@+id/fetch_notice"
+                layout="@layout/view_status_notice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
             <!-- Past days are hidden by default; this reveals them. Hidden when there are none. -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_show_past"

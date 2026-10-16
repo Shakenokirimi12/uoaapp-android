@@ -19,6 +19,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.color.MaterialColors;
 import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.ui.util.FetchStatus;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
@@ -174,9 +175,11 @@ public class HomeFragment extends Fragment {
         DataCache cache = DataCache.getInstance(requireContext());
         allEvents = cache.loadEvents();
         allAssignments = cache.loadAssignments();
-        if (!allEvents.isEmpty() || !allAssignments.isEmpty()) {
-            filterAndDisplay();
-        }
+        // 空でも描く。キャッシュが新しいと syncData は取得を飛ばして何も描かないので、ここで描かないと
+        // 「今日の授業はありません」も件数も出ない白い画面になる (SyncWorker が空の一覧を保存した直後など)。
+        PreferenceManager loginPrefs = PreferenceManager.getInstance(requireContext());
+        notLoggedIn = loginPrefs.getUsername().isEmpty() || loginPrefs.getPassword().isEmpty();
+        filterAndDisplay();
 
         // Every tab switch recreates this fragment; hitting CampusSquare / Moodle each time is
         // needless load on the university servers, so automatic loads honor the cache age.
@@ -233,15 +236,13 @@ public class HomeFragment extends Fragment {
         }
         List<GroupedClass> grouped = GroupedClass.groupBySubject(dayClasses);
         classAdapter.setItems(grouped);
-        // 取得に失敗し、手元にも一度も取れたものが無いなら「授業はありません」とは言えない。
+        // 一度も取れたものが無いなら「授業はありません」とは言えない (取得中なら何も言わない)。
         DataCache cache = DataCache.getInstance(requireContext());
-        boolean eventsUnknown = notLoggedIn
-                || (eventsFailed && cache.fetchedAt(DataCache.Dataset.EVENTS) == 0);
-        boolean assignmentsUnknown = notLoggedIn
-                || (assignmentsFailed && cache.fetchedAt(DataCache.Dataset.ASSIGNMENTS) == 0);
-        textNoClasses.setText(notLoggedIn ? R.string.not_logged_in_empty
-                : eventsUnknown ? R.string.classes_unavailable : R.string.home_no_classes);
-        textNoClasses.setVisibility(grouped.isEmpty() ? View.VISIBLE : View.GONE);
+        FetchStatus.Empty classesEmpty = FetchStatus.emptyKind(!notLoggedIn, eventsFailed,
+                cache.fetchedAt(DataCache.Dataset.EVENTS));
+        FetchStatus.Empty assignmentsEmpty = FetchStatus.emptyKind(!notLoggedIn, assignmentsFailed,
+                cache.fetchedAt(DataCache.Dataset.ASSIGNMENTS));
+        showEmpty(textNoClasses, grouped.isEmpty(), classesEmpty, R.string.classes_unavailable, R.string.home_no_classes);
         recyclerClasses.setVisibility(grouped.isEmpty() ? View.GONE : View.VISIBLE);
 
         List<Assignment> dayAssignments = new ArrayList<>();
@@ -253,26 +254,38 @@ public class HomeFragment extends Fragment {
             }
         }
         assignmentAdapter.setItems(dayAssignments);
-        textNoAssignments.setText(notLoggedIn ? R.string.not_logged_in_empty
-                : assignmentsUnknown ? R.string.assignments_unavailable : R.string.home_no_assignments);
-        textNoAssignments.setVisibility(dayAssignments.isEmpty() ? View.VISIBLE : View.GONE);
+        showEmpty(textNoAssignments, dayAssignments.isEmpty(), assignmentsEmpty,
+                R.string.assignments_unavailable, R.string.home_no_assignments);
         recyclerAssignments.setVisibility(dayAssignments.isEmpty() ? View.GONE : View.VISIBLE);
 
         // Update summary cards
-        textClassCount.setText(eventsUnknown ? "-" : String.valueOf(grouped.size()));
-        textAssignmentCount.setText(assignmentsUnknown ? "-" : String.valueOf(dayAssignments.size()));
+        textClassCount.setText(classesEmpty == FetchStatus.Empty.NONE ? String.valueOf(grouped.size()) : "-");
+        textAssignmentCount.setText(assignmentsEmpty == FetchStatus.Empty.NONE
+                ? String.valueOf(dayAssignments.size()) : "-");
+    }
+
+    /** 空の一覧の文言。取得中 (LOADING) は何も出さない。 */
+    private static void showEmpty(TextView view, boolean empty, FetchStatus.Empty kind,
+                                  int unavailableRes, int noneRes) {
+        switch (kind) {
+            case NOT_LOGGED_IN: view.setText(R.string.not_logged_in_empty); break;
+            case UNAVAILABLE: view.setText(unavailableRes); break;
+            case NONE: view.setText(noneRes); break;
+            default: break;
+        }
+        view.setVisibility(empty && kind != FetchStatus.Empty.LOADING ? View.VISIBLE : View.GONE);
     }
 
     /** 失敗した側のうち、古い方の最終更新時刻を出す。どちらも成功していれば消す。 */
     private void updateFetchNotice() {
         if (!eventsFailed && !assignmentsFailed) {
-            com.shakenokirimi12.uoa_app.ui.util.FetchStatus.hide(fetchNotice);
+            FetchStatus.hide(fetchNotice);
             return;
         }
         DataCache cache = DataCache.getInstance(requireContext());
         long events = eventsFailed ? cache.fetchedAt(DataCache.Dataset.EVENTS) : Long.MAX_VALUE;
         long assignments = assignmentsFailed ? cache.fetchedAt(DataCache.Dataset.ASSIGNMENTS) : Long.MAX_VALUE;
-        com.shakenokirimi12.uoa_app.ui.util.FetchStatus.showFailure(fetchNotice, Math.min(events, assignments));
+        FetchStatus.showFailure(fetchNotice, Math.min(events, assignments));
     }
 
     /** Number of in-flight fetches started by syncData(); the spinner stays until it reaches 0. */
