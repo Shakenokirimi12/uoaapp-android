@@ -85,6 +85,15 @@
     <!-- Onboarding now sits on the theme surface, so it inherits the bar appearance. -->
     <style name="Theme.Uoaapp.Onboarding" parent="Theme.Uoaapp" />
 
+    <!-- ダイアログだけを出す画面 (PC 中継の確認)。下の画面が透けて見える。 -->
+    <style name="Theme.Uoaapp.Translucent" parent="Theme.Uoaapp">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
     <!-- 全画面のダイアログ (ガイドライン同意)。通常の Dialog だと本文が長すぎて読みにくい。 -->
     <style name="Theme.Uoaapp.FullScreenDialog" parent="Theme.Uoaapp">
         <item name="android:windowIsFloating">false</item>

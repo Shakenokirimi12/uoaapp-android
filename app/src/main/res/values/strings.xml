@@ -110,6 +110,29 @@
     <!-- Background sync -->
     <string name="class_channel_name">授業通知</string>
     <string name="lunch_channel_name">学食メニュー</string>
+    <string name="otp_relay_channel_name">PC からの OTP 依頼</string>
+    <string name="otp_relay_title">PC との連携 (OTP)</string>
+    <string name="otp_relay_intro">PC のブラウザで IdP のワンタイムパスワード画面が出ると、この端末が大学のメールに届いたコードを暗号化して PC に送ります (自動にしていない連携は、通知の「承認して送る」を押したとき)。自動で送れなかったときは、通知に承認ボタンが出ます。ID とパスワードは端末から出ません。</string>
+    <string name="otp_relay_consent_note">メールからの自動取得をオンにしていないため、依頼のたびに通知で承認を求めます。承認したときだけ大学のメールを読みます。</string>
+    <string name="otp_relay_paste_link">リンクを貼り付けて連携</string>
+    <string name="otp_relay_paste_title">連携用のリンクを貼り付け</string>
+    <string name="otp_relay_paste_hint">uoa-app://otp-pair#…</string>
+    <string name="otp_relay_paste_invalid">連携用のリンクではありません。PC の拡張で連携用の QR を出し直し、その中身のリンクを貼り付けてください。</string>
+    <string name="otp_relay_section_pairings">連携しているブラウザ</string>
+    <string name="otp_relay_none">まだありません</string>
+    <string name="otp_relay_auto_approve">承認なしで自動で返す</string>
+    <string name="otp_relay_unpair">解除</string>
+    <string name="otp_relay_paired_on">%1$s に連携</string>
+    <string name="otp_relay_section_last_result">直近の自動応答</string>
+    <string name="otp_relay_section_howto">連携のしかた</string>
+    <string name="otp_relay_howto">1. PC の拡張の設定で「OTP 自動入力」の「メール方式」を、このアプリに依頼する方式にする
+2. 拡張で連携用の QR を出し、この端末の標準のカメラ (または Google レンズ) で読む。カメラから開けないときは、QR の中身のリンクをコピーして「リンクを貼り付けて連携」に貼る
+3. このアプリが開いたら「連携する」を押す</string>
+    <string name="otp_relay_unpair_confirm">「%1$s」との連携を解除しますか？</string>
+    <string name="otp_relay_unpair_failed_title">中継サーバで解除できませんでした</string>
+    <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からだけ削除してください。削除しても、PC 側の拡張で連携を解除するまで依頼は届きます (承認しなければ何も送りません)。</string>
+    <string name="otp_relay_forget_local">この端末からだけ削除</string>
+    <string name="otp_relay_progress_channel_name">PC への OTP 送信中</string>
     <string name="class_channel_description">授業中・次の授業の常駐通知と、自動出席登録の完了を表示します</string>
     <string name="sync_channel_name">バックグラウンド同期</string>
     <string name="sync_notify_changed">課題の一覧が更新されました</string>

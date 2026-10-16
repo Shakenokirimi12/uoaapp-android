@@ -51,6 +51,27 @@
             </intent-filter>
         </service>
 
+        <!-- PC 中継: 拡張の QR (uoa-app://otp-pair#p=..&k=..&n=..) を標準のカメラ / Google レンズで
+             読むとここが開く。確認ダイアログだけの透明な画面。 -->
+        <activity
+            android:name=".ui.otprelay.OtpRelayActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Uoaapp.Translucent">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="uoa-app" android:host="otp-pair" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".services.otprelay.OtpRelayActionReceiver"
+            android:exported="false" />
+
         <activity
             android:name=".ui.browser.InAppBrowserActivity"
             android:exported="false"

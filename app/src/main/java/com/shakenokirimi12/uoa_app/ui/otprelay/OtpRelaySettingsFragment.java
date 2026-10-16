@@ -1,0 +1,184 @@
+package com.shakenokirimi12.uoa_app.ui.otprelay;
+
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.format.DateUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.materialswitch.MaterialSwitch;
+import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.data.PreferenceManager;
+import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayLink;
+import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairing;
+import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairingService;
+import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayStore;
+
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/** PC との連携 (OTP)。連携の一覧・自動/承認の切り替え・解除・リンクの貼り付けによる連携。 */
+public class OtpRelaySettingsFragment extends Fragment {
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private LinearLayout container;
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup parent, @Nullable Bundle state) {
+        return inflater.inflate(R.layout.fragment_otp_relay_settings, parent, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle state) {
+        super.onViewCreated(view, state);
+        container = view.findViewById(R.id.container_pairings);
+        view.findViewById(R.id.button_paste_link).setOnClickListener(v -> showPasteDialog());
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 連携は別の画面 (OtpRelayActivity) で増えるので、戻ってくるたびに読み直す。
+        render();
+    }
+
+    @Override
+    public void onDestroy() {
+        executor.shutdown();
+        super.onDestroy();
+    }
+
+    private void render() {
+        View root = getView();
+        if (root == null) return;
+        boolean consented = PreferenceManager.getInstance(requireContext()).isOtpAutoFetchEnabled();
+        root.findViewById(R.id.text_consent_note).setVisibility(consented ? View.GONE : View.VISIBLE);
+
+        container.removeAllViews();
+        List<OtpRelayPairing> pairings = OtpRelayStore.all();
+        LayoutInflater inflater = LayoutInflater.from(requireContext());
+        if (pairings.isEmpty()) {
+            TextView empty = (TextView) inflater.inflate(R.layout.item_otp_relay_empty, container, false);
+            container.addView(empty);
+        }
+        SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy/MM/dd", Locale.JAPAN);
+        for (int i = 0; i < pairings.size(); i++) {
+            OtpRelayPairing p = pairings.get(i);
+            if (i > 0) inflater.inflate(R.layout.item_divider, container, true);
+            View row = inflater.inflate(R.layout.item_otp_relay_pairing, container, false);
+            ((TextView) row.findViewById(R.id.text_browser_name)).setText(p.browserName);
+            ((TextView) row.findViewById(R.id.text_paired_at)).setText(
+                    getString(R.string.otp_relay_paired_on, dateFmt.format(new Date(p.pairedAt))));
+            MaterialSwitch auto = row.findViewById(R.id.switch_auto_approve);
+            auto.setChecked(p.autoApprove());
+            auto.setOnCheckedChangeListener((b, checked) -> OtpRelayStore.setAutoApprove(p.pairingId, checked));
+            row.findViewById(R.id.button_unpair).setOnClickListener(v -> confirmUnpair(p));
+            container.addView(row);
+        }
+
+        OtpRelayStore.LastResult last = OtpRelayStore.lastResult();
+        int vis = last != null ? View.VISIBLE : View.GONE;
+        root.findViewById(R.id.header_last_result).setVisibility(vis);
+        root.findViewById(R.id.card_last_result).setVisibility(vis);
+        if (last != null) {
+            TextView summary = root.findViewById(R.id.text_last_summary);
+            summary.setText((last.succeeded ? "成功: " : "失敗: ") + last.summary);
+            ((TextView) root.findViewById(R.id.text_last_when)).setText(DateUtils.getRelativeTimeSpanString(
+                    last.at, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS));
+            TextView detail = root.findViewById(R.id.text_last_detail);
+            detail.setVisibility(last.detail != null && !last.detail.isEmpty() ? View.VISIBLE : View.GONE);
+            detail.setText(last.detail);
+        }
+    }
+
+    private void showPasteDialog() {
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_otp_relay_paste, null);
+        EditText edit = dialogView.findViewById(R.id.edit_link);
+        // クリップボードに連携用のリンクが入っていれば、最初から入れておく。
+        ClipboardManager cm = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm != null && cm.hasPrimaryClip()) {
+            ClipData clip = cm.getPrimaryClip();
+            if (clip != null && clip.getItemCount() > 0 && clip.getItemAt(0).getText() != null) {
+                String text = clip.getItemAt(0).getText().toString().trim();
+                if (OtpRelayLink.parse(text) != null) edit.setText(text);
+            }
+        }
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.otp_relay_paste_title)
+                .setView(dialogView)
+                .setPositiveButton("連携", (d, w) -> {
+                    String link = edit.getText().toString().trim();
+                    if (OtpRelayLink.parse(link) == null) {
+                        new MaterialAlertDialogBuilder(requireContext())
+                                .setTitle("読み取れませんでした")
+                                .setMessage(R.string.otp_relay_paste_invalid)
+                                .setPositiveButton(R.string.ok, null)
+                                .show();
+                        return;
+                    }
+                    startActivity(OtpRelayActivity.pairIntent(requireContext(), link));
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void confirmUnpair(OtpRelayPairing p) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setMessage(getString(R.string.otp_relay_unpair_confirm, p.browserName))
+                .setPositiveButton(R.string.otp_relay_unpair, (d, w) -> unpair(p))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void unpair(OtpRelayPairing p) {
+        executor.execute(() -> {
+            boolean ok;
+            String error = null;
+            try {
+                ok = OtpRelayPairingService.unpair(p);
+            } catch (IOException e) {
+                ok = false;
+                error = "中継サーバに接続できませんでした。";
+            }
+            boolean done = ok;
+            String message = error;
+            main.post(() -> {
+                if (!isAdded()) return;
+                if (done) {
+                    render();
+                    return;
+                }
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.otp_relay_unpair_failed_title)
+                        .setMessage(message != null
+                                ? message + "\n\n" + getString(R.string.otp_relay_unpair_failed_message)
+                                : getString(R.string.otp_relay_unpair_failed_message))
+                        .setPositiveButton(R.string.otp_relay_forget_local, (d, w) -> {
+                            OtpRelayStore.remove(p.pairingId);
+                            render();
+                        })
+                        .setNegativeButton(R.string.cancel, null)
+                        .show();
+            });
+        });
+    }
+}

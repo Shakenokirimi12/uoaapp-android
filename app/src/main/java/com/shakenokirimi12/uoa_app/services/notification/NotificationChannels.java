@@ -52,6 +52,25 @@ public final class NotificationChannels {
         return LOGIN_REQUIRED;
     }
 
+    /** PC からの OTP 依頼の承認と結果。ロック画面で押せるよう、目立つ重要度にする。 */
+    public static final String OTP_RELAY = "otp_relay";
+    /** メールを読んでいる間の進行中表示。音も振動も要らない。 */
+    public static final String OTP_RELAY_PROGRESS = "otp_relay_progress";
+
+    @NonNull
+    public static String ensureOtpRelay(@NonNull Context ctx) {
+        manager(ctx).createNotificationChannel(new NotificationChannel(
+                OTP_RELAY, ctx.getString(R.string.otp_relay_channel_name), NotificationManager.IMPORTANCE_HIGH));
+        return OTP_RELAY;
+    }
+
+    @NonNull
+    public static String ensureOtpRelayProgress(@NonNull Context ctx) {
+        manager(ctx).createNotificationChannel(new NotificationChannel(
+                OTP_RELAY_PROGRESS, ctx.getString(R.string.otp_relay_progress_channel_name), NotificationManager.IMPORTANCE_LOW));
+        return OTP_RELAY_PROGRESS;
+    }
+
     private static NotificationManager manager(@NonNull Context ctx) {
         return ctx.getSystemService(NotificationManager.class);
     }

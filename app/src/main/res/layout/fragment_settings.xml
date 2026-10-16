@@ -119,6 +119,22 @@
                         app:tint="?attr/colorOnSurfaceVariant" />
                 </LinearLayout>
 
+                <!-- PC との連携 (OTP)。メール方式のときだけ出す (iOS と同じ)。 -->
+                <com.google.android.material.divider.MaterialDivider
+                    android:id="@+id/divider_otp_relay"
+                    style="@style/Widget.Uoa.Divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <TextView
+                    android:id="@+id/row_otp_relay"
+                    style="@style/Widget.Uoa.ListRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:drawableEnd="@drawable/ic_chevron_right"
+                    android:text="@string/otp_relay_title" />
+
                 <com.google.android.material.divider.MaterialDivider
                     android:id="@+id/divider_logout"
                     style="@style/Widget.Uoa.Divider"

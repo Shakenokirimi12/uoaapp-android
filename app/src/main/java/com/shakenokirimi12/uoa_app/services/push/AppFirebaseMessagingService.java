@@ -42,11 +42,28 @@ public class AppFirebaseMessagingService extends FirebaseMessagingService {
         PreferenceManager prefs = PreferenceManager.getInstance(getApplicationContext());
         prefs.setFcmToken(token);
         PushNotificationService.shared(this).registerDevice(token);
+        // PC 中継の連携も新しいトークンで登録し直す (中継サーバは古いトークンへ送り続けるため)。
+        if (!com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayStore.all().isEmpty()) {
+            com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayWorker.reregister(getApplicationContext(), token);
+        }
     }
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage message) {
         Map<String, String> data = message.getData();
+        // PC からの OTP 依頼 (中継サーバの data メッセージ)。通知はアプリ側で作るので、ここでは積むだけ。
+        String relay = data.get("otpRelay");
+        if (relay != null) {
+            com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayRequest request =
+                    com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayRequest.parse(relay);
+            if (request != null) {
+                com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayWorker.onIncoming(
+                        getApplicationContext(), request, System.currentTimeMillis());
+            } else {
+                Log.w(TAG, "Dropping malformed otpRelay message");
+            }
+            return;
+        }
         String title = data.get(KEY_TITLE);
         String body = data.get(KEY_BODY);
         String url = data.get(KEY_URL);

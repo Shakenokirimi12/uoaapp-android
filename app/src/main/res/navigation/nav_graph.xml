@@ -70,7 +70,14 @@
         <action android:id="@+id/action_settings_to_campus_map" app:destination="@id/navigation_campus_map" />
         <action android:id="@+id/action_settings_to_idp_tutorial" app:destination="@id/navigation_idp_tutorial" />
         <action android:id="@+id/action_settings_to_idp_otp_registration" app:destination="@id/navigation_idp_otp_registration" />
+        <action android:id="@+id/action_settings_to_otp_relay" app:destination="@id/navigation_otp_relay" />
     </fragment>
+
+    <fragment
+        android:id="@+id/navigation_otp_relay"
+        android:name="com.shakenokirimi12.uoa_app.ui.otprelay.OtpRelaySettingsFragment"
+        android:label="@string/otp_relay_title"
+        tools:layout="@layout/fragment_otp_relay_settings" />
 
     <!-- ── IdP (SECIOSS). ログイン自体は同期の裏で完結するので、手動ログイン画面は持たない。 ── -->
 

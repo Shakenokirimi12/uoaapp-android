@@ -173,6 +173,11 @@ public class SettingsFragment extends Fragment {
         otpMethodLabel = view.findViewById(R.id.text_otp_method);
         updateOtpMethodLabel();
         view.findViewById(R.id.row_otp_method).setOnClickListener(v -> showOtpMethodDialog());
+        otpRelayRow = view.findViewById(R.id.row_otp_relay);
+        otpRelayDivider = view.findViewById(R.id.divider_otp_relay);
+        otpRelayRow.setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.action_settings_to_otp_relay));
+        updateOtpMethodLabel();
         // A logout button next to "未ログイン" is contradictory; hide it until there is an account.
         view.findViewById(R.id.button_logout).setVisibility(loggedIn ? View.VISIBLE : View.GONE);
         view.findViewById(R.id.divider_logout).setVisibility(loggedIn ? View.VISIBLE : View.GONE);
@@ -375,10 +380,16 @@ public class SettingsFragment extends Fragment {
     }
 
     private android.widget.TextView otpMethodLabel;
+    private View otpRelayRow;
+    private View otpRelayDivider;
 
     private void updateOtpMethodLabel() {
         if (otpMethodLabel == null) return;
         OtpMethod method = OtpMethod.from(PreferenceManager.getInstance().getOtpMethod());
+        // PC 中継はメールに届く OTP を読む機能なので、メール方式のときだけ出す (iOS と同じ)。
+        int relayVis = method == OtpMethod.MAIL ? View.VISIBLE : View.GONE;
+        if (otpRelayRow != null) otpRelayRow.setVisibility(relayVis);
+        if (otpRelayDivider != null) otpRelayDivider.setVisibility(relayVis);
         otpMethodLabel.setText(method == OtpMethod.AUTHENTICATOR
                 ? R.string.settings_otp_method_authenticator
                 : R.string.settings_otp_method_mail);
