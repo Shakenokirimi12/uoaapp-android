@@ -84,6 +84,17 @@ public class OnboardingActivity extends AppCompatActivity {
             return;
         }
 
+        // 暗号化して保存できない端末では、ログインに成功しても資格情報を保存できない。
+        // 平文には落とさないので、先に止めて理由を伝える。
+        if (!prefs.isSecureStorageAvailable()) {
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.secure_storage_unavailable_title)
+                    .setMessage(R.string.secure_storage_unavailable_message)
+                    .setPositiveButton(R.string.ok, null)
+                    .show();
+            return;
+        }
+
         buttonNext.setEnabled(false);
         buttonNext.setText("ログイン中…");
 

@@ -80,6 +80,8 @@
     <string name="error_generic">エラーが発生しました</string>
     <string name="retry">再試行</string>
     <string name="ok">OK</string>
+    <string name="secure_storage_unavailable_title">ログイン情報を保存できません</string>
+    <string name="secure_storage_unavailable_message">この端末ではログイン情報を暗号化して保存できないため、ログインできません。暗号化せずに保存することはしません。</string>
     <string name="cancel">キャンセル</string>
     <string name="remaining_format">残り %d 分</string>
     <!-- Remote config (maintenance / force update / status notice) -->

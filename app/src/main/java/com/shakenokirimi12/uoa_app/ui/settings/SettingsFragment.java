@@ -430,6 +430,15 @@ public class SettingsFragment extends Fragment {
                         Toast.makeText(requireContext(), "ユーザー名を入力してください", Toast.LENGTH_SHORT).show();
                         return;
                     }
+                    if (!prefs.isSecureStorageAvailable()) {
+                        // 平文には保存しない。保存できない理由をそのまま伝える。
+                        new MaterialAlertDialogBuilder(requireContext())
+                                .setTitle(R.string.secure_storage_unavailable_title)
+                                .setMessage(R.string.secure_storage_unavailable_message)
+                                .setPositiveButton(R.string.ok, null)
+                                .show();
+                        return;
+                    }
                     if (newPass.isEmpty()) {
                         prefs.setUsername(newUser);
                         textUsername.setText(newUser);
