@@ -24,10 +24,35 @@ public class ImapOtpFetcherTest {
     }
 
     @Test
-    public void lastUid_picksLargest() {
-        assertEquals("56", ImapOtpFetcher.lastUid(Arrays.asList("* OK ready", "* SEARCH 12 56 34")));
-        assertNull(ImapOtpFetcher.lastUid(Collections.singletonList("* SEARCH")));
-        assertNull(ImapOtpFetcher.lastUid(Collections.emptyList()));
+    public void fromAddress_takesTheRealAddress() {
+        assertEquals("idp-apply@u-aizu.ac.jp", ImapOtpFetcher.fromAddress("From: idp-apply@u-aizu.ac.jp\r\n\r\n"));
+        assertEquals("idp-apply@u-aizu.ac.jp",
+                ImapOtpFetcher.fromAddress("from: =?UTF-8?B?SWRQ?= <idp-apply@u-aizu.ac.jp>\r\n\r\n"));
+        // 折り返されたヘッダ。
+        assertEquals("idp-apply@u-aizu.ac.jp",
+                ImapOtpFetcher.fromAddress("From: \"IdP\"\r\n <idp-apply@u-aizu.ac.jp>\r\n\r\n"));
+    }
+
+    @Test
+    public void fromAddress_ignoresTheDisplayName() {
+        // CLAUDE-SECURITY F20: 送信者名に送信元を書いただけのメール。SEARCH FROM (部分一致) には当たる。
+        assertEquals("x@attacker.example",
+                ImapOtpFetcher.fromAddress("From: \"idp-apply@u-aizu.ac.jp\" <x@attacker.example>\r\n"));
+        assertEquals("x@attacker.example",
+                ImapOtpFetcher.fromAddress("From: \"<idp-apply@u-aizu.ac.jp>\" <x@attacker.example>\r\n"));
+        assertEquals("x@attacker.example",
+                ImapOtpFetcher.fromAddress("From: (idp-apply@u-aizu.ac.jp) x@attacker.example\r\n"));
+        assertEquals("idp-apply@u-aizu.ac.jp.attacker.example",
+                ImapOtpFetcher.fromAddress("From: <idp-apply@u-aizu.ac.jp.attacker.example>\r\n"));
+    }
+
+    @Test
+    public void fromAddress_rejectsAmbiguousHeaders() {
+        assertNull(ImapOtpFetcher.fromAddress(""));
+        assertNull(ImapOtpFetcher.fromAddress("From: idp-apply@u-aizu.ac.jp\r\nFrom: x@attacker.example\r\n"));
+        assertNull(ImapOtpFetcher.fromAddress("From: idp-apply@u-aizu.ac.jp, x@attacker.example\r\n"));
+        assertNull(ImapOtpFetcher.fromAddress("From: <idp-apply@u-aizu.ac.jp> <x@attacker.example>\r\n"));
+        assertNull(ImapOtpFetcher.fromAddress("From: \"unterminated <idp-apply@u-aizu.ac.jp>\r\n"));
     }
 
     @Test

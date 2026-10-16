@@ -38,6 +38,11 @@ public final class ImapOtpFetcher {
     private static final String DEFAULT_HOST = "stdmsv1.u-aizu.ac.jp";
     private static final int DEFAULT_PORT = 993;
     private static final String OTP_SENDER = "idp-apply@u-aizu.ac.jp";
+    /**
+     * 1 回の検索で From を確かめに行くメールの数の上限。同じ送信者名を名乗る偽メールを大量に送られても、
+     * ヘッダの取得で待ち続けない (そのときは見つからない扱いになり、手入力に落ちる)。
+     */
+    private static final int MAX_FROM_CHECKS = 20;
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int READ_TIMEOUT_MS = 15_000;
     private static final long RETRY_INTERVAL_MS = 3_000L;
@@ -120,9 +125,14 @@ public final class ImapOtpFetcher {
             Date since = new Date(System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000);
             stream.send(tag + " UID SEARCH FROM \"" + OTP_SENDER + "\" SINCE " + imapDate(since));
             List<Integer> uids = allUids(stream.readUntilTagged(tag));
+            uids.sort(java.util.Collections.reverseOrder());
+            // 消すのは From が OTP の送信元と完全に一致したものだけ (送信者名で名乗っただけのメールは消さない)。
             StringBuilder set = new StringBuilder();
+            int checks = 0;
             for (int u : uids) {
                 if (u > upToUid) continue;
+                if (checks++ >= MAX_FROM_CHECKS) break;
+                if (!isFromOtpSender(stream, u)) continue;
                 if (set.length() > 0) set.append(',');
                 set.append(u);
             }
@@ -153,6 +163,8 @@ public final class ImapOtpFetcher {
         // 既読 (\Seen) かどうかで絞らないのは、ユーザーがメールアプリで先に開くと UNSEEN 検索に掛からず、
         // 取得も削除もできなくなっていたため (2026-09-15 実測: 受信箱に既読の OTP メールが 8 件残っていた)。
         int floorUid = -1;
+        // From を確かめた結果 (UID ごと)。数秒おきに探し直すたびに同じメールのヘッダを取りに行かない。
+        java.util.Map<Integer, Boolean> checked = new java.util.HashMap<>();
         try {
             while (true) {
                 try {
@@ -161,14 +173,15 @@ public final class ImapOtpFetcher {
                         // 試し直すとアカウントロックの危険があるので再試行しない。
                         stream = openAndSelect(uid, pass);
                     }
-                    if (floorUid < 0) floorUid = resolveFloorUid(stream, startedAt);
-                    OtpMail mail = searchAndFetch(stream, floorUid, deleteAfterRead);
+                    if (floorUid < 0) floorUid = resolveFloorUid(stream, startedAt, checked);
+                    OtpMail mail = searchAndFetch(stream, floorUid, deleteAfterRead, checked);
                     if (mail != null) return mail;
                     lastError = new ImapException("mailNotFound");
                 } catch (IOException e) {
                     lastError = e;
                     closeQuietly(stream);
                     stream = null;
+                    checked.clear();
                     if (++reconnects > MAX_RECONNECTS) throw e;
                 } catch (ImapException e) {
                     if (stream == null) throw e;
@@ -213,11 +226,12 @@ public final class ImapOtpFetcher {
      * 最新メールの到着時刻 (INTERNALDATE) がこの呼び出しの開始以降なら、それが今要求したメール
      * なので 1 つ手前を下限にする。
      */
-    private int resolveFloorUid(ImapStream stream, long startedAt) throws IOException, ImapException {
-        String latest = searchLatestUid(stream);
+    private int resolveFloorUid(ImapStream stream, long startedAt, java.util.Map<Integer, Boolean> checked)
+            throws IOException, ImapException {
+        Integer latest = latestGenuineUid(stream, -1, checked);
         if (latest == null) return 0;
-        int latestUid = Integer.parseInt(latest);
-        Long arrivedAt = internalDate(stream, latest);
+        int latestUid = latest;
+        Long arrivedAt = internalDate(stream, String.valueOf(latest));
         // INTERNALDATE は秒精度なので、startedAt も秒に切り下げてから比べる。ミリ秒のまま比べると、
         // startedAt と同じ秒の中で届いたメールが「開始より前」に見えて取りこぼす。
         long startedSecond = startedAt / 1000L * 1000L;
@@ -235,15 +249,52 @@ public final class ImapOtpFetcher {
         return parseInternalDate(stream.readUntilTagged(tag));
     }
 
-    /** 受信箱にある OTP メールのうち一番新しい UID。無ければ null。 */
+    /**
+     * 受信箱にある OTP メールのうち、aboveUid より新しく From が送信元と完全に一致する一番新しい UID。
+     * 無ければ null。
+     *
+     * IMAP の SEARCH FROM は From ヘッダの部分一致 (送信者名 "idp-apply@u-aizu.ac.jp" <x@attacker> にも当たる)
+     * なので候補を絞るだけに使い、From のアドレスは 1 通ずつ取って確かめる (CLAUDE-SECURITY F20)。
+     * From は送り手が書く値なので、送信元を完全に名乗ったメールまでは区別できない
+     * (大学のメールサーバの認証結果ヘッダは、実物のメールで確かめられていないので使っていない)。
+     */
     @Nullable
-    private String searchLatestUid(ImapStream stream) throws IOException, ImapException {
+    private Integer latestGenuineUid(ImapStream stream, int aboveUid, java.util.Map<Integer, Boolean> checked)
+            throws IOException, ImapException {
         String tag = stream.nextTag();
         // 前日から探す。今日だけだと、日付をまたいだ直後 (23:55 に届いたメールを 0:01 に探す、PC 中継の
         // 「10 分前」を含む) に見つからない。新しさは UID と INTERNALDATE で判定しているので広げても困らない。
         stream.send(tag + " UID SEARCH FROM \"" + OTP_SENDER + "\" SINCE "
                 + imapDate(new Date(System.currentTimeMillis() - 24L * 60 * 60 * 1000)));
-        return lastUid(stream.readUntilTagged(tag));
+        List<Integer> uids = allUids(stream.readUntilTagged(tag));
+        uids.sort(java.util.Collections.reverseOrder());
+        int checks = 0;
+        for (int uid : uids) {
+            if (uid <= aboveUid) break;
+            Boolean genuine = checked.get(uid);
+            if (genuine == null) {
+                if (checks++ >= MAX_FROM_CHECKS) break;
+                genuine = isFromOtpSender(stream, uid);
+                checked.put(uid, genuine);
+            }
+            if (genuine) return uid;
+        }
+        return null;
+    }
+
+    /** そのメールの From ヘッダのアドレスが OTP の送信元と完全に一致するか。 */
+    private boolean isFromOtpSender(ImapStream stream, int uid) throws IOException, ImapException {
+        String tag = stream.nextTag();
+        stream.send(tag + " UID FETCH " + uid + " (BODY.PEEK[HEADER.FIELDS (FROM)])");
+        String header;
+        try {
+            header = stream.readFetchBody(tag);
+        } catch (ImapException e) {
+            if ("mailNotFound".equals(e.getMessage())) return false; // 消された等
+            throw e;
+        }
+        String address = fromAddress(header);
+        return address != null && address.equalsIgnoreCase(OTP_SENDER);
     }
 
     /**
@@ -251,12 +302,13 @@ public final class ImapOtpFetcher {
      * コードを返し、そのメールを削除する。
      */
     @Nullable
-    private OtpMail searchAndFetch(ImapStream stream, int floorUid, boolean deleteAfterRead)
+    private OtpMail searchAndFetch(ImapStream stream, int floorUid, boolean deleteAfterRead,
+                                   java.util.Map<Integer, Boolean> checked)
             throws IOException, ImapException {
-        String targetUid = searchLatestUid(stream);
-        if (targetUid == null) return null;
         // 下限以下は今回要求したコードではない (期限切れの古いメール)。
-        if (Integer.parseInt(targetUid) <= floorUid) return null;
+        Integer genuine = latestGenuineUid(stream, floorUid, checked);
+        if (genuine == null) return null;
+        String targetUid = String.valueOf(genuine);
 
         String tag;
 
@@ -300,25 +352,6 @@ public final class ImapOtpFetcher {
         return new SimpleDateFormat("dd-MMM-yyyy", Locale.US).format(date);
     }
 
-    /** "* SEARCH 12 34 56" 形式の行から一番大きい (最新の) UID を取る。 */
-    @Nullable
-    static String lastUid(@NonNull List<String> lines) {
-        for (String line : lines) {
-            if (!line.startsWith("* SEARCH")) continue;
-            int max = -1;
-            for (String token : line.substring("* SEARCH".length()).trim().split("\\s+")) {
-                if (token.isEmpty()) continue;
-                try {
-                    max = Math.max(max, Integer.parseInt(token));
-                } catch (NumberFormatException ignored) {
-                    // 数字以外のトークンは UID ではない
-                }
-            }
-            if (max >= 0) return String.valueOf(max);
-        }
-        return null;
-    }
-
     /** "* SEARCH 1 2 3" の UID を全部。該当なしなら空。 */
     @NonNull
     static List<Integer> allUids(@NonNull List<String> lines) {
@@ -352,6 +385,56 @@ public final class ImapOtpFetcher {
             }
         }
         return null;
+    }
+
+    /**
+     * From ヘッダ (BODY[HEADER.FIELDS (FROM)] の中身) から送信元のアドレスを 1 つ取り出す。
+     * 送信者名 (引用符の中・コメント・エンコードされた語) に書かれたアドレスは使わない。From が無い・
+     * 2 つ以上ある・アドレスが 2 つ以上ある・形が読めないときは null (= 送信元と認めない)。
+     */
+    @Nullable
+    static String fromAddress(@NonNull String headers) {
+        // 折り返し (CRLF + 空白) を戻してから 1 行ずつ見る。
+        String unfolded = headers.replaceAll("\\r?\\n[ \\t]+", " ");
+        String value = null;
+        for (String line : unfolded.split("\\r?\\n")) {
+            if (line.regionMatches(true, 0, "From:", 0, 5)) {
+                if (value != null) return null;
+                value = line.substring(5);
+            }
+        }
+        if (value == null) return null;
+        // 引用符の中とコメントを消す (どちらにも < > や @ を書ける)。
+        StringBuilder plain = new StringBuilder();
+        boolean quoted = false;
+        int comment = 0;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if ((quoted || comment > 0) && c == '\\') { i++; continue; }
+            if (comment == 0 && c == '"') { quoted = !quoted; continue; }
+            if (quoted) continue;
+            if (c == '(') { comment++; continue; }
+            if (c == ')' && comment > 0) { comment--; continue; }
+            if (comment > 0) continue;
+            plain.append(c);
+        }
+        if (quoted || comment > 0) return null;
+        String rest = plain.toString().trim();
+        if (rest.indexOf(',') >= 0) return null;
+        String address;
+        int open = rest.indexOf('<');
+        if (open >= 0) {
+            int close = rest.indexOf('>', open);
+            if (close < 0 || rest.indexOf('<', open + 1) >= 0 || rest.indexOf('>', close + 1) >= 0) return null;
+            address = rest.substring(open + 1, close).trim();
+        } else {
+            address = rest;
+        }
+        if (address.isEmpty() || address.indexOf(' ') >= 0 || address.indexOf('@') <= 0
+                || address.indexOf('@') != address.lastIndexOf('@')) {
+            return null;
+        }
+        return address;
     }
 
     /**
