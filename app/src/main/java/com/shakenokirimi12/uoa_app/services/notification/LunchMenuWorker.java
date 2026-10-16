@@ -43,6 +43,8 @@ public class LunchMenuWorker extends Worker {
     private static final String WORK_NAME = "lunch_menu_notify";
     private static final String KEY_SCHEDULED_FOR = "scheduled_for";
     private static final int NOTIFICATION_ID = 3001;
+    /** 取得に失敗したとき、これより新しいキャッシュだけを使う。 */
+    private static final long CACHE_USABLE_MS = 14L * 24 * 60 * 60 * 1000;
 
     public LunchMenuWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
@@ -118,7 +120,14 @@ public class LunchMenuWorker extends Worker {
             cache.saveMenu(fresh);
             return fresh;
         } catch (Exception e) {
-            Log.w(TAG, "menu fetch failed; using the cached menu if any", e);
+            // メニューの日付は月日だけ (年が無い)。古いキャッシュだと去年の同じ日の献立を「今日」として
+            // 出しうるので、掲載期間 (2 週間ほど) より古いものは使わない。
+            long fetchedAt = cache.fetchedAt(DataCache.Dataset.MENU);
+            if (fetchedAt <= 0 || System.currentTimeMillis() - fetchedAt > CACHE_USABLE_MS) {
+                Log.w(TAG, "menu fetch failed and no recent cache; not notifying", e);
+                return null;
+            }
+            Log.w(TAG, "menu fetch failed; using the cached menu", e);
             return cache.loadMenu();
         }
     }

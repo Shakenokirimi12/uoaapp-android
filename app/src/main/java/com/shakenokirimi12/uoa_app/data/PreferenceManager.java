@@ -150,7 +150,11 @@ public class PreferenceManager {
         }
         if (plainEdit == null) return;
         // 暗号化側への書き込みを先に確定させてから平文を消す (途中で落ちても値を失わない順)。
-        if (secEdit != null) secEdit.commit();
+        // 書き込めなかった (容量不足など) ときは平文を残し、次の起動でやり直す。消すと資格情報を失う。
+        if (secEdit != null && !secEdit.commit()) {
+            Log.w(TAG, "could not move legacy secrets into secure prefs; will retry on next launch");
+            return;
+        }
         plainEdit.apply();
     }
 

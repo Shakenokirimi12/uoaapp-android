@@ -117,4 +117,11 @@ public class HostScopedCookieJarTest {
 
         assertEquals("MoodleSession=new", header(jar.loadForRequest(MOODLE)));
     }
+
+    @Test
+    public void longerPathIsSentFirst() {
+        HttpUrl course = HttpUrl.parse("https://elms.u-aizu.ac.jp/course/view.php");
+        jar.saveFromResponse(course, received(course, "sid=root; Path=/", "sid=course; Path=/course"));
+        assertEquals("sid=course; sid=root", header(jar.loadForRequest(course)));
+    }
 }

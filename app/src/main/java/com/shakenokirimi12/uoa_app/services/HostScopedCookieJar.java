@@ -49,6 +49,8 @@ public final class HostScopedCookieJar implements CookieJar {
         for (Cookie c : cookies) {
             if (c.matches(url)) out.add(c);
         }
+        // 同名でパスが違うものは、パスの長い (具体的な) 方を先に送る (RFC 6265 5.4)。安定ソート。
+        out.sort((a, b) -> Integer.compare(b.path().length(), a.path().length()));
         return out;
     }
 
