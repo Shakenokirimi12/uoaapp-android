@@ -48,6 +48,8 @@ public class UoaApplication extends Application {
         });
         // Context を持たないサービス層が PreferenceManager.getInstance() で取れるよう、ここで初期化する。
         PreferenceManager.getInstance(this);
+        // 以前の版がアプリ内ブラウザの Basic 認証で WebView の http_auth.db (平文) に書いたパスワードを消す。
+        com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity.clearLegacyHttpAuthOnce(this);
         // The UI is Japanese only. Without a Japanese locale on the context, Android picks
         // Chinese glyph forms for kanji (Han unification), which is what an English-locale
         // device or emulator shows. Pin the per-app locale so text always renders with the

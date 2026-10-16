@@ -345,7 +345,7 @@ public class SettingsFragment extends Fragment {
                             // ログイン済み扱いになる。
                             MoodleService.clearSession();
                             com.shakenokirimi12.uoa_app.services.CampusSquareService.clearSession();
-                            com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity.clearWebSession();
+                            com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity.clearWebSession(requireContext());
                             startActivity(new Intent(requireActivity(), OnboardingActivity.class));
                             requireActivity().finish();
                         })

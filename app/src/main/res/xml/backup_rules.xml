@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Android 11 以前の自動バックアップ。
      暗号化 prefs は端末の Keystore の鍵で暗号化されていて、別端末では開けない。復元すると
-     PreferenceManager が開けずに作り直すことになるので、最初からバックアップに含めない。 -->
+     PreferenceManager が開けずに作り直すことになるので、最初からバックアップに含めない。
+     WebView のデータ (cookie = ログイン中のセッション、Basic 認証の保存先 http_auth.db) も含めない。
+     以前の版は http_auth.db に大学のパスワードを平文で書いていた。 -->
 <full-backup-content>
     <exclude domain="sharedpref" path="uoa_app_secure_prefs.xml" />
+    <exclude domain="root" path="app_webview/" />
+    <exclude domain="database" path="http_auth.db" />
+    <exclude domain="database" path="http_auth.db-journal" />
 </full-backup-content>

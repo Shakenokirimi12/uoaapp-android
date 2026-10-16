@@ -47,8 +47,9 @@ import okhttp3.Cookie;
  * 求められていた。WebView の CookieManager へ cookie を写してから読み込む。
  *
  * 判断は iOS の InAppBrowser と揃えている (docs/webview-notes.md 参照):
- * 遷移先を学内と IdP に限定、ホスト名の常時表示、Basic 認証は学内 https にのみ
- * 保存済み資格情報を 1 回だけ、表示できないものはダウンロードへ。
+ * 遷移先を学内と IdP に限定、ホスト名の常時表示、表示できないものはダウンロードへ。
+ * Basic 認証は、知られている 1 か所 (BASIC_AUTH_HOST / BASIC_AUTH_REALM) にだけ、https で、
+ * 利用者に毎回確かめてから保存済み資格情報を送る (その他のチャレンジは断る)。
  */
 public class InAppBrowserActivity extends AppCompatActivity {
     public static final String EXTRA_URL = "url";
@@ -61,6 +62,26 @@ public class InAppBrowserActivity extends AppCompatActivity {
     private static final Set<String> attemptedRealms = new HashSet<>();
     private static final Set<String> rejectedRealms = new HashSet<>();
 
+    /**
+     * 保存済みの資格情報を送ってよい唯一の Basic 認証。web-int.u-aizu.ac.jp は Apache の
+     * `WWW-Authenticate: Basic realm="web-int-proxy"` が掛かっている (iOS の docs/webview-notes.md)。
+     * 学内の他のホストは教員の個人ページや研究室のサーバも含み、そこが 401 を返しただけで大学の
+     * パスワードを渡すことになるので、ホストと realm の完全一致で絞る。
+     */
+    static final String BASIC_AUTH_HOST = "web-int.u-aizu.ac.jp";
+    static final String BASIC_AUTH_REALM = "web-int-proxy";
+
+    /** 保存済みの資格情報で答えてよいチャレンジか。ページが https で、ホストと realm が完全一致するときだけ。 */
+    static boolean mayOfferStoredCredentials(@Nullable String host, @Nullable String realm, @Nullable String pageUrl) {
+        if (host == null || realm == null || pageUrl == null) return false;
+        return pageUrl.regionMatches(true, 0, "https://", 0, 8)
+                && BASIC_AUTH_HOST.equalsIgnoreCase(host)
+                && BASIC_AUTH_REALM.equals(realm);
+    }
+
+    /** 確認ダイアログの答えを待っているチャレンジ (同じ realm に同時に来た分もまとめて答える)。 */
+    private final java.util.Map<String, List<HttpAuthHandler>> pendingAuth = new java.util.HashMap<>();
+
     private static String realmKey(String host, String realm, String user, String pass) {
         // パスワードそのものは持たない。
         return host + "/" + realm + "#" + (user + "\u0000" + pass).hashCode();
@@ -72,13 +93,34 @@ public class InAppBrowserActivity extends AppCompatActivity {
     private TextView hostView;
     private MaterialButton back, forward, reload;
 
-    /** ログアウト時に呼ぶ。CookieManager はプロセスをまたいでディスクに残る。 */
-    public static void clearWebSession() {
+    /**
+     * ログアウト時に呼ぶ。CookieManager はプロセスをまたいでディスクに残る。
+     * WebView の Basic 認証の保存先 (http_auth.db、平文) も消す。今はそこへ書かないが、
+     * 以前の版が setHttpAuthUsernamePassword で大学のパスワードを書いていた。
+     */
+    public static void clearWebSession(@NonNull Context context) {
         CookieManager cm = CookieManager.getInstance();
         cm.removeAllCookies(null);
         cm.flush();
+        android.webkit.WebViewDatabase.getInstance(context).clearHttpAuthUsernamePassword();
         rejectedRealms.clear();
         attemptedRealms.clear();
+    }
+
+    /**
+     * 以前の版が http_auth.db に平文で書いたパスワードを、更新後に 1 度だけ消す (UoaApplication から)。
+     * WebView が使えない (更新中など) ときは印を付けず、次の起動でやり直す。
+     */
+    public static void clearLegacyHttpAuthOnce(@NonNull Context context) {
+        android.content.SharedPreferences marks =
+                context.getSharedPreferences("webview_migrations", Context.MODE_PRIVATE);
+        if (marks.getBoolean("http_auth_cleared_v1", false)) return;
+        try {
+            android.webkit.WebViewDatabase.getInstance(context).clearHttpAuthUsernamePassword();
+            marks.edit().putBoolean("http_auth_cleared_v1", true).apply();
+        } catch (RuntimeException e) {
+            android.util.Log.w("InAppBrowser", "could not clear WebView http auth: " + e);
+        }
     }
 
     public static void open(@NonNull Context context, @NonNull String url) {
@@ -244,21 +286,23 @@ public class InAppBrowserActivity extends AppCompatActivity {
 
             @Override
             public void onReceivedHttpAuthRequest(WebView view, HttpAuthHandler handler, String host, String realm) {
-                // Basic認証。web-int.u-aizu.ac.jp のように、Moodleのセッションとは別に
-                // 認証が掛かっているホストが学内にある。送るのは学内ホストにだけ。
+                // Basic 認証。保存済みの資格情報 (大学のパスワード) を渡してよいのは web-int の 1 か所だけで、
+                // 渡す前に毎回利用者に確かめる。他のチャレンジは断る (学内の任意のホストが 401 を返すだけで
+                // パスワードを持っていけた。CLAUDE-SECURITY F3)。
                 //
                 // https の判定はページの URL で行う。チャレンジ元のリソースの URL はここでは
                 // 分からないが、setMixedContentMode(NEVER_ALLOW) により https ページ内の
                 // 平文サブリソースは読み込まれないので、ページが https なら平文経路は無い。
-                boolean pageHttps = view.getUrl() != null && view.getUrl().startsWith("https://");
                 PreferenceManager prefs = PreferenceManager.getInstance(InAppBrowserActivity.this);
                 String user = prefs.getUsername();
                 String pass = prefs.getPassword();
                 // ID/PW 誤りが確定している間は送らない。ここも「大学の資格情報を送る経路」なので
                 // 自動同期と同じ理由でロックアウト対策の対象になる。
-                if (!isAllowedHost(host) || !pageHttps || prefs.isCredentialsInvalid()
+                if (!mayOfferStoredCredentials(host, realm, view.getUrl()) || prefs.isCredentialsInvalid()
                         || user == null || user.isEmpty() || pass == null || pass.isEmpty()) {
                     handler.cancel();
+                    Toast.makeText(InAppBrowserActivity.this,
+                            getString(R.string.browser_auth_failed, host), Toast.LENGTH_LONG).show();
                     return;
                 }
 
@@ -281,9 +325,15 @@ public class InAppBrowserActivity extends AppCompatActivity {
                     return;
                 }
 
-                attemptedRealms.add(key);
-                view.setHttpAuthUsernamePassword(host, realm, user, pass);
-                handler.proceed(user, pass);
+                List<HttpAuthHandler> waiting = pendingAuth.get(key);
+                if (waiting != null) {
+                    waiting.add(handler);
+                    return;
+                }
+                waiting = new java.util.ArrayList<>();
+                waiting.add(handler);
+                pendingAuth.put(key, waiting);
+                confirmBasicAuth(host, key, user, pass);
             }
         });
 
@@ -377,8 +427,43 @@ public class InAppBrowserActivity extends AppCompatActivity {
         menu.show();
     }
 
+    /**
+     * 大学の ID とパスワードを送るか確かめる。WebView の保存先 (http_auth.db) には書かない
+     * (setHttpAuthUsernamePassword は平文の SQLite に書き、ログアウトでも消えなかった。CLAUDE-SECURITY F10)。
+     * 送った資格情報は WebView がこの起動中だけメモリに持つ。
+     */
+    private void confirmBasicAuth(String host, String key, String user, String pass) {
+        if (isFinishing() || isDestroyed()) {
+            answerBasicAuth(key, null, null);
+            return;
+        }
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.browser_auth_confirm_title)
+                .setMessage(getString(R.string.browser_auth_confirm_message, host))
+                .setPositiveButton(R.string.browser_auth_confirm_send, (d, w) -> answerBasicAuth(key, user, pass))
+                .setNegativeButton(R.string.cancel, (d, w) -> answerBasicAuth(key, null, null))
+                .setOnCancelListener(d -> answerBasicAuth(key, null, null))
+                .show();
+    }
+
+    /** user が null なら断る。 */
+    private void answerBasicAuth(String key, @Nullable String user, @Nullable String pass) {
+        List<HttpAuthHandler> waiting = pendingAuth.remove(key);
+        if (waiting == null) return;
+        if (user != null) attemptedRealms.add(key);
+        for (HttpAuthHandler h : waiting) {
+            if (user != null) h.proceed(user, pass);
+            else h.cancel();
+        }
+    }
+
     @Override
     protected void onDestroy() {
+        // 答えを待っているチャレンジは断ってから閉じる (放置すると WebView の読み込みが止まったままになる)。
+        for (List<HttpAuthHandler> waiting : pendingAuth.values()) {
+            for (HttpAuthHandler h : waiting) h.cancel();
+        }
+        pendingAuth.clear();
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();

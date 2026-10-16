@@ -104,6 +104,9 @@
     <string name="browser_reload">再読み込み</string>
     <string name="browser_share">共有</string>
     <string name="browser_open_external">ブラウザで開く</string>
+    <string name="browser_auth_confirm_title">大学の ID とパスワードを送りますか？</string>
+    <string name="browser_auth_confirm_message">%1$s がログイン (Basic 認証) を求めています。このアプリに保存している大学の ID とパスワードをこのページに送ります。開こうとしたページでなければ「キャンセル」を押してください。</string>
+    <string name="browser_auth_confirm_send">送る</string>
     <string name="browser_auth_failed">%1$s の認証を通過できませんでした。メニューからブラウザで開いてください。</string>
     <string name="browser_download_started">ダウンロードを開始しました: %1$s</string>
     <string name="browser_download_failed">ダウンロードを開始できませんでした</string>
