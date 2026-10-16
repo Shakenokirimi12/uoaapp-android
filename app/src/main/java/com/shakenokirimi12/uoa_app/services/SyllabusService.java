@@ -17,7 +17,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 public class SyllabusService {
-    private static final String BASE_URL = "https://sillabus-api.shakenokirimi12.workers.dev";
+    private static final String BASE_URL = "https://uoa-app.shakenokiri.me/syllabus";
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 

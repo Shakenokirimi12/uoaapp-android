@@ -15,7 +15,7 @@ import okhttp3.Response;
 
 public class GakushokuService {
     private static final String API_URL =
-            "https://gakushoku-proxy.shakenokirimi12.workers.dev/api/menus/v2";
+            "https://uoa-app.shakenokiri.me/gakushoku/api/menus/v2";
     private static final String MOBILE_UA =
             "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) " +
             "AppleWebKit/605.1.15";

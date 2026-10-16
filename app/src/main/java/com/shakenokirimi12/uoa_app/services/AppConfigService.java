@@ -36,7 +36,7 @@ public final class AppConfigService {
     private static final String TAG = "AppConfigService";
     /** killswitch で止めた機能の呼び出しに返すメッセージ。 */
     public static final String FEATURE_DISABLED_MESSAGE = "この機能は現在利用できません";
-    private static final String BASE_URL = "https://uoa-app-push.shakenokirimi12.workers.dev";
+    private static final String BASE_URL = "https://uoa-app.shakenokiri.me/push";
 
     private static AppConfigService instance;
 
