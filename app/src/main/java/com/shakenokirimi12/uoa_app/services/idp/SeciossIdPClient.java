@@ -61,12 +61,20 @@ public final class SeciossIdPClient {
         /** 最後のホップの HTTP ステータス。SP の 503 はメンテナンスページ (Moodle、2026-09-15 実測)。 */
         public final int finalStatus;
         @NonNull public final String cookieHeader;
+        /**
+         * cookieHeader の元になった SP の cookie を属性 (Domain / host-only / Path / 期限 / Secure) 込みで。
+         * 永続化はこちらを使う。"name=value" に潰すと、復元時にどのホスト・パスへ送るものか、いつ切れるかが
+         * 分からなくなる。最終ホップ (SP) のホストに送られうる未失効のものだけ。
+         */
+        @NonNull public final List<Cookie> spCookies;
 
-        Session(@NonNull String finalHtml, @NonNull String finalUrl, int finalStatus, @NonNull String cookieHeader) {
+        Session(@NonNull String finalHtml, @NonNull String finalUrl, int finalStatus, @NonNull String cookieHeader,
+                @NonNull List<Cookie> spCookies) {
             this.finalHtml = finalHtml;
             this.finalUrl = finalUrl;
             this.finalStatus = finalStatus;
             this.cookieHeader = cookieHeader;
+            this.spCookies = Collections.unmodifiableList(new ArrayList<>(spCookies));
         }
     }
 
@@ -293,6 +301,26 @@ public final class SeciossIdPClient {
     private static String sessionCookieHeader(@NonNull HttpResult result) {
         HttpUrl url = HttpUrl.parse(result.url);
         return url != null ? cookieHeaderFor(result.cookies, url) : "";
+    }
+
+    /** Session.spCookies。最終ホップのホストに送られうる (ドメイン一致の) 未失効の cookie。パスは問わない。 */
+    @NonNull
+    private static List<Cookie> sessionCookies(@NonNull HttpResult result) {
+        HttpUrl url = HttpUrl.parse(result.url);
+        return url != null ? cookiesForHost(result.cookies, url.host(), System.currentTimeMillis())
+                : Collections.<Cookie>emptyList();
+    }
+
+    @NonNull
+    static List<Cookie> cookiesForHost(@NonNull List<Cookie> jar, @NonNull String host, long now) {
+        List<Cookie> out = new ArrayList<>();
+        for (Cookie c : jar) {
+            if (isExpired(c, now)) continue;
+            if (com.shakenokirimi12.uoa_app.services.HostScopedCookieJar.domainMatches(c, host.toLowerCase(java.util.Locale.ROOT))) {
+                out.add(c);
+            }
+        }
+        return out;
     }
 
     /** UTF-8 として読めなければ Shift_JIS (iOS と同じ順序)。 */
@@ -594,7 +622,8 @@ public final class SeciossIdPClient {
                         "post-login screen(FunctionID=" + state.functionId + ", url=" + current.url + ") "
                                 + visibleExcerpt(current.html, 400));
             }
-            return new Session(current.html, current.url, current.status, sessionCookieHeader(current));
+            return new Session(current.html, current.url, current.status, sessionCookieHeader(current),
+                    sessionCookies(current));
         }
 
         String otpSessid = extractField("sessid", current.html);
@@ -634,7 +663,8 @@ public final class SeciossIdPClient {
         if (relayed.html.contains(SESSION_TIMED_OUT_MARKER)) {
             throw new SeciossError(SeciossError.Kind.SESSION_TIMED_OUT);
         }
-        return new Session(relayed.html, relayed.url, relayed.status, sessionCookieHeader(relayed));
+        return new Session(relayed.html, relayed.url, relayed.status, sessionCookieHeader(relayed),
+                sessionCookies(relayed));
     }
 
     public enum OtpStatus {

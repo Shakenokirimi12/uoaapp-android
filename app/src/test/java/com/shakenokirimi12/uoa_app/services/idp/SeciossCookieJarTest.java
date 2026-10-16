@@ -141,6 +141,28 @@ public class SeciossCookieJarTest {
         assertFalse(SeciossIdPClient.cookieHeaderFor(jar, IDP).contains("SPVALUE"));
     }
 
+    @Test
+    public void sessionSpCookies_areTheSpHostsCookiesWithAttributes_notTheIdps() {
+        // Session.spCookies (永続化に使う) は最終ホップ (SP) へ送られうるものだけを、属性ごと持つ。
+        List<Cookie> jar = new ArrayList<>();
+        SeciossIdPClient.mergeCookies(jar, received(IDP, "AWSALB=IDPVALUE; Path=/", "auth_tkt=T; Domain=secioss.com; Path=/"));
+        SeciossIdPClient.mergeCookies(jar, received(SP, "JSESSIONID=J; Path=/campusweb; Secure",
+                "AWSALB=SPVALUE; Path=/", "WIDE=W; Domain=u-aizu.ac.jp; Path=/"));
+
+        List<Cookie> sp = SeciossIdPClient.cookiesForHost(jar, "csweb.u-aizu.ac.jp", System.currentTimeMillis());
+
+        assertEquals(3, sp.size());
+        for (Cookie c : sp) {
+            assertFalse(c.value().equals("IDPVALUE") || c.name().equals("auth_tkt"));
+            if (c.name().equals("JSESSIONID")) {
+                assertEquals("/campusweb", c.path());
+                assertTrue(c.secure());
+                assertTrue(c.hostOnly());
+            }
+            if (c.name().equals("WIDE")) assertFalse(c.hostOnly());
+        }
+    }
+
     private static List<SeciossSsoStore.StoredCookie> single(String k, String v) {
         return Arrays.asList(new SeciossSsoStore.StoredCookie(k, v, "/", -1, System.currentTimeMillis()));
     }

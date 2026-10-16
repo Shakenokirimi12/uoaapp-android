@@ -1,6 +1,5 @@
 package com.shakenokirimi12.uoa_app.services;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import okhttp3.Cookie;
@@ -81,41 +80,20 @@ public class NetworkClient {
      * SeciossIdPClient は cookie を自前で管理していて、共有の cookie jar を通らない。
      * IdP 経由で得た Moodle のセッション cookie (MoodleSession 等) をここへ入れないと、
      * 以降の getCookieClient() 経由のリクエストが未ログイン扱いになる (iOS の
-     * MoodleService.injectCookiesIntoSharedStorage と同じ役割)。
-     * 入れる cookie は host-only (そのホストにだけ送る)。1 件でも壊れた値があっても他は入れる。
-     * 落とした件数は呼び出し元へ返す。
+     * MoodleService.injectCookiesIntoSharedStorage と同じ役割)。永続化からの復元にも使う。
+     * 属性 (Domain / host-only / Path / 期限 / Secure) は受け取ったまま保つ。
      */
-    public static int injectCookieHeader(String host, boolean secure, String cookieHeader) {
-        List<Cookie> parsed = new ArrayList<>();
-        int dropped = 0;
-        for (String pair : cookieHeader.split(";")) {
-            String trimmed = pair.trim();
-            int eq = trimmed.indexOf('=');
-            if (eq <= 0) continue;
-            try {
-                Cookie.Builder b = new Cookie.Builder()
-                        .name(trimmed.substring(0, eq))
-                        .value(trimmed.substring(eq + 1))
-                        .hostOnlyDomain(host)
-                        .path("/");
-                if (secure) b.secure();
-                parsed.add(b.build());
-            } catch (IllegalArgumentException e) {
-                dropped++;
-            }
-        }
-        cookieStore.add(parsed);
-        return dropped;
+    public static void addCookies(List<Cookie> cookies) {
+        cookieStore.add(cookies);
     }
 
-    /** ホストへ送られうる cookie を "a=b; c=d" 形式で取り出す (永続化用)。無ければ空文字。 */
-    public static String exportCookieHeader(String host) {
-        StringBuilder sb = new StringBuilder();
-        for (Cookie c : cookieStore.forHost(host)) {
-            if (sb.length() > 0) sb.append("; ");
-            sb.append(c.name()).append('=').append(c.value());
-        }
-        return sb.toString();
+    /**
+     * host 自身に出された cookie (host-only と Domain=host) を捨てる。親ドメイン宛ては残す。
+     * 復元したセッションが死んでいたとき、ログインし直す前に呼ぶ。復元分と新しく発行される分の
+     * Path や Domain が違うと (name, domain, path) が一致せず置き換わらないので、同名を二重に送ることになる。
+     */
+    public static void removeCookiesIssuedTo(String host) {
+        cookieStore.removeIssuedTo(host);
     }
 
     public static boolean hasCookies(String host) {

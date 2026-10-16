@@ -201,10 +201,10 @@ public class PreferenceManager {
     public void setUsername(String username) {
         putSecret(KEY_USERNAME, username);
         // 別のアカウントに切り替えたとき、前のユーザーの IdP セッションを引き継がない。
-        setCsIdpSessionCookieHeader(null);
+        setCsIdpSessionCookies(null);
         // メモリ上のセッション cookie も含めて消す (ストアはプロセス内に写しを持つ)。
         com.shakenokirimi12.uoa_app.services.idp.SeciossSsoStore.getInstance().clear();
-        setMoodleSessionCookieHeader(null);
+        setMoodleSessionCookies(null);
     }
 
     public String getPassword() { return getSecret(KEY_PASSWORD); }
@@ -347,12 +347,12 @@ public class PreferenceManager {
     public void setOtpMethod(String method) { prefs.edit().putString(KEY_OTP_METHOD, method).apply(); }
 
     /**
-     * IdP 経由で得た CampusSquare のセッション Cookie ヘッダ。iOS は Keychain に置いている。
-     * セッション自体が資格情報に相当するので暗号化側に入れる。空文字なら無し。
+     * IdP 経由で得た CampusSquare のセッション cookie (SpSessionCookies の形式、属性込み)。iOS は Keychain に
+     * 置いている。セッション自体が資格情報に相当するので暗号化側に入れる。空文字なら無し。
+     * キー名は旧形式 ("name=value; ..." のヘッダ) の頃のまま。旧形式は SpSessionCookies が読み替える。
      */
-    public String getCsIdpSessionCookieHeader() { return getSecret(KEY_CS_IDP_SESSION_COOKIE_HEADER); }
-    public void setCsIdpSessionCookieHeader(String header) { putSecret(KEY_CS_IDP_SESSION_COOKIE_HEADER, header); }
-    public boolean hasCsIdpSession() { return !getCsIdpSessionCookieHeader().isEmpty(); }
+    public String getCsIdpSessionCookies() { return getSecret(KEY_CS_IDP_SESSION_COOKIE_HEADER); }
+    public void setCsIdpSessionCookies(String serialized) { putSecret(KEY_CS_IDP_SESSION_COOKIE_HEADER, serialized); }
 
     /**
      * IdP (slink.secioss.com) 自体の SSO セッション cookie ヘッダ。SP のセッションとは別物で、
@@ -360,11 +360,11 @@ public class PreferenceManager {
      * SP のセッションと同じく資格情報に相当するので暗号化側へ入れる。
      */
     /**
-     * Moodle (elms) のセッション cookie ヘッダ。起動のたびに IdP からログインし直す (約 5 秒) のを
-     * 避けるために持ち越す。CampusSquare 側の cs_idp_session_cookie_header と同じ扱い。
+     * Moodle (elms) のセッション cookie (SpSessionCookies の形式、属性込み)。起動のたびに IdP からログインし直す
+     * (約 5 秒・OTP メール) のを避けるために持ち越す。CampusSquare 側と同じ扱い。キー名は旧形式の頃のまま。
      */
-    public String getMoodleSessionCookieHeader() { return getSecret(KEY_MOODLE_SESSION_COOKIE_HEADER); }
-    public void setMoodleSessionCookieHeader(String header) { putSecret(KEY_MOODLE_SESSION_COOKIE_HEADER, header); }
+    public String getMoodleSessionCookies() { return getSecret(KEY_MOODLE_SESSION_COOKIE_HEADER); }
+    public void setMoodleSessionCookies(String serialized) { putSecret(KEY_MOODLE_SESSION_COOKIE_HEADER, serialized); }
 
     public String getIdpSsoCookieHeader() { return getSecret(KEY_IDP_SSO_COOKIE_HEADER); }
     public void setIdpSsoCookieHeader(String header) { putSecret(KEY_IDP_SSO_COOKIE_HEADER, header); }

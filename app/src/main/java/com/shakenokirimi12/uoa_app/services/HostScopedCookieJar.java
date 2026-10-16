@@ -77,7 +77,13 @@ public final class HostScopedCookieJar implements CookieJar {
 
     public synchronized void clear() { cookies.clear(); }
 
-    static boolean domainMatches(@NonNull Cookie c, @NonNull String host) {
+    /** host 自身に出された cookie (host-only と Domain=host) を消す。親ドメイン宛ては他ホストとの共有なので残す。 */
+    public synchronized void removeIssuedTo(@NonNull String host) {
+        String h = host.toLowerCase(Locale.ROOT);
+        cookies.removeIf(c -> c.domain().equals(h));
+    }
+
+    public static boolean domainMatches(@NonNull Cookie c, @NonNull String host) {
         String domain = c.domain();
         if (host.equals(domain)) return true;
         return !c.hostOnly() && host.endsWith("." + domain);

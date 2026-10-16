@@ -84,7 +84,7 @@ public class MoodleService {
         sesskey = "";
         userid = "";
         coordinator.reset();
-        PreferenceManager.getInstance().setMoodleSessionCookieHeader(null);
+        PreferenceManager.getInstance().setMoodleSessionCookies(null);
     }
 
     /**
@@ -188,9 +188,7 @@ public class MoodleService {
                     "Moodle への復帰後、成功マーカーが見つからない(url=" + session.finalUrl + ") "
                             + SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).loginMessage());
         }
-        boolean secure = base == null || base.isHttps();
-        int dropped = NetworkClient.injectCookieHeader(host, secure, session.cookieHeader);
-        if (dropped > 0) Log.w(TAG, "IdP session: " + dropped + " cookie(s) could not be imported");
+        NetworkClient.addCookies(session.spCookies);
     }
 
     /**
@@ -238,9 +236,12 @@ public class MoodleService {
         String candidate = null;
         String host = moodleHost();
         if (!NetworkClient.hasCookies(host)) {
-            String stored = PreferenceManager.getInstance().getMoodleSessionCookieHeader();
-            if (!stored.isEmpty()) {
-                NetworkClient.injectCookieHeader(host, true, stored);
+            okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl());
+            List<okhttp3.Cookie> restored = SpSessionCookies.restore(
+                    PreferenceManager.getInstance().getMoodleSessionCookies(), host,
+                    base == null || base.isHttps(), System.currentTimeMillis());
+            if (!restored.isEmpty()) {
+                NetworkClient.addCookies(restored);
                 candidate = "restored";
             }
         }
@@ -288,6 +289,9 @@ public class MoodleService {
         OkHttpClient client = NetworkClient.getCookieClient();
 
         Log.d(TAG, "Starting login for: " + username);
+        // ここに来るのは手持ちのセッションが無いか死んでいたとき。復元した cookie と新しく発行される cookie の
+        // Path / Domain が違うと置き換わらずに同名を二重に送るので、先に捨てる。
+        NetworkClient.removeCookiesIssuedTo(moodleHost());
 
         if (resolveLoginMethod() == LoginMethod.IDP) {
             // IdP 経由でセッション cookie を得たら、以降 (/my/ で sesskey 取得) は旧方式と共通。
@@ -353,8 +357,6 @@ public class MoodleService {
 
         String key = probeDashboard();
         Log.d(TAG, "Login successful");
-        // 次回起動で使い回すために保存する (ensureSession の candidate)。
-        PreferenceManager.getInstance().setMoodleSessionCookieHeader(NetworkClient.exportCookieHeader(moodleHost()));
         return key;
     }
 
@@ -410,6 +412,10 @@ public class MoodleService {
         }
         sesskey = key;
         userid = uid;
+        // 次回起動で使い回すために保存する (ensureSession の candidate)。ログイン直後だけでなく生存確認の
+        // たびに書き直す: ALB の cookie は応答ごとに更新され、旧形式で保存されていた分もここで新形式になる。
+        PreferenceManager.getInstance().setMoodleSessionCookies(SpSessionCookies.serialize(
+                NetworkClient.cookiesForHost(moodleHost()), System.currentTimeMillis()));
         return key;
     }
 

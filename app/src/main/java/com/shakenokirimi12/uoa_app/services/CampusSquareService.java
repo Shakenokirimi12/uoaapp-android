@@ -111,15 +111,30 @@ public class CampusSquareService {
      * _shibsession_ を含む) を、そのまま Cookie ヘッダに載せられる文字列で返す。
      */
     private String authenticatedCookieHeader(String username, String password, AuthorizationContext context) throws Exception {
-        String cached = PreferenceManager.getInstance().getCsIdpSessionCookieHeader();
+        String cached = storedSessionHeader();
         String candidate = cached.isEmpty() ? null : cached;
         return coordinator.session(SESSION_KIND, context, candidate, this::probeSession,
                 () -> freshLogin(username, password));
     }
 
+    /**
+     * 永続化した CampusSquare のセッションを、CampusSquare へ送る Cookie ヘッダにする。失効分と、Path や
+     * Secure の合わないものはここで落ちる。旧形式 ("name=value; ...") は host-only として読み、新形式で保存し直す。
+     */
+    private static String storedSessionHeader() {
+        PreferenceManager prefs = PreferenceManager.getInstance();
+        String stored = prefs.getCsIdpSessionCookies();
+        okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl());
+        if (base == null) return "";
+        long now = System.currentTimeMillis();
+        List<okhttp3.Cookie> cookies = SpSessionCookies.restore(stored, base.host(), base.isHttps(), now);
+        if (SpSessionCookies.isLegacy(stored)) prefs.setCsIdpSessionCookies(SpSessionCookies.serialize(cookies, now));
+        return SpSessionCookies.headerFor(cookies, base, now);
+    }
+
     private String freshLogin(String username, String password) throws Exception {
         // ここに来るのは永続化した cookie も死んでいたとき。捨ててから取り直す。
-        PreferenceManager.getInstance().setCsIdpSessionCookieHeader(null);
+        PreferenceManager.getInstance().setCsIdpSessionCookies(null);
         return loginViaIdPAutomatic(null, username, password);
     }
 
@@ -196,7 +211,7 @@ public class CampusSquareService {
 
     /** ログアウト時に呼ぶ。永続化した IdP cookie とメモリ上のセッション状態を両方捨てる。 */
     public static void clearSession() {
-        PreferenceManager.getInstance().setCsIdpSessionCookieHeader(null);
+        PreferenceManager.getInstance().setCsIdpSessionCookies(null);
         SeciossSsoStore.getInstance().clear();
         coordinator.reset();
     }
@@ -265,7 +280,10 @@ public class CampusSquareService {
             throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
                     "CampusSquareへの復帰後、成功マーカーが見つからない").loginMessage());
         }
-        PreferenceManager.getInstance().setCsIdpSessionCookieHeader(session.cookieHeader);
+        // 属性込みで保存する (次回起動で storedSessionHeader が読む)。返すのは今回のチェーンの最終ホップに
+        // 送られたのと同じヘッダ。
+        PreferenceManager.getInstance().setCsIdpSessionCookies(
+                SpSessionCookies.serialize(session.spCookies, System.currentTimeMillis()));
         return session.cookieHeader;
     }
 
