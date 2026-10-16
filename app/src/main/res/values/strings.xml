@@ -106,6 +106,8 @@
     <string name="browser_download_started">ダウンロードを開始しました: %1$s</string>
     <string name="browser_download_failed">ダウンロードを開始できませんでした</string>
     <!-- Background sync -->
+    <string name="class_channel_name">授業通知</string>
+    <string name="class_channel_description">授業中・次の授業の常駐通知と、自動出席登録の完了を表示します</string>
     <string name="sync_channel_name">バックグラウンド同期</string>
     <string name="sync_notify_changed">課題の一覧が更新されました</string>
     <string name="sync_notify_success">同期が完了しました</string>

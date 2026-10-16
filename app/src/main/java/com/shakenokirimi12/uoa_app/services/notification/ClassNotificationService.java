@@ -1,7 +1,6 @@
 package com.shakenokirimi12.uoa_app.services.notification;
 
 import android.app.Notification;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -28,7 +27,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClassNotificationService extends Service {
 
-    public static final String CHANNEL_ID = "class_ongoing";
+    public static final String CHANNEL_ID = NotificationChannels.CLASS_ONGOING;
     private static final int NOTIFICATION_ID = 1001;
     private static final long UPDATE_INTERVAL = 15_000;
 
@@ -180,14 +179,7 @@ public class ClassNotificationService extends Service {
     }
 
     private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "授業通知", NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("授業中に常駐通知を表示します");
-            channel.setShowBadge(false);
-            NotificationManager mgr = getSystemService(NotificationManager.class);
-            mgr.createNotificationChannel(channel);
-        }
+        NotificationChannels.ensureClassOngoing(this);
     }
 
     @Override

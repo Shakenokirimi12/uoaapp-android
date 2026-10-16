@@ -168,12 +168,10 @@ public class LocationGeofenceService {
 
     private static void notifyRegistered(Context ctx, MoodleCourse matched) {
         try {
-            // チャンネルは ClassNotificationService が作るが、それが一度も起動していない端末では
-            // 存在せず通知が黙って落ちる。ここでも作る (既にあれば何もしない)。
-            android.app.NotificationManager nm = (android.app.NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
-            nm.createNotificationChannel(new android.app.NotificationChannel(
-                    "class_ongoing", "授業", android.app.NotificationManager.IMPORTANCE_LOW));
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, "class_ongoing")
+            // ClassNotificationService が一度も起動していない端末ではチャンネルが無く、通知が黙って落ちる。
+            // 定義は NotificationChannels の 1 か所だけ (既にあれば何もしない)。
+            String channel = com.shakenokirimi12.uoa_app.services.notification.NotificationChannels.ensureClassOngoing(ctx);
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, channel)
                     .setSmallIcon(R.drawable.ic_stat_calendar)
                     .setContentTitle("自動出席登録完了")
                     .setContentText(matched.getFullname() + " の出席を自動登録しました。")
