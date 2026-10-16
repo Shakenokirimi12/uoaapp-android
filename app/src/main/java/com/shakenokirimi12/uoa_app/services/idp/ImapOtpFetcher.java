@@ -43,6 +43,8 @@ public final class ImapOtpFetcher {
      * ヘッダの取得で待ち続けない (そのときは見つからない扱いになり、手入力に落ちる)。
      */
     private static final int MAX_FROM_CHECKS = 20;
+    /** 使い終わったメールの削除で From を確かめる数の上限 (直近 7 日分が対象なので検索より多め)。 */
+    private static final int MAX_DELETE_CHECKS = 50;
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int READ_TIMEOUT_MS = 15_000;
     private static final long RETRY_INTERVAL_MS = 3_000L;
@@ -131,7 +133,7 @@ public final class ImapOtpFetcher {
             int checks = 0;
             for (int u : uids) {
                 if (u > upToUid) continue;
-                if (checks++ >= MAX_FROM_CHECKS) break;
+                if (checks++ >= MAX_DELETE_CHECKS) break;
                 if (!isFromOtpSender(stream, u)) continue;
                 if (set.length() > 0) set.append(',');
                 set.append(u);
@@ -173,7 +175,7 @@ public final class ImapOtpFetcher {
                         // 試し直すとアカウントロックの危険があるので再試行しない。
                         stream = openAndSelect(uid, pass);
                     }
-                    if (floorUid < 0) floorUid = resolveFloorUid(stream, startedAt, checked);
+                    if (floorUid < 0) floorUid = resolveFloorUid(stream, startedAt);
                     OtpMail mail = searchAndFetch(stream, floorUid, deleteAfterRead, checked);
                     if (mail != null) return mail;
                     lastError = new ImapException("mailNotFound");
@@ -226,12 +228,17 @@ public final class ImapOtpFetcher {
      * 最新メールの到着時刻 (INTERNALDATE) がこの呼び出しの開始以降なら、それが今要求したメール
      * なので 1 つ手前を下限にする。
      */
-    private int resolveFloorUid(ImapStream stream, long startedAt, java.util.Map<Integer, Boolean> checked)
-            throws IOException, ImapException {
-        Integer latest = latestGenuineUid(stream, -1, checked);
-        if (latest == null) return 0;
-        int latestUid = latest;
-        Long arrivedAt = internalDate(stream, String.valueOf(latest));
+    private int resolveFloorUid(ImapStream stream, long startedAt) throws IOException, ImapException {
+        // 下限は From を確かめる前の候補 (SEARCH FROM の結果) で決める。今ある候補はどれも今回のコードより
+        // 古いので、本物かどうかに関係なく下限にしてよい。確かめた本物だけで決めると、偽メールが多くて
+        // 本物まで確かめきれなかったときに下限が 0 になり、期限切れの古い本物を新しいコードとして使ってしまう。
+        String tag = stream.nextTag();
+        stream.send(tag + " UID SEARCH FROM \"" + OTP_SENDER + "\" SINCE "
+                + imapDate(new Date(System.currentTimeMillis() - 24L * 60 * 60 * 1000)));
+        int latestUid = -1;
+        for (int uid : allUids(stream.readUntilTagged(tag))) latestUid = Math.max(latestUid, uid);
+        if (latestUid < 0) return 0;
+        Long arrivedAt = internalDate(stream, String.valueOf(latestUid));
         // INTERNALDATE は秒精度なので、startedAt も秒に切り下げてから比べる。ミリ秒のまま比べると、
         // startedAt と同じ秒の中で届いたメールが「開始より前」に見えて取りこぼす。
         long startedSecond = startedAt / 1000L * 1000L;
