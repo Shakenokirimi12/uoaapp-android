@@ -116,8 +116,8 @@ public final class SeciossIdPClient {
     }
 
     private final String userAgent;
-    /** 全リクエストをこのプロキシ経由にする (OTP 登録を学内 SSH トンネル経由で行うため)。null なら直接。 */
-    @Nullable private final java.net.Proxy proxy;
+    /** 全リクエストをこのトンネル経由にする (OTP 登録を学内 SSH トンネル経由で行うため)。null なら直接。 */
+    @Nullable private final CampusSshTunnel tunnel;
 
     public SeciossIdPClient() {
         this(NetworkClient.getUserAgent(), null);
@@ -127,18 +127,18 @@ public final class SeciossIdPClient {
         this(userAgent, null);
     }
 
-    public SeciossIdPClient(@Nullable java.net.Proxy proxy) {
-        this(NetworkClient.getUserAgent(), proxy);
+    public SeciossIdPClient(@Nullable CampusSshTunnel tunnel) {
+        this(NetworkClient.getUserAgent(), tunnel);
     }
 
-    public SeciossIdPClient(@NonNull String userAgent, @Nullable java.net.Proxy proxy) {
+    public SeciossIdPClient(@NonNull String userAgent, @Nullable CampusSshTunnel tunnel) {
         this.userAgent = userAgent;
-        this.proxy = proxy;
+        this.tunnel = tunnel;
     }
 
     private okhttp3.OkHttpClient httpClient() {
         okhttp3.OkHttpClient base = NetworkClient.getNoRedirectClient();
-        return proxy == null ? base : base.newBuilder().proxy(proxy).build();
+        return tunnel == null ? base : tunnel.configure(base);
     }
 
     // ---- HTTP ----
@@ -699,7 +699,7 @@ public final class SeciossIdPClient {
     }
 
     /**
-     * 学内アクセス (このクライアントが CampusSshSocksTunnel の proxy 付きで作られている前提) でパスワード
+     * 学内アクセス (このクライアントが CampusSshTunnel 付きで作られている前提) でパスワード
      * ログインし、ユーザーポータルに着いた jar で登録セッションを始める。
      *
      * 登録画面 (/user/index.php?app=motpmail 等) は sso/authorization.php を経由してログインセッション
