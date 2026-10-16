@@ -69,29 +69,54 @@ public class PreferenceManager {
         Context appContext = context.getApplicationContext();
         prefs = appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
 
-        SharedPreferences secure;
-        try {
-            secure = openSecurePrefs(appContext);
-        } catch (GeneralSecurityException | IOException | RuntimeException first) {
-            // よくある原因は、別端末のバックアップから復元したファイルを、この端末の Keystore の鍵で
-            // 開けないこと。開けない以上中身は読めないので、作り直して 1 回だけやり直す。
-            Log.w(TAG, "secure prefs could not be opened; recreating", first);
-            appContext.deleteSharedPreferences(SECURE_PREF_NAME);
-            try {
-                secure = openSecurePrefs(appContext);
-            } catch (GeneralSecurityException | IOException | RuntimeException e) {
-                // 平文へのフォールバックはしない。資格情報と cookie を平文で書くことになるため。
-                // この端末ではログイン情報を保存できない (isSecureStorageAvailable が false) 扱いにし、
-                // 画面側で保存を断ってエラーを出す。
-                Log.e(TAG, "EncryptedSharedPreferences unavailable; secrets will not be stored", e);
-                secure = null;
-            }
-        }
-        encryptedPrefs = secure;
+        encryptedPrefs = openSecurePrefsOrNull(appContext);
 
         migrateLegacySecrets();
         // 成績変更の通知は実装されないまま設定だけがあった (iOS にも無い)。キーごと消した。
         if (prefs.contains("notify_grades")) prefs.edit().remove("notify_grades").apply();
+    }
+
+    /**
+     * 開けなければ null。平文へのフォールバックはしない (資格情報と cookie を平文で書くことになるため)。
+     * null の端末ではログイン情報を保存できない (isSecureStorageAvailable が false) 扱いにし、画面側で
+     * 保存を断ってエラーを出す。
+     *
+     * 1. まず開く。Keystore の一時的な失敗もあるので、失敗したらそのままもう 1 回だけ開く。
+     * 2. それでも駄目で、原因が「保存済みの鍵束を復号できない」(別端末のバックアップから復元した
+     *    ファイルを、この端末の Keystore の鍵では開けない) なら、中身はもう読めないので作り直す。
+     *    鍵束 (Tink の keyset) は同じファイル (SECURE_PREF_NAME) に入っている。
+     *    それ以外の原因では消さない (次回の起動で開けるかもしれない資格情報を失わないため)。
+     */
+    private static SharedPreferences openSecurePrefsOrNull(Context appContext) {
+        Exception last = null;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                return openSecurePrefs(appContext);
+            } catch (GeneralSecurityException | IOException | RuntimeException e) {
+                last = e;
+            }
+        }
+        if (isUndecryptable(last)) {
+            Log.w(TAG, "secure prefs cannot be decrypted on this device; recreating", last);
+            appContext.deleteSharedPreferences(SECURE_PREF_NAME);
+            try {
+                return openSecurePrefs(appContext);
+            } catch (GeneralSecurityException | IOException | RuntimeException e) {
+                last = e;
+            }
+        }
+        Log.e(TAG, "EncryptedSharedPreferences unavailable; secrets will not be stored", last);
+        return null;
+    }
+
+    /** 鍵束の復号失敗 (タグ不一致・壊れた protobuf) か。 */
+    private static boolean isUndecryptable(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof javax.crypto.AEADBadTagException || t instanceof javax.crypto.BadPaddingException) return true;
+            if (t.getClass().getName().endsWith("InvalidProtocolBufferException")) return true;
+            if (t.getCause() == t) break;
+        }
+        return false;
     }
 
     private static SharedPreferences openSecurePrefs(Context appContext) throws GeneralSecurityException, IOException {

@@ -98,7 +98,9 @@ public class LunchMenuWorker extends Worker {
             }
         } finally {
             // 翌日分。この仕事の後ろにつなぐ (APPEND_OR_REPLACE)。REPLACE だと実行中の自分が取り消される。
-            if (prefs.isLunchNotifyEnabled()) {
+            // 実行中に設定画面から予約し直された (REPLACE で自分が止められた) ときは、新しい予約が
+            // 翌日分を持っているので積まない。積むと以降ずっと 2 本ずつ走る。
+            if (prefs.isLunchNotifyEnabled() && !isStopped()) {
                 OneTimeWorkRequest next = nextRequest(prefs);
                 if (next != null) {
                     WorkManager.getInstance(ctx).enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, next);
