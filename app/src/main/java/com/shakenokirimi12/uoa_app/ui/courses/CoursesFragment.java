@@ -107,7 +107,9 @@ public class CoursesFragment extends Fragment {
                 DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.COURSES));
         if (kind == FetchStatus.Empty.NOT_LOGGED_IN) textEmpty.setText(R.string.not_logged_in_empty);
         else if (kind == FetchStatus.Empty.UNAVAILABLE) textEmpty.setText("コースを取得できませんでした");
-        else if (kind == FetchStatus.Empty.NONE) textEmpty.setText("コースがありません");
+        else if (kind == FetchStatus.Empty.NONE) {
+            textEmpty.setText(courseAdapter.isFilteredOut() ? "検索に一致するコースがありません" : "コースがありません");
+        }
         boolean empty = courseAdapter.getItemCount() == 0;
         textEmpty.setVisibility(empty && kind != FetchStatus.Empty.LOADING ? View.VISIBLE : View.GONE);
     }

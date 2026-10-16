@@ -55,6 +55,11 @@ public class CourseAdapter extends RecyclerView.Adapter<CourseAdapter.ViewHolder
         notifyDataSetChanged();
     }
 
+    /** 絞り込み前のコースがあり、検索に当たるものが無いだけ。「コースがありません」とは言わない。 */
+    public boolean isFilteredOut() {
+        return !query.isEmpty() && !allItems.isEmpty() && items.isEmpty();
+    }
+
     private boolean contains(String s) {
         return s != null && s.toLowerCase(Locale.ROOT).contains(query);
     }
