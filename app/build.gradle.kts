@@ -19,8 +19,9 @@ android {
         applicationId = "com.shakenokirimi12.uoa_app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        // 値は gradle.properties の uoaVersionCode / uoaVersionName (1 か所で管理する)。
+        versionCode = providers.gradleProperty("uoaVersionCode").get().toInt()
+        versionName = providers.gradleProperty("uoaVersionName").get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
