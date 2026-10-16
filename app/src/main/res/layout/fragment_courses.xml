@@ -8,6 +8,13 @@
     android:background="?attr/colorSurface"
     android:orientation="vertical">
 
+    <!-- 取得に失敗したとき「取得できませんでした（最終更新 …）」を出す (FetchStatus)。 -->
+    <include
+        android:id="@+id/fetch_notice"
+        layout="@layout/view_status_notice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/search_bar"
         style="@style/Widget.Uoa.SearchField"

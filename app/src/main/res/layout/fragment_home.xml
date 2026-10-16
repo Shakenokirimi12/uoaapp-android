@@ -22,6 +22,15 @@
             android:paddingEnd="16dp"
             android:paddingBottom="24dp">
 
+            <!-- 取得に失敗したとき「取得できませんでした（最終更新 …）」を出す (FetchStatus)。
+                 キャッシュを出し続けても、それがいつの情報かを必ず添える。 -->
+            <include
+                android:id="@+id/fetch_notice"
+                layout="@layout/view_status_notice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp" />
+
             <!-- Sync status -->
             <LinearLayout
                 android:id="@+id/sync_status_bar"

@@ -136,6 +136,11 @@ public class DataCache {
         return age >= 0 && age < maxAgeMs;
     }
 
+    /** epoch ms of the last successful save, or 0 if never fetched (or cleared). */
+    public long fetchedAt(Dataset dataset) {
+        return prefs.getLong(dataset.key + FETCHED_AT_SUFFIX, 0L);
+    }
+
     /** Clears data and the fetched-at timestamps (both live in the same prefs). */
     public void clearAll() {
         prefs.edit().clear().apply();

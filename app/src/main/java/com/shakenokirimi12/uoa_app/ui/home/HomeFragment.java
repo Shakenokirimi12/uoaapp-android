@@ -50,6 +50,12 @@ public class HomeFragment extends Fragment {
     private RecyclerView recyclerAssignments;
     private TextView textNoClasses;
     private TextView textNoAssignments;
+    /** 取得失敗の帯。失敗した側のデータがいつのものかを出す。 */
+    private View fetchNotice;
+    private boolean eventsFailed;
+    private boolean assignmentsFailed;
+    /** 未ログイン。「授業はありません」と言わない。 */
+    private boolean notLoggedIn;
     private TextView textDate;
     private TextView textTodayHint;
 
@@ -97,6 +103,7 @@ public class HomeFragment extends Fragment {
         recyclerAssignments = view.findViewById(R.id.recycler_assignments);
         textNoClasses = view.findViewById(R.id.text_no_classes);
         textNoAssignments = view.findViewById(R.id.text_no_assignments);
+        fetchNotice = view.findViewById(R.id.fetch_notice);
         textDate = view.findViewById(R.id.text_date);
         textTodayHint = view.findViewById(R.id.text_today_hint);
 
@@ -226,6 +233,14 @@ public class HomeFragment extends Fragment {
         }
         List<GroupedClass> grouped = GroupedClass.groupBySubject(dayClasses);
         classAdapter.setItems(grouped);
+        // 取得に失敗し、手元にも一度も取れたものが無いなら「授業はありません」とは言えない。
+        DataCache cache = DataCache.getInstance(requireContext());
+        boolean eventsUnknown = notLoggedIn
+                || (eventsFailed && cache.fetchedAt(DataCache.Dataset.EVENTS) == 0);
+        boolean assignmentsUnknown = notLoggedIn
+                || (assignmentsFailed && cache.fetchedAt(DataCache.Dataset.ASSIGNMENTS) == 0);
+        textNoClasses.setText(notLoggedIn ? R.string.not_logged_in_empty
+                : eventsUnknown ? R.string.classes_unavailable : R.string.home_no_classes);
         textNoClasses.setVisibility(grouped.isEmpty() ? View.VISIBLE : View.GONE);
         recyclerClasses.setVisibility(grouped.isEmpty() ? View.GONE : View.VISIBLE);
 
@@ -238,12 +253,26 @@ public class HomeFragment extends Fragment {
             }
         }
         assignmentAdapter.setItems(dayAssignments);
+        textNoAssignments.setText(notLoggedIn ? R.string.not_logged_in_empty
+                : assignmentsUnknown ? R.string.assignments_unavailable : R.string.home_no_assignments);
         textNoAssignments.setVisibility(dayAssignments.isEmpty() ? View.VISIBLE : View.GONE);
         recyclerAssignments.setVisibility(dayAssignments.isEmpty() ? View.GONE : View.VISIBLE);
 
         // Update summary cards
-        textClassCount.setText(String.valueOf(grouped.size()));
-        textAssignmentCount.setText(String.valueOf(dayAssignments.size()));
+        textClassCount.setText(eventsUnknown ? "-" : String.valueOf(grouped.size()));
+        textAssignmentCount.setText(assignmentsUnknown ? "-" : String.valueOf(dayAssignments.size()));
+    }
+
+    /** 失敗した側のうち、古い方の最終更新時刻を出す。どちらも成功していれば消す。 */
+    private void updateFetchNotice() {
+        if (!eventsFailed && !assignmentsFailed) {
+            com.shakenokirimi12.uoa_app.ui.util.FetchStatus.hide(fetchNotice);
+            return;
+        }
+        DataCache cache = DataCache.getInstance(requireContext());
+        long events = eventsFailed ? cache.fetchedAt(DataCache.Dataset.EVENTS) : Long.MAX_VALUE;
+        long assignments = assignmentsFailed ? cache.fetchedAt(DataCache.Dataset.ASSIGNMENTS) : Long.MAX_VALUE;
+        com.shakenokirimi12.uoa_app.ui.util.FetchStatus.showFailure(fetchNotice, Math.min(events, assignments));
     }
 
     /** Number of in-flight fetches started by syncData(); the spinner stays until it reaches 0. */
@@ -265,13 +294,11 @@ public class HomeFragment extends Fragment {
         String user = prefs.getUsername();
         String pass = prefs.getPassword();
 
-        if (user.isEmpty() || pass.isEmpty()) {
+        notLoggedIn = user.isEmpty() || pass.isEmpty();
+        if (notLoggedIn) {
             swipeRefresh.setRefreshing(false);
             syncStatusBar.setVisibility(View.GONE);
-            textNoClasses.setVisibility(View.VISIBLE);
-            textNoAssignments.setVisibility(View.VISIBLE);
-            textClassCount.setText("0");
-            textAssignmentCount.setText("0");
+            filterAndDisplay();
             return;
         }
 
@@ -304,6 +331,10 @@ public class HomeFragment extends Fragment {
             swipeRefresh.setRefreshing(false);
             syncStatusBar.setVisibility(View.GONE);
             showError(MoodleService.INVALID_CREDENTIALS_MESSAGE);
+            eventsFailed |= fetchEvents;
+            assignmentsFailed |= fetchAssignments;
+            updateFetchNotice();
+            filterAndDisplay();
             return;
         }
 
@@ -315,9 +346,11 @@ public class HomeFragment extends Fragment {
             public void onSuccess(List<CalendarEvent> events) {
                 if (!isAdded()) return;
                 allEvents = events;
+                eventsFailed = false;
+                DataCache.getInstance(requireContext()).saveEvents(events);
+                updateFetchNotice();
                 filterAndDisplay();
                 startClassNotification(events);
-                DataCache.getInstance(requireContext()).saveEvents(events);
                 com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(requireContext());
                 fetchFinished();
             }
@@ -325,7 +358,11 @@ public class HomeFragment extends Fragment {
             @Override
             public void onError(String message) {
                 if (!isAdded()) return;
-                textNoClasses.setVisibility(View.VISIBLE);
+                // 以前はここで「今日の授業はありません」を出していた。取れなかっただけなので、
+                // キャッシュ (あれば) を出したまま、いつの情報かを帯で示す。
+                eventsFailed = true;
+                updateFetchNotice();
+                filterAndDisplay();
                 fetchFinished();
             }
         });
@@ -339,11 +376,13 @@ public class HomeFragment extends Fragment {
                     public void onSuccess(List<Assignment> assignments) {
                         if (!isAdded()) return;
                         allAssignments = assignments;
+                        assignmentsFailed = false;
+                        DataCache.getInstance(requireContext()).saveAssignments(assignments);
+                        updateFetchNotice();
                         filterAndDisplay();
                         fetchFinished();
                         prefs.setLastSync(System.currentTimeMillis());
                         showLastSyncTime();
-                        DataCache.getInstance(requireContext()).saveAssignments(assignments);
                         com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.sync(requireContext(), assignments);
                         com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier.post(requireContext(), assignments);
                     }
@@ -352,7 +391,9 @@ public class HomeFragment extends Fragment {
                     public void onError(String message) {
                         if (!isAdded()) return;
                         fetchFinished();
-                        showError(message);
+                        assignmentsFailed = true;
+                        updateFetchNotice();
+                        filterAndDisplay();
                     }
                 });
             }
@@ -362,7 +403,11 @@ public class HomeFragment extends Fragment {
                 if (!isAdded()) return;
                 MoodleService.markInvalidIfCredentialsError(requireContext(), message);
                 fetchFinished();
-                showError(message);
+                // ID/PW 誤りだけは直し方を伝える。それ以外は帯で足りる。
+                if (com.shakenokirimi12.uoa_app.services.AuthErrors.isInvalidCredentials(message)) showError(message);
+                assignmentsFailed = true;
+                updateFetchNotice();
+                filterAndDisplay();
             }
         });
     }

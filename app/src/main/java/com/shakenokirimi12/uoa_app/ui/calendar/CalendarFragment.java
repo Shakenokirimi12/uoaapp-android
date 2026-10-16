@@ -38,6 +38,9 @@ public class CalendarFragment extends Fragment {
     private TabLayout tabLayout;
     private RecyclerView recyclerEvents;
     private TextView textEmpty;
+    private View fetchNotice;
+    private boolean eventsFailed;
+    private boolean assignmentsFailed;
     private final Calendar selectedDate = Calendar.getInstance();
 
     private List<CalendarEvent> allEvents = new ArrayList<>();
@@ -64,6 +67,7 @@ public class CalendarFragment extends Fragment {
         tabLayout = view.findViewById(R.id.tab_layout);
         recyclerEvents = view.findViewById(R.id.recycler_events);
         textEmpty = view.findViewById(R.id.text_empty);
+        fetchNotice = view.findViewById(R.id.fetch_notice);
         recyclerEvents.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         classAdapter.setOnClassClickListener(cls ->
@@ -110,6 +114,10 @@ public class CalendarFragment extends Fragment {
         // ID/PW 誤りが確定している間は自動でログインを試みない (アカウントロック対策)。
         if (com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(requireContext()).isCredentialsInvalid()) {
             android.widget.Toast.makeText(requireContext(), com.shakenokirimi12.uoa_app.services.AuthErrors.INVALID_CREDENTIALS_MESSAGE, android.widget.Toast.LENGTH_LONG).show();
+            eventsFailed = fetchEvents;
+            assignmentsFailed = fetchAssignments;
+            updateFetchNotice();
+            updateList();
             return;
         }
         if (fetchEvents) csService.fetchCalendarEvents(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<List<CalendarEvent>>() {
@@ -117,14 +125,19 @@ public class CalendarFragment extends Fragment {
             public void onSuccess(List<CalendarEvent> events) {
                 if (!isAdded()) return;
                 allEvents = events;
-                updateList();
+                eventsFailed = false;
                 DataCache.getInstance(requireContext()).saveEvents(events);
+                updateFetchNotice();
+                updateList();
             }
             @Override
             public void onError(String message) {
-                if (isAdded()) com.shakenokirimi12.uoa_app.services.AuthErrors.markInvalidIfCredentialsError(requireContext(), message);
-                // Lead with the meaning; the raw reason (host, port) stays for diagnosis.
-                if (isAdded()) Toast.makeText(requireContext(), "CampusSquare の予定を取得できませんでした\n" + message, Toast.LENGTH_LONG).show();
+                if (!isAdded()) return;
+                com.shakenokirimi12.uoa_app.services.AuthErrors.markInvalidIfCredentialsError(requireContext(), message);
+                // キャッシュは出したまま、いつの情報かを帯で示す。
+                eventsFailed = true;
+                updateFetchNotice();
+                updateList();
             }
         });
 
@@ -137,17 +150,27 @@ public class CalendarFragment extends Fragment {
                     public void onSuccess(List<Assignment> assignments) {
                         if (!isAdded()) return;
                         allAssignments = assignments;
-                        updateList();
+                        assignmentsFailed = false;
                         DataCache.getInstance(requireContext()).saveAssignments(assignments);
+                        updateFetchNotice();
+                        updateList();
                     }
                     @Override
-                    public void onError(String msg) {}
+                    public void onError(String msg) {
+                        if (!isAdded()) return;
+                        assignmentsFailed = true;
+                        updateFetchNotice();
+                        updateList();
+                    }
                 });
             }
             @Override
             public void onError(String msg) {
                 if (!isAdded()) return;
                 MoodleService.markInvalidIfCredentialsError(requireContext(), msg);
+                assignmentsFailed = true;
+                updateFetchNotice();
+                updateList();
             }
         });
     }
@@ -193,7 +216,9 @@ public class CalendarFragment extends Fragment {
             List<GroupedClass> grouped = GroupedClass.groupBySubject(dayEvents);
             recyclerEvents.setAdapter(classAdapter);
             classAdapter.setItems(grouped);
-            showEmpty(grouped.isEmpty(), R.string.calendar_no_classes);
+            boolean unknown = eventsFailed
+                    && DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.EVENTS) == 0;
+            showEmpty(grouped.isEmpty(), unknown ? R.string.classes_unavailable : R.string.calendar_no_classes);
         } else {
             List<Assignment> dayAssignments = new ArrayList<>();
             for (Assignment a : allAssignments) {
@@ -202,8 +227,22 @@ public class CalendarFragment extends Fragment {
             }
             recyclerEvents.setAdapter(assignmentAdapter);
             assignmentAdapter.setItems(dayAssignments);
-            showEmpty(dayAssignments.isEmpty(), R.string.calendar_no_assignments);
+            boolean unknown = assignmentsFailed
+                    && DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.ASSIGNMENTS) == 0;
+            showEmpty(dayAssignments.isEmpty(), unknown ? R.string.assignments_unavailable : R.string.calendar_no_assignments);
         }
+    }
+
+    /** 失敗した側のうち、古い方の最終更新時刻を出す。どちらも成功していれば消す。 */
+    private void updateFetchNotice() {
+        if (!eventsFailed && !assignmentsFailed) {
+            com.shakenokirimi12.uoa_app.ui.util.FetchStatus.hide(fetchNotice);
+            return;
+        }
+        DataCache cache = DataCache.getInstance(requireContext());
+        long events = eventsFailed ? cache.fetchedAt(DataCache.Dataset.EVENTS) : Long.MAX_VALUE;
+        long assignments = assignmentsFailed ? cache.fetchedAt(DataCache.Dataset.ASSIGNMENTS) : Long.MAX_VALUE;
+        com.shakenokirimi12.uoa_app.ui.util.FetchStatus.showFailure(fetchNotice, Math.min(events, assignments));
     }
 
     private void showEmpty(boolean empty, int messageRes) {

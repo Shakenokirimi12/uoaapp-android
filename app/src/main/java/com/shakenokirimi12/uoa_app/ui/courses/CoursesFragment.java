@@ -36,6 +36,9 @@ public class CoursesFragment extends Fragment {
     private SwipeRefreshLayout swipeRefresh;
     private RecyclerView recyclerCourses;
     private TextView textEmpty;
+    private View fetchNotice;
+    /** 取得に失敗し、まだ一度も取れていない。「コースがありません」とは言わない。 */
+    private boolean failedWithoutData;
     private final CourseAdapter courseAdapter = new CourseAdapter();
     private final MoodleService moodleService = new MoodleService();
 
@@ -56,6 +59,7 @@ public class CoursesFragment extends Fragment {
         recyclerCourses.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerCourses.setAdapter(courseAdapter);
         textEmpty = view.findViewById(R.id.text_empty);
+        fetchNotice = view.findViewById(R.id.fetch_notice);
         courseAdapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
             @Override
             public void onChanged() {
@@ -97,7 +101,7 @@ public class CoursesFragment extends Fragment {
     private void updateEmptyState() {
         if (textEmpty == null) return;
         boolean empty = courseAdapter.getItemCount() == 0;
-        textEmpty.setText("コースがありません");
+        textEmpty.setText(failedWithoutData ? "コースを取得できませんでした" : "コースがありません");
         textEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
     }
 
@@ -130,7 +134,10 @@ public class CoursesFragment extends Fragment {
                     @Override
                     public void onSuccess(List<MoodleCourse> courses) {
                         if (!isAdded()) return;
+                        failedWithoutData = false;
+                        com.shakenokirimi12.uoa_app.ui.util.FetchStatus.hide(fetchNotice);
                         courseAdapter.setItems(courses);
+                        updateEmptyState();
                         swipeRefresh.setRefreshing(false);
                         DataCache.getInstance(requireContext()).saveCourses(courses);
                     }
@@ -138,9 +145,7 @@ public class CoursesFragment extends Fragment {
                     @Override
                     public void onError(String message) {
                         swipeRefresh.setRefreshing(false);
-                        if (isAdded()) {
-                            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-                        }
+                        if (isAdded()) showFetchFailure();
                     }
                 });
             }
@@ -150,10 +155,20 @@ public class CoursesFragment extends Fragment {
                 // requireContext() は detach 後に投げるので、isAdded の内側で呼ぶ
                 if (isAdded()) MoodleService.markInvalidIfCredentialsError(requireContext(), message);
                 swipeRefresh.setRefreshing(false);
-                if (isAdded()) {
+                if (!isAdded()) return;
+                showFetchFailure();
+                if (com.shakenokirimi12.uoa_app.services.AuthErrors.isInvalidCredentials(message)) {
                     Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
                 }
             }
         });
+    }
+
+    /** キャッシュは出したまま、いつの情報かを帯で示す。 */
+    private void showFetchFailure() {
+        long fetchedAt = DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.COURSES);
+        failedWithoutData = fetchedAt == 0;
+        com.shakenokirimi12.uoa_app.ui.util.FetchStatus.showFailure(fetchNotice, fetchedAt);
+        updateEmptyState();
     }
 }

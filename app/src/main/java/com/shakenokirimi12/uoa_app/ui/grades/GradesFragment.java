@@ -30,6 +30,9 @@ public class GradesFragment extends Fragment {
 
     private SwipeRefreshLayout swipeRefresh;
     private TextView textEmpty;
+    private View fetchNotice;
+    /** 取得に失敗し、まだ一度も取れていない。「成績データがありません」とは言わない。 */
+    private boolean failedWithoutData;
     private final GradeAdapter gradeAdapter = new GradeAdapter();
     private final CampusSquareService csService = new CampusSquareService();
 
@@ -47,6 +50,7 @@ public class GradesFragment extends Fragment {
 
         swipeRefresh = view.findViewById(R.id.swipe_refresh);
         textEmpty = view.findViewById(R.id.text_empty);
+        fetchNotice = view.findViewById(R.id.fetch_notice);
         RecyclerView recycler = view.findViewById(R.id.recycler_grades);
         recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         recycler.setAdapter(gradeAdapter);
@@ -90,6 +94,8 @@ public class GradesFragment extends Fragment {
             public void onSuccess(List<Grade> grades) {
                 if (!isAdded()) return;
                 gradeAdapter.setItems(grades);
+                failedWithoutData = false;
+                com.shakenokirimi12.uoa_app.ui.util.FetchStatus.hide(fetchNotice);
                 updateEmptyState();
                 swipeRefresh.setRefreshing(false);
                 DataCache.getInstance(requireContext()).saveGrades(grades);
@@ -97,15 +103,24 @@ public class GradesFragment extends Fragment {
 
             @Override
             public void onError(String message) {
-                if (isAdded()) com.shakenokirimi12.uoa_app.services.AuthErrors.markInvalidIfCredentialsError(requireContext(), message);
                 swipeRefresh.setRefreshing(false);
-                if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                if (!isAdded()) return;
+                com.shakenokirimi12.uoa_app.services.AuthErrors.markInvalidIfCredentialsError(requireContext(), message);
+                // キャッシュは出したまま、いつの情報かを帯で示す。
+                long fetchedAt = DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.GRADES);
+                failedWithoutData = fetchedAt == 0;
+                com.shakenokirimi12.uoa_app.ui.util.FetchStatus.showFailure(fetchNotice, fetchedAt);
+                updateEmptyState();
+                if (com.shakenokirimi12.uoa_app.services.AuthErrors.isInvalidCredentials(message)) {
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
 
     private void updateEmptyState() {
         if (textEmpty == null) return;
+        textEmpty.setText(failedWithoutData ? "成績を取得できませんでした" : "成績データがありません");
         textEmpty.setVisibility(gradeAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
     }
 }
