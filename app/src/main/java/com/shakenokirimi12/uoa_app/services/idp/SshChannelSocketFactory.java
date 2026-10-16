@@ -114,22 +114,28 @@ final class SshChannelSocketFactory extends SocketFactory {
             connect(endpoint, 0);
         }
 
+        /**
+         * ロックを持ったままチャネルを開かない (開くのに最大 15 秒かかる)。持ったままだと、その間に別の
+         * スレッドから close() (OkHttp の Call.cancel など) を呼んだ側まで止まる。
+         */
         @Override
-        public synchronized void connect(SocketAddress endpoint, int timeout) throws IOException {
+        public void connect(SocketAddress endpoint, int timeout) throws IOException {
             if (closed) throw new SocketException("Socket is closed");
             if (stream != null) throw new SocketException("already connected");
             if (!(endpoint instanceof InetSocketAddress)) throw new IllegalArgumentException("unsupported address");
             InetSocketAddress target = (InetSocketAddress) endpoint;
             // 名前を持ったアドレス (UNRESOLVED_DNS) なら名前、そうでなければ IP の文字列。逆引きはしない。
             Stream s = connector.open(target.getHostString(), target.getPort(), timeout);
-            if (closed) {
-                s.close();
-                throw new SocketException("Socket is closed");
-            }
             remote = target;
             in = new TimeoutInputStream(s);
             out = s.output();
             stream = s;
+            // 開いている間に close() されていたら、ここで閉じる (close() は stream を見てから閉じるので、
+            // どちらの順で走っても少なくとも一方が閉じる。Stream.close は 2 回呼んでもよい)。
+            if (closed) {
+                s.close();
+                throw new SocketException("Socket is closed");
+            }
         }
 
         @Override public void bind(SocketAddress bindpoint) { /* 束ねる OS のソケットが無い */ }
@@ -151,8 +157,7 @@ final class SshChannelSocketFactory extends SocketFactory {
         }
 
         @Override
-        public synchronized void close() {
-            if (closed) return;
+        public void close() {
             closed = true;
             Stream s = stream;
             if (s != null) s.close();
