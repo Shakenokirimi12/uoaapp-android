@@ -1,5 +1,7 @@
 package com.shakenokirimi12.uoa_app.services;
 
+import com.shakenokirimi12.uoa_app.services.idp.SeciossError;
+
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
@@ -12,8 +14,10 @@ import java.util.concurrent.FutureTask;
  *   1. 直近 TRUST_WINDOW_MS 以内に検証済み → そのまま使う (リクエスト 0)
  *   2. それ以外は probe で 1 リクエストだけ確認し、認証済みなら検証時刻だけ更新
  *   3. 未認証なら単一飛行でログイン。同時に来た呼び出しは同じログインの結果を待つ。
- *      バックグラウンド (userInitiated=false) からの要求は、直前の障害系失敗から
- *      LOGIN_BACKOFF_MS 以内なら再試行せず同じエラーを返す (ユーザー操作は常に試す)
+ *      バックグラウンド (AuthorizationContext.BACKGROUND) からの要求は、そもそも新規ログインを
+ *      開始しない。保存済みセッションが死んでいたら INTERACTIVE_LOGIN_REQUIRED を返して諦め、
+ *      次にユーザーが画面を開いたときに任せる (ログイン 1 回 = OTP メール 1 通のため)。
+ *      ユーザー操作からの要求は、直前の障害系失敗から LOGIN_BACKOFF_MS 以内なら再試行しない
  *
  * 各画面と SyncWorker はそれぞれ別のサービスインスタンス (= 別の単一スレッド executor) から
  * 同時にここへ来るため、素の static フィールドでは単一飛行が破れて二重ログイン (= 二重 OTP メール)
@@ -65,7 +69,7 @@ final class SessionCoordinator<S> {
      * @param method    ログイン方式。前回と違えば手持ちのセッションは信用しない
      * @param candidate live が無いときに、ログインの前に試す候補 (前回プロセスが永続化した cookie 等)。無ければ null
      */
-    S session(Object method, boolean userInitiated, S candidate, Probe<S> probe, Login<S> login) throws Exception {
+    S session(Object method, AuthorizationContext context, S candidate, Probe<S> probe, Login<S> login) throws Exception {
         S current;
         long currentGen;
         synchronized (lock) {
@@ -119,7 +123,12 @@ final class SessionCoordinator<S> {
                     // 終わるのを待ってから自分の方式でやり直す (待つのは lock の外)。
                     otherMethod = !Objects.equals(inFlightMethod, method);
                 } else {
-                    if (!userInitiated && lastFailure != null
+                    // バックグラウンドでは新規ログインを始めない。ここが唯一の判断点で、
+                    // login クロージャ自体を呼ばない (フラグを見落とす経路を作らないため)。
+                    if (!context.allowsNewLogin()) {
+                        throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
+                    }
+                    if (lastFailure != null
                             && System.currentTimeMillis() - lastFailureAt < LOGIN_BACKOFF_MS) {
                         throw lastFailure;
                     }

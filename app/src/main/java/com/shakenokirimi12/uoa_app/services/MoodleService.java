@@ -153,8 +153,10 @@ public class MoodleService {
         String pass = password.trim();
         SeciossIdPClient.Session session;
         try {
+            // ここに来るのは SessionCoordinator が新規ログインを許した場合だけなので、常に対話文脈。
             session = seciossClient.login(samlEntryUrl(), uid, pass,
-                    () -> OtpPromptCoordinator.getInstance().code(uid, pass));
+                    com.shakenokirimi12.uoa_app.services.idp.OtpProviders.forLogin(
+                            uid, pass, AuthorizationContext.INTERACTIVE));
         } catch (SeciossError e) {
             // OTP 未設定はここでしか分からない。設定画面を探させず、その場で登録画面を開く。
             com.shakenokirimi12.uoa_app.services.idp.OtpRegistrationLauncher.launchIfNeeded(e);
@@ -212,16 +214,16 @@ public class MoodleService {
 
     /**
      * 必要ならログインして、認証済みであることを確認する。10 分以内に検証済みなら通信しない。
-     * userInitiated=false (SyncWorker) は直前の障害系失敗から 60 秒間は再ログインを試みない。
+     * BACKGROUND (SyncWorker) は新規ログインを開始しない。保存済みセッションが死んでいたら諦める。
      */
-    public void ensureLoggedIn(String username, String password, boolean userInitiated, ServiceCallback<Boolean> callback) {
+    public void ensureLoggedIn(String username, String password, AuthorizationContext context, ServiceCallback<Boolean> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
         }
         executor.execute(() -> {
             try {
-                ensureSession(username, password, userInitiated);
+                ensureSession(username, password, context);
                 postSuccess(callback, true);
             } catch (Exception e) {
                 postLoginError(callback, e);
@@ -229,7 +231,7 @@ public class MoodleService {
         });
     }
 
-    private String ensureSession(String username, String password, boolean userInitiated) throws Exception {
+    private String ensureSession(String username, String password, AuthorizationContext context) throws Exception {
         // プロセス起動直後は cookie jar が空。前回の Moodle セッションを持ち越していれば、まずそれを
         // 入れて生存確認 (probe) にかける。生きていれば IdP ログイン (約 5 秒 + 大学側にログイン記録) を
         // 丸ごと省ける。死んでいれば probe が null を返して普通にログインする。
@@ -242,7 +244,7 @@ public class MoodleService {
                 candidate = "restored";
             }
         }
-        return coordinator.session(resolveLoginMethod(), userInitiated, candidate,
+        return coordinator.session(resolveLoginMethod(), context, candidate,
                 key -> probeDashboardQuietly(), () -> doLogin(username, password));
     }
 
@@ -256,16 +258,16 @@ public class MoodleService {
      * 1 回、ログインし直して再実行する。資格情報は保存済みのものを使う (画面側は直前に
      * ensureLoggedIn を通しているので、通常ここでは通信しない)。
      */
-    private <T> T withSession(SessionBody<T> body) throws Exception {
+    private <T> T withSession(AuthorizationContext context, SessionBody<T> body) throws Exception {
         PreferenceManager prefs = PreferenceManager.getInstance();
         String user = prefs.getUsername();
         String pass = prefs.getPassword();
-        String key = ensureSession(user, pass, false);
+        String key = ensureSession(user, pass, context);
         try {
             return body.run(key);
         } catch (SessionExpiredException e) {
             coordinator.invalidate(key);
-            String fresh = ensureSession(user, pass, false);
+            String fresh = ensureSession(user, pass, context);
             return body.run(fresh);
         }
     }
@@ -429,7 +431,7 @@ public class MoodleService {
                 || response.contains("requireslogin");
     }
 
-    public void fetchCourses(ServiceCallback<List<MoodleCourse>> callback) {
+    public void fetchCourses(AuthorizationContext context, ServiceCallback<List<MoodleCourse>> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
@@ -440,7 +442,7 @@ public class MoodleService {
                         "\"core_course_get_enrolled_courses_by_timeline_classification\"," +
                         "\"args\":{\"classification\":\"all\",\"limit\":0,\"offset\":0,\"sort\":\"fullname\"}}]";
 
-                String response = withSession(key -> ajaxCall(key,
+                String response = withSession(context, key -> ajaxCall(key,
                         "core_course_get_enrolled_courses_by_timeline_classification",
                         jsonBody));
 
@@ -484,7 +486,7 @@ public class MoodleService {
         });
     }
 
-    public void fetchAssignments(ServiceCallback<List<Assignment>> callback) {
+    public void fetchAssignments(AuthorizationContext context, ServiceCallback<List<Assignment>> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
@@ -497,7 +499,7 @@ public class MoodleService {
                         "\"args\":{\"limitnum\":50,\"timesortfrom\":" + now +
                         ",\"limittononsuspendedevents\":true}}]";
 
-                String response = withSession(key -> ajaxCall(key,
+                String response = withSession(context, key -> ajaxCall(key,
                         "core_calendar_get_action_events_by_timesort",
                         jsonBody));
 
@@ -564,14 +566,14 @@ public class MoodleService {
         return m.find() ? m.group(1) : null;
     }
 
-    public void fetchCourseContents(int courseId, ServiceCallback<List<com.shakenokirimi12.uoa_app.data.models.CourseSection>> callback) {
+    public void fetchCourseContents(int courseId, AuthorizationContext context, ServiceCallback<List<com.shakenokirimi12.uoa_app.data.models.CourseSection>> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
         }
         executor.execute(() -> {
             try {
-                postSuccess(callback, withSession(key -> fetchCourseContentsWithSession(key, courseId)));
+                postSuccess(callback, withSession(context, key -> fetchCourseContentsWithSession(key, courseId)));
             } catch (Exception e) {
                 postError(callback, e.getMessage());
             }

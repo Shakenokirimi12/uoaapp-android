@@ -170,7 +170,9 @@ public class InAppBrowserActivity extends AppCompatActivity {
 
         progress.setVisibility(View.VISIBLE);
         new com.shakenokirimi12.uoa_app.services.MoodleService().ensureLoggedIn(
-                prefs.getUsername(), prefs.getPassword(), true, new com.shakenokirimi12.uoa_app.services.ServiceCallback<Boolean>() {
+                prefs.getUsername(), prefs.getPassword(),
+                com.shakenokirimi12.uoa_app.services.AuthorizationContext.INTERACTIVE,
+                new com.shakenokirimi12.uoa_app.services.ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 if (isFinishing() || isDestroyed()) return;

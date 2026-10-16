@@ -72,12 +72,12 @@ public class CampusSquareService {
 
     /**
      * 必要ならログインして、認証済みであることを確認する。既に 10 分以内に検証済みなら通信しない。
-     * userInitiated=false (SyncWorker) は直前の障害系失敗から 60 秒間は再ログインを試みない。
+     * BACKGROUND (SyncWorker) は新規ログインを開始しない。保存済みセッションが死んでいたら諦める。
      */
-    public void ensureLoggedIn(String username, String password, boolean userInitiated, ServiceCallback<Boolean> callback) {
+    public void ensureLoggedIn(String username, String password, AuthorizationContext context, ServiceCallback<Boolean> callback) {
         executor.execute(() -> {
             try {
-                authenticatedCookieHeader(username, password, userInitiated);
+                authenticatedCookieHeader(username, password, context);
                 postSuccess(callback, true);
             } catch (Exception e) {
                 postError(callback, e.getMessage());
@@ -110,10 +110,10 @@ public class CampusSquareService {
      * SeciossIdPClient が集めた複数 cookie (AWS ALB のスティッキーセッション cookie や Shibboleth の
      * _shibsession_ を含む) を、そのまま Cookie ヘッダに載せられる文字列で返す。
      */
-    private String authenticatedCookieHeader(String username, String password, boolean userInitiated) throws Exception {
+    private String authenticatedCookieHeader(String username, String password, AuthorizationContext context) throws Exception {
         String cached = PreferenceManager.getInstance().getCsIdpSessionCookieHeader();
         String candidate = cached.isEmpty() ? null : cached;
-        return coordinator.session(SESSION_KIND, userInitiated, candidate, this::probeSession,
+        return coordinator.session(SESSION_KIND, context, candidate, this::probeSession,
                 () -> freshLogin(username, password));
     }
 
@@ -127,13 +127,13 @@ public class CampusSquareService {
      * 取得処理を認証済みセッションで実行し、途中で未認証ページを掴んだ (SessionExpiredException) 場合だけ
      * 1 回、ログインし直して再実行する。
      */
-    private <T> T withSession(String username, String password, boolean userInitiated, SessionBody<T> body) throws Exception {
-        String cookie = authenticatedCookieHeader(username, password, userInitiated);
+    private <T> T withSession(String username, String password, AuthorizationContext context, SessionBody<T> body) throws Exception {
+        String cookie = authenticatedCookieHeader(username, password, context);
         try {
             return body.run(cookie);
         } catch (SessionExpiredException e) {
             coordinator.invalidate(cookie);
-            String fresh = authenticatedCookieHeader(username, password, userInitiated);
+            String fresh = authenticatedCookieHeader(username, password, context);
             return body.run(fresh);
         }
     }
@@ -204,19 +204,19 @@ public class CampusSquareService {
 
     /**
      * IdP (SECIOSS) 経由でログインし、CampusSquare のセッション Cookie ヘッダを返す (キャッシュにも保存)。
-     * entryUrl が null なら resolveCampusSquareEntryUrl() の結果を使う。otpCode は OTP が要求された
-     * 場合にのみ呼ばれる (UI 入力待ちや IMAP 自動取得)。
+     * entryUrl が null なら resolveCampusSquareEntryUrl() の結果を使う。otp は OTP が要求された
+     * 場合にのみ呼ばれる (方式ごとの実体は OtpProviders が決める)。
      * ID/PW 誤りは AuthErrors.INVALID_CREDENTIALS_MESSAGE の Exception に変換して投げる。既存の
      * onError 側 (markInvalidIfCredentialsError) がそのまま自動同期を止められるようにするため。
      */
     public String loginViaIdP(String entryUrl, String username, String password,
-                              SeciossIdPClient.OtpCodeProvider otpCode) throws Exception {
+                              com.shakenokirimi12.uoa_app.services.idp.OtpProvider otp) throws Exception {
         String uid = username.trim();
         String pass = password.trim();
         String resolvedEntry = entryUrl != null ? entryUrl : resolveCampusSquareEntryUrl();
         SeciossIdPClient.Session session;
         try {
-            session = seciossClient.login(resolvedEntry, uid, pass, otpCode);
+            session = seciossClient.login(resolvedEntry, uid, pass, otp);
         } catch (SeciossError e) {
             // OTP 未設定はここでしか分からない。設定画面を探させず、その場で登録画面を開く。
             com.shakenokirimi12.uoa_app.services.idp.OtpRegistrationLauncher.launchIfNeeded(e);
@@ -255,12 +255,13 @@ public class CampusSquareService {
     }
 
     /**
-     * OTP の取得は OtpPromptCoordinator に任せる (同意済みならメールから自動取得、無理ならアプリが
-     * 前面にいるときだけ入力ダイアログ、それも無理なら INTERACTIVE_LOGIN_REQUIRED)。
+     * OTP の方式 (メール / 認証アプリ) は OtpProviders が設定から決める。
+     * ここに来るのは SessionCoordinator が新規ログインを許した場合だけなので、常に対話文脈。
      */
     public String loginViaIdPAutomatic(String entryUrl, String username, String password) throws Exception {
         return loginViaIdP(entryUrl, username, password,
-                () -> OtpPromptCoordinator.getInstance().code(username.trim(), password.trim()));
+                com.shakenokirimi12.uoa_app.services.idp.OtpProviders.forLogin(
+                        username.trim(), password.trim(), AuthorizationContext.INTERACTIVE));
     }
 
     /**
@@ -347,18 +348,14 @@ public class CampusSquareService {
         return resolved != null ? resolved.toString() : relative;
     }
 
-    public void fetchGrades(String username, String password, ServiceCallback<List<Grade>> callback) {
-        fetchGrades(username, password, true, callback);
-    }
-
-    public void fetchGrades(String username, String password, boolean userInitiated, ServiceCallback<List<Grade>> callback) {
+    public void fetchGrades(String username, String password, AuthorizationContext context, ServiceCallback<List<Grade>> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("campussquare_grades_enabled")) {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
         }
         executor.execute(() -> {
             try {
-                List<Grade> grades = withSession(username, password, userInitiated, this::fetchGradesWithSession);
+                List<Grade> grades = withSession(username, password, context, this::fetchGradesWithSession);
                 if (grades == null) {
                     postError(callback, "成績ページのフローキー取得に失敗しました");
                     return;
@@ -444,12 +441,7 @@ public class CampusSquareService {
         return parseGrades(gradesHtml);
     }
 
-    public void fetchCalendarEvents(String username, String password,
-                                    ServiceCallback<List<CalendarEvent>> callback) {
-        fetchCalendarEvents(username, password, true, callback);
-    }
-
-    public void fetchCalendarEvents(String username, String password, boolean userInitiated,
+    public void fetchCalendarEvents(String username, String password, AuthorizationContext context,
                                     ServiceCallback<List<CalendarEvent>> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("campussquare_calendar_enabled")) {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
@@ -457,7 +449,7 @@ public class CampusSquareService {
         }
         executor.execute(() -> {
             try {
-                List<CalendarEvent> events = withSession(username, password, userInitiated, this::fetchCalendarEventsWithSession);
+                List<CalendarEvent> events = withSession(username, password, context, this::fetchCalendarEventsWithSession);
                 if (events == null) {
                     postError(callback, "カレンダーURLの取得に失敗しました");
                     return;
@@ -644,7 +636,8 @@ public class CampusSquareService {
                 try {
                     String username = prefs.getUsername().trim();
                     String password = prefs.getPassword().trim();
-                    List<FacilityUsage> facilities = withSession(username, password, true,
+                    List<FacilityUsage> facilities = withSession(username, password,
+                            AuthorizationContext.INTERACTIVE,
                             cookie -> fetchFacilityUsageWithSession(cookie, dateStr));
                     postSuccess(callback, facilities);
                     return;

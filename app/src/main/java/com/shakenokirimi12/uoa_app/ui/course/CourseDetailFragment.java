@@ -1,5 +1,6 @@
 package com.shakenokirimi12.uoa_app.ui.course;
 
+import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.util.TypedValue;
@@ -264,11 +265,11 @@ public class CourseDetailFragment extends Fragment {
         // 直近 10 分以内に他のタブが検証済みなら通信せずに通る。そうでなければ (コース一覧の
         // キャッシュから直接この画面に来た場合など) 必要に応じてログインする。
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
-        service.ensureLoggedIn(prefs.getUsername(), prefs.getPassword(), true, new ServiceCallback<Boolean>() {
+        service.ensureLoggedIn(prefs.getUsername(), prefs.getPassword(), AuthorizationContext.INTERACTIVE, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean ok) {
                 if (!isAdded()) return;
-                service.fetchCourseContents(courseId, onContents);
+                service.fetchCourseContents(courseId, AuthorizationContext.INTERACTIVE, onContents);
             }
             @Override
             public void onError(String message) {

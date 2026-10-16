@@ -1,5 +1,6 @@
 package com.shakenokirimi12.uoa_app.ui.courses;
 
+import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -121,11 +122,11 @@ public class CoursesFragment extends Fragment {
             android.widget.Toast.makeText(requireContext(), com.shakenokirimi12.uoa_app.services.AuthErrors.INVALID_CREDENTIALS_MESSAGE, android.widget.Toast.LENGTH_LONG).show();
             return;
         }
-        moodleService.ensureLoggedIn(user, pass, true, new ServiceCallback<Boolean>() {
+        moodleService.ensureLoggedIn(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 if (!isAdded()) return;
-                moodleService.fetchCourses(new ServiceCallback<List<MoodleCourse>>() {
+                moodleService.fetchCourses(AuthorizationContext.INTERACTIVE, new ServiceCallback<List<MoodleCourse>>() {
                     @Override
                     public void onSuccess(List<MoodleCourse> courses) {
                         if (!isAdded()) return;

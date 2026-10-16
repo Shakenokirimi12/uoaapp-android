@@ -33,9 +33,12 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
     private static final String DOMAIN = "@u-aizu.ac.jp";
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    /** startOnce でトンネルを張ってから差し替える。登録の HTTP は全部トンネル経由。 */
-    private SeciossIdPClient client = new SeciossIdPClient();
-    @Nullable private com.shakenokirimi12.uoa_app.services.idp.CampusSshSocksTunnel tunnel;
+    /** 通常経路 (学外)。OTP の設定状況の判定にだけ使う。 */
+    private final SeciossIdPClient directClient = new SeciossIdPClient();
+    /** startOnce でトンネルを張ってから作る。登録の HTTP は全部トンネル経由。 */
+    private SeciossIdPClient client = directClient;
+    /** executor スレッドで開き、onCleared (メインスレッド) で閉じるので volatile。 */
+    @Nullable private volatile com.shakenokirimi12.uoa_app.services.idp.CampusSshSocksTunnel tunnel;
     private final MutableLiveData<Stage> stage = new MutableLiveData<>(Stage.CHECKING);
     private final MutableLiveData<String> failureMessage = new MutableLiveData<>();
     private final MutableLiveData<Boolean> autoFetchingEmailCode = new MutableLiveData<>(false);
@@ -71,11 +74,22 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
         stage.setValue(Stage.CHECKING);
         executor.execute(() -> {
             try {
-                // OTP の登録は学内ネットワークからしか通らない。大学の SSH ゲートウェイ (AINS ID/PW 共通)
-                // へトンネルを張り、その SOCKS 経由で叩いて学内アクセス扱いにする。
+                // 手順は iOS 側 idp_verification/test_idp_full_auto.swift (2026-09-19 実機トレースで確認) と同じ:
+                // 1. 通常経路でパスワードログインし、OTP の設定状況を判定する (学外だと未設定なら auth_err_020)。
+                // 2. 未設定なら大学の SSH ゲートウェイ (AINS ID/PW 共通) へトンネルを張り、その SOCKS 経由で
+                //    もう一度パスワードログインする。学内扱いなので OTP を挟まずポータルに着く。その jar を
+                //    登録セッションに引き継ぐ (登録画面はログインセッションが無いと tenantlogin に戻される)。
+                // 通常経路でポータルまで通った (= 既に学内) 場合も、設定済みかどうかはポータルからは分からない
+                // ので同じくトンネル経由で進み、設定画面の「既に設定済みです」表示で判断する。
+                SeciossIdPClient.OtpStatus status =
+                        directClient.checkOtpStatus(SeciossRegistrationSession.ENTRY_URL, this.uid, this.pass);
+                if (status == SeciossIdPClient.OtpStatus.CONFIGURED) {
+                    stage.postValue(Stage.ALREADY_CONFIGURED);
+                    return;
+                }
                 tunnel = com.shakenokirimi12.uoa_app.services.idp.CampusSshSocksTunnel.open(this.uid, this.pass);
                 client = new SeciossIdPClient(tunnel.proxy());
-                session = client.beginOtpRegistration(SeciossRegistrationSession.ENTRY_URL, this.uid, this.pass);
+                session = client.beginOtpRegistrationOnCampus(SeciossRegistrationSession.ENTRY_URL, this.uid, this.pass);
                 stage.postValue(Stage.CHOOSING_METHOD);
             } catch (com.jcraft.jsch.JSchException e) {
                 String gateway = com.shakenokirimi12.uoa_app.services.idp.CampusSshSocksTunnel.GATEWAY_HOST;
@@ -189,6 +203,7 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
         stage.postValue(Stage.COMPLETING);
         try {
             s.completeEmailRegistration(challenge, code);
+            closeTunnel();
             stage.postValue(Stage.SUCCESS);
         } catch (Exception e) {
             fail(e);
@@ -202,6 +217,7 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
         stage.postValue(Stage.COMPLETING);
         try {
             s.completeAuthenticatorRegistration(challenge, code);
+            closeTunnel();
             stage.postValue(Stage.SUCCESS);
         } catch (Exception e) {
             fail(e);
@@ -216,9 +232,17 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
         stage.postValue(Stage.FAILURE);
     }
 
+    /** 登録が終わったら SSH セッションを持ったままにしない。 */
+    private synchronized void closeTunnel() {
+        if (tunnel != null) {
+            tunnel.close();
+            tunnel = null;
+        }
+    }
+
     @Override
     protected void onCleared() {
         executor.shutdownNow();
-        if (tunnel != null) tunnel.close();
+        closeTunnel();
     }
 }

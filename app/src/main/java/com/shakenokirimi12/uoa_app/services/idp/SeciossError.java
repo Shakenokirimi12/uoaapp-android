@@ -19,7 +19,7 @@ public final class SeciossError extends Exception {
          * 学内ネットワークから事前設定するまで学外アクセスできないため、リトライしても無駄。
          */
         OTP_NOT_CONFIGURED,
-        /** beginOtpRegistration で、既に OTP が設定済み (ログイン時に OTP フォームが出る状態) だった。 */
+        /** checkOtpStatus / beginOtpRegistrationOnCampus で、既に OTP が設定済み (ログイン時に OTP フォームが出る状態) だった。 */
         OTP_ALREADY_CONFIGURED,
         /** 想定していない画面に到達した (中継フォームでも OTP フォームでも成功マーカーでもない)。 */
         UNRECOGNIZED_STATE,

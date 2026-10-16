@@ -19,6 +19,7 @@ import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
+import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 import com.shakenokirimi12.uoa_app.services.AppConfigService;
 import com.shakenokirimi12.uoa_app.services.CampusSquareService;
 import com.shakenokirimi12.uoa_app.services.MoodleService;
@@ -98,14 +99,14 @@ public class SyncWorker extends Worker {
         // 1. Moodle
         if (AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
             AtomicReference<String> loginError = new AtomicReference<>();
-            if (await(latch -> moodle.ensureLoggedIn(user, pass, false, new ServiceCallback<Boolean>() {
+            if (await(latch -> moodle.ensureLoggedIn(user, pass, AuthorizationContext.BACKGROUND, new ServiceCallback<Boolean>() {
                 @Override public void onSuccess(Boolean r) { latch.countDown(); }
                 @Override public void onError(String m) { loginError.set(m); latch.countDown(); }
             }))) {
                 String err = loginError.get();
                 if (err == null) {
                     AtomicReference<List<Assignment>> fetched = new AtomicReference<>();
-                    await(latch -> moodle.fetchAssignments(new ServiceCallback<List<Assignment>>() {
+                    await(latch -> moodle.fetchAssignments(AuthorizationContext.BACKGROUND, new ServiceCallback<List<Assignment>>() {
                         @Override public void onSuccess(List<Assignment> r) { fetched.set(r); latch.countDown(); }
                         @Override public void onError(String m) { latch.countDown(); }
                     }));
@@ -137,7 +138,7 @@ public class SyncWorker extends Worker {
         if (AppConfigService.getInstance().isFeatureEnabled("campussquare_calendar_enabled")) {
             AtomicReference<List<CalendarEvent>> fetched = new AtomicReference<>();
             AtomicReference<String> csError = new AtomicReference<>();
-            await(latch -> campusSquare.fetchCalendarEvents(user, pass, false, new ServiceCallback<List<CalendarEvent>>() {
+            await(latch -> campusSquare.fetchCalendarEvents(user, pass, AuthorizationContext.BACKGROUND, new ServiceCallback<List<CalendarEvent>>() {
                 @Override public void onSuccess(List<CalendarEvent> r) { fetched.set(r); latch.countDown(); }
                 @Override public void onError(String m) { csError.set(m); latch.countDown(); }
             }));

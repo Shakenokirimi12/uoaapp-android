@@ -49,10 +49,7 @@ public final class SeciossIdPClient {
     private static final int MAX_REDIRECTS = 10;
     private static final int MAX_RELAY_HOPS = 5;
 
-    /** OTP が実際に要求されたときだけ呼ばれる。UI 入力待ち・IMAP 自動取得などを差し替える。 */
-    public interface OtpCodeProvider {
-        @NonNull String provide() throws Exception;
-    }
+    // OTP の調達は OtpProvider (方式ごとの実体は OtpProviders が決める) に委ねる。
 
     public static final class Session {
         @NonNull public final String finalHtml;
@@ -500,7 +497,7 @@ public final class SeciossIdPClient {
 
     /**
      * entry -> tenantlogin.cgi (ID/PW POST) -> back の追跡 (+ 中継フォームの追従) までを行う。
-     * login() と beginOtpRegistration() の共通部分。
+     * login() と beginOtpRegistrationOnCampus() の共通部分。
      */
     private PostPasswordState authenticateUpToOtpDecision(@NonNull String entryUrl, @NonNull String uid,
                                                           @NonNull String pass, boolean useStoredSso)
@@ -552,11 +549,11 @@ public final class SeciossIdPClient {
     /**
      * otpCode を呼んでコードを取得し、送信して完了させる。学内アクセス相当で OTP 自体が要求されなかった
      * 場合は otpCode を呼ばずに完了する。OTP 未設定の場合は OTP_NOT_CONFIGURED を投げる (このクライアントは
-     * 登録操作をしない。登録が必要なら beginOtpRegistration を使うこと)。
+     * 登録操作をしない。登録が必要なら beginOtpRegistrationOnCampus を使うこと)。
      */
     @NonNull
     public Session login(@NonNull String entryUrl, @NonNull String uid, @NonNull String pass,
-                         @NonNull OtpCodeProvider otpCode) throws Exception {
+                         @NonNull OtpProvider otp) throws Exception {
         PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass, true);
         HttpResult current = state.result;
 
@@ -585,14 +582,18 @@ public final class SeciossIdPClient {
             throw new SeciossError(SeciossError.Kind.MISSING_FIELD, "sessid/back/username on OTP form");
         }
 
-        // メール OTP の送信 (motprefresh=0)。Authenticator アプリ方式ではこのステップ自体を使わない。
-        String motpBody = "username=" + urlEncode(otpUsername) + "&sessid=" + otpSessid + "&motprefresh=0";
-        HttpResult motp = postForm(MOTP_URL, motpBody, current.cookies, current.url);
-        if (motp.status != 200) {
-            throw new SeciossError(SeciossError.Kind.OTP_REQUEST_FAILED);
+        // メール方式のときだけ送信を要求する (motprefresh=0)。認証アプリ方式はこのステップを使わない。
+        HttpResult motp = current;
+        if (otp.requiresMailDispatch()) {
+            String motpBody = "username=" + urlEncode(otpUsername) + "&sessid=" + urlEncode(otpSessid)
+                    + "&motprefresh=0";
+            motp = postForm(MOTP_URL, motpBody, current.cookies, current.url);
+            if (motp.status != 200) {
+                throw new SeciossError(SeciossError.Kind.OTP_REQUEST_FAILED);
+            }
         }
 
-        String code = otpCode.provide();
+        String code = otp.code();
 
         String otpBody = "dummy=&username=" + urlEncode(otpUsername) + "&password=" + urlEncode(code)
                 + "&op=login&back=" + urlEncode(otpBack) + "&sessid=" + otpSessid;
@@ -614,37 +615,62 @@ public final class SeciossIdPClient {
         return new Session(relayed.html, relayed.url, relayed.status, sessionCookieHeader(relayed));
     }
 
+    public enum OtpStatus {
+        /** パスワード後に「ワンタイムパスワード設定が行われていません」(auth_err_020)。学外からの判定。 */
+        NOT_CONFIGURED,
+        /** OTP 入力フォーム (allotplogin) が出た = 設定済み。 */
+        CONFIGURED,
+        /** OTP を挟まずポータルまで通った (学内アクセス)。設定済みかどうかはこれだけでは分からない。 */
+        REACHED_PORTAL
+    }
+
+    private static boolean reachedPortal(@NonNull PostPasswordState state) {
+        return "menu".equals(state.functionId)
+                || state.result.url.contains("index.php")
+                || state.result.html.contains("ログアウト")
+                || state.result.html.contains("Logout");
+    }
+
     /**
-     * OTP 未設定のアカウントに対して、新規登録 (または 1 方式設定済みなら追加登録) の準備をする。
-     * ログイン時に OTP を要求される (= 既に設定済み) アカウントでは OTP_ALREADY_CONFIGURED を投げる。
-     * 学内ネットワークからのアクセスでない場合、SECIOSS 側の仕様でこの先の登録操作自体が通らない
-     * (アプリ側はこれを回避しようとはしない)。
+     * 通常経路 (学外) からパスワードだけで入り、OTP の設定状況を見る。SSO セッションを載せると IdP が
+     * パスワード画面ごと飛ばしてしまい判定できないので、ここだけは必ずパスワードから入る
+     * (2026-09-15 エミュレータで実測)。
      */
     @NonNull
-    public SeciossRegistrationSession beginOtpRegistration(@NonNull String entryUrl, @NonNull String uid,
-                                                           @NonNull String pass) throws Exception {
-        // OTP の設定状況はパスワード直後の画面でしか分からない。SSO セッションを載せると IdP が
-        // そこを飛ばしてポータルのメニュー (FunctionID=menu) へ通してしまい、判定できない
-        // (2026-09-15 エミュレータで実測)。ここだけは必ずパスワードから入る。
+    public OtpStatus checkOtpStatus(@NonNull String entryUrl, @NonNull String uid, @NonNull String pass) throws Exception {
         PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass, false);
-        if (!state.result.html.contains(OTP_NOT_CONFIGURED_MARKER)) {
-            // OTP 要求フォーム (allotplogin) が出た = 既に設定済み。
-            if ("allotplogin".equals(state.functionId)) {
-                throw new SeciossError(SeciossError.Kind.OTP_ALREADY_CONFIGURED);
-            }
-            // 学内アクセス (SSH トンネル) だと OTP を挟まずポータル (FunctionID=menu / index.php) まで
-            // 通ることがある。そこまで通れたなら、このアカウントは既に使える状態 = 追加設定は不要。
-            boolean reachedPortal = "menu".equals(state.functionId)
-                    || state.result.url.contains("index.php")
-                    || state.result.html.contains("ログアウト")
-                    || state.result.html.contains("Logout");
-            if (reachedPortal) {
-                throw new SeciossError(SeciossError.Kind.OTP_ALREADY_CONFIGURED);
-            }
+        if (state.result.html.contains(OTP_NOT_CONFIGURED_MARKER)) return OtpStatus.NOT_CONFIGURED;
+        if ("allotplogin".equals(state.functionId)) return OtpStatus.CONFIGURED;
+        if (reachedPortal(state)) return OtpStatus.REACHED_PORTAL;
+        throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+                "registration entry screen(FunctionID=" + state.functionId + ", url=" + state.result.url + ")");
+    }
+
+    /**
+     * 学内アクセス (このクライアントが CampusSshSocksTunnel の proxy 付きで作られている前提) でパスワード
+     * ログインし、ユーザーポータルに着いた jar で登録セッションを始める。
+     *
+     * 登録画面 (/user/index.php?app=motpmail 等) は sso/authorization.php を経由してログインセッション
+     * (auth_tkt / samsessid) を要求する。空の cookie で叩くと tenantlogin に戻され「csrf が無い」で落ちる
+     * (2026-09-19 に iOS 側の idp_verification/test_idp_full_auto.swift のトレースで確認)。学外の通常経路だと
+     * 同じ画面が auth_err_020 に落ちるので、登録は必ず学内経路で行う。
+     */
+    @NonNull
+    public SeciossRegistrationSession beginOtpRegistrationOnCampus(@NonNull String entryUrl, @NonNull String uid,
+                                                                   @NonNull String pass) throws Exception {
+        PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass, false);
+        if (state.result.html.contains(OTP_NOT_CONFIGURED_MARKER)) {
+            // 学内経路のはずなのに学外扱い = トンネルが効いていない。
             throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
-                    "registration entry screen(FunctionID=" + state.functionId + ")");
+                    "on-campus login still asked for OTP setup (tunnel not effective?)");
         }
-        // iOS と同じく、登録セッションは空の cookie から始める (ユーザーポータル側で改めて確立される)。
-        return new SeciossRegistrationSession(this, new ArrayList<>());
+        if ("allotplogin".equals(state.functionId)) {
+            throw new SeciossError(SeciossError.Kind.OTP_ALREADY_CONFIGURED);
+        }
+        if (!reachedPortal(state)) {
+            throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+                    "on-campus login did not reach the portal(FunctionID=" + state.functionId + ", url=" + state.result.url + ")");
+        }
+        return new SeciossRegistrationSession(this, new ArrayList<>(state.result.cookies));
     }
 }

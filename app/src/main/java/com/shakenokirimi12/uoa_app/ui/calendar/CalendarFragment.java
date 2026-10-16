@@ -1,5 +1,6 @@
 package com.shakenokirimi12.uoa_app.ui.calendar;
 
+import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -111,7 +112,7 @@ public class CalendarFragment extends Fragment {
             android.widget.Toast.makeText(requireContext(), com.shakenokirimi12.uoa_app.services.AuthErrors.INVALID_CREDENTIALS_MESSAGE, android.widget.Toast.LENGTH_LONG).show();
             return;
         }
-        if (fetchEvents) csService.fetchCalendarEvents(user, pass, new ServiceCallback<List<CalendarEvent>>() {
+        if (fetchEvents) csService.fetchCalendarEvents(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<List<CalendarEvent>>() {
             @Override
             public void onSuccess(List<CalendarEvent> events) {
                 if (!isAdded()) return;
@@ -127,11 +128,11 @@ public class CalendarFragment extends Fragment {
             }
         });
 
-        if (fetchAssignments) moodleService.ensureLoggedIn(user, pass, true, new ServiceCallback<Boolean>() {
+        if (fetchAssignments) moodleService.ensureLoggedIn(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 if (!isAdded()) return;
-                moodleService.fetchAssignments(new ServiceCallback<List<Assignment>>() {
+                moodleService.fetchAssignments(AuthorizationContext.INTERACTIVE, new ServiceCallback<List<Assignment>>() {
                     @Override
                     public void onSuccess(List<Assignment> assignments) {
                         if (!isAdded()) return;

@@ -38,10 +38,18 @@ public final class OtpPromptDialog {
     private OtpPromptDialog() {}
 
     @MainThread
-    /** @param requestedAt motp.cgi でメール送信を頼んだ時刻。後追いの自動取得で「古いメール」と誤判定しないために要る。 */
+    /**
+     * @param requestedAt        motp.cgi でメール送信を頼んだ時刻。後追いの自動取得で「古いメール」と
+     *                           誤判定しないために要る。
+     * @param allowMailAutoFetch メールからの自動取得を提案してよいか。**認証アプリ方式では false**。
+     *                           メールを一度も送っていないのに「メールから自動で取得する」を出すと、
+     *                           押した人の自動取得設定が意図せず ON になり、資格情報の無いまま
+     *                           IMAP へ接続しに行く。
+     * @param uid, pass          メール方式のときだけ渡る。認証アプリ方式では null。
+     */
     public static void show(@NonNull Activity activity, @Nullable String message,
-                            @NonNull String uid, @NonNull String pass, long requestedAt,
-                            @NonNull Listener listener) {
+                            @Nullable String uid, @Nullable String pass, long requestedAt,
+                            boolean allowMailAutoFetch, @NonNull Listener listener) {
         // 送信・キャンセル・破棄のどれで終わっても、待っているスレッドを必ず 1 回だけ解放する。
         final boolean[] delivered = {false};
         Listener once = code -> {
@@ -68,7 +76,8 @@ public final class OtpPromptDialog {
                 .setPositiveButton("送信", (d, which) -> once.onResult(editCode.getText().toString().trim()))
                 .setNegativeButton("キャンセル", (d, which) -> once.onResult(null));
 
-        if (!PreferenceManager.getInstance().isOtpAutoFetchEnabled()) {
+        if (allowMailAutoFetch && uid != null && pass != null
+                && !PreferenceManager.getInstance().isOtpAutoFetchEnabled()) {
             // 中立ボタンは押すとダイアログが閉じてしまうので、閉じない実装を下で差し替える。
             builder.setNeutralButton("今後はメールから自動で取得する", (d, which) -> { });
         }
@@ -96,10 +105,11 @@ public final class OtpPromptDialog {
 
     /** 「今後はメールから自動で取得する」。同意を保存して取りに行き、取れたらそのまま送信する。 */
     private static void setUpAutoFetchButton(androidx.appcompat.app.AlertDialog dialog, TextView textMessage,
-                                             View progress, String uid, String pass, long requestedAt,
-                                             Listener once) {
+                                             View progress, @Nullable String uid, @Nullable String pass,
+                                             long requestedAt, Listener once) {
         View neutral = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL);
-        if (neutral == null) return;
+        // 資格情報が無いのに自動取得へ進ませない (ボタンを出さない経路と二重に塞ぐ)。
+        if (neutral == null || uid == null || pass == null) return;
         neutral.setOnClickListener(v -> {
             PreferenceManager.getInstance().setOtpAutoFetchEnabled(true);
             neutral.setEnabled(false);

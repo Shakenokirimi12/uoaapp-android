@@ -39,6 +39,7 @@ public class PreferenceManager {
     private static final String KEY_REVIEW_USER_ID = "review_user_id";
     private static final String KEY_HAS_SEEN_IDP_TUTORIAL = "has_seen_idp_tutorial";
     private static final String KEY_OTP_AUTO_FETCH_ENABLED = "otp_auto_fetch_enabled";
+    private static final String KEY_OTP_METHOD = "otp_method";
     private static final String KEY_CS_IDP_SESSION_COOKIE_HEADER = "cs_idp_session_cookie_header";
     private static final String KEY_IDP_SSO_COOKIE_HEADER = "idp_sso_cookie_header";
     private static final String KEY_MOODLE_SESSION_COOKIE_HEADER = "moodle_session_cookie_header";
@@ -251,6 +252,14 @@ public class PreferenceManager {
      */
     public boolean isOtpAutoFetchEnabled() { return prefs.getBoolean(KEY_OTP_AUTO_FETCH_ENABLED, true); }
     public void setOtpAutoFetchEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_OTP_AUTO_FETCH_ENABLED, enabled).apply(); }
+
+    /**
+     * OTP をどこから受け取るか ("mail" / "authenticator")。既定はメール (大学が既定で設定する方式)。
+     * 認証アプリ方式を選んだ場合、アプリはシークレットを保持しないので毎回手入力になる。
+     * そのぶんセッションの永続化が効いていることが前提になる。iOS の SettingsStore.otpMethod と同じ値。
+     */
+    public String getOtpMethod() { return prefs.getString(KEY_OTP_METHOD, "mail"); }
+    public void setOtpMethod(String method) { prefs.edit().putString(KEY_OTP_METHOD, method).apply(); }
 
     /**
      * IdP 経由で得た CampusSquare のセッション Cookie ヘッダ。iOS は Keychain に置いている。

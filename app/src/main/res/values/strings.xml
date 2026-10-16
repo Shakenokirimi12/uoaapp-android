@@ -40,6 +40,11 @@
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_account">アカウント</string>
+    <string name="settings_otp_method">ワンタイムパスワード</string>
+    <string name="settings_otp_method_mail">メールで受け取る</string>
+    <string name="settings_otp_method_authenticator">認証アプリを使う</string>
+    <string name="settings_otp_method_mail_description">大学から届くメールの確認コードを使います。</string>
+    <string name="settings_otp_method_authenticator_description">認証アプリに表示されるコードを毎回入力します。バックグラウンド更新では再ログインできません。</string>
     <string name="settings_username">ユーザー名</string>
     <string name="settings_password">パスワード</string>
     <string name="settings_notifications">通知</string>

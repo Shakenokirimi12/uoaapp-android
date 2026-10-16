@@ -1,5 +1,6 @@
 package com.shakenokirimi12.uoa_app.ui.settings;
 
+import com.shakenokirimi12.uoa_app.services.idp.OtpMethod;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Build;
@@ -168,6 +169,10 @@ public class SettingsFragment extends Fragment {
         boolean loggedIn = !prefs.getUsername().isEmpty();
         textUsername.setText(loggedIn ? prefs.getUsername() : "未ログイン");
         view.findViewById(R.id.row_account).setOnClickListener(v -> showEditAccountDialog());
+
+        otpMethodLabel = view.findViewById(R.id.text_otp_method);
+        updateOtpMethodLabel();
+        view.findViewById(R.id.row_otp_method).setOnClickListener(v -> showOtpMethodDialog());
         // A logout button next to "未ログイン" is contradictory; hide it until there is an account.
         view.findViewById(R.id.button_logout).setVisibility(loggedIn ? View.VISIBLE : View.GONE);
         view.findViewById(R.id.divider_logout).setVisibility(loggedIn ? View.VISIBLE : View.GONE);
@@ -369,6 +374,43 @@ public class SettingsFragment extends Fragment {
         });
 
         picker.show(getParentFragmentManager(), "lunch_time_picker");
+    }
+
+    private android.widget.TextView otpMethodLabel;
+
+    private void updateOtpMethodLabel() {
+        if (otpMethodLabel == null) return;
+        OtpMethod method = OtpMethod.from(PreferenceManager.getInstance().getOtpMethod());
+        otpMethodLabel.setText(method == OtpMethod.AUTHENTICATOR
+                ? R.string.settings_otp_method_authenticator
+                : R.string.settings_otp_method_mail);
+    }
+
+    /**
+     * ワンタイムパスワードの受け取り方を選ばせる。大学側の設定と揃っていないとログインできない。
+     * 認証アプリ方式はこのアプリがシークレットを持たないため毎回手入力になる
+     * (そのぶんセッションの永続化が効いている前提)。
+     */
+    private void showOtpMethodDialog() {
+        OtpMethod current = OtpMethod.from(PreferenceManager.getInstance().getOtpMethod());
+        CharSequence[] labels = {
+                getString(R.string.settings_otp_method_mail),
+                getString(R.string.settings_otp_method_authenticator),
+        };
+        int checked = current == OtpMethod.AUTHENTICATOR ? 1 : 0;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.settings_otp_method)
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    OtpMethod chosen = which == 1 ? OtpMethod.AUTHENTICATOR : OtpMethod.MAIL;
+                    PreferenceManager.getInstance().setOtpMethod(chosen.value);
+                    updateOtpMethodLabel();
+                    dialog.dismiss();
+                })
+                .setMessage(current == OtpMethod.AUTHENTICATOR
+                        ? R.string.settings_otp_method_authenticator_description
+                        : R.string.settings_otp_method_mail_description)
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private void showEditAccountDialog() {

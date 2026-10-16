@@ -1,5 +1,6 @@
 package com.shakenokirimi12.uoa_app.ui.home;
 
+import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -309,7 +310,7 @@ public class HomeFragment extends Fragment {
         // += so a pull-to-refresh during an in-flight sync does not hide the spinner early.
         pendingFetches += (fetchEvents ? 1 : 0) + (fetchAssignments ? 1 : 0);
 
-        if (fetchEvents) csService.fetchCalendarEvents(user, pass, new ServiceCallback<List<CalendarEvent>>() {
+        if (fetchEvents) csService.fetchCalendarEvents(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<List<CalendarEvent>>() {
             @Override
             public void onSuccess(List<CalendarEvent> events) {
                 if (!isAdded()) return;
@@ -329,11 +330,11 @@ public class HomeFragment extends Fragment {
             }
         });
 
-        if (fetchAssignments) moodleService.ensureLoggedIn(user, pass, true, new ServiceCallback<Boolean>() {
+        if (fetchAssignments) moodleService.ensureLoggedIn(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 if (!isAdded()) return;
-                moodleService.fetchAssignments(new ServiceCallback<List<Assignment>>() {
+                moodleService.fetchAssignments(AuthorizationContext.INTERACTIVE, new ServiceCallback<List<Assignment>>() {
                     @Override
                     public void onSuccess(List<Assignment> assignments) {
                         if (!isAdded()) return;
