@@ -391,9 +391,12 @@ public class SettingsFragment extends Fragment {
      */
     private void showOtpMethodDialog() {
         OtpMethod current = OtpMethod.from(PreferenceManager.getInstance().getOtpMethod());
+        // 説明は各選択肢の 2 行目に入れる。setMessage と setSingleChoiceItems を併用すると
+        // AlertController がメッセージを優先してリストを出さず、選べなくなる。
         CharSequence[] labels = {
-                getString(R.string.settings_otp_method_mail),
-                getString(R.string.settings_otp_method_authenticator),
+                otpMethodItem(R.string.settings_otp_method_mail, R.string.settings_otp_method_mail_description),
+                otpMethodItem(R.string.settings_otp_method_authenticator,
+                        R.string.settings_otp_method_authenticator_description),
         };
         int checked = current == OtpMethod.AUTHENTICATOR ? 1 : 0;
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
@@ -404,11 +407,23 @@ public class SettingsFragment extends Fragment {
                     updateOtpMethodLabel();
                     dialog.dismiss();
                 })
-                .setMessage(current == OtpMethod.AUTHENTICATOR
-                        ? R.string.settings_otp_method_authenticator_description
-                        : R.string.settings_otp_method_mail_description)
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    /** 1 行目に方式名、2 行目に小さめの補足。 */
+    private CharSequence otpMethodItem(int titleRes, int descriptionRes) {
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder(getString(titleRes));
+        sb.append('\n');
+        int start = sb.length();
+        sb.append(getString(descriptionRes));
+        sb.setSpan(new android.text.style.RelativeSizeSpan(0.85f), start, sb.length(),
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        int color = com.google.android.material.color.MaterialColors.getColor(requireContext(),
+                com.google.android.material.R.attr.colorOnSurfaceVariant, android.graphics.Color.GRAY);
+        sb.setSpan(new android.text.style.ForegroundColorSpan(color), start, sb.length(),
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return sb;
     }
 
     private void showEditAccountDialog() {
