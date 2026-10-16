@@ -201,4 +201,24 @@ public class OtpRelayResponderTest {
         assertNull(OtpRelayRequest.parse("{\"pairingId\":\"A\",\"requestId\":\"../x\",\"requestedAt\":1,\"expiresAt\":2}"));
         assertNull(OtpRelayRequest.parse("not json"));
     }
+
+    @Test
+    public void expired410_isNotReportedAsSent() {
+        responseStatus = 410;
+        OtpRelayResponder.Outcome outcome = responder().fetchAndRespond(pairing, request, NOW, 18_000);
+        assertEquals(OtpRelayResponder.Kind.FAILED, outcome.kind);
+        assertEquals("expired", outcome.reason);
+        // 中継サーバ側で答えが決まっているので、使ったメールは消す (iOS と同じ)。
+        assertEquals(1, deleted.size());
+    }
+
+    @Test
+    public void approve_whenOnlyThePostFails_isNotCalledMailTimeout() {
+        responseStatus = 500;
+        OtpRelayResponder.Outcome outcome = responder().approve(pairing, request);
+        assertEquals("relay-unreachable", outcome.reason);
+        // mail-timeout の失敗報告は送らない (送ったのは approved の 1 件だけ)。
+        assertEquals(1, server.requests().size());
+        assertEquals("approved", lastPostBody().get("result").getAsString());
+    }
 }

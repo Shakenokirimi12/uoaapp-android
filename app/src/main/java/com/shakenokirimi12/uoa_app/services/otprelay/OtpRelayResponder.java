@@ -24,7 +24,11 @@ public final class OtpRelayResponder {
 
     public static final class Outcome {
         @NonNull public final Kind kind;
-        /** FAILED のときの理由 (no-credentials / login-failed / code-not-found / imap-error / mail-timeout / expired / bad-key)。 */
+        /**
+         * FAILED のときの理由 (no-credentials / login-failed / code-not-found / imap-error / mail-timeout /
+         * expired / bad-key / relay-unreachable)。NEEDS_APPROVAL のときは承認に回した理由
+         * (mail-timeout / relay-unreachable)。
+         */
         @Nullable public final String reason;
 
         Outcome(@NonNull Kind kind, @Nullable String reason) {
@@ -97,7 +101,7 @@ public final class OtpRelayResponder {
             found = mail.fetch(uid, pass, timeout, since);
         } catch (Exception e) {
             String reason = failureCode(e);
-            if ("mail-timeout".equals(reason)) return Outcome.of(Kind.NEEDS_APPROVAL);
+            if ("mail-timeout".equals(reason)) return new Outcome(Kind.NEEDS_APPROVAL, "mail-timeout");
             postFailure(pairing, request, keys, reason);
             lastResult.save(false, failureText(reason), String.valueOf(e));
             return Outcome.failed(reason);
@@ -129,19 +133,24 @@ public final class OtpRelayResponder {
             }
         }
         if (status == 204) return Outcome.of(Kind.SENT);
+        // 410 = 期限切れ。PC にコードは渡っていないので「送りました」とは言わない。
+        if (status == 410) return Outcome.failed("expired");
         if (accepted) return Outcome.of(Kind.ALREADY_ANSWERED);
-        return Outcome.of(Kind.NEEDS_APPROVAL);
+        return new Outcome(Kind.NEEDS_APPROVAL, "relay-unreachable");
     }
 
     /**
      * 通知の「承認して送る」から。requestedAt は受信時に補正済みの値を渡す (二重に補正しない)。
      * 承認したのにメールが来なければ、mail-timeout として中継サーバに知らせて終える。
+     * メールは取れたのに中継サーバへ返せなかったときは、mail-timeout とは言わない (iOS はここを
+     * 区別していないが、届いたメールを「届かなかった」と伝えることになるため分ける)。
      */
     @NonNull
     public Outcome approve(@NonNull OtpRelayPairing pairing, @NonNull OtpRelayRequest request) {
         if (request.expiresAt <= clock.now()) return Outcome.failed("expired");
         Outcome outcome = fetchAndRespond(pairing, request, request.requestedAt, OtpRelayTiming.MAIL_WAIT_LIMIT_MS);
         if (outcome.kind != Kind.NEEDS_APPROVAL) return outcome;
+        if ("relay-unreachable".equals(outcome.reason)) return Outcome.failed("relay-unreachable");
         OtpRelayCrypto.Keys keys = OtpRelayCrypto.keys(pairing.key);
         if (keys != null) postFailure(pairing, request, keys, "mail-timeout");
         return Outcome.failed("mail-timeout");
@@ -196,6 +205,7 @@ public final class OtpRelayResponder {
             case "code-not-found": return "OTP メールからコードを読み取れませんでした。";
             case "mail-timeout": return "OTP メールが時間内に届きませんでした。";
             case "expired": return "期限が切れました。PC でもう一度ログインしてください。";
+            case "relay-unreachable": return "コードは読めましたが、中継サーバに返せませんでした。PC でもう一度ログインしてください。";
             default: return "大学のメールサーバとの通信に失敗しました。";
         }
     }

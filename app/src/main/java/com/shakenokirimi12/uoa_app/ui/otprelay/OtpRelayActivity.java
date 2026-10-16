@@ -45,16 +45,24 @@ public class OtpRelayActivity extends AppCompatActivity {
     /** 承認通知の本体から。 */
     @NonNull
     public static Intent requestIntent(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
-        Intent intent = new Intent(ctx, OtpRelayActivity.class).putExtra(EXTRA_MODE, MODE_REQUEST)
+        Intent intent = new Intent(ctx, OtpRelayRequestActivity.class).putExtra(EXTRA_MODE, MODE_REQUEST)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         OtpRelayWorker.putRequestExtras(intent, request);
         return intent;
     }
 
+    /** 依頼の承認を受け付けるか。公開している (QR 用の) この画面では受け付けない。 */
+    boolean acceptsRequests() { return false; }
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (savedInstanceState != null) return; // 回転などで作り直されたときはダイアログが復元される
+        // ダイアログは作り直しで復元されない。構成変更は manifest の configChanges で作り直さないように
+        // してあるが、それでも作り直された (プロセスの再生成など) ときは、空の透明画面を残さず閉じる。
+        if (savedInstanceState != null) {
+            finish();
+            return;
+        }
         handle(getIntent());
     }
 
@@ -73,7 +81,8 @@ public class OtpRelayActivity extends AppCompatActivity {
     private void handle(@Nullable Intent intent) {
         if (intent == null) { finish(); return; }
         if (MODE_REQUEST.equals(intent.getStringExtra(EXTRA_MODE))) {
-            showRequest(OtpRelayWorker.getRequest(intent));
+            if (acceptsRequests()) showRequest(OtpRelayWorker.getRequest(intent));
+            else finish();
             return;
         }
         Uri data = intent.getData();
@@ -90,6 +99,8 @@ public class OtpRelayActivity extends AppCompatActivity {
                 .setTitle("PC と連携しますか？")
                 .setMessage("「" + pending.browserName + "」で OTP の画面が出たとき、この端末に通知が届きます。"
                         + "承認すると、大学のメールに届いた OTP を暗号化して PC に送ります。ID とパスワードは送りません。\n\n"
+                        + "連携すると、メールからの自動取得に同意している場合は承認なしで自動で返します "
+                        + "(設定の「PC との連携 (OTP)」で承認制にできます)。\n\n"
                         + "自分の PC の拡張で出した QR のときだけ連携してください。")
                 .setPositiveButton("連携する", (d, w) -> pair(pending))
                 .setNegativeButton("キャンセル", (d, w) -> finish())

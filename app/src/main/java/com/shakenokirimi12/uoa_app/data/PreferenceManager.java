@@ -380,6 +380,15 @@ public class PreferenceManager {
     public String getOtpRelayPairingsJson() { return getSecret(KEY_OTP_RELAY_PAIRINGS); }
     public void setOtpRelayPairingsJson(String json) { putSecret(KEY_OTP_RELAY_PAIRINGS, json); }
 
+    /** 書き込みが確定したかを返す版。保存できなかったら連携をサーバ側から巻き戻すため。 */
+    public boolean commitOtpRelayPairingsJson(String json) {
+        if (encryptedPrefs == null) return false;
+        SharedPreferences.Editor e = encryptedPrefs.edit();
+        if (json == null || json.isEmpty()) e.remove(KEY_OTP_RELAY_PAIRINGS);
+        else e.putString(KEY_OTP_RELAY_PAIRINGS, json);
+        return e.commit();
+    }
+
     /** PC 中継の直近の自動応答の結果 (JSON)。IMAP の応答行を含みうるので暗号化側に置く。 */
     public String getOtpRelayLastResultJson() { return getSecret(KEY_OTP_RELAY_LAST_RESULT); }
     public void setOtpRelayLastResultJson(String json) { putSecret(KEY_OTP_RELAY_LAST_RESULT, json); }

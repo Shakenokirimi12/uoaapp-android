@@ -239,7 +239,10 @@ public final class ImapOtpFetcher {
     @Nullable
     private String searchLatestUid(ImapStream stream) throws IOException, ImapException {
         String tag = stream.nextTag();
-        stream.send(tag + " UID SEARCH FROM \"" + OTP_SENDER + "\" SINCE " + imapDate(new Date()));
+        // 前日から探す。今日だけだと、日付をまたいだ直後 (23:55 に届いたメールを 0:01 に探す、PC 中継の
+        // 「10 分前」を含む) に見つからない。新しさは UID と INTERNALDATE で判定しているので広げても困らない。
+        stream.send(tag + " UID SEARCH FROM \"" + OTP_SENDER + "\" SINCE "
+                + imapDate(new Date(System.currentTimeMillis() - 24L * 60 * 60 * 1000)));
         return lastUid(stream.readUntilTagged(tag));
     }
 
@@ -316,11 +319,8 @@ public final class ImapOtpFetcher {
         return null;
     }
 
-    /**
-     * "* 5 FETCH (UID 123 INTERNALDATE \"15-Sep-2026 14:23:45 +0900\")" から到着時刻を取る。
-     * 取れなければ null (呼び出し側が従来の下限にフォールバックする)。
-     */
-    @Nullable
+    /** "* SEARCH 1 2 3" の UID を全部。該当なしなら空。 */
+    @NonNull
     static List<Integer> allUids(@NonNull List<String> lines) {
         List<Integer> out = new ArrayList<>();
         for (String line : lines) {
@@ -336,6 +336,10 @@ public final class ImapOtpFetcher {
         return out;
     }
 
+    /**
+     * "* 5 FETCH (UID 123 INTERNALDATE \"15-Sep-2026 14:23:45 +0900\")" から到着時刻を取る。
+     * 取れなければ null (呼び出し側が従来の下限にフォールバックする)。
+     */
     @Nullable
     static Long parseInternalDate(@NonNull List<String> lines) {
         for (String line : lines) {

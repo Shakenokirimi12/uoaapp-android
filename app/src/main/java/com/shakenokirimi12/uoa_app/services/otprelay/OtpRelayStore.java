@@ -56,10 +56,13 @@ public final class OtpRelayStore {
         synchronized (LOCK) {
             if (!PreferenceManager.getInstance().isSecureStorageAvailable()) return false;
             List<OtpRelayPairing> list = all();
+            // 同じ QR を読み直したときは、利用者が選んだ自動/承認を引き継ぐ (既定の自動に戻さない)。
+            for (OtpRelayPairing p : list) {
+                if (pairing.pairingId.equals(p.pairingId)) pairing.autoApprove = p.autoApprove;
+            }
             list.removeIf(p -> pairing.pairingId.equals(p.pairingId));
             list.add(pairing);
-            save(list);
-            return find(pairing.pairingId) != null;
+            return save(list);
         }
     }
 
@@ -81,8 +84,23 @@ public final class OtpRelayStore {
         }
     }
 
-    private static void save(List<OtpRelayPairing> list) {
-        PreferenceManager.getInstance().setOtpRelayPairingsJson(list.isEmpty() ? null : GSON.toJson(list));
+    /** 書き込みまで確定させる (apply だと失敗が分からず、連携の巻き戻しが走らない)。 */
+    private static boolean save(List<OtpRelayPairing> list) {
+        return PreferenceManager.getInstance().commitOtpRelayPairingsJson(list.isEmpty() ? null : GSON.toJson(list));
+    }
+
+    /** 処理した依頼 ID (直近 20 件)。依頼は 2 分で期限が切れるので、これで足りる。 */
+    private static final java.util.LinkedHashSet<String> HANDLED = new java.util.LinkedHashSet<>();
+
+    /** 初めての依頼なら記録して true。同じプロセスで既に処理していれば false。 */
+    public static boolean markHandled(@NonNull String requestId) {
+        synchronized (HANDLED) {
+            if (!HANDLED.add(requestId)) return false;
+            while (HANDLED.size() > 20) {
+                HANDLED.remove(HANDLED.iterator().next());
+            }
+            return true;
+        }
     }
 
     @Nullable

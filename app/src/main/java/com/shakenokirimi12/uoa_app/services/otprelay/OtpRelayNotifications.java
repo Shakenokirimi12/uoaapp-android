@@ -77,6 +77,24 @@ public final class OtpRelayNotifications {
         notify(ctx, id, b.build());
     }
 
+    /** 前景サービスの表示 (受信直後で、まだメールを読むかどうか決まっていない段階にも出る)。 */
+    @NonNull
+    static Notification working(@NonNull Context ctx, @NonNull String browserName) {
+        return new NotificationCompat.Builder(ctx, NotificationChannels.ensureOtpRelayProgress(ctx))
+                .setSmallIcon(R.drawable.ic_stat_notification)
+                .setContentTitle("「" + browserName + "」の OTP")
+                .setContentText("PC からの OTP 依頼を処理しています")
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build();
+    }
+
+    /** 409: 別の操作 (拒否・別の端末) で既に応答が決まっていた。 */
+    static void alreadyAnswered(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
+        result(ctx, request, "この依頼には既に応答済みです", "PC 側で依頼の結果が決まっていたため、今回は送っていません。", false);
+    }
+
     static void sent(@NonNull Context ctx, @NonNull OtpRelayPairing pairing, @NonNull OtpRelayRequest request) {
         String body = "「" + pairing.browserName + "」の OTP 画面に入力します。心当たりが無ければ、アプリの設定から連携を解除してください。";
         result(ctx, request, "PC にコードを送りました", body, false);

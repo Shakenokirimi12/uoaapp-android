@@ -129,7 +129,7 @@ public class OtpRelayWorker extends Worker {
         OtpRelayPairing pairing = request != null ? OtpRelayStore.find(request.pairingId) : null;
         String name = pairing != null ? pairing.browserName : "PC のブラウザ";
         int id = (request != null ? OtpRelayNotifications.notificationId(request.requestId) : 0x52000000) + 1;
-        return new ForegroundInfo(id, OtpRelayNotifications.progress(getApplicationContext(), name));
+        return new ForegroundInfo(id, OtpRelayNotifications.working(getApplicationContext(), name));
     }
 
     @NonNull
@@ -164,6 +164,9 @@ public class OtpRelayWorker extends Worker {
 
         // 受信。
         if (request.expiresAt <= System.currentTimeMillis()) return Result.success();
+        // FCM は同じメッセージを再配信することがある。処理済みの依頼でもう一度メールを読みに行かない
+        // (使用済みメールは消してあるので mail-timeout → 承認の通知、という誤った流れになる)。
+        if (!OtpRelayStore.markHandled(request.requestId)) return Result.success();
         // 以降、承認で使う依頼時刻は補正済みの値にする (iOS と同じく、承認時に二重に補正しない)。
         OtpRelayRequest effective = new OtpRelayRequest(request.pairingId, request.requestId,
                 OtpRelayTiming.effectiveRequestedAt(request.requestedAt, deliveredAt), request.expiresAt);
@@ -184,6 +187,12 @@ public class OtpRelayWorker extends Worker {
     }
 
     private void showProgress(Context ctx, OtpRelayPairing pairing, OtpRelayRequest request) {
+        // Android 11 以前は expedited が前景サービスとして動き、getForegroundInfo の通知が既に出ている。
+        // 同じ文面を 2 つ並べないよう、承認の通知を消すだけにする。
+        if (android.os.Build.VERSION.SDK_INT < 31) {
+            OtpRelayNotifications.cancel(ctx, request);
+            return;
+        }
         try {
             androidx.core.app.NotificationManagerCompat.from(ctx).notify(
                     OtpRelayNotifications.notificationId(request.requestId),
@@ -197,8 +206,10 @@ public class OtpRelayWorker extends Worker {
                                OtpRelayResponder.Outcome outcome) {
         switch (outcome.kind) {
             case SENT:
-            case ALREADY_ANSWERED:
                 OtpRelayNotifications.sent(ctx, pairing, request);
+                break;
+            case ALREADY_ANSWERED:
+                OtpRelayNotifications.alreadyAnswered(ctx, request);
                 break;
             case FAILED:
                 OtpRelayNotifications.failed(ctx, request, outcome.reason);

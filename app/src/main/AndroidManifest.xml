@@ -55,6 +55,7 @@
              読むとここが開く。確認ダイアログだけの透明な画面。 -->
         <activity
             android:name=".ui.otprelay.OtpRelayActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density"
             android:exported="true"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
@@ -67,6 +68,16 @@
                 <data android:scheme="uoa-app" android:host="otp-pair" />
             </intent-filter>
         </activity>
+
+        <!-- 承認通知の本体から開く確認。外部から開かせないので非公開。 -->
+        <activity
+            android:name=".ui.otprelay.OtpRelayRequestActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Uoaapp.Translucent" />
 
         <receiver
             android:name=".services.otprelay.OtpRelayActionReceiver"

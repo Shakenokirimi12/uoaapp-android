@@ -89,6 +89,26 @@ public final class OtpRelayPairingService {
     }
 
     /**
+     * ログアウト時。端末の連携 (K) を消す前に、中継サーバからも消す。消さないと PC の依頼が
+     * 届き続け、K が無いので端末からは二度と解除できない。通信するので別スレッドで、結果は待たない。
+     */
+    public static void unpairAllInBackground(@NonNull java.util.List<OtpRelayPairing> pairings) {
+        if (pairings.isEmpty()) return;
+        new Thread(() -> {
+            OtpRelayApi api = new OtpRelayApi();
+            for (OtpRelayPairing p : pairings) {
+                OtpRelayCrypto.Keys keys = OtpRelayCrypto.keys(p.key);
+                if (keys == null) continue;
+                try {
+                    api.unpair(p.pairingId, keys);
+                } catch (IOException e) {
+                    Log.w(TAG, "unpair on logout failed: " + e);
+                }
+            }
+        }, "otp-relay-unpair").start();
+    }
+
+    /**
      * FCM トークンが変わったら、全部の連携を新しいトークンで登録し直す (updateOnly)。
      * サーバに無い (404) ものはこの端末からも消す。それ以外の失敗は残して次に任せる。
      */
