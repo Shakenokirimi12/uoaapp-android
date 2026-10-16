@@ -99,6 +99,9 @@
     <string name="browser_download_started">ダウンロードを開始しました: %1$s</string>
     <string name="browser_download_failed">ダウンロードを開始できませんでした</string>
     <!-- Background sync -->
+    <string name="class_channel_name">授業通知</string>
+    <string name="class_channel_description">授業中と授業の直前に、残り時間を通知に表示します</string>
+    <string name="class_notify_next_prefix">次の授業: %1$s</string>
     <string name="sync_channel_name">バックグラウンド同期</string>
     <string name="sync_notify_changed">課題の一覧が更新されました</string>
     <string name="sync_notify_success">同期が完了しました</string>
@@ -109,6 +112,7 @@
     <string name="push_channel_name">課題の期限通知</string>
     <!-- Assignment countdown -->
     <string name="countdown_channel_name">課題の締切カウントダウン</string>
+    <string name="class_change_channel_name">休講・教室変更</string>
     <string name="countdown_title">課題の締め切りが近づいています</string>
     <!-- Review guidelines / block list -->
     <string name="review_guidelines_title">授業評価ガイドライン</string>

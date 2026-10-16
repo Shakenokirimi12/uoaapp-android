@@ -4,11 +4,17 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- 授業の常駐通知をライブアップデートに昇格させる (実行時の許可は不要)。 -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- 時間割を端末のカレンダーに書き出す (設定でオプトインしたときだけ実行時に求める) -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- 端末カレンダー用アカウントの同期設定 (インストール時に自動で許可される) -->
+    <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
 
     <application
         android:allowBackup="true"
@@ -60,14 +66,35 @@
             android:exported="false"
             android:theme="@style/Theme.Uoaapp.Onboarding" />
 
-        <service
-            android:name=".services.notification.ClassNotificationService"
-            android:foregroundServiceType="specialUse"
+        <receiver
+            android:name=".services.notification.ClassLiveUpdate$AlarmReceiver"
             android:exported="false" />
 
         <receiver
             android:name=".services.LocationGeofenceService$GeofenceReceiver"
             android:exported="false" />
+
+        <!-- 端末カレンダー連携: Google カレンダーに表示させるための専用アカウント (DeviceCalendarSync) -->
+        <service
+            android:name=".services.calendar.CalendarAccountService$AuthenticatorService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accounts.AccountAuthenticator" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accounts.AccountAuthenticator"
+                android:resource="@xml/calendar_authenticator" />
+        </service>
+        <service
+            android:name=".services.calendar.CalendarAccountService$SyncService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.content.SyncAdapter" />
+            </intent-filter>
+            <meta-data
+                android:name="android.content.SyncAdapter"
+                android:resource="@xml/calendar_syncadapter" />
+        </service>
 
     </application>
 </manifest>

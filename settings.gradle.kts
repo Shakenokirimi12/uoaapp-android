@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "uoa-app"
 include(":app")
+include(":wear")

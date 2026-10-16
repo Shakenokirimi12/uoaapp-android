@@ -142,8 +142,8 @@ public class SyncWorker extends Worker {
                 @Override public void onError(String m) { csError.set(m); latch.countDown(); }
             }));
             if (fetched.get() != null) {
-                cache.saveEvents(fetched.get());
-                com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(ctx);
+                // アプリを開かない日でも、休講・教室変更を知らせ、授業の常駐通知を今日の時間割で組み直す。
+                TimetableUpdates.onFetched(ctx, fetched.get());
             } else {
                 anyFailure = true;
                 // CampusSquare 側だけで ID/PW 誤りが判明することもある (Moodle が killswitch で
