@@ -298,10 +298,12 @@ public class PreferenceManager {
 
     /**
      * IdP ログインでワンタイムパスワードが必要なとき、メール (IMAP) から自動取得してよいか。
-     * 既定は true (2026-09-15 の判断: 同期のたびに手入力を求めると実用にならない)。
-     * IdP チュートリアルで手動入力に切り替えられる。
+     * 既定は false (同意してから)。大学のメールボックスに入る操作なので、iOS (SettingsStore の
+     * otp_auto_fetch_enabled、既定 false) と同じく本人が選んだときだけ有効にする。
+     * 有効にする経路: IdP チュートリアルの選択、OTP 入力ダイアログの「今後はメールから自動で取得する」。
+     * 以前は既定 true だったが、未設定の端末では読まれる値が変わるだけで、保存済みの選択は変えない。
      */
-    public boolean isOtpAutoFetchEnabled() { return prefs.getBoolean(KEY_OTP_AUTO_FETCH_ENABLED, true); }
+    public boolean isOtpAutoFetchEnabled() { return prefs.getBoolean(KEY_OTP_AUTO_FETCH_ENABLED, false); }
     public void setOtpAutoFetchEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_OTP_AUTO_FETCH_ENABLED, enabled).apply(); }
 
     /**

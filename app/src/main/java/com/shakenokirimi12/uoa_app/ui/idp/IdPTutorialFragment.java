@@ -28,7 +28,7 @@ public class IdPTutorialFragment extends Fragment {
     public static final String ACTION_LOGIN = "login";
     public static final String ACTION_OTP_REGISTRATION = "otp_registration";
 
-    private boolean otpAutoFetchChoice = true;
+    private boolean otpAutoFetchChoice = false;
     private MaterialRadioButton radioAuto;
     private MaterialRadioButton radioManual;
 
@@ -48,8 +48,8 @@ public class IdPTutorialFragment extends Fragment {
         radioManual = view.findViewById(R.id.radio_otp_manual);
         view.findViewById(R.id.row_otp_auto).setOnClickListener(v -> setChoice(true));
         view.findViewById(R.id.row_otp_manual).setOnClickListener(v -> setChoice(false));
-        // 既定は自動取得 (PreferenceManager.isOtpAutoFetchEnabled の既定と揃える)。
-        setChoice(true);
+        // 今の設定を出す。未設定なら手動 (自動取得は同意してから。iOS と同じ)。
+        setChoice(PreferenceManager.getInstance(requireContext()).isOtpAutoFetchEnabled());
 
         MaterialButton startNow = view.findViewById(R.id.button_start_now);
         startNow.setText(ACTION_OTP_REGISTRATION.equals(nextAction) ? "今すぐ設定する" : "今すぐログインする");
