@@ -35,20 +35,47 @@ import okhttp3.Cookie;
  *       無いため。1 回の同期 (CampusSquare→Moodle) は数分で終わるので SSO の再利用は保てる。</li>
  * </ul>
  *
- * slink.secioss.com が発行する cookie だけを入れる。SP (csweb/elms) の cookie を混ぜると、次回 IdP へ
- * 無関係なセッションを送ることになる。アカウント切り替え ({@link PreferenceManager#setUsername}) は
- * {@link #clear()} を呼んでメモリ上のセッション cookie も消す。
+ * slink.secioss.com の応答で受け取った cookie のうち、slink.secioss.com に送られうるものだけを入れる。
+ * SP (csweb/elms) の cookie を混ぜると、次回 IdP へ無関係なセッションを送ることになる。
+ * ただし SSO チケット auth_tkt はパスワード POST (tenantlogin.cgi) の応答で {@code Domain=secioss.com} 付きで
+ * 出てくる。以前は domain が slink.secioss.com と完全一致するものだけを入れていたので auth_tkt を落とし、
+ * 2 つ目の SP (Moodle の後の CampusSquare) へのログインで毎回 OTP を求められていた (iOS で判明)。
+ * 親ドメイン宛ての cookie は、その Domain のまま持って再生する。
+ *
+ * SSO セッションは持ち主 (uid) を記録する。別アカウントのチケットを載せると、IdP はパスワードを見ずに
+ * 前のアカウントとして SP へ通してしまう。{@link #claimFor(String)} が持ち主の違うものを捨てる。
+ * アカウント切り替え ({@link PreferenceManager#setUsername}) は {@link #clear()} でメモリ上の分も消す。
  */
 public final class SeciossSsoStore {
     static final String IDP_HOST = "slink.secioss.com";
+
+    /** 保存先。テストではメモリ上の実装に差し替える。 */
+    interface Persistence {
+        @Nullable String loadCookies();
+        void saveCookies(@Nullable String serialized);
+        @Nullable String loadOwner();
+        void saveOwner(@Nullable String owner);
+    }
+
+    /** EncryptedSharedPreferences (PreferenceManager) に置く。 */
+    private static final class PreferencePersistence implements Persistence {
+        @Override public String loadCookies() { return PreferenceManager.getInstance().getIdpSsoCookieHeader(); }
+        @Override public void saveCookies(String serialized) { PreferenceManager.getInstance().setIdpSsoCookieHeader(serialized); }
+        @Override public String loadOwner() { return PreferenceManager.getInstance().getIdpSsoOwner(); }
+        @Override public void saveOwner(String owner) { PreferenceManager.getInstance().setIdpSsoOwner(owner); }
+    }
     static final long SESSION_COOKIE_LIFETIME_MS = 60L * 60 * 1000;
-    /** 永続化形式: 1 行 1 cookie、name TAB value TAB path TAB expiresAtMillis。cookie 値にタブは現れない。 */
+    /**
+     * 永続化形式: 1 行 1 cookie、name TAB value TAB path TAB expiresAtMillis TAB domain。cookie 値にタブは現れない。
+     * domain は親ドメイン宛て (Domain=secioss.com) のときだけ入り、host-only (slink) なら空。
+     * domain の欄が無い 4 欄の行 (この形式の前の版) は host-only として読む。
+     */
     private static final String FIELD_SEP = "\t";
     private static final String LINE_SEP = "\n";
 
     /** 参照時に初めて作る。static 初期化で PreferenceManager に触ると純粋な parse まで Android 依存になる。 */
     private static final class Holder {
-        static final SeciossSsoStore INSTANCE = new SeciossSsoStore(System::currentTimeMillis);
+        static final SeciossSsoStore INSTANCE = new SeciossSsoStore(System::currentTimeMillis, new PreferencePersistence());
     }
 
     public static SeciossSsoStore getInstance() { return Holder.INSTANCE; }
@@ -60,13 +87,25 @@ public final class SeciossSsoStore {
         final String path;
         final long expiresAt;
         final long receivedAt;
+        /** 親ドメイン宛て (例 "secioss.com") のときだけ。null は slink.secioss.com の host-only。 */
+        @Nullable final String parentDomain;
 
         StoredCookie(@NonNull String name, @NonNull String value, @NonNull String path, long expiresAt, long receivedAt) {
+            this(name, value, path, expiresAt, receivedAt, null);
+        }
+
+        StoredCookie(@NonNull String name, @NonNull String value, @NonNull String path, long expiresAt, long receivedAt,
+                     @Nullable String parentDomain) {
             this.name = name;
             this.value = value;
             this.path = path;
             this.expiresAt = expiresAt;
             this.receivedAt = receivedAt;
+            this.parentDomain = parentDomain;
+        }
+
+        boolean sameKey(@NonNull String otherName, @NonNull String otherPath, @Nullable String otherDomain) {
+            return name.equals(otherName) && path.equals(otherPath) && java.util.Objects.equals(parentDomain, otherDomain);
         }
 
         boolean isPersistent() { return expiresAt >= 0; }
@@ -74,11 +113,32 @@ public final class SeciossSsoStore {
 
     private final Object lock = new Object();
     private final LongSupplier clock;
+    private final Persistence persistence;
     /** null = まだ永続化領域から読んでいない。 */
     @Nullable
     private List<StoredCookie> memory;
 
-    SeciossSsoStore(@NonNull LongSupplier clock) { this.clock = clock; }
+    SeciossSsoStore(@NonNull LongSupplier clock, @NonNull Persistence persistence) {
+        this.clock = clock;
+        this.persistence = persistence;
+    }
+
+    /**
+     * これから uid として IdP に入る。持ち主が記録されていて uid と違えば、手持ちの SSO を捨てる。
+     * そのうえで、ここから先に受け取る分は uid のものとして記録する。
+     * 持ち主が記録されていない (この版より前に保存された) SSO は、無効とは限らないので受け入れる
+     * (iOS の SessionStore.cookieHeader(owner:) と同じ。捨てると更新直後の全員に OTP メールが飛ぶ)。
+     */
+    public void claimFor(@NonNull String uid) {
+        synchronized (lock) {
+            String owner = persistence.loadOwner();
+            if (owner != null && !owner.isEmpty() && !owner.equals(uid)) {
+                memory = new ArrayList<>();
+                persistence.saveCookies(null);
+            }
+            persistence.saveOwner(uid);
+        }
+    }
 
     /** IdP へ seed する cookie (発行元と同じ host-only 表現)。失効分はここで落ちる。 */
     @NonNull
@@ -96,36 +156,54 @@ public final class SeciossSsoStore {
      * _redirection_state) は同一プロセス内でも再生してはいけない (次の SAMLRequest とは無関係な古い状態を
      * IdP へ送ることになる) ので、メモリにも入れない。
      */
-    public void merge(@NonNull List<Cookie> received) {
-        if (received.isEmpty()) return;
+    public void merge(@NonNull String fromHost, @NonNull List<Cookie> received) {
+        // IdP の応答で受け取ったものだけ。jar 全体や他ホストの応答から拾わない。
+        if (received.isEmpty() || !IDP_HOST.equalsIgnoreCase(fromHost)) return;
         synchronized (lock) {
             long now = clock.getAsLong();
             List<StoredCookie> cookies = new ArrayList<>(loadLocked());
             for (Cookie c : received) {
-                // ストアは slink 限定 (current() が host-only slink として再生するため)。
-                if (!c.domain().equalsIgnoreCase(IDP_HOST)) continue;
-                cookies.removeIf(s -> s.name.equals(c.name()) && s.path.equals(c.path()));
+                if (!sentToIdp(c)) continue;
+                String parent = parentDomainOf(c);
+                cookies.removeIf(s -> s.sameKey(c.name(), c.path(), parent));
+                // 削除指示 (期限が現在以前) は消すだけ。
                 if (SeciossIdPClient.isExpired(c, now)) continue;
-                cookies.add(new StoredCookie(c.name(), c.value(), c.path(), c.persistent() ? c.expiresAt() : -1, now));
+                cookies.add(new StoredCookie(c.name(), c.value(), c.path(),
+                        c.persistent() ? c.expiresAt() : -1, now, parent));
             }
             cookies = persistable(cookies, now);
             memory = cookies;
-            PreferenceManager.getInstance().setIdpSsoCookieHeader(serializePersistent(cookies));
+            persistence.saveCookies(serializePersistent(cookies));
         }
+    }
+
+    /** slink.secioss.com に送られる cookie か (host-only の slink、または slink をドメイン一致で含む Domain)。 */
+    static boolean sentToIdp(@NonNull Cookie c) {
+        String domain = c.domain().toLowerCase(java.util.Locale.ROOT);
+        if (domain.equals(IDP_HOST)) return true;
+        return !c.hostOnly() && IDP_HOST.endsWith("." + domain);
+    }
+
+    /** 親ドメイン宛てならその Domain、slink 自身宛て (host-only / Domain=slink.secioss.com) なら null。 */
+    @Nullable
+    static String parentDomainOf(@NonNull Cookie c) {
+        String domain = c.domain().toLowerCase(java.util.Locale.ROOT);
+        return c.hostOnly() || domain.equals(IDP_HOST) ? null : domain;
     }
 
     /** ログアウト時・資格情報を入れ直したとき・アカウント切り替え時。 */
     public void clear() {
         synchronized (lock) {
             memory = new ArrayList<>();
-            PreferenceManager.getInstance().setIdpSsoCookieHeader(null);
+            persistence.saveCookies(null);
+            persistence.saveOwner(null);
         }
     }
 
     @NonNull
     private List<StoredCookie> loadLocked() {
         if (memory == null) {
-            memory = load(PreferenceManager.getInstance().getIdpSsoCookieHeader(), clock.getAsLong());
+            memory = load(persistence.loadCookies(), clock.getAsLong());
         }
         return memory;
     }
@@ -137,7 +215,8 @@ public final class SeciossSsoStore {
         if (stored == null || stored.isEmpty()) return result;
         for (String line : stored.split(LINE_SEP)) {
             String[] f = line.split(FIELD_SEP, -1);
-            if (f.length != 4) return new ArrayList<>();  // 旧形式 "name=value; ..." → 期限が分からないので持ち越さない
+            // 旧形式 "name=value; ..." → 期限が分からないので持ち越さない
+            if (f.length != 4 && f.length != 5) return new ArrayList<>();
             long expiresAt;
             try {
                 expiresAt = Long.parseLong(f[3]);
@@ -145,7 +224,8 @@ public final class SeciossSsoStore {
                 return new ArrayList<>();
             }
             // 永続化されるのは期限付きだけなので receivedAt は判定に使わないが、形式は揃えておく。
-            result.add(new StoredCookie(f[0], f[1], f[2], expiresAt, now));
+            String parent = f.length == 5 && !f[4].isEmpty() ? f[4] : null;
+            result.add(new StoredCookie(f[0], f[1], f[2], expiresAt, now, parent));
         }
         return persistable(result, now);
     }
@@ -158,22 +238,24 @@ public final class SeciossSsoStore {
             if (!c.isPersistent()) continue;
             if (sb.length() > 0) sb.append(LINE_SEP);
             sb.append(c.name).append(FIELD_SEP).append(c.value).append(FIELD_SEP).append(c.path)
-                    .append(FIELD_SEP).append(c.expiresAt);
+                    .append(FIELD_SEP).append(c.expiresAt)
+                    .append(FIELD_SEP).append(c.parentDomain != null ? c.parentDomain : "");
         }
         return sb.length() == 0 ? null : sb.toString();
     }
 
     /**
-     * slink.secioss.com が出す cookie は Domain 属性なし = host-only (2026-09-07 の実機 HAR で 15 種すべて確認)。
-     * 発行元と同じ host-only 表現で作らないと mergeCookies の (name, domain, path) 一致が崩れ、再ログイン時に
-     * 古い seed が消えず同名 cookie を二重送信して ALB スティッキーをまた壊す。
+     * 発行元と同じ表現で作り直す。slink.secioss.com の cookie はほとんどが Domain 属性なし = host-only
+     * (2026-09-07 の実機 HAR)、auth_tkt は Domain=secioss.com。表現を変えると mergeCookies の
+     * (name, domain, path) 一致が崩れ、再ログイン時に古い seed が消えず同名 cookie を二重送信して
+     * ALB スティッキーをまた壊す。
      */
     @NonNull
     static List<Cookie> toCookies(@NonNull List<StoredCookie> stored) {
         List<Cookie> out = new ArrayList<>();
         for (StoredCookie c : stored) {
-            Cookie.Builder b = new Cookie.Builder().name(c.name).value(c.value)
-                    .hostOnlyDomain(IDP_HOST).path(c.path);
+            Cookie.Builder b = new Cookie.Builder().name(c.name).value(c.value).path(c.path);
+            if (c.parentDomain != null) b.domain(c.parentDomain); else b.hostOnlyDomain(IDP_HOST);
             if (c.isPersistent()) b.expiresAt(c.expiresAt);
             out.add(b.build());
         }

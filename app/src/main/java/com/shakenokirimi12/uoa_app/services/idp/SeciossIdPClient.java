@@ -207,7 +207,7 @@ public final class SeciossIdPClient {
                 String hopHost = parsed.host().toLowerCase(java.util.Locale.ROOT);
                 if (hopHost.equals("secioss.com") || hopHost.endsWith(".secioss.com")) {
                     // 属性 (path / expires) ごと渡す: ストアはセッション cookie と期限付き cookie を区別して保持する。
-                    SeciossSsoStore.getInstance().merge(received);
+                    SeciossSsoStore.getInstance().merge(hopHost, received);
                 }
                 String location = resp.header("Location");
                 if (resp.isRedirect() && location != null) {
@@ -226,7 +226,12 @@ public final class SeciossIdPClient {
                 return new HttpResult(resp.code(), currentUrl, decode(bytes), jar);
             }
         }
-        throw new IOException("too many redirects: " + url);
+        throw new TooManyRedirectsException(url);
+    }
+
+    /** 自前のリダイレクト追従が上限に達した。SSO を載せた入口でこれが出たら SSO を捨てて入り直す。 */
+    static final class TooManyRedirectsException extends IOException {
+        TooManyRedirectsException(String url) { super("too many redirects: " + url); }
     }
 
     /**
@@ -506,9 +511,24 @@ public final class SeciossIdPClient {
             throws SeciossError, IOException {
         // 保持している SSO セッションを載せて入口を叩く。IdP 側で生きていれば、ログインフォームでは
         // なく SAMLResponse の自動 submit が返ってきて、パスワードも OTP も要求されずに SP へ戻れる。
-        List<Cookie> initialCookies = useStoredSso
-                ? SeciossSsoStore.getInstance().current() : Collections.emptyList();
-        HttpResult entry = get(entryUrl, initialCookies, Collections.emptyMap());
+        // SSO は持ち主ごと。別アカウントのものなら捨て、ここから受け取る分は uid のものとする
+        // (SSO を載せない経路でも受け取った cookie はストアに入るので、同じく記録する)。
+        SeciossSsoStore sso = SeciossSsoStore.getInstance();
+        sso.claimFor(uid);
+        List<Cookie> initialCookies = useStoredSso ? sso.current() : Collections.<Cookie>emptyList();
+        HttpResult entry;
+        try {
+            entry = get(entryUrl, initialCookies, Collections.emptyMap());
+        } catch (TooManyRedirectsException e) {
+            if (initialCookies.isEmpty()) throw e;
+            // 載せた SSO を IdP が受け付けず、IdP 内でリダイレクトが回った (IdP 側で失効したチケットを
+            // 再生すると 307 → 302 → 302 が続く、2026-09-16)。SSO を捨ててパスワードから 1 回だけ入り直す。
+            // 捨てないと、セッション cookie が消えるまでの最大 1 時間、同じ失敗を繰り返す。
+            android.util.Log.w("SeciossIdPClient", "entry looped with stored SSO; clearing it and retrying from the password");
+            sso.clear();
+            sso.claimFor(uid);
+            entry = get(entryUrl, Collections.emptyList(), Collections.emptyMap());
+        }
         if (entry.status != 200) {
             throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, entry.status, "entry page (" + entryUrl + ")");
         }

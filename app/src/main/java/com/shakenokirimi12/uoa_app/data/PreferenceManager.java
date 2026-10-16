@@ -46,6 +46,7 @@ public class PreferenceManager {
     private static final String KEY_OTP_METHOD = "otp_method";
     private static final String KEY_CS_IDP_SESSION_COOKIE_HEADER = "cs_idp_session_cookie_header";
     private static final String KEY_IDP_SSO_COOKIE_HEADER = "idp_sso_cookie_header";
+    private static final String KEY_IDP_SSO_OWNER = "idp_sso_owner";
     private static final String KEY_MOODLE_SESSION_COOKIE_HEADER = "moodle_session_cookie_header";
 
     private static final String TAG = "PreferenceManager";
@@ -336,6 +337,10 @@ public class PreferenceManager {
 
     public String getIdpSsoCookieHeader() { return getSecret(KEY_IDP_SSO_COOKIE_HEADER); }
     public void setIdpSsoCookieHeader(String header) { putSecret(KEY_IDP_SSO_COOKIE_HEADER, header); }
+
+    /** IdP の SSO セッションの持ち主 (uid)。別アカウントのチケットを再生しないため。 */
+    public String getIdpSsoOwner() { return getSecret(KEY_IDP_SSO_OWNER); }
+    public void setIdpSsoOwner(String owner) { putSecret(KEY_IDP_SSO_OWNER, owner); }
 
     // Reset
     public void clearAll() {
