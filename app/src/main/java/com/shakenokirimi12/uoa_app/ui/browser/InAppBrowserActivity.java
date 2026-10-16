@@ -99,12 +99,17 @@ public class InAppBrowserActivity extends AppCompatActivity {
      * 以前の版が setHttpAuthUsernamePassword で大学のパスワードを書いていた。
      */
     public static void clearWebSession(@NonNull Context context) {
-        CookieManager cm = CookieManager.getInstance();
-        cm.removeAllCookies(null);
-        cm.flush();
-        android.webkit.WebViewDatabase.getInstance(context).clearHttpAuthUsernamePassword();
         rejectedRealms.clear();
         attemptedRealms.clear();
+        // WebView が使えない (無効化・更新中) 端末では getInstance が例外を投げる。ログアウトを止めない。
+        try {
+            CookieManager cm = CookieManager.getInstance();
+            cm.removeAllCookies(null);
+            cm.flush();
+            android.webkit.WebViewDatabase.getInstance(context).clearHttpAuthUsernamePassword();
+        } catch (RuntimeException e) {
+            android.util.Log.w("InAppBrowser", "could not clear WebView data on logout: " + e);
+        }
     }
 
     /**
