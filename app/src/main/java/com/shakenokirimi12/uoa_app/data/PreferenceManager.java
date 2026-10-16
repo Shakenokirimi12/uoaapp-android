@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 public class PreferenceManager {
-    private static final String PREF_NAME = "uoa_app_prefs";
+    public static final String PREF_NAME = "uoa_app_prefs";
     /** 暗号化側。鍵は端末の Keystore にあり移せないので、バックアップ対象から外している (xml/backup_rules)。 */
     private static final String SECURE_PREF_NAME = "uoa_app_secure_prefs";
 
@@ -52,6 +52,18 @@ public class PreferenceManager {
     private static final String KEY_MOODLE_SESSION_COOKIE_HEADER = "moodle_session_cookie_header";
 
     private static final String TAG = "PreferenceManager";
+
+    /**
+     * この端末 (このインストール) だけのもの。バックアップから別端末へ持ち込んではいけない:
+     * device_id をそのまま使うと 2 台が同じ id でサーバーに登録され、プッシュの宛先と課題リマインダーの予約を
+     * 取り合う。fcm_token は持ち込んだ先では別端末のトークン。server_holds_assignment_reminders は
+     * 「この device_id の予約がサーバーにあるか」なので、id と一緒に意味を失う。
+     * SAF のバックアップ (BackupService) は書き出さず、OS の自動バックアップ・端末間転送は
+     * UoaBackupAgent が復元直後に消す。消えた端末は getDeviceId() が新しい id を作る。
+     */
+    public static final String[] DEVICE_LOCAL_KEYS = {
+            KEY_DEVICE_ID, KEY_FCM_TOKEN, KEY_SERVER_HOLDS_REMINDERS,
+    };
 
     /**
      * 暗号化側にしか置かない値。暗号化ストアが使えない端末では保存を拒否する。

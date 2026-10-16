@@ -25,18 +25,19 @@ import java.util.Map;
  * 書き出せていなかった (2026-09-15 に発覚)。
  *
  * パスワード・セッション cookie・FCM トークン・device_id は入れない。平文ファイルに置く価値より
- * 漏れたときの損害が大きく、端末固有の値は他端末へ持ち込んでも意味が無い。ユーザー名だけは入れる。
+ * 漏れたときの損害が大きく、端末固有の値 (PreferenceManager.DEVICE_LOCAL_KEYS) は他端末へ持ち込むと
+ * 2 台が同じ id で登録してプッシュを取り合う。ユーザー名だけは入れる。
+ * 読み戻しも SETTINGS_KEYS だけを書くので、ファイルに device_id などが入っていても端末の値は変わらない。
  */
 public class BackupService {
 
     private static final String TAG = "BackupService";
     private static final int FORMAT_VERSION = 2;
 
-    /** PreferenceManager.PREF_NAME と同じ。 */
-    private static final String PREFS_NAME = "uoa_app_prefs";
+    private static final String PREFS_NAME = PreferenceManager.PREF_NAME;
     private static final String ATTENDANCE_PREFS_NAME = "attendance_data_v2";
 
-    private static final String[] SETTINGS_KEYS = {
+    static final String[] SETTINGS_KEYS = {
             "onboarding_done",
             "notify_assignments", "notify_lunch", "lunch_notify_time",
             "selected_notify_times", "custom_notify_times",
@@ -49,25 +50,9 @@ public class BackupService {
 
     public static void exportTo(Context ctx, Uri uri) throws Exception {
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        Map<String, ?> all = prefs.getAll();
-        JsonObject backup = new JsonObject();
-        backup.addProperty("_version", FORMAT_VERSION);
-        backup.addProperty("username", PreferenceManager.getInstance(ctx).getUsername());
-
-        for (String key : SETTINGS_KEYS) {
-            Object val = all.get(key);
-            if (val instanceof String) backup.addProperty(key, (String) val);
-            else if (val instanceof Boolean) backup.addProperty(key, (Boolean) val);
-            else if (val instanceof Integer) backup.addProperty(key, (Integer) val);
-            else if (val instanceof Long) backup.addProperty(key, (Long) val);
-            else if (val instanceof Float) backup.addProperty(key, (Float) val);
-        }
-
         SharedPreferences attendancePrefs = ctx.getSharedPreferences(ATTENDANCE_PREFS_NAME, Context.MODE_PRIVATE);
-        String attendanceJson = attendancePrefs.getString("data", null);
-        if (attendanceJson != null) {
-            backup.addProperty("_attendance_data_v2", attendanceJson);
-        }
+        JsonObject backup = buildBackup(prefs.getAll(), PreferenceManager.getInstance(ctx).getUsername(),
+                attendancePrefs.getString("data", null));
 
         try (OutputStream os = ctx.getContentResolver().openOutputStream(uri, "wt")) {
             if (os == null) throw new Exception("ファイルを開けませんでした");
@@ -91,25 +76,8 @@ public class BackupService {
 
         JsonObject backup = JsonParser.parseString(json).getAsJsonObject();
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        Map<String, ?> current = prefs.getAll();
         SharedPreferences.Editor editor = prefs.edit();
-
-        for (String key : SETTINGS_KEYS) {
-            if (!backup.has(key)) continue;
-            JsonElement elem = backup.get(key);
-            if (!elem.isJsonPrimitive()) continue;
-            // 既存の値の型に合わせる。int を float で書き戻すと getInt が ClassCastException で落ちる。
-            Object existing = current.get(key);
-            if (elem.getAsJsonPrimitive().isBoolean()) {
-                editor.putBoolean(key, elem.getAsBoolean());
-            } else if (elem.getAsJsonPrimitive().isNumber()) {
-                if (existing instanceof Long) editor.putLong(key, elem.getAsLong());
-                else if (existing instanceof Float) editor.putFloat(key, elem.getAsFloat());
-                else editor.putInt(key, elem.getAsInt());
-            } else {
-                editor.putString(key, elem.getAsString());
-            }
-        }
+        applySettings(backup, prefs.getAll(), editor);
         editor.apply();
         // 学食通知の ON/OFF と時刻を戻したので、予約もそれに合わせて作り直す。
         com.shakenokirimi12.uoa_app.services.notification.LunchMenuWorker.reschedule(ctx);
@@ -126,5 +94,47 @@ public class BackupService {
                     .apply();
         }
         Log.d(TAG, "Backup imported");
+    }
+
+    /** 書き出す JSON。SETTINGS_KEYS だけを拾うので、端末固有の値は prefs にあっても入らない。 */
+    static JsonObject buildBackup(Map<String, ?> all, String username, String attendanceJson) {
+        JsonObject backup = new JsonObject();
+        backup.addProperty("_version", FORMAT_VERSION);
+        backup.addProperty("username", username);
+        for (String key : SETTINGS_KEYS) {
+            Object val = all.get(key);
+            if (val instanceof String) backup.addProperty(key, (String) val);
+            else if (val instanceof Boolean) backup.addProperty(key, (Boolean) val);
+            else if (val instanceof Integer) backup.addProperty(key, (Integer) val);
+            else if (val instanceof Long) backup.addProperty(key, (Long) val);
+            else if (val instanceof Float) backup.addProperty(key, (Float) val);
+        }
+        if (attendanceJson != null) {
+            backup.addProperty("_attendance_data_v2", attendanceJson);
+        }
+        return backup;
+    }
+
+    /**
+     * 読み戻す。SETTINGS_KEYS だけを書く。ファイルに device_id / fcm_token があっても (手で足された、
+     * 別の版が書いた等) 無視し、この端末の値を上書きしない。
+     */
+    static void applySettings(JsonObject backup, Map<String, ?> current, SharedPreferences.Editor editor) {
+        for (String key : SETTINGS_KEYS) {
+            if (!backup.has(key)) continue;
+            JsonElement elem = backup.get(key);
+            if (!elem.isJsonPrimitive()) continue;
+            // 既存の値の型に合わせる。int を float で書き戻すと getInt が ClassCastException で落ちる。
+            Object existing = current.get(key);
+            if (elem.getAsJsonPrimitive().isBoolean()) {
+                editor.putBoolean(key, elem.getAsBoolean());
+            } else if (elem.getAsJsonPrimitive().isNumber()) {
+                if (existing instanceof Long) editor.putLong(key, elem.getAsLong());
+                else if (existing instanceof Float) editor.putFloat(key, elem.getAsFloat());
+                else editor.putInt(key, elem.getAsInt());
+            } else {
+                editor.putString(key, elem.getAsString());
+            }
+        }
     }
 }
