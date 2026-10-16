@@ -1,0 +1,4233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.13.2" type="baseline" client="gradle" dependencies="false" name="AGP (8.13.2)" variant="all" version="8.13.2">
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `toLowerCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`."
+        errorLine1="        String finalHost = finalUrl != null ? finalUrl.host().toLowerCase() : &quot;&quot;;"
+        errorLine2="                                                              ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/services/CampusSquareService.java"
+            line="232"
+            column="63"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `toLowerCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`."
+        errorLine1="        String csHost = csUrl != null ? csUrl.host().toLowerCase() : &quot;csweb.u-aizu.ac.jp&quot;;"
+        errorLine2="                                                     ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/services/CampusSquareService.java"
+            line="233"
+            column="54"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `toUpperCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`."
+        errorLine1="        switch (grade.toUpperCase().trim()) {"
+        errorLine2="                      ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/GradeAdapter.java"
+            line="80"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `toUpperCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`."
+        errorLine1="        switch (grade.toUpperCase().trim()) {"
+        errorLine2="                      ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/GradeAdapter.java"
+            line="95"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `toLowerCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`."
+        errorLine1="        String lowered = html.toLowerCase();"
+        errorLine2="                              ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/services/idp/MarkerList.java"
+            line="31"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `toLowerCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`."
+        errorLine1="            if (!m.isEmpty() &amp;&amp; lowered.contains(m.toLowerCase())) return true;"
+        errorLine2="                                                   ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/services/idp/MarkerList.java"
+            line="33"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `toLowerCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`."
+        errorLine1="        String finalHost = finalUrl != null ? finalUrl.host().toLowerCase() : &quot;&quot;;"
+        errorLine2="                                                              ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/services/MoodleService.java"
+            line="176"
+            column="63"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `toLowerCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`."
+        errorLine1="        if (!finalHost.equals(host.toLowerCase())) {"
+        errorLine2="                                   ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/services/MoodleService.java"
+            line="177"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="InlinedApi"
+        message="Field requires API level 29 (current min is 26): `android.Manifest.permission#ACCESS_BACKGROUND_LOCATION`"
+        errorLine1="                        backgroundLocationLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION))"
+        errorLine2="                                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/settings/SettingsFragment.java"
+            line="107"
+            column="59"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:windowLightNavigationBar` requires API level 27 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:windowLightNavigationBar&quot;>false&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values-night/themes.xml"
+            line="5"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:windowLightNavigationBar` requires API level 27 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:windowLightNavigationBar&quot;>true&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/themes.xml"
+            line="51"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>400&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="13"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>400&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="19"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>400&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="25"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>500&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="31"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>500&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="37"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>500&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="43"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>500&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="49"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>500&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="55"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:lineHeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot;>26sp&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="58"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>500&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="63"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>400&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="69"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:lineHeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot;>26sp&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="72"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>400&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="77"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:lineHeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot;>22sp&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="80"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>400&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="85"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:lineHeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot;>18sp&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="88"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>500&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="93"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>500&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="99"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:textFontWeight` requires API level 28 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:textFontWeight&quot;>500&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/type.xml"
+            line="105"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="OldTargetApi"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
+        errorLine1="        targetSdk = 36"
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="21"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `localeConfig` is only used in API level 33 and higher (current min is 31)"
+        errorLine1="        android:localeConfig=&quot;@xml/locales_config&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="19"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `targetCellWidth` is only used in API level 31 and higher (current min is 26)"
+        errorLine1="    android:targetCellWidth=&quot;4&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/widget_class_schedule_info.xml"
+            line="5"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `targetCellHeight` is only used in API level 31 and higher (current min is 26)"
+        errorLine1="    android:targetCellHeight=&quot;2&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/widget_class_schedule_info.xml"
+            line="6"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `previewLayout` is only used in API level 31 and higher (current min is 26)"
+        errorLine1="    android:previewLayout=&quot;@layout/widget_class_schedule&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/widget_class_schedule_info.xml"
+            line="12"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="QueryPermissionsNeeded"
+        message="Consider adding a `&lt;queries>` declaration to your manifest when calling this method; see https://g.co/dev/packagevisibility for details"
+        errorLine1="            if (mapIntent.resolveActivity(requireContext().getPackageManager()) != null) {"
+        errorLine2="                          ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/map/CampusMapFragment.java"
+            line="74"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of Gradle than 8.13 is available: 8.14.6"
+        errorLine1="distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/wrapper/gradle-wrapper.properties"
+            line="4"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of com.android.application than 8.13.2 is available: 9.4.1"
+        errorLine1="agp = &quot;8.13.2&quot;"
+        errorLine2="      ~~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="2"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test.ext:junit than 1.1.5 is available: 1.3.0"
+        errorLine1="junitVersion = &quot;1.1.5&quot;"
+        errorLine2="               ~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="4"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test.espresso:espresso-core than 3.5.1 is available: 3.7.0"
+        errorLine1="espressoCore = &quot;3.5.1&quot;"
+        errorLine2="               ~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="5"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.navigation:navigation-fragment than 2.10.1 is available: 2.10.2"
+        errorLine1="navigation = &quot;2.10.1&quot;"
+        errorLine2="             ~~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="8"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.navigation:navigation-ui than 2.10.1 is available: 2.10.2"
+        errorLine1="navigation = &quot;2.10.1&quot;"
+        errorLine2="             ~~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="8"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.swiperefreshlayout:swiperefreshlayout than 1.1.0 is available: 1.2.0"
+        errorLine1="swiperefreshlayout = &quot;1.1.0&quot;"
+        errorLine2="                     ~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="11"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of com.google.android.gms:play-services-maps than 18.2.0 is available: 20.1.0"
+        errorLine1="playServicesMaps = &quot;18.2.0&quot;"
+        errorLine2="                   ~~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="17"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.work:work-runtime than 2.11.2 is available: 2.12.0"
+        errorLine1="work = &quot;2.11.2&quot;"
+        errorLine2="       ~~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="20"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of com.google.firebase:firebase-bom than 34.19.0 is available: 35.0.2"
+        errorLine1="firebaseBom = &quot;34.19.0&quot;"
+        errorLine2="              ~~~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="22"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.squareup.okhttp3:okhttp than 4.12.0 is available: 5.5.0"
+        errorLine1="okhttp = &quot;4.12.0&quot;"
+        errorLine2="         ~~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="12"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.github.mwiede:jsch than 0.2.25 is available: 2.28.8"
+        errorLine1="jsch = &quot;0.2.25&quot;"
+        errorLine2="       ~~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="13"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.google.code.gson:gson than 2.10.1 is available: 2.14.0"
+        errorLine1="gson = &quot;2.10.1&quot;"
+        errorLine2="       ~~~~~~~~">
+        <location
+            file="$HOME/Development/uoaapp-android-ci/gradle/libs.versions.toml"
+            line="14"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@color/m3_card_ripple_color` is marked as private in com.google.android.material:material:1.14.0"
+        errorLine1="        &lt;item name=&quot;rippleColor&quot;>@color/m3_card_ripple_color&lt;/item>"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="13"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_book&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_assignment_detail.xml"
+            line="34"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTint` instead of `android:drawableTint`"
+        errorLine1="                    android:drawableTint=&quot;?attr/colorOnPrimaryContainer&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_assignment_detail.xml"
+            line="35"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTopCompat` instead of `android:drawableTop`"
+        errorLine1="            android:drawableTop=&quot;@drawable/ic_empty_user&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_block_list.xml"
+            line="29"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTopCompat` instead of `android:drawableTop`"
+        errorLine1="        android:drawableTop=&quot;@drawable/ic_empty_calendar&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_calendar.xml"
+            line="55"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                        android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="121"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTint` instead of `android:drawableTint`"
+        errorLine1="                        android:drawableTint=&quot;?attr/colorOnPrimaryContainer&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="123"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                        android:drawableStart=&quot;@drawable/ic_alert&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="280"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTint` instead of `android:drawableTint`"
+        errorLine1="                        android:drawableTint=&quot;@color/on_warning_container&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="281"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                        android:drawableStart=&quot;@drawable/ic_clock&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="314"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTint` instead of `android:drawableTint`"
+        errorLine1="                        android:drawableTint=&quot;?attr/colorOnSurfaceVariant&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="315"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTopCompat` instead of `android:drawableTop`"
+        errorLine1="                android:drawableTop=&quot;@drawable/ic_empty_courses&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_courses.xml"
+            line="52"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTopCompat` instead of `android:drawableTop`"
+        errorLine1="                android:drawableTop=&quot;@drawable/ic_empty_building&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_facilities.xml"
+            line="87"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTopCompat` instead of `android:drawableTop`"
+        errorLine1="        android:drawableTop=&quot;@drawable/ic_empty_menu&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_gakushoku.xml"
+            line="47"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTopCompat` instead of `android:drawableTop`"
+        errorLine1="        android:drawableTop=&quot;@drawable/ic_empty_grades&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_grades.xml"
+            line="27"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_review&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="48"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="49"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_grades&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="63"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="64"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_restaurant&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="77"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="78"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_building&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="91"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="92"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_map&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="106"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="107"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_inbox&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="135"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="136"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_settings&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="149"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="150"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTopCompat` instead of `android:drawableTop`"
+        errorLine1="            android:drawableTop=&quot;@drawable/ic_empty_inbox&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_notification_list.xml"
+            line="60"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTopCompat` instead of `android:drawableTop`"
+        errorLine1="                android:drawableTop=&quot;@drawable/ic_empty_search&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_review_list.xml"
+            line="109"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_grades&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="124"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="125"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_building&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="138"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="139"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_inbox&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="152"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="153"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_map&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="167"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="168"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="216"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                android:drawableStart=&quot;@drawable/ic_layout&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="543"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="544"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                android:drawableStart=&quot;@drawable/ic_ban&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="566"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="567"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_upload&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="594"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="595"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                    android:drawableStart=&quot;@drawable/ic_download&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="608"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableEndCompat` instead of `android:drawableEnd`"
+        errorLine1="                    android:drawableEnd=&quot;@drawable/ic_chevron_right&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="609"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="                android:drawableStart=&quot;@drawable/ic_info&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="632"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableStartCompat` instead of `android:drawableStart`"
+        errorLine1="            android:drawableStart=&quot;@drawable/ic_shield&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/page_onboarding_login.xml"
+            line="73"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseCompatTextViewDrawableXml"
+        message="Use `app:drawableTint` instead of `android:drawableTint`"
+        errorLine1="            android:drawableTint=&quot;?attr/colorOnSecondaryContainer&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/page_onboarding_login.xml"
+            line="75"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="SetJavaScriptEnabled"
+        message="Using `setJavaScriptEnabled` can introduce XSS vulnerabilities into your application, review carefully"
+        errorLine1="        ws.setJavaScriptEnabled(true);"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/ClassLocationDialog.java"
+            line="34"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="SetJavaScriptEnabled"
+        message="Using `setJavaScriptEnabled` can introduce XSS vulnerabilities into your application, review carefully"
+        errorLine1="        s.setJavaScriptEnabled(true);"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/browser/InAppBrowserActivity.java"
+            line="195"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="        notifyDataSetChanged();"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/AssignmentAdapter.java"
+            line="39"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="        notifyDataSetChanged();"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/ClassAdapter.java"
+            line="34"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="        notifyDataSetChanged();"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/CourseAdapter.java"
+            line="55"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="        notifyDataSetChanged();"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/FacilityAdapter.java"
+            line="31"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="        notifyDataSetChanged();"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/GradeAdapter.java"
+            line="26"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="        notifyDataSetChanged();"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/MenuAdapter.java"
+            line="58"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="        notifyDataSetChanged();"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/ReviewAdapter.java"
+            line="31"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="        notifyDataSetChanged();"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/ReviewCourseAdapter.java"
+            line="31"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 26"
+        errorLine1="        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/services/notification/ClassNotificationService.java"
+            line="46"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 26"
+        errorLine1="        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/services/notification/ClassNotificationService.java"
+            line="183"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v24`) is unnecessary; `minSdkVersion` is 26. Merge all the resources in this folder into `drawable`.">
+        <location
+            file="src/main/res/drawable-v24"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 26. Merge all the resources in this folder into `mipmap-anydpi`.">
+        <location
+            file="src/main/res/mipmap-anydpi-v26"/>
+    </issue>
+
+    <issue
+        id="StaticFieldLeak"
+        message="Do not place Android context classes in static fields (static reference to `AppConfigService` which has field `retryContext` pointing to `Context`); this is a memory leak"
+        errorLine1="    private static AppConfigService instance;"
+        errorLine2="            ~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/services/AppConfigService.java"
+            line="41"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="StaticFieldLeak"
+        message="Do not place Android context classes in static fields; this is a memory leak"
+        errorLine1="    @Nullable private static volatile Activity foregroundActivity;"
+        errorLine2="                      ~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/UoaApplication.java"
+            line="23"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="UseCompoundDrawables"
+        message="This tag and its children can be replaced by one `&lt;TextView/>` and a compound drawable"
+        errorLine1="    &lt;LinearLayout"
+        errorLine2="     ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_class_detail.xml"
+            line="37"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="UseCompoundDrawables"
+        message="This tag and its children can be replaced by one `&lt;TextView/>` and a compound drawable"
+        errorLine1="    &lt;LinearLayout"
+        errorLine2="     ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_class_detail.xml"
+            line="63"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="UseCompoundDrawables"
+        message="This tag and its children can be replaced by one `&lt;TextView/>` and a compound drawable"
+        errorLine1="    &lt;LinearLayout"
+        errorLine2="     ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_class_detail.xml"
+            line="88"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="UseCompoundDrawables"
+        message="This tag and its children can be replaced by one `&lt;TextView/>` and a compound drawable"
+        errorLine1="    &lt;LinearLayout"
+        errorLine2="     ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_class_location.xml"
+            line="21"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="UseCompoundDrawables"
+        message="This tag and its children can be replaced by one `&lt;TextView/>` and a compound drawable"
+        errorLine1="        &lt;LinearLayout"
+        errorLine2="         ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_assignment.xml"
+            line="41"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="UseCompoundDrawables"
+        message="This tag and its children can be replaced by one `&lt;TextView/>` and a compound drawable"
+        errorLine1="            &lt;LinearLayout"
+        errorLine2="             ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_class.xml"
+            line="62"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?attr/colorSurface` with a theme that also paints a background (inferred theme is `@style/Theme.Uoaapp`)"
+        errorLine1="    android:background=&quot;?attr/colorSurface&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_in_app_browser.xml"
+            line="8"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?android:attr/colorBackground` with a theme that also paints a background (inferred theme is `@style/Theme.Uoaapp`)"
+        errorLine1="    android:background=&quot;?android:attr/colorBackground&quot;>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_main.xml"
+            line="8"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?attr/colorSurface` with a theme that also paints a background (inferred theme is `@style/Theme_Uoaapp_Onboarding`)"
+        errorLine1="    android:background=&quot;?attr/colorSurface&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_onboarding.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?attr/colorSurface` with a theme that also paints a background (inferred theme is `@style/Theme.Uoaapp`)"
+        errorLine1="    android:background=&quot;?attr/colorSurface&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_review_guidelines.xml"
+            line="5"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?attr/colorSurface` with a theme that also paints a background (inferred theme is `@style/Theme.Uoaapp`)"
+        errorLine1="    android:background=&quot;?attr/colorSurface&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_assignment_detail.xml"
+            line="8"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?attr/colorSurface` with a theme that also paints a background (inferred theme is `@style/Theme.Uoaapp`)"
+        errorLine1="    android:background=&quot;?attr/colorSurface&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_courses.xml"
+            line="8"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?attr/colorSurface` with a theme that also paints a background (inferred theme is `@style/Theme.Uoaapp`)"
+        errorLine1="    android:background=&quot;?attr/colorSurface&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_syllabus.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?attr/selectableItemBackgroundBorderless` with a theme that also paints a background (inferred theme is `@style/Theme.Uoaapp`)"
+        errorLine1="    android:background=&quot;?attr/selectableItemBackgroundBorderless&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_calendar_day.xml"
+            line="6"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?attr/selectableItemBackground` with a theme that also paints a background (inferred theme is `@style/Theme.Uoaapp`)"
+        errorLine1="    android:background=&quot;?attr/selectableItemBackground&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_history.xml"
+            line="8"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?attr/colorSurface` with a theme that also paints a background (inferred theme is `@style/Theme.Uoaapp`)"
+        errorLine1="    android:background=&quot;?attr/colorSurface&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/view_blocking_overlay.xml"
+            line="10"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.bg_disclaimer` appears to be unused"
+        errorLine1="&lt;shape xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/bg_disclaimer.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.bg_period_badge` appears to be unused"
+        errorLine1="&lt;shape xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/bg_period_badge.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.md_surface_tint` appears to be unused"
+        errorLine1="    &lt;color name=&quot;md_surface_tint&quot;>#00564D&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="45"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.primary_dark` appears to be unused"
+        errorLine1="    &lt;color name=&quot;primary_dark&quot;>#003B34&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="57"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.primary_light` appears to be unused"
+        errorLine1="    &lt;color name=&quot;primary_light&quot;>@color/md_primary_container&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="58"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.accent` appears to be unused"
+        errorLine1="    &lt;color name=&quot;accent&quot;>@color/md_tertiary&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="59"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.white` appears to be unused"
+        errorLine1="    &lt;color name=&quot;white&quot;>#FFFFFF&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="60"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.black` appears to be unused"
+        errorLine1="    &lt;color name=&quot;black&quot;>#000000&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="61"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.background` appears to be unused"
+        errorLine1="    &lt;color name=&quot;background&quot;>@color/md_background&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="62"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.on_primary` appears to be unused"
+        errorLine1="    &lt;color name=&quot;on_primary&quot;>@color/md_on_primary&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="64"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.on_surface` appears to be unused"
+        errorLine1="    &lt;color name=&quot;on_surface&quot;>@color/md_on_surface&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="65"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.error` appears to be unused"
+        errorLine1="    &lt;color name=&quot;error&quot;>@color/md_error&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="69"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.nav_icon_inactive` appears to be unused"
+        errorLine1="    &lt;color name=&quot;nav_icon_inactive&quot;>@color/md_on_surface_variant&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="70"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_bell_off` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_bell_off.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_bell_ring` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_bell_ring.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_bookmark` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_bookmark.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_calendar_check` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_calendar_check.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_clipboard` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_clipboard.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_coffee` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_coffee.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_door_open` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_door_open.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_empty_offline` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_empty_offline.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_eye` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_eye.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_eye_off` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_eye_off.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_flag` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_flag.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_footprints` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_footprints.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_globe` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_globe.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_hand` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_hand.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_heart` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_heart.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_heart_filled` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_heart_filled.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_key` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_key.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_launcher_background` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_launcher_background.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_launcher_foreground` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable-v24/ic_launcher_foreground.xml"
+            line="1"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_list_todo` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_list_todo.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_message` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_message.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_minus` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_minus.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_moon` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_moon.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_palette` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_palette.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_percent` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_percent.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_qr_code` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_qr_code.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_sparkles` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_sparkles.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_sun` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_sun.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_target` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_target.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_trending_up` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_trending_up.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_users` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_users.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_wifi_off` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/ic_wifi_off.xml"
+            line="3"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.courses_active` appears to be unused"
+        errorLine1="    &lt;string name=&quot;courses_active&quot;>履修中&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="29"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.courses_past` appears to be unused"
+        errorLine1="    &lt;string name=&quot;courses_past&quot;>過去のコース&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="30"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.gakushoku_title` appears to be unused"
+        errorLine1="    &lt;string name=&quot;gakushoku_title&quot;>学食メニュー&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="33"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.gakushoku_no_menu` appears to be unused"
+        errorLine1="    &lt;string name=&quot;gakushoku_no_menu&quot;>メニューがありません&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="34"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.gakushoku_lunch` appears to be unused"
+        errorLine1="    &lt;string name=&quot;gakushoku_lunch&quot;>ランチ&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="35"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.gakushoku_fish` appears to be unused"
+        errorLine1="    &lt;string name=&quot;gakushoku_fish&quot;>お魚&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="36"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.gakushoku_salad` appears to be unused"
+        errorLine1="    &lt;string name=&quot;gakushoku_salad&quot;>サラダ&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="37"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.gakushoku_dinner` appears to be unused"
+        errorLine1="    &lt;string name=&quot;gakushoku_dinner&quot;>ディナー&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="38"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.settings_title` appears to be unused"
+        errorLine1="    &lt;string name=&quot;settings_title&quot;>設定&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="41"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.settings_password` appears to be unused"
+        errorLine1="    &lt;string name=&quot;settings_password&quot;>パスワード&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="44"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.settings_general` appears to be unused"
+        errorLine1="    &lt;string name=&quot;settings_general&quot;>一般&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="49"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.settings_reset` appears to be unused"
+        errorLine1="    &lt;string name=&quot;settings_reset&quot;>データをリセット&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="50"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.onboarding_welcome` appears to be unused"
+        errorLine1="    &lt;string name=&quot;onboarding_welcome&quot;>UoA非公式アプリへようこそ&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="55"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.onboarding_disclaimer` appears to be unused"
+        errorLine1="    &lt;string name=&quot;onboarding_disclaimer&quot;>このアプリは会津大学の非公式アプリです。\n大学とは一切の関係がありません。&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="56"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.onboarding_skip` appears to be unused"
+        errorLine1="    &lt;string name=&quot;onboarding_skip&quot;>スキップ&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="66"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.onboarding_done` appears to be unused"
+        errorLine1="    &lt;string name=&quot;onboarding_done&quot;>完了&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="67"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.loading` appears to be unused"
+        errorLine1="    &lt;string name=&quot;loading&quot;>読み込み中…&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="74"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.error_generic` appears to be unused"
+        errorLine1="    &lt;string name=&quot;error_generic&quot;>エラーが発生しました&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="75"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.retry` appears to be unused"
+        errorLine1="    &lt;string name=&quot;retry&quot;>再試行&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="76"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.remaining_format` appears to be unused"
+        errorLine1="    &lt;string name=&quot;remaining_format&quot;>残り %d 分&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="79"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.feature_disabled` appears to be unused"
+        errorLine1="    &lt;string name=&quot;feature_disabled&quot;>この機能は現在利用できません&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="89"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.block_list_title` appears to be unused"
+        errorLine1="    &lt;string name=&quot;block_list_title&quot;>ブロック中のユーザー&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="128"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.style.Widget_Uoa_Card_Secondary` appears to be unused"
+        errorLine1="    &lt;style name=&quot;Widget.Uoa.Card.Secondary&quot;>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="21"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UselessParent"
+        message="This `LinearLayout` layout or its `FrameLayout` parent is unnecessary"
+        errorLine1="        &lt;LinearLayout"
+        errorLine2="         ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_campus_map.xml"
+            line="57"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="TooManyViews"
+        message="`fragment_settings.xml` has more than 80 views, bad for performance"
+        errorLine1="        &lt;TextView"
+        errorLine2="         ~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="572"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icons should not fill every pixel of their square region; see the design guide for details">
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icons should not fill every pixel of their square region; see the design guide for details">
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icons should not fill every pixel of their square region; see the design guide for details">
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icons should not fill every pixel of their square region; see the design guide for details">
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icons should not fill every pixel of their square region; see the design guide for details">
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="            holder.textDue.setText(&quot;締切: &quot; + dateFmt.format(due));"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/AssignmentAdapter.java"
+            line="57"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="                textDueRelative.setText(&quot;残り&quot; + (diffSec / 60) + &quot;分&quot;);"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/assignment/AssignmentDetailFragment.java"
+            line="72"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="                textDueRelative.setText(&quot;残り&quot; + (diffSec / 3600) + &quot;時間&quot;);"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/assignment/AssignmentDetailFragment.java"
+            line="75"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="                textDueRelative.setText(&quot;残り&quot; + (diffSec / 86400) + &quot;日&quot;);"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/assignment/AssignmentDetailFragment.java"
+            line="78"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="                textStatus.setText(&quot;授業中 — 残り &quot; + remainMin + &quot;分&quot;);"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/ClassDetailDialog.java"
+            line="55"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="                    textStatus.setText(untilMin + &quot;分後に開始&quot;);"
+        errorLine2="                                       ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/ClassDetailDialog.java"
+            line="63"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="            textTodayClassInfo.setText(&quot;授業あり: &quot; + timeFmt.format(todayEvent.getDtstart()) + &quot; ~&quot;);"
+        errorLine2="                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/course/CourseDetailFragment.java"
+            line="228"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="                h.dueDate.setText(&quot;期限: &quot; + fmt.format(new Date(a.getDueDate() * 1000)));"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/course/CourseDetailFragment.java"
+            line="419"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="        textAvgRating.setText(starsFor(avg) + &quot; &quot; + String.format(java.util.Locale.JAPAN, &quot;%.1f&quot;, avg));"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/reviews/CourseReviewsFragment.java"
+            line="146"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="        textReviewCount.setText(reviews.size() + &quot;件のレビュー&quot;);"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/reviews/CourseReviewsFragment.java"
+            line="147"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="            buttonShowPast.setText(&quot;過ぎた &quot; + hidden + &quot; 日分を表示&quot;);"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/gakushoku/GakushokuFragment.java"
+            line="102"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="            editEmail.setText(prefs.getUsername().trim() + &quot;@u-aizu.ac.jp&quot;);"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/idp/IdPOtpRegistrationFragment.java"
+            line="107"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            editEmail.setText(prefs.getUsername().trim() + &quot;@u-aizu.ac.jp&quot;);"
+        errorLine2="                                                           ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/idp/IdPOtpRegistrationFragment.java"
+            line="107"
+            column="60"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="        holder.textYear.setText(r.getEnrollmentYear() + &quot;年度入学&quot;);"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/ReviewAdapter.java"
+            line="45"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="        holder.textReviewCount.setText(&quot;(&quot; + c.getReviewCount() + &quot;件)&quot;);"
+        errorLine2="                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/adapters/ReviewCourseAdapter.java"
+            line="47"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="        textVersion.setText(getString(R.string.settings_version) + &quot; &quot; + BuildConfig.VERSION_NAME);"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/shakenokirimi12/uoa_app/ui/settings/SettingsFragment.java"
+            line="313"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;時間&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;時間&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_class_detail.xml"
+            line="48"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;場所&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;場所&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_class_detail.xml"
+            line="73"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;長さ&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;長さ&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_class_detail.xml"
+            line="98"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;場所&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;場所&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_class_location.xml"
+            line="32"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Google Mapsで道案内&quot;, should use `@string` resource"
+        errorLine1="        android:text=&quot;Google Mapsで道案内&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_class_location.xml"
+            line="65"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;パスワードを空にすると、ユーザー名のみ変更されます&quot;, should use `@string` resource"
+        errorLine1="        android:text=&quot;パスワードを空にすると、ユーザー名のみ変更されます&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_edit_account.xml"
+            line="45"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;ワンタイムパスワード&quot;, should use `@string` resource"
+        errorLine1="        android:hint=&quot;ワンタイムパスワード&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_otp_prompt.xml"
+            line="20"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;締切日時&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;締切日時&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_assignment_detail.xml"
+            line="80"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;説明&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;説明&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_assignment_detail.xml"
+            line="113"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Moodleで開く&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;Moodleで開く&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_assignment_detail.xml"
+            line="136"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;公式マップ&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;公式マップ&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_campus_map.xml"
+            line="25"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;GPSマップ&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;GPSマップ&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_campus_map.xml"
+            line="34"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Google Mapsアプリで表示します&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Google Mapsアプリで表示します&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_campus_map.xml"
+            line="78"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Google Mapsで開く&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Google Mapsで開く&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_campus_map.xml"
+            line="88"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;シラバス&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;シラバス&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="54"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;単位数&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;単位数&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="89"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;詳細&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;詳細&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="125"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;出席状況（シミュレーター）&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;出席状況（シミュレーター）&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="136"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;出席&quot;, should use `@string` resource"
+        errorLine1="                                    android:text=&quot;出席&quot;"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="182"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;欠席&quot;, should use `@string` resource"
+        errorLine1="                                    android:text=&quot;欠席&quot;"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="214"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;遅刻&quot;, should use `@string` resource"
+        errorLine1="                                    android:text=&quot;遅刻&quot;"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="246"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;落単の危険があります&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;落単の危険があります&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="283"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;本日の出席登録&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;本日の出席登録&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="294"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;出席&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;出席&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="333"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;遅刻&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;遅刻&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="343"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;欠席&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;欠席&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="353"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;履歴&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;履歴&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="364"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;履歴なし&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;履歴なし&quot; />"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="390"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;課題・小テスト&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;課題・小テスト&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="399"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;未完了の課題はありません。&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;未完了の課題はありません。&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="416"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;コースコンテンツ&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;コースコンテンツ&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="424"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;リンク&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;リンク&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="459"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Moodleで開く&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Moodleで開く&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_detail.xml"
+            line="467"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;シラバスを表示&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;シラバスを表示&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_reviews.xml"
+            line="68"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;授業の評価&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;授業の評価&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_reviews.xml"
+            line="86"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;教員の評価&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;教員の評価&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_reviews.xml"
+            line="91"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;レビューを書く&quot;, should use `@string` resource"
+        errorLine1="        android:text=&quot;レビューを書く&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_course_reviews.xml"
+            line="103"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;前の日&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;前の日&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_facilities.xml"
+            line="35"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;次の日&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;次の日&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_facilities.xml"
+            line="44"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;施設データがありません&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;施設データがありません&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_facilities.xml"
+            line="91"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;再試行&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;再試行&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_facilities.xml"
+            line="98"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;メニューがありません&quot;, should use `@string` resource"
+        errorLine1="        android:text=&quot;メニューがありません&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_gakushoku.xml"
+            line="51"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;成績データがありません&quot;, should use `@string` resource"
+        errorLine1="        android:text=&quot;成績データがありません&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_grades.xml"
+            line="31"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;前の日&quot;, should use `@string` resource"
+        errorLine1="                            android:contentDescription=&quot;前の日&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_home.xml"
+            line="111"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;次の日&quot;, should use `@string` resource"
+        errorLine1="                            android:contentDescription=&quot;次の日&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_home.xml"
+            line="120"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;今日に戻る&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;今日に戻る&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_home.xml"
+            line="133"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;授業&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;授業&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_home.xml"
+            line="167"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;課題〆切&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;課題〆切&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_home.xml"
+            line="190"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;学食&quot;, should use `@string` resource"
+        errorLine1="                            android:contentDescription=&quot;学食&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_home.xml"
+            line="277"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;学食メニュー&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;学食メニュー&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_home.xml"
+            line="285"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;詳細&quot;, should use `@string` resource"
+        errorLine1="                            android:contentDescription=&quot;詳細&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_home.xml"
+            line="292"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;昼食&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;昼食&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_home.xml"
+            line="314"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;メニュー取得中…&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;メニュー取得中…&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_home.xml"
+            line="342"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;閉じる&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;閉じる&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="75"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;ワンタイムパスワードが未設定です。設定方法を選んでください。&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;ワンタイムパスワードが未設定です。設定方法を選んでください。&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="90"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;メール(推奨)&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;メール(推奨)&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="126"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;別のアプリに依存しないため、二段階認証を丸ごと失うリスクが低い方式です。&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;別のアプリに依存しないため、二段階認証を丸ごと失うリスクが低い方式です。&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="133"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Authenticatorアプリ&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;Authenticatorアプリ&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="178"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Google Authenticator等、お使いの認証アプリで管理します。&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;Google Authenticator等、お使いの認証アプリで管理します。&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="185"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;確認コードの送信先&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;確認コードの送信先&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="211"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;メールアドレス&quot;, should use `@string` resource"
+        errorLine1="                android:hint=&quot;メールアドレス&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="220"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;次へ&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;次へ&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="238"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;この操作は実際にアカウントのワンタイムパスワード設定を変更します。&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;この操作は実際にアカウントのワンタイムパスワード設定を変更します。&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="266"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;一度登録すると、未設定の状態には戻せません。&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;一度登録すると、未設定の状態には戻せません。&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="275"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;登録を続ける&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;登録を続ける&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="283"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Authenticatorアプリを開く&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Authenticatorアプリを開く&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="309"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;メールからコードを自動取得中...&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;メールからコードを自動取得中...&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="337"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;コード&quot;, should use `@string` resource"
+        errorLine1="                    android:hint=&quot;コード&quot;>"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="353"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;登録する&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;登録する&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_otp_registration.xml"
+            line="371"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;なぜこの設定が必要なの?&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;なぜこの設定が必要なの?&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="42"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;会津大学の学内システムが、大学公式の統合認証(IdP)によるログインに切り替わりました。このアプリもそれに合わせてログイン方法を対応させています。お手数ですが、最初の設定だけお付き合いください。&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;会津大学の学内システムが、大学公式の統合認証(IdP)によるログインに切り替わりました。このアプリもそれに合わせてログイン方法を対応させています。お手数ですが、最初の設定だけお付き合いください。&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="51"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;大学の統合ログイン(IdP)に接続します&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;大学の統合ログイン(IdP)に接続します&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="92"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;いつものID・パスワードで、会津大学の統合認証システムへ直接ログインします。&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;いつものID・パスワードで、会津大学の統合認証システムへ直接ログインします。&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="99"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;ワンタイムパスワードを求められることがあります&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;ワンタイムパスワードを求められることがあります&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="132"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;アカウントの設定によっては、ログインの途中でワンタイムパスワードの入力が必要になります。&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;アカウントの設定によっては、ログインの途中でワンタイムパスワードの入力が必要になります。&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="139"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;ワンタイムパスワードの受け取り方法&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;ワンタイムパスワードの受け取り方法&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="152"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;自動で取得する&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;自動で取得する&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="191"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;アプリがメール(stdmsv1)を確認し、ワンタイムパスワードを自動で入力します。バックグラウンド同期がそのまま使えます。&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;アプリがメール(stdmsv1)を確認し、ワンタイムパスワードを自動で入力します。バックグラウンド同期がそのまま使えます。&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="198"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;手動で入力する(既定)&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;手動で入力する(既定)&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="236"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;アプリはメールを読み取りません。ワンタイムパスワードが必要な時は、設定画面から自分でログインして入力してください。&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;アプリはメールを読み取りません。ワンタイムパスワードが必要な時は、設定画面から自分でログインして入力してください。&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="243"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;入力したID・パスワードは、大学の認証システムへ直接送信されます。開発者のサーバーを経由したり、そこに保存されたりすることはありません。&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;入力したID・パスワードは、大学の認証システムへ直接送信されます。開発者のサーバーを経由したり、そこに保存されたりすることはありません。&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="257"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;あとで&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;あとで&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_idp_tutorial.xml"
+            line="275"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;本アプリは学生が個人で提供する非公式アプリであり、会津大学とは一切関係ありません。&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;本アプリは学生が個人で提供する非公式アプリであり、会津大学とは一切関係ありません。&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="23"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;機能&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;機能&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="30"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;授業評価&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;授業評価&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="50"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;成績一覧&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;成績一覧&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="65"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;学食メニュー&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;学食メニュー&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="79"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;施設利用状況&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;施設利用状況&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="93"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;キャンパスマップ&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;キャンパスマップ&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="108"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;設定&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;設定&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="117"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;通知受信ボックス&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;通知受信ボックス&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="137"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;設定&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;設定&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_more.xml"
+            line="151"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;タップして表示先を入れ替えます。「その他」タブは常にナビゲーションの末尾に固定表示されます。&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;タップして表示先を入れ替えます。「その他」タブは常にナビゲーションの末尾に固定表示されます。&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_nav_settings.xml"
+            line="22"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;ナビゲーションバーに表示 (最大4つ)&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;ナビゲーションバーに表示 (最大4つ)&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_nav_settings.xml"
+            line="28"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;「その他」に表示&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;「その他」に表示&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_nav_settings.xml"
+            line="47"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;デフォルトに戻す&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;デフォルトに戻す&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_nav_settings.xml"
+            line="70"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;すべて既読&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;すべて既読&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_notification_list.xml"
+            line="36"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;通知はありません&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;通知はありません&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_notification_list.xml"
+            line="64"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;課題の締切より前に通知するタイミングを選びます。複数選択できます。&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;課題の締切より前に通知するタイミングを選びます。複数選択できます。&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_notify_times.xml"
+            line="23"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;デフォルト&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;デフォルト&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_notify_times.xml"
+            line="29"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;カスタム&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;カスタム&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_notify_times.xml"
+            line="51"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;閉じるボタンで削除できます&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;閉じるボタンで削除できます&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_notify_times.xml"
+            line="84"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;新しいタイミングを追加&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;新しいタイミングを追加&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_notify_times.xml"
+            line="96"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;本機能は学生が個人で提供する非公式機能であり、会津大学とは一切関係ありません。&quot;, should use `@string` resource"
+        errorLine1="        android:text=&quot;本機能は学生が個人で提供する非公式機能であり、会津大学とは一切関係ありません。&quot; />"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_review_list.xml"
+            line="18"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;授業評価&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;授業評価&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_review_list.xml"
+            line="32"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;教員評価&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;教員評価&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_review_list.xml"
+            line="37"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;検索&quot;, should use `@string` resource"
+        errorLine1="            android:hint=&quot;検索&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_review_list.xml"
+            line="50"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;新しい教員のレビューを書く&quot;, should use `@string` resource"
+        errorLine1="        android:text=&quot;新しい教員のレビューを書く&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_review_list.xml"
+            line="67"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;履修した授業のレビューを書く&quot;, should use `@string` resource"
+        errorLine1="        android:text=&quot;履修した授業のレビューを書く&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_review_list.xml"
+            line="81"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;アカウント情報の変更&quot;, should use `@string` resource"
+        errorLine1="                        android:contentDescription=&quot;アカウント情報の変更&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="74"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;学業&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;学業&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="106"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;通知受信ボックス&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;通知受信ボックス&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="154"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;キャンパスマップ&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;キャンパスマップ&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="169"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;通知タイミングの設定&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;通知タイミングの設定&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="217"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;通知時間&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;通知時間&quot; />"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="284"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;バックグラウンド同期&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;バックグラウンド同期&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="304"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;同期間隔&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;同期間隔&quot; />"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="328"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;15分&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;15分&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="344"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;30分&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;30分&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="352"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;1時間&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;1時間&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="360"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;同期結果の通知&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;同期結果の通知&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="377"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;変更あり&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;変更あり&quot; />"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="390"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;同期成功&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;同期成功&quot; />"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="410"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;同期失敗&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;同期失敗&quot; />"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="430"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;変更なし&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;変更なし&quot; />"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="451"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;自動出席&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;自動出席&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="467"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;自動出席&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;自動出席&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="495"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;ジオフェンスで大学に入ったことを検知します&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;ジオフェンスで大学に入ったことを検知します&quot; />"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="501"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;位置情報が「常に許可」になっていないため、アプリを閉じている間は自動出席が動きません。タップして許可する&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;位置情報が「常に許可」になっていないため、アプリを閉じている間は自動出席が動きません。タップして許可する&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="519"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;表示&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;表示&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="530"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;タブの表示設定&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;タブの表示設定&quot; />"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="545"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;データ管理&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;データ管理&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="576"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;バックアップ（エクスポート）&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;バックアップ（エクスポート）&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="596"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;リストア（インポート）&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;リストア（インポート）&quot; />"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="610"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;アプリ情報&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;アプリ情報&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_settings.xml"
+            line="619"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;基本情報&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;基本情報&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_syllabus.xml"
+            line="32"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;講義概要&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;講義概要&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_syllabus.xml"
+            line="60"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;到達目標&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;到達目標&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_syllabus.xml"
+            line="90"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;評価方法&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;評価方法&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_syllabus.xml"
+            line="120"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;授業計画&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;授業計画&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_syllabus.xml"
+            line="150"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;教科書・参考書&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;教科書・参考書&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_syllabus.xml"
+            line="180"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;WEBシラバスで見る&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;WEBシラバスで見る&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_syllabus.xml"
+            line="202"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;教員名を入力&quot;, should use `@string` resource"
+        errorLine1="            android:hint=&quot;教員名を入力&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_write_review.xml"
+            line="34"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;評価&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;評価&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_write_review.xml"
+            line="50"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;入学年度&quot;, should use `@string` resource"
+        errorLine1="            android:hint=&quot;入学年度&quot;>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_write_review.xml"
+            line="65"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;タイトル (任意)&quot;, should use `@string` resource"
+        errorLine1="            android:hint=&quot;タイトル (任意)&quot;>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_write_review.xml"
+            line="79"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;レビュー本文&quot;, should use `@string` resource"
+        errorLine1="            android:hint=&quot;レビュー本文&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_write_review.xml"
+            line="93"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;投稿することで、利用規約に同意したものとみなします。本機能の利用により生じた損害について、運営者は、運営者の故意または重過失による場合を除き、一切の責任を負いません。&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;投稿することで、利用規約に同意したものとみなします。本機能の利用により生じた損害について、運営者は、運営者の故意または重過失による場合を除き、一切の責任を負いません。&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_write_review.xml"
+            line="110"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;投稿する&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;投稿する&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_write_review.xml"
+            line="120"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;削除&quot;, should use `@string` resource"
+        errorLine1="        android:contentDescription=&quot;削除&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_history.xml"
+            line="43"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;昼食&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;昼食&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_menu_day.xml"
+            line="38"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;掲載なし&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;掲載なし&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_menu_day.xml"
+            line="63"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;メニュー&quot;, should use `@string` resource"
+        errorLine1="                android:contentDescription=&quot;メニュー&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_review.xml"
+            line="49"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;詳細&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;詳細&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_review_course.xml"
+            line="72"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;ログイン情報はこの端末の中にだけ保存され、大学のシステムへの接続にのみ使われます。&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;ログイン情報はこの端末の中にだけ保存され、大学のシステムへの接続にのみ使われます。&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/page_onboarding_login.xml"
+            line="77"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;時間割・課題・成績・学食を\nひとつのアプリでまとめて確認&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;時間割・課題・成績・学食を\nひとつのアプリでまとめて確認&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/page_onboarding_welcome.xml"
+            line="43"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;今日の授業と教室&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;今日の授業と教室&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/page_onboarding_welcome.xml"
+            line="83"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;時間割から今日の予定と教室をすぐ確認&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;時間割から今日の予定と教室をすぐ確認&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/page_onboarding_welcome.xml"
+            line="91"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;締切と休講の通知&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;締切と休講の通知&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/page_onboarding_welcome.xml"
+            line="126"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;課題の締切や休講を通知で受け取る&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;課題の締切や休講を通知で受け取る&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/page_onboarding_welcome.xml"
+            line="134"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;成績と取得単位&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;成績と取得単位&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/page_onboarding_welcome.xml"
+            line="169"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;成績と取得単位をまとめて見る&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;成績と取得単位をまとめて見る&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/page_onboarding_welcome.xml"
+            line="177"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;前の月&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;前の月&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/view_month_calendar.xml"
+            line="21"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;次の月&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;次の月&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/view_month_calendar.xml"
+            line="40"
+            column="13"/>
+    </issue>
+
+</issues>

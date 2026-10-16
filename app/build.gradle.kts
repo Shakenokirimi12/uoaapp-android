@@ -19,8 +19,9 @@ android {
         applicationId = "com.shakenokirimi12.uoa_app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        // リリース CI は -PuoaVersionCode / -PuoaVersionName で上書きする
+        versionCode = providers.gradleProperty("uoaVersionCode").map { it.toInt() }.getOrElse(1)
+        versionName = providers.gradleProperty("uoaVersionName").getOrElse("1.0")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -55,6 +56,10 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
+    }
+    lint {
+        // 既存の指摘は lint-baseline.xml に記録済み。新しく増えたエラーだけで CI を落とす
+        baseline = file("lint-baseline.xml")
     }
 }
 
