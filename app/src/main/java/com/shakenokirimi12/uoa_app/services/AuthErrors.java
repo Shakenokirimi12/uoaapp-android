@@ -20,6 +20,17 @@ public final class AuthErrors {
         return INVALID_CREDENTIALS_MESSAGE.equals(message);
     }
 
+    /**
+     * バックグラウンドでは新規ログインしない (AuthorizationContext.BACKGROUND) ため、保存済みセッションが
+     * 切れていると SeciossError(INTERACTIVE_LOGIN_REQUIRED) で止まる。失敗ではなく「ユーザーが開いて
+     * ログインするのを待っている」状態。サービスは例外を文字列で渡してくるので、種別名で見分ける
+     * (Moodle は「接続エラー: 」を前に付ける)。
+     */
+    public static boolean isInteractiveLoginRequired(String message) {
+        return message != null && message.contains(
+                com.shakenokirimi12.uoa_app.services.idp.SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED.name());
+    }
+
     /** 各画面・ワーカーの onError から呼ぶ。 */
     public static void markInvalidIfCredentialsError(Context context, String message) {
         if (isInvalidCredentials(message)) {

@@ -42,6 +42,16 @@ public final class NotificationChannels {
         return LUNCH_MENU;
     }
 
+    /** バックグラウンド同期で「アプリを開いてログインしてください」を伝える (1 日 1 回まで)。 */
+    public static final String LOGIN_REQUIRED = "login_required";
+
+    @NonNull
+    public static String ensureLoginRequired(@NonNull Context ctx) {
+        manager(ctx).createNotificationChannel(new NotificationChannel(
+                LOGIN_REQUIRED, ctx.getString(R.string.login_required_channel_name), NotificationManager.IMPORTANCE_DEFAULT));
+        return LOGIN_REQUIRED;
+    }
+
     private static NotificationManager manager(@NonNull Context ctx) {
         return ctx.getSystemService(NotificationManager.class);
     }

@@ -21,6 +21,7 @@ import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
 import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 import com.shakenokirimi12.uoa_app.services.AppConfigService;
+import com.shakenokirimi12.uoa_app.services.AuthErrors;
 import com.shakenokirimi12.uoa_app.services.CampusSquareService;
 import com.shakenokirimi12.uoa_app.services.MoodleService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
@@ -94,6 +95,9 @@ public class SyncWorker extends Worker {
         String pass = prefs.getPassword();
         DataCache cache = DataCache.getInstance(ctx);
         boolean anyFailure = false;
+        // 保存済みセッションが切れていて、OTP 付きの新規ログインが要る。失敗とは数えない
+        // (バックグラウンドからはログインしない決まりなので、待つのが正常)。
+        boolean loginRequired = false;
         boolean changed = false;
 
         // 1. Moodle
@@ -106,9 +110,10 @@ public class SyncWorker extends Worker {
                 String err = loginError.get();
                 if (err == null) {
                     AtomicReference<List<Assignment>> fetched = new AtomicReference<>();
+                    AtomicReference<String> fetchError = new AtomicReference<>();
                     await(latch -> moodle.fetchAssignments(AuthorizationContext.BACKGROUND, new ServiceCallback<List<Assignment>>() {
                         @Override public void onSuccess(List<Assignment> r) { fetched.set(r); latch.countDown(); }
-                        @Override public void onError(String m) { latch.countDown(); }
+                        @Override public void onError(String m) { fetchError.set(m); latch.countDown(); }
                     }));
                     List<Assignment> assignments = fetched.get();
                     if (assignments != null) {
@@ -116,9 +121,13 @@ public class SyncWorker extends Worker {
                         cache.saveAssignments(assignments);
                         com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.sync(ctx, assignments);
                         com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier.post(ctx, assignments);
+                    } else if (AuthErrors.isInteractiveLoginRequired(fetchError.get())) {
+                        loginRequired = true;
                     } else {
                         anyFailure = true;
                     }
+                } else if (AuthErrors.isInteractiveLoginRequired(err)) {
+                    loginRequired = true;
                 } else {
                     anyFailure = true;
                     if (MoodleService.isInvalidCredentialsError(err)) {
@@ -145,6 +154,8 @@ public class SyncWorker extends Worker {
             if (fetched.get() != null) {
                 cache.saveEvents(fetched.get());
                 com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(ctx);
+            } else if (AuthErrors.isInteractiveLoginRequired(csError.get())) {
+                loginRequired = true;
             } else {
                 anyFailure = true;
                 // CampusSquare 側だけで ID/PW 誤りが判明することもある (Moodle が killswitch で
@@ -156,8 +167,15 @@ public class SyncWorker extends Worker {
             }
         }
 
-        if (!anyFailure) prefs.setLastSync(System.currentTimeMillis());
-        notifyIfEnabled(ctx, prefs, changed, !anyFailure, anyFailure);
+        boolean success = !anyFailure && !loginRequired;
+        if (success) prefs.setLastSync(System.currentTimeMillis());
+        if (loginRequired) {
+            LoginRequiredNotice.postAtMostOncePerDay(ctx);
+        } else if (success) {
+            // ログインし直して同期が通ったら、前に出した「ログインが必要です」は役目を終えている。
+            LoginRequiredNotice.cancel(ctx);
+        }
+        notifyIfEnabled(ctx, prefs, changed, success, anyFailure);
         // 失敗は次回の定期実行に任せる。retry にすると指数バックオフで短時間に再ログインを重ねる。
         return Result.success();
     }
@@ -192,6 +210,8 @@ public class SyncWorker extends Worker {
         // 4 つのトグルはそれぞれ独立に意味を持たせる。具体的な文面 (変更あり / 変更なし) が
         // 出せるならそちらを優先し、それらが OFF でも「同期成功」が ON なら成功を伝える。
         String text;
+        // 成功でも失敗でもない (ログイン待ちで何も取れていない) なら、変更なし・成功は言えない。
+        if (!success && !failure && !changed) return;
         if (failure) {
             if (!prefs.isBgNotifyFailure()) return;
             text = prefs.isCredentialsInvalid()

@@ -36,6 +36,7 @@ public class PreferenceManager {
     private static final String KEY_BG_NOTIFY_FAILURE = "bg_notify_failure";
     private static final String KEY_BG_NOTIFY_NOCHANGE = "bg_notify_nochange";
     private static final String KEY_LUNCH_NOTIFY_TIME = "lunch_notify_time";
+    private static final String KEY_LOGIN_REQUIRED_NOTIFIED_DAY = "login_required_notified_day";
     private static final String KEY_MAIN_TABS = "main_tabs";
     private static final String KEY_OTHER_TABS = "other_tabs";
     private static final String KEY_REVIEW_CONSENT = "review_consent_given";
@@ -271,6 +272,10 @@ public class PreferenceManager {
     // Lunch notify time (HH:mm)
     public String getLunchNotifyTime() { return prefs.getString(KEY_LUNCH_NOTIFY_TIME, "11:30"); }
     public void setLunchNotifyTime(String time) { prefs.edit().putString(KEY_LUNCH_NOTIFY_TIME, time).apply(); }
+
+    /** 「ログインが必要です」を最後に通知した日 (yyyy-MM-dd, 日本時間)。1 日 1 回に抑えるため。 */
+    public String getLoginRequiredNotifiedDay() { return prefs.getString(KEY_LOGIN_REQUIRED_NOTIFIED_DAY, ""); }
+    public void setLoginRequiredNotifiedDay(String day) { prefs.edit().putString(KEY_LOGIN_REQUIRED_NOTIFIED_DAY, day).apply(); }
 
     // Tab ordering (comma-separated tab names)
     public String getMainTabs() { return prefs.getString(KEY_MAIN_TABS, "home,calendar,courses,gakushoku"); }
