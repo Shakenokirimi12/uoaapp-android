@@ -61,6 +61,39 @@ public class NetworkClient {
         return chain.proceed(request);
     };
 
+    /** セッション確認で同じホスト内のリダイレクトを追う上限。ループしても probe が止まるように。 */
+    static final int MAX_SAME_HOST_REDIRECTS = 5;
+
+    /**
+     * セッション確認用 (iOS の AuthenticatedHTTP sameHostRedirectsOnly と同じ)。3xx は、行き先が元と同じ
+     * ホストで、https から http へ落ちないときだけ GET で追う。別ホストへの 3xx・上限超え・Location の
+     * 無い 3xx はその 3xx の応答を返す (呼び出し側は「未ログイン」と判定する)。
+     *
+     * 別ホストへ出た時点で未ログインは確定し、追うと IdP まで歩いて古い cookie でループする。一方で
+     * ログイン済みの SP も同じホスト内で 302 を返すことがある (CampusSquare のフロー URL は
+     * _flowExecutionKey 付きの URL へ 302 する) ので、3xx を全部「未ログイン」にはできない。
+     *
+     * noRedirectClient はリダイレクトを追わないクライアント。手で付けた Cookie ヘッダは同じホストにしか
+     * 送られない。返した Response は呼び出し側で close すること。
+     */
+    public static okhttp3.Response executeFollowingSameHostRedirects(OkHttpClient noRedirectClient, Request request)
+            throws java.io.IOException {
+        String host = request.url().host();
+        Request current = request;
+        okhttp3.Response resp = noRedirectClient.newCall(current).execute();
+        for (int hop = 0; hop < MAX_SAME_HOST_REDIRECTS && resp.isRedirect(); hop++) {
+            String location = resp.header("Location");
+            okhttp3.HttpUrl next = location != null ? current.url().resolve(location) : null;
+            boolean sameHost = next != null && next.host().equalsIgnoreCase(host);
+            boolean downgrade = next != null && current.url().isHttps() && !next.isHttps();
+            if (!sameHost || downgrade) return resp;
+            resp.close();
+            current = current.newBuilder().url(next).get().build();
+            resp = noRedirectClient.newCall(current).execute();
+        }
+        return resp;
+    }
+
     public static synchronized OkHttpClient getNoRedirectClient() {
         if (noRedirectClient == null) {
             noRedirectClient = new OkHttpClient.Builder()

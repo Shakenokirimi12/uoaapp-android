@@ -365,10 +365,11 @@ public class MoodleService {
      * 未認証 (ログインページに戻される) なら LoginFailure。ログイン直後とセッション再確認の両方で使う。
      */
     private String probeDashboard() throws Exception {
-        // リダイレクトは追わない。未ログインだと /my/ は login → IdP (SAML) へ飛び、IdP まで追うと
-        // cookie jar に溜まった古い IdP cookie で IdP 内をループして too many redirects で落ちる
-        // (2026-09-16 iOS 実機ログ)。3xx が返った時点で未ログインは確定する。newBuilder() は
-        // cookie jar を共有するので MoodleSession はそのまま送られる。
+        // リダイレクトは Moodle のホストの中だけ追う (iOS の sameHostRedirectsOnly と同じ)。未ログインだと
+        // /my/ は login → IdP (SAML) へ飛び、IdP まで追うと cookie jar に溜まった古い IdP cookie で IdP 内を
+        // ループして too many redirects で落ちる (2026-09-16 iOS 実機ログ)。別ホストへの 3xx で未ログインは
+        // 確定する。同じホスト内 (ダッシュボード無効時の /my/courses.php など) はログイン済みでも起きるので追う。
+        // newBuilder() は cookie jar を共有するので MoodleSession はそのまま送られる。
         OkHttpClient client = NetworkClient.getCookieClient().newBuilder()
                 .followRedirects(false)
                 .followSslRedirects(false)
@@ -381,7 +382,7 @@ public class MoodleService {
         String dashHtml;
         String dashUrl;
         int status;
-        try (Response resp = client.newCall(getDashboard).execute()) {
+        try (Response resp = NetworkClient.executeFollowingSameHostRedirects(client, getDashboard)) {
             dashHtml = resp.body().string();
             dashUrl = resp.request().url().toString();
             status = resp.code();

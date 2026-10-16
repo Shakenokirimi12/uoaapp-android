@@ -188,9 +188,12 @@ public class CampusSquareService {
     /**
      * 生きていれば cookieHeader、死んでいれば null。
      *
-     * リダイレクトは追わない。未ログインの csweb は IdP (slink.secioss.com) へ 302 を返す。追うと
+     * リダイレクトは csweb の中だけ追う。未ログインの csweb は IdP (slink.secioss.com) へ 302 を返す。追うと
      * 手で付けた Cookie ヘッダ (CampusSquare のセッション) がそのまま IdP へ送られ、IdP 側で古い状態と
-     * 組み合わさってループしうる。3xx が返った時点で未ログインは確定する (MoodleService.probeDashboard と同じ)。
+     * 組み合わさってループしうるので、別ホストへの 3xx が返った時点で未ログインとする。
+     * 同じホスト内の 3xx は追う。ログイン済みでも CampusSquare のフロー URL は _flowExecutionKey 付きの
+     * URL へ 302 する (成績・施設の取得がこれを前提にしている) ので、確認 URL をフラグでフロー URL に
+     * 差し替えたときに、生きているセッションを毎回「未ログイン」と判定して OTP のメールを送らせないように。
      */
     static String probeSession(OkHttpClient noRedirectClient, String url, String cookieHeader, String expectedHost) {
         Request req = new Request.Builder()
@@ -198,7 +201,7 @@ public class CampusSquareService {
                 .header("User-Agent", NetworkClient.getUserAgent())
                 .header("Cookie", cookieHeader)
                 .build();
-        try (Response resp = noRedirectClient.newCall(req).execute()) {
+        try (Response resp = NetworkClient.executeFollowingSameHostRedirects(noRedirectClient, req)) {
             if (resp.isRedirect() || resp.code() / 100 == 3) return null;
             String html = resp.body() != null ? resp.body().string() : "";
             boolean alive = resp.isSuccessful()

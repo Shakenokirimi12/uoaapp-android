@@ -33,6 +33,12 @@ public class CampusSquareProbeTest {
                     return new Reply(200, "<html><form action=\"tenantlogin.cgi\"></form></html>");
                 case "/portal":
                     return new Reply(200, "<html><a href=\"logout\">ログアウト</a></html>");
+                case "/flow": // ログイン済みのフロー URL: 同じホストの _flowExecutionKey 付き URL へ 302。
+                    return new Reply(302, "").header("Location", "/portal?_flowExecutionKey=k1");
+                case "/loop":
+                    return new Reply(302, "").header("Location", "/loop");
+                case "/to-login": // 同じホスト内で未ログインのページへ回される。
+                    return new Reply(302, "").header("Location", "/loginform");
                 case "/loginform":
                     return new Reply(200, "<form><input name=\"userName\"><input name=\"password\"></form>");
                 default:
@@ -57,6 +63,30 @@ public class CampusSquareProbeTest {
         assertEquals("JSESSIONID=secret", server.first("/expired").header("Cookie"));
         // IdP へは 1 リクエストも行かない (CampusSquare の cookie を IdP に渡さない)。
         assertNull(server.first("/idp"));
+    }
+
+    @Test
+    public void sameHostRedirect_isFollowed_andALiveSessionStaysAlive() {
+        String result = CampusSquareService.probeSession(NetworkClient.getNoRedirectClient(),
+                cs("/flow"), "JSESSIONID=secret", "127.0.0.1");
+
+        assertEquals("JSESSIONID=secret", result);
+        assertEquals("JSESSIONID=secret", server.first("/portal").header("Cookie"));
+    }
+
+    @Test
+    public void sameHostRedirectToLoginForm_meansNotLoggedIn() {
+        assertNull(CampusSquareService.probeSession(NetworkClient.getNoRedirectClient(),
+                cs("/to-login"), "JSESSIONID=secret", "127.0.0.1"));
+    }
+
+    @Test
+    public void sameHostRedirectLoop_stopsAtTheLimit() {
+        assertNull(CampusSquareService.probeSession(NetworkClient.getNoRedirectClient(),
+                cs("/loop"), "JSESSIONID=secret", "127.0.0.1"));
+        int hits = 0;
+        for (LoopbackHttpServer.Recorded r : server.requests()) if (r.path.equals("/loop")) hits++;
+        assertEquals(NetworkClient.MAX_SAME_HOST_REDIRECTS + 1, hits);
     }
 
     @Test
