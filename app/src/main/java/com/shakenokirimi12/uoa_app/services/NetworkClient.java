@@ -1,13 +1,9 @@
 package com.shakenokirimi12.uoa_app.services;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import okhttp3.Cookie;
-import okhttp3.CookieJar;
-import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 
 public class NetworkClient {
@@ -19,7 +15,8 @@ public class NetworkClient {
     private static OkHttpClient noCookieClient;
     private static OkHttpClient noRedirectClient;
 
-    private static final HashMap<String, List<Cookie>> cookieStore = new HashMap<>();
+    /** ホスト / ドメイン / パス / 期限をブラウザと同じ規則で扱う jar。プロセス内メモリのみ。 */
+    private static final HostScopedCookieJar cookieStore = new HostScopedCookieJar();
 
     public static String getUserAgent() {
         return USER_AGENT;
@@ -28,24 +25,7 @@ public class NetworkClient {
     public static synchronized OkHttpClient getCookieClient() {
         if (cookieClient == null) {
             cookieClient = new OkHttpClient.Builder()
-                    .cookieJar(new CookieJar() {
-                        @Override
-                        public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
-                            List<Cookie> existing = cookieStore.get(url.host());
-                            Map<String, Cookie> merged = new HashMap<>();
-                            if (existing != null) {
-                                for (Cookie c : existing) merged.put(c.name(), c);
-                            }
-                            for (Cookie c : cookies) merged.put(c.name(), c);
-                            cookieStore.put(url.host(), new ArrayList<>(merged.values()));
-                        }
-
-                        @Override
-                        public List<Cookie> loadForRequest(HttpUrl url) {
-                            List<Cookie> cookies = cookieStore.get(url.host());
-                            return cookies != null ? new ArrayList<>(cookies) : new ArrayList<>();
-                        }
-                    })
+                    .cookieJar(cookieStore)
                     .followRedirects(true)
                     .followSslRedirects(true)
                     .build();
@@ -73,10 +53,9 @@ public class NetworkClient {
         return noRedirectClient;
     }
 
-    /** アプリ内ブラウザへセッションを持ち込むために、ホスト単位でcookieを取り出す。 */
-    public static synchronized List<Cookie> cookiesForHost(String host) {
-        List<Cookie> cookies = cookieStore.get(host);
-        return cookies != null ? new ArrayList<>(cookies) : new ArrayList<>();
+    /** アプリ内ブラウザへセッションを持ち込むために、ホストへ送られうる cookie を取り出す。 */
+    public static List<Cookie> cookiesForHost(String host) {
+        return cookieStore.forHost(host);
     }
 
     /**
@@ -84,9 +63,10 @@ public class NetworkClient {
      * IdP 経由で得た Moodle のセッション cookie (MoodleSession 等) をここへ入れないと、
      * 以降の getCookieClient() 経由のリクエストが未ログイン扱いになる (iOS の
      * MoodleService.injectCookiesIntoSharedStorage と同じ役割)。
-     * 1 件でも壊れた値があっても他は入れる。落とした件数は呼び出し元へ返す。
+     * 入れる cookie は host-only (そのホストにだけ送る)。1 件でも壊れた値があっても他は入れる。
+     * 落とした件数は呼び出し元へ返す。
      */
-    public static synchronized int injectCookieHeader(String host, boolean secure, String cookieHeader) {
+    public static int injectCookieHeader(String host, boolean secure, String cookieHeader) {
         List<Cookie> parsed = new ArrayList<>();
         int dropped = 0;
         for (String pair : cookieHeader.split(";")) {
@@ -97,7 +77,7 @@ public class NetworkClient {
                 Cookie.Builder b = new Cookie.Builder()
                         .name(trimmed.substring(0, eq))
                         .value(trimmed.substring(eq + 1))
-                        .domain(host)
+                        .hostOnlyDomain(host)
                         .path("/");
                 if (secure) b.secure();
                 parsed.add(b.build());
@@ -105,31 +85,22 @@ public class NetworkClient {
                 dropped++;
             }
         }
-        List<Cookie> existing = cookieStore.get(host);
-        Map<String, Cookie> merged = new HashMap<>();
-        if (existing != null) {
-            for (Cookie c : existing) merged.put(c.name(), c);
-        }
-        for (Cookie c : parsed) merged.put(c.name(), c);
-        cookieStore.put(host, new ArrayList<>(merged.values()));
+        cookieStore.add(parsed);
         return dropped;
     }
 
-    /** ホストの cookie を "a=b; c=d" 形式で取り出す (永続化用)。無ければ空文字。 */
-    public static synchronized String exportCookieHeader(String host) {
-        List<Cookie> cookies = cookieStore.get(host);
-        if (cookies == null || cookies.isEmpty()) return "";
+    /** ホストへ送られうる cookie を "a=b; c=d" 形式で取り出す (永続化用)。無ければ空文字。 */
+    public static String exportCookieHeader(String host) {
         StringBuilder sb = new StringBuilder();
-        for (Cookie c : cookies) {
+        for (Cookie c : cookieStore.forHost(host)) {
             if (sb.length() > 0) sb.append("; ");
             sb.append(c.name()).append('=').append(c.value());
         }
         return sb.toString();
     }
 
-    public static synchronized boolean hasCookies(String host) {
-        List<Cookie> cookies = cookieStore.get(host);
-        return cookies != null && !cookies.isEmpty();
+    public static boolean hasCookies(String host) {
+        return !cookieStore.forHost(host).isEmpty();
     }
 
     public static void clearCookies() {

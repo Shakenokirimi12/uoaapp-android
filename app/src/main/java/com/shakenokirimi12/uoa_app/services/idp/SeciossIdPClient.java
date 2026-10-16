@@ -243,6 +243,8 @@ public final class SeciossIdPClient {
     }
 
     /**
+     * 共有の cookie jar (NetworkClient の HostScopedCookieJar) も同じ規則で動かすため public にしている。
+     *
      * 期限切れの Set-Cookie は「削除指示」なので、古いものを消したうえで jar に積まない。ここを積んで
      * いたため、SAML が使い捨てするリクエスト状態 cookie (_opensaml_req_ss:mem:<毎回別のID>) が削除されず
      * 毎ホップ増殖し、削除済み cookie を送り返してサーバが状態不整合と判断 → SP と IdP の間で 302/307 が
@@ -250,7 +252,7 @@ public final class SeciossIdPClient {
      * request_bytes が 552→2810 と単調増加するのを確認)。動作する Python 参照 (http.cookiejar) は期限切れを
      * 正しく捨てるため、同じサーバでも成功していた。
      */
-    static void mergeCookies(@NonNull List<Cookie> jar, @NonNull List<Cookie> received, long now) {
+    public static void mergeCookies(@NonNull List<Cookie> jar, @NonNull List<Cookie> received, long now) {
         for (Cookie c : received) {
             jar.removeIf(existing -> existing.name().equals(c.name())
                     && existing.domain().equals(c.domain()) && existing.path().equals(c.path()));
@@ -260,7 +262,7 @@ public final class SeciossIdPClient {
     }
 
     /** サーバが「削除」を指示した cookie か。セッション cookie (persistent でない) は期限なし。 */
-    static boolean isExpired(@NonNull Cookie cookie, long now) {
+    public static boolean isExpired(@NonNull Cookie cookie, long now) {
         return cookie.persistent() && cookie.expiresAt() <= now;
     }
 
