@@ -47,6 +47,8 @@ public class PreferenceManager {
     private static final String KEY_CS_IDP_SESSION_COOKIE_HEADER = "cs_idp_session_cookie_header";
     private static final String KEY_IDP_SSO_COOKIE_HEADER = "idp_sso_cookie_header";
     private static final String KEY_IDP_SSO_OWNER = "idp_sso_owner";
+    private static final String KEY_OTP_RELAY_PAIRINGS = "otp_relay_pairings";
+    private static final String KEY_OTP_RELAY_LAST_RESULT = "otp_relay_last_result";
     private static final String KEY_MOODLE_SESSION_COOKIE_HEADER = "moodle_session_cookie_header";
 
     private static final String TAG = "PreferenceManager";
@@ -366,6 +368,17 @@ public class PreferenceManager {
     /** IdP の SSO セッションの持ち主 (uid)。別アカウントのチケットを再生しないため。 */
     public String getIdpSsoOwner() { return getSecret(KEY_IDP_SSO_OWNER); }
     public void setIdpSsoOwner(String owner) { putSecret(KEY_IDP_SSO_OWNER, owner); }
+
+    /**
+     * PC 中継の連携一覧 (JSON)。K (暗号鍵の元) を含むので暗号化側にだけ置く。
+     * 暗号化ストアが使えない端末では保存されない (連携は断る)。
+     */
+    public String getOtpRelayPairingsJson() { return getSecret(KEY_OTP_RELAY_PAIRINGS); }
+    public void setOtpRelayPairingsJson(String json) { putSecret(KEY_OTP_RELAY_PAIRINGS, json); }
+
+    /** PC 中継の直近の自動応答の結果 (JSON)。IMAP の応答行を含みうるので暗号化側に置く。 */
+    public String getOtpRelayLastResultJson() { return getSecret(KEY_OTP_RELAY_LAST_RESULT); }
+    public void setOtpRelayLastResultJson(String json) { putSecret(KEY_OTP_RELAY_LAST_RESULT, json); }
 
     // Reset
     public void clearAll() {

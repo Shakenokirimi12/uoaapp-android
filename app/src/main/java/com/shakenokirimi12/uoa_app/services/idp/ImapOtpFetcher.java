@@ -76,6 +76,73 @@ public final class ImapOtpFetcher {
     @NonNull
     public String fetchOtpCode(@NonNull String uid, @NonNull String pass, long timeoutSeconds,
                                long requestedAt) throws Exception {
+        return fetch(uid, pass, timeoutSeconds, requestedAt, true).code;
+    }
+
+    /** 見つけた OTP メール。uid は後で使用済みとして消すときの上限。 */
+    public static final class OtpMail {
+        @NonNull public final String code;
+        public final int uid;
+
+        OtpMail(@NonNull String code, int uid) {
+            this.code = code;
+            this.uid = uid;
+        }
+    }
+
+    /**
+     * PC 中継用。fetchOtpCode と同じ探し方だが、メールは消さない。中継サーバがコードを受け取った
+     * (204/409/410) と分かってから {@link #deleteUsedMails} で消す (送れなかったときに手で使えるように)。
+     */
+    @NonNull
+    public OtpMail fetchOtpMail(@NonNull String uid, @NonNull String pass, long timeoutSeconds,
+                                long requestedAt) throws Exception {
+        return fetch(uid, pass, timeoutSeconds, requestedAt, false);
+    }
+
+    /**
+     * 使い終わった OTP メールを消す: 直近 7 日の OTP メールのうち UID が upToUid 以下のもの。
+     * iOS の deleteUsedMails と同じ。readTimeoutMs で打ち切る (失敗しても結果には影響させない)。
+     */
+    public void deleteUsedMails(@NonNull String uid, @NonNull String pass, int upToUid, int readTimeoutMs)
+            throws Exception {
+        ImapStream stream = new ImapStream(host, port, readTimeoutMs);
+        try {
+            stream.readLine();
+            String tag = stream.nextTag();
+            stream.send(tag + " LOGIN " + quote(uid) + " " + quote(pass));
+            stream.readUntilTagged(tag);
+            tag = stream.nextTag();
+            stream.send(tag + " SELECT INBOX");
+            stream.readUntilTagged(tag);
+
+            tag = stream.nextTag();
+            Date since = new Date(System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000);
+            stream.send(tag + " UID SEARCH FROM \"" + OTP_SENDER + "\" SINCE " + imapDate(since));
+            List<Integer> uids = allUids(stream.readUntilTagged(tag));
+            StringBuilder set = new StringBuilder();
+            for (int u : uids) {
+                if (u > upToUid) continue;
+                if (set.length() > 0) set.append(',');
+                set.append(u);
+            }
+            if (set.length() > 0) {
+                tag = stream.nextTag();
+                stream.send(tag + " UID STORE " + set + " +FLAGS (\\Deleted)");
+                stream.readUntilTagged(tag);
+                tag = stream.nextTag();
+                stream.send(tag + " EXPUNGE");
+                stream.readUntilTagged(tag);
+            }
+            stream.sendQuietly(stream.nextTag() + " LOGOUT");
+        } finally {
+            stream.close();
+        }
+    }
+
+    @NonNull
+    private OtpMail fetch(@NonNull String uid, @NonNull String pass, long timeoutSeconds,
+                          long requestedAt, boolean deleteAfterRead) throws Exception {
         long startedAt = requestedAt;
         long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
         Exception lastError = new ImapException("mailNotFound");
@@ -95,8 +162,8 @@ public final class ImapOtpFetcher {
                         stream = openAndSelect(uid, pass);
                     }
                     if (floorUid < 0) floorUid = resolveFloorUid(stream, startedAt);
-                    String code = searchAndFetch(stream, floorUid);
-                    if (code != null) return code;
+                    OtpMail mail = searchAndFetch(stream, floorUid, deleteAfterRead);
+                    if (mail != null) return mail;
                     lastError = new ImapException("mailNotFound");
                 } catch (IOException e) {
                     lastError = e;
@@ -181,7 +248,8 @@ public final class ImapOtpFetcher {
      * コードを返し、そのメールを削除する。
      */
     @Nullable
-    private String searchAndFetch(ImapStream stream, int floorUid) throws IOException, ImapException {
+    private OtpMail searchAndFetch(ImapStream stream, int floorUid, boolean deleteAfterRead)
+            throws IOException, ImapException {
         String targetUid = searchLatestUid(stream);
         if (targetUid == null) return null;
         // 下限以下は今回要求したコードではない (期限切れの古いメール)。
@@ -195,6 +263,8 @@ public final class ImapOtpFetcher {
 
         String code = extractCode(body);
         if (code == null) throw new ImapException("codeNotFound");
+        OtpMail mail = new OtpMail(code, Integer.parseInt(targetUid));
+        if (!deleteAfterRead) return mail;
 
         // 読み取り済みの OTP メールは削除する (ユーザー了承済み、2026-09-07)。
         // 抽出に失敗した場合は消さずに残す (デバッグのため)。
@@ -210,7 +280,7 @@ public final class ImapOtpFetcher {
             // 「メールが消えない」ときに原因が分からなくなるので必ずログへ残す (コードは出さない)。
             android.util.Log.w("ImapOtpFetcher", "OTPメールの削除に失敗: " + e);
         }
-        return code;
+        return mail;
     }
 
     private static void closeQuietly(@Nullable ImapStream stream) {
@@ -251,6 +321,22 @@ public final class ImapOtpFetcher {
      * 取れなければ null (呼び出し側が従来の下限にフォールバックする)。
      */
     @Nullable
+    static List<Integer> allUids(@NonNull List<String> lines) {
+        List<Integer> out = new ArrayList<>();
+        for (String line : lines) {
+            if (!line.startsWith("* SEARCH")) continue;
+            for (String token : line.substring("* SEARCH".length()).trim().split("\\s+")) {
+                try {
+                    out.add(Integer.parseInt(token));
+                } catch (NumberFormatException ignored) {
+                    // 空行 (該当なし) など
+                }
+            }
+        }
+        return out;
+    }
+
+    @Nullable
     static Long parseInternalDate(@NonNull List<String> lines) {
         for (String line : lines) {
             Matcher m = Pattern.compile("INTERNALDATE \"([^\"]+)\"").matcher(line);
@@ -285,9 +371,13 @@ public final class ImapOtpFetcher {
         private int tagSeq = 0;
 
         ImapStream(String host, int port) throws IOException {
+            this(host, port, READ_TIMEOUT_MS);
+        }
+
+        ImapStream(String host, int port, int readTimeoutMs) throws IOException {
             SSLSocket s = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
-            s.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
-            s.setSoTimeout(READ_TIMEOUT_MS);
+            s.connect(new InetSocketAddress(host, port), Math.min(CONNECT_TIMEOUT_MS, Math.max(readTimeoutMs, 1000)));
+            s.setSoTimeout(readTimeoutMs);
             // SSLSocket は既定ではホスト名検証をしない。iOS の NWConnection(TLS) と同じ強度にするため明示する。
             SSLParameters params = s.getSSLParameters();
             params.setEndpointIdentificationAlgorithm("HTTPS");

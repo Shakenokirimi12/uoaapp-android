@@ -1,10 +1,8 @@
 package com.shakenokirimi12.uoa_app.testing;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -94,33 +92,35 @@ public final class LoopbackHttpServer implements AutoCloseable {
     }
 
     private void serve(Socket client) throws IOException {
-        InputStream in = client.getInputStream();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-        String requestLine = reader.readLine();
+        InputStream in = new java.io.BufferedInputStream(client.getInputStream());
+        String requestLine = readLine(in);
         if (requestLine == null) return;
         String[] parts = requestLine.split(" ");
         Map<String, String> headers = new HashMap<>();
         String line;
-        while ((line = reader.readLine()) != null && !line.isEmpty()) {
+        while ((line = readLine(in)) != null && !line.isEmpty()) {
             int colon = line.indexOf(':');
             if (colon > 0) headers.put(line.substring(0, colon).trim().toLowerCase(Locale.ROOT), line.substring(colon + 1).trim());
         }
+        // Content-Length はバイト数。日本語を含む本文を文字数で読むと待ち続ける。
         int length = headers.containsKey("content-length") ? Integer.parseInt(headers.get("content-length")) : 0;
-        char[] buf = new char[length];
+        byte[] buf = new byte[length];
         int read = 0;
         while (read < length) {
-            int n = reader.read(buf, read, length - read);
+            int n = in.read(buf, read, length - read);
             if (n < 0) break;
             read += n;
         }
         String path = parts.length > 1 ? parts[1] : "/";
         int q = path.indexOf('?');
         if (q >= 0) path = path.substring(0, q);
-        Recorded rec = new Recorded(parts[0], path, headers, new String(buf, 0, read));
+        Recorded rec = new Recorded(parts[0], path, headers, new String(buf, 0, read, StandardCharsets.UTF_8));
         requests.add(rec);
 
         Reply reply = handler.handle(rec);
-        byte[] body = reply.body != null ? reply.body.getBytes(StandardCharsets.UTF_8) : new byte[0];
+        // 204 / 304 は本文を持てない (付けると OkHttp が ProtocolException にする)。
+        boolean noBody = reply.status == 204 || reply.status == 304;
+        byte[] body = reply.body != null && !noBody ? reply.body.getBytes(StandardCharsets.UTF_8) : new byte[0];
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         StringBuilder head = new StringBuilder("HTTP/1.1 ").append(reply.status).append(" X\r\n");
         for (Map.Entry<String, String> h : reply.headers.entrySet()) {
@@ -132,6 +132,18 @@ public final class LoopbackHttpServer implements AutoCloseable {
         OutputStream os = client.getOutputStream();
         os.write(out.toByteArray());
         os.flush();
+    }
+
+    /** CRLF までを 1 行として読む (ヘッダは ASCII)。接続が閉じていれば null。 */
+    private static String readLine(InputStream in) throws IOException {
+        ByteArrayOutputStream line = new ByteArrayOutputStream();
+        int b;
+        while ((b = in.read()) >= 0) {
+            if (b == '\n') break;
+            if (b != '\r') line.write(b);
+        }
+        if (b < 0 && line.size() == 0) return null;
+        return new String(line.toByteArray(), StandardCharsets.UTF_8);
     }
 
     @Override
