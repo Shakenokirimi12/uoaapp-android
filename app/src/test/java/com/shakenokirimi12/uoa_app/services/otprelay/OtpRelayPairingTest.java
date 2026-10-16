@@ -18,6 +18,16 @@ public class OtpRelayPairingTest {
     }
 
     @Test
+    public void newPairing_requiresApprovalEveryTime() {
+        OtpRelayPairing p = new OtpRelayPairing("P", "K", "B", 1_000L);
+        assertFalse(p.autoApprove());
+        assertFalse(p.readsMailWithoutApproval());
+        // 自動の項目が無い古い保存データも承認制。
+        OtpRelayPairing legacy = GSON.fromJson("{\"pairingId\":\"P\",\"mailConsentAt\":1}", OtpRelayPairing.class);
+        assertFalse(legacy.autoApprove());
+    }
+
+    @Test
     public void pairingSavedBeforeConsentExisted_neverReadsMailWithoutApproval() {
         // 同意の項目ができる前に保存された連携。自動の設定が true でも、承認されるまでメールを読まない。
         OtpRelayPairing p = GSON.fromJson(

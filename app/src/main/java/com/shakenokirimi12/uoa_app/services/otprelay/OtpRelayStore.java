@@ -56,7 +56,7 @@ public final class OtpRelayStore {
         synchronized (LOCK) {
             if (!PreferenceManager.getInstance().isSecureStorageAvailable()) return false;
             List<OtpRelayPairing> list = all();
-            // 同じ QR を読み直したときは、利用者が選んだ自動/承認を引き継ぐ (既定の自動に戻さない)。
+            // 同じ QR を読み直したときは、利用者が選んだ自動/承認を引き継ぐ (既定の承認制に戻さない)。
             for (OtpRelayPairing p : list) {
                 if (pairing.pairingId.equals(p.pairingId)) pairing.autoApprove = p.autoApprove;
             }

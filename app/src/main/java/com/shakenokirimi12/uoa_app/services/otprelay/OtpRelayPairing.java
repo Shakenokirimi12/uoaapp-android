@@ -10,7 +10,7 @@ public final class OtpRelayPairing {
     public String browserName;
     /** 連携した時刻 (epoch ミリ秒)。 */
     public long pairedAt;
-    /** 承認なしで自動で返すか。古い保存データに無いときは true (iOS と同じ既定)。 */
+    /** 承認なしで自動で返すか。既定は承認制 (毎回承認)。古い保存データに無いときも false。 */
     @Nullable public Boolean autoApprove;
     /**
      * この連携のためにメールを読むことへの同意を得た時刻 (epoch ミリ秒)。連携の確認ダイアログが
@@ -19,7 +19,7 @@ public final class OtpRelayPairing {
      */
     @Nullable public Long mailConsentAt;
 
-    public boolean autoApprove() { return autoApprove == null || autoApprove; }
+    public boolean autoApprove() { return autoApprove != null && autoApprove; }
 
     public boolean hasMailConsent() { return mailConsentAt != null && mailConsentAt > 0; }
 
@@ -31,13 +31,16 @@ public final class OtpRelayPairing {
 
     public OtpRelayPairing() {}
 
-    /** 確認ダイアログで同意を得て作る連携。 */
+    /**
+     * 確認ダイアログで同意を得て作る連携。作り方 (リンク・カメラ・貼り付け) にかかわらず承認制で始める。
+     * 自動にするのは一覧のスイッチで利用者が選んだときだけ。
+     */
     OtpRelayPairing(String pairingId, String key, String browserName, long pairedAt) {
         this.pairingId = pairingId;
         this.key = key;
         this.browserName = browserName;
         this.pairedAt = pairedAt;
-        this.autoApprove = true;
+        this.autoApprove = false;
         this.mailConsentAt = pairedAt;
     }
 }

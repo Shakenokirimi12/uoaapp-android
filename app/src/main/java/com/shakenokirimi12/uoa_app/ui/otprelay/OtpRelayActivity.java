@@ -102,8 +102,8 @@ public class OtpRelayActivity extends AppCompatActivity {
                 .setMessage("連携すると、「" + pending.browserName + "」で OTP の画面が出るたびに、"
                         + "このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に返します。"
                         + "ID とパスワードは送りません。\n\n"
-                        + "連携した直後は承認なしで自動で返します "
-                        + "(設定の「PC との連携 (OTP)」で承認制にできます)。\n\n"
+                        + "依頼のたびに通知で承認を求めます (毎回承認)。承認なしで自動で返すには、"
+                        + "設定の「PC との連携 (OTP)」で連携ごとに切り替えてください。\n\n"
                         + "自分の PC の拡張で出した QR のときだけ連携してください。")
                 .setPositiveButton("同意して連携する", (d, w) -> pair(pending))
                 .setNegativeButton("キャンセル", (d, w) -> finish())
