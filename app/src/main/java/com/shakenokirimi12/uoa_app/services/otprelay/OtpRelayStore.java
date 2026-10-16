@@ -92,14 +92,20 @@ public final class OtpRelayStore {
     /** 処理した依頼 ID (直近 20 件)。依頼は 2 分で期限が切れるので、これで足りる。 */
     private static final java.util.LinkedHashSet<String> HANDLED = new java.util.LinkedHashSet<>();
 
-    /** 初めての依頼なら記録して true。同じプロセスで既に処理していれば false。 */
-    public static boolean markHandled(@NonNull String requestId) {
+    /** 同じプロセスで処理を終えた依頼か。 */
+    public static boolean wasHandled(@NonNull String requestId) {
         synchronized (HANDLED) {
-            if (!HANDLED.add(requestId)) return false;
+            return HANDLED.contains(requestId);
+        }
+    }
+
+    /** 処理を終えた依頼として記録する (途中で止められた処理は記録しない = 再実行で続きをやる)。 */
+    public static void markHandled(@NonNull String requestId) {
+        synchronized (HANDLED) {
+            HANDLED.add(requestId);
             while (HANDLED.size() > 20) {
                 HANDLED.remove(HANDLED.iterator().next());
             }
-            return true;
         }
     }
 

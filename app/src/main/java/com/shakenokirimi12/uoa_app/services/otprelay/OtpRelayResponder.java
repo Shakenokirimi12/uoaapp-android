@@ -122,7 +122,9 @@ public final class OtpRelayResponder {
         }
 
         boolean accepted = status == 204 || status == 409 || status == 410;
-        lastResult.save(accepted, status == 204 ? "PC にコードを送りました" : "中継サーバの応答: " + status, null);
+        // 410 は期限切れ (コードは渡っていない) なので、メールは片付けるが成功とは記録しない。
+        lastResult.save(status == 204 || status == 409,
+                status == 204 ? "PC にコードを送りました" : "中継サーバの応答: " + status, null);
         if (accepted) {
             // 中継サーバが受け取った (か、もう答えが決まっている) ので、使ったメールを消す。
             // 送れなかったときは消さない (手で使えるように残す)。

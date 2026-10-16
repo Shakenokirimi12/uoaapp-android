@@ -166,14 +166,24 @@ public class OtpRelayWorker extends Worker {
         if (request.expiresAt <= System.currentTimeMillis()) return Result.success();
         // FCM は同じメッセージを再配信することがある。処理済みの依頼でもう一度メールを読みに行かない
         // (使用済みメールは消してあるので mail-timeout → 承認の通知、という誤った流れになる)。
-        if (!OtpRelayStore.markHandled(request.requestId)) return Result.success();
+        if (OtpRelayStore.wasHandled(request.requestId)) return Result.success();
+        try {
+            handleIncoming(ctx, pairing, request, responder, deliveredAt);
+        } finally {
+            if (!isStopped()) OtpRelayStore.markHandled(request.requestId);
+        }
+        return Result.success();
+    }
+
+    private void handleIncoming(Context ctx, OtpRelayPairing pairing, OtpRelayRequest request,
+                                OtpRelayResponder responder, long deliveredAt) {
         // 以降、承認で使う依頼時刻は補正済みの値にする (iOS と同じく、承認時に二重に補正しない)。
         OtpRelayRequest effective = new OtpRelayRequest(request.pairingId, request.requestId,
                 OtpRelayTiming.effectiveRequestedAt(request.requestedAt, deliveredAt), request.expiresAt);
         boolean consented = PreferenceManager.getInstance(ctx).isOtpAutoFetchEnabled();
         if (!pairing.autoApprove() || !consented) {
             OtpRelayNotifications.approval(ctx, pairing, effective);
-            return Result.success();
+            return;
         }
         showProgress(ctx, pairing, request);
         OtpRelayResponder.Outcome outcome =
@@ -183,7 +193,6 @@ public class OtpRelayWorker extends Worker {
         } else {
             report(ctx, pairing, request, outcome);
         }
-        return Result.success();
     }
 
     private void showProgress(Context ctx, OtpRelayPairing pairing, OtpRelayRequest request) {

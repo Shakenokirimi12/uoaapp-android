@@ -62,7 +62,11 @@ public final class OtpRelayPairingService {
 
         OtpRelayPairing pairing = new OtpRelayPairing(pending.pairingId, pending.key, pending.browserName,
                 System.currentTimeMillis());
+        // 同じ QR の読み直し (既にこの端末にある連携) なら、保存に失敗してもサーバ側は消さない
+        // (消すと、端末に残っている元の連携が使えなくなる)。
+        boolean existed = OtpRelayStore.find(pending.pairingId) != null;
         if (!OtpRelayStore.add(pairing)) {
+            if (existed) throw new PairingException("連携をこの端末に保存できませんでした。もう一度 QR を読んでください。");
             try {
                 api.unpair(pending.pairingId, keys);
             } catch (IOException e) {
