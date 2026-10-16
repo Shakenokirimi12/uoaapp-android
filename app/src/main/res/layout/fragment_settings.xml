@@ -265,31 +265,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
 
-                <!-- Grade notifications -->
-                <LinearLayout
-                    style="@style/Widget.Uoa.ListRow.Container"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <TextView
-                        style="@style/Widget.Uoa.ListRow.Title"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_grade_notify" />
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/switch_grade_notify"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp" />
-                </LinearLayout>
-
-                <com.google.android.material.divider.MaterialDivider
-                    style="@style/Widget.Uoa.Divider"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
                 <!-- Lunch notifications -->
                 <LinearLayout
                     style="@style/Widget.Uoa.ListRow.Container"

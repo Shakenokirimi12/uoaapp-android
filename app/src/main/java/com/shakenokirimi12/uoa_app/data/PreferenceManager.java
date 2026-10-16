@@ -22,7 +22,6 @@ public class PreferenceManager {
     private static final String KEY_REVIEW_GUIDELINES_ACCEPTED = "review_guidelines_accepted";
     private static final String KEY_SERVER_HOLDS_REMINDERS = "server_holds_assignment_reminders";
     private static final String KEY_NOTIFY_ASSIGNMENTS = "notify_assignments";
-    private static final String KEY_NOTIFY_GRADES = "notify_grades";
     private static final String KEY_NOTIFY_LUNCH = "notify_lunch";
     private static final String KEY_MOODLE_TOKEN = "moodle_token";
     private static final String KEY_ICS_URL = "ics_url";
@@ -89,6 +88,8 @@ public class PreferenceManager {
         encryptedPrefs = secure;
 
         migrateLegacySecrets();
+        // 成績変更の通知は実装されないまま設定だけがあった (iOS にも無い)。キーごと消した。
+        if (prefs.contains("notify_grades")) prefs.edit().remove("notify_grades").apply();
     }
 
     private static SharedPreferences openSecurePrefs(Context appContext) throws GeneralSecurityException, IOException {
@@ -212,9 +213,6 @@ public class PreferenceManager {
     // Notifications
     public boolean isAssignmentNotifyEnabled() { return prefs.getBoolean(KEY_NOTIFY_ASSIGNMENTS, true); }
     public void setAssignmentNotifyEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_NOTIFY_ASSIGNMENTS, enabled).apply(); }
-
-    public boolean isGradeNotifyEnabled() { return prefs.getBoolean(KEY_NOTIFY_GRADES, true); }
-    public void setGradeNotifyEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_NOTIFY_GRADES, enabled).apply(); }
 
     public boolean isLunchNotifyEnabled() { return prefs.getBoolean(KEY_NOTIFY_LUNCH, false); }
     public void setLunchNotifyEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_NOTIFY_LUNCH, enabled).apply(); }

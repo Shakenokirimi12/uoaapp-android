@@ -93,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
 
         setupRemoteConfig();
         SyncScheduler.schedule(this);
+        com.shakenokirimi12.uoa_app.services.notification.LunchMenuWorker.ensureScheduled(this);
     }
 
     @Override

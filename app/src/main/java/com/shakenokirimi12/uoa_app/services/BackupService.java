@@ -38,7 +38,7 @@ public class BackupService {
 
     private static final String[] SETTINGS_KEYS = {
             "onboarding_done",
-            "notify_assignments", "notify_grades", "notify_lunch", "lunch_notify_time",
+            "notify_assignments", "notify_lunch", "lunch_notify_time",
             "selected_notify_times", "custom_notify_times",
             "bg_notify_change", "bg_notify_success", "bg_notify_failure", "bg_notify_nochange",
             "sync_interval", "auto_attendance_enabled",
@@ -111,6 +111,8 @@ public class BackupService {
             }
         }
         editor.apply();
+        // 学食通知の ON/OFF と時刻を戻したので、予約もそれに合わせて作り直す。
+        com.shakenokirimi12.uoa_app.services.notification.LunchMenuWorker.reschedule(ctx);
 
         if (backup.has("username")) {
             String username = backup.get("username").getAsString();

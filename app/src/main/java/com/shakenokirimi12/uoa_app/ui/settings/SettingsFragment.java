@@ -200,11 +200,9 @@ public class SettingsFragment extends Fragment {
 
         // Notification switches
         MaterialSwitch switchAssignment = view.findViewById(R.id.switch_assignment_notify);
-        MaterialSwitch switchGrade = view.findViewById(R.id.switch_grade_notify);
         MaterialSwitch switchLunch = view.findViewById(R.id.switch_lunch_notify);
 
         switchAssignment.setChecked(prefs.isAssignmentNotifyEnabled());
-        switchGrade.setChecked(prefs.isGradeNotifyEnabled());
         switchLunch.setChecked(prefs.isLunchNotifyEnabled());
 
         switchAssignment.setOnCheckedChangeListener((v, checked) ->
@@ -213,8 +211,6 @@ public class SettingsFragment extends Fragment {
                     // OFF にしたらサーバー側の予約も消す。消さないと cron から届き続ける。
                     if (!checked) com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.clear(requireContext());
                 });
-        switchGrade.setOnCheckedChangeListener((v, checked) ->
-                prefs.setGradeNotifyEnabled(checked));
 
         // Lunch notify with time picker
         View layoutLunchTime = view.findViewById(R.id.layout_lunch_time);
@@ -225,6 +221,7 @@ public class SettingsFragment extends Fragment {
         switchLunch.setOnCheckedChangeListener((v, checked) -> {
             prefs.setLunchNotifyEnabled(checked);
             layoutLunchTime.setVisibility(checked ? View.VISIBLE : View.GONE);
+            com.shakenokirimi12.uoa_app.services.notification.LunchMenuWorker.reschedule(requireContext());
         });
 
         textLunchTime.setOnClickListener(v -> showTimePicker(textLunchTime));
@@ -371,6 +368,7 @@ public class SettingsFragment extends Fragment {
                     picker.getHour(), picker.getMinute());
             prefs.setLunchNotifyTime(time);
             textLunchTime.setText(time);
+            com.shakenokirimi12.uoa_app.services.notification.LunchMenuWorker.reschedule(requireContext());
         });
 
         picker.show(getParentFragmentManager(), "lunch_time_picker");

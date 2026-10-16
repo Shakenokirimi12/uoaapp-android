@@ -32,6 +32,16 @@ public final class NotificationChannels {
         return CLASS_ONGOING;
     }
 
+    /** 学食メニューの通知 (1 日 1 回、設定した時刻)。 */
+    public static final String LUNCH_MENU = "lunch_menu";
+
+    @NonNull
+    public static String ensureLunchMenu(@NonNull Context ctx) {
+        manager(ctx).createNotificationChannel(new NotificationChannel(
+                LUNCH_MENU, ctx.getString(R.string.lunch_channel_name), NotificationManager.IMPORTANCE_DEFAULT));
+        return LUNCH_MENU;
+    }
+
     private static NotificationManager manager(@NonNull Context ctx) {
         return ctx.getSystemService(NotificationManager.class);
     }
