@@ -165,14 +165,29 @@ public class CampusSquareService {
     private String probeSession(String cookieHeader) {
         String url = AppConfigService.getInstance().stringFlag("campussquare_session_check_url",
                 baseUrl() + "/campusportal.do?page=main");
+        okhttp3.HttpUrl cs = okhttp3.HttpUrl.parse(baseUrl());
+        return probeSession(NetworkClient.getNoRedirectClient(), url, cookieHeader,
+                cs != null ? cs.host() : "csweb.u-aizu.ac.jp");
+    }
+
+    /**
+     * 生きていれば cookieHeader、死んでいれば null。
+     *
+     * リダイレクトは追わない。未ログインの csweb は IdP (slink.secioss.com) へ 302 を返す。追うと
+     * 手で付けた Cookie ヘッダ (CampusSquare のセッション) がそのまま IdP へ送られ、IdP 側で古い状態と
+     * 組み合わさってループしうる。3xx が返った時点で未ログインは確定する (MoodleService.probeDashboard と同じ)。
+     */
+    static String probeSession(OkHttpClient noRedirectClient, String url, String cookieHeader, String expectedHost) {
         Request req = new Request.Builder()
                 .url(url)
                 .header("User-Agent", NetworkClient.getUserAgent())
                 .header("Cookie", cookieHeader)
                 .build();
-        try (Response resp = NetworkClient.getNoCookieClient().newCall(req).execute()) {
+        try (Response resp = noRedirectClient.newCall(req).execute()) {
+            if (resp.isRedirect() || resp.code() / 100 == 3) return null;
             String html = resp.body() != null ? resp.body().string() : "";
-            boolean alive = resp.isSuccessful() && !looksUnauthenticated(html, resp.request().url().toString());
+            boolean alive = resp.isSuccessful()
+                    && !looksUnauthenticated(html, resp.request().url().toString(), expectedHost);
             return alive ? cookieHeader : null;
         } catch (IOException e) {
             return null;

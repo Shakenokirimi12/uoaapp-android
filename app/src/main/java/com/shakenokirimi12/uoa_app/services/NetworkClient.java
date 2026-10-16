@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import okhttp3.Cookie;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
 
 public class NetworkClient {
     private static final String USER_AGENT =
@@ -33,15 +35,32 @@ public class NetworkClient {
         return cookieClient;
     }
 
+    /**
+     * cookie jar を持たないクライアント。CampusSquare は Cookie ヘッダを手で付けてこれで叩く。
+     * OkHttp はリダイレクト先が別ホストでも手で付けた Cookie ヘッダを外さない (外すのは Authorization
+     * だけ)。csweb のセッションが切れていると IdP へ 302 されるので、そのまま追うと CampusSquare の
+     * cookie が slink.secioss.com へ送られる。別ホストへのホップでは Cookie ヘッダを落とす。
+     */
     public static synchronized OkHttpClient getNoCookieClient() {
         if (noCookieClient == null) {
             noCookieClient = new OkHttpClient.Builder()
+                    .addNetworkInterceptor(DROP_COOKIE_HEADER_ACROSS_HOSTS)
                     .followRedirects(true)
                     .followSslRedirects(true)
                     .build();
         }
         return noCookieClient;
     }
+
+    /** 元のリクエストとホストが違うホップ (= リダイレクト先) では、手で付けた Cookie ヘッダを送らない。 */
+    static final Interceptor DROP_COOKIE_HEADER_ACROSS_HOSTS = chain -> {
+        Request request = chain.request();
+        String originalHost = chain.call().request().url().host();
+        if (request.header("Cookie") != null && !request.url().host().equalsIgnoreCase(originalHost)) {
+            request = request.newBuilder().removeHeader("Cookie").build();
+        }
+        return chain.proceed(request);
+    };
 
     public static synchronized OkHttpClient getNoRedirectClient() {
         if (noRedirectClient == null) {
