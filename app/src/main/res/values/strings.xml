@@ -118,7 +118,7 @@
     <string name="otp_relay_intro">PC のブラウザで IdP のワンタイムパスワード画面が出ると、この端末に通知が届きます。「承認して送る」を押すと、大学のメールに届いたコードを暗号化して PC に送ります。連携は毎回承認で始まり、下のスイッチで連携ごとに承認なしの自動にできます。自動で送れなかったときも、通知に承認ボタンが出ます。ID とパスワードは端末から出ません。</string>
     <string name="otp_relay_consent_note">メールを読むことへの同意を連携のときに確認していない連携があります。その連携では依頼のたびに通知で承認を求め、承認したときだけ大学のメールを読みます。自動にするときに同意を確認します。</string>
     <string name="otp_relay_consent_title">メールを読んで返すことに同意しますか？</string>
-    <string name="otp_relay_consent_message">「%1$s」から OTP の依頼が来るたびに、このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に返します。承認の通知は出ません。ID とパスワードは送りません。</string>
+    <string name="otp_relay_consent_message">「%1$s」から OTP の依頼が来るたびに、このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に返します。承認は求めません (メールが届かないなどで自動で返せなかったときだけ、承認の通知が出ます)。ID とパスワードは送りません。</string>
     <string name="otp_relay_consent_accept">同意して自動にする</string>
     <string name="otp_relay_paste_link">リンクを貼り付けて連携</string>
     <string name="otp_relay_paste_title">連携用のリンクを貼り付け</string>

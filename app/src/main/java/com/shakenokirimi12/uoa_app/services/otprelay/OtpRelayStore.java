@@ -56,10 +56,8 @@ public final class OtpRelayStore {
         synchronized (LOCK) {
             if (!PreferenceManager.getInstance().isSecureStorageAvailable()) return false;
             List<OtpRelayPairing> list = all();
-            // 同じ QR を読み直したときは、利用者が選んだ自動/承認を引き継ぐ (既定の承認制に戻さない)。
-            for (OtpRelayPairing p : list) {
-                if (pairing.pairingId.equals(p.pairingId)) pairing.autoApprove = p.autoApprove;
-            }
+            // 同じ QR を読み直したときも、新しい連携と同じく承認制から始める (自動は引き継がない)。
+            // 確認ダイアログは「毎回承認」と言っているし、以前の版の連携は利用者が選ばなくても自動だった。
             list.removeIf(p -> pairing.pairingId.equals(p.pairingId));
             list.add(pairing);
             return save(list);
