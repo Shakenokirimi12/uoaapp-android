@@ -97,12 +97,15 @@ public class OtpRelayActivity extends AppCompatActivity {
     private void confirmPairing(OtpRelayLink.Pending pending) {
         new MaterialAlertDialogBuilder(this)
                 .setTitle("PC と連携しますか？")
-                .setMessage("「" + pending.browserName + "」で OTP の画面が出たとき、この端末に通知が届きます。"
-                        + "承認すると、大学のメールに届いた OTP を暗号化して PC に送ります。ID とパスワードは送りません。\n\n"
-                        + "連携すると、メールからの自動取得に同意している場合は承認なしで自動で返します "
+                // 「連携する」がこの連携でメールを読むことへの同意になる (OtpRelayPairing.mailConsentAt)。
+                // 何を読んでどこへ返すかを、ここで明示する。
+                .setMessage("連携すると、「" + pending.browserName + "」で OTP の画面が出るたびに、"
+                        + "このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に返します。"
+                        + "ID とパスワードは送りません。\n\n"
+                        + "連携した直後は承認なしで自動で返します "
                         + "(設定の「PC との連携 (OTP)」で承認制にできます)。\n\n"
                         + "自分の PC の拡張で出した QR のときだけ連携してください。")
-                .setPositiveButton("連携する", (d, w) -> pair(pending))
+                .setPositiveButton("同意して連携する", (d, w) -> pair(pending))
                 .setNegativeButton("キャンセル", (d, w) -> finish())
                 .setOnCancelListener(d -> finish())
                 .show();

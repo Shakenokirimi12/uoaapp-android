@@ -84,6 +84,20 @@ public final class OtpRelayStore {
         }
     }
 
+    /** 同意の無い (古い) 連携を、同意を得たうえで自動にする。 */
+    public static void setAutoApproveWithConsent(@NonNull String pairingId, long consentAt) {
+        synchronized (LOCK) {
+            List<OtpRelayPairing> list = all();
+            for (OtpRelayPairing p : list) {
+                if (pairingId.equals(p.pairingId)) {
+                    p.autoApprove = true;
+                    p.mailConsentAt = consentAt;
+                }
+            }
+            save(list);
+        }
+    }
+
     /** 書き込みまで確定させる (apply だと失敗が分からず、連携の巻き戻しが走らない)。 */
     private static boolean save(List<OtpRelayPairing> list) {
         return PreferenceManager.getInstance().commitOtpRelayPairingsJson(list.isEmpty() ? null : GSON.toJson(list));

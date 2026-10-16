@@ -23,9 +23,10 @@ import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
 /**
  * PC からの依頼の処理。FCM の受信・通知のボタンから、すぐ動く (expedited) 仕事として積む。
  *
- * 自動で返すのは「連携が自動になっている」かつ「メールからの自動取得に同意している」ときだけ。
- * 同意していなければメールは読まず、承認の通知を出して、押されたときにだけ読む
- * (同意の無いまま大学のメールボックスに入らない)。
+ * 自動で返すのは「連携が自動になっている」かつ「その連携でメールを読むことに同意している」ときだけ
+ * (OtpRelayPairing.readsMailWithoutApproval)。同意は連携の確認ダイアログで連携ごとに得る。
+ * アプリ自身のログインの同意 (otp_auto_fetch_enabled) とは別。同意の無い連携ではメールを読まず、
+ * 承認の通知を出して、押されたときにだけ読む (同意の無いまま大学のメールボックスに入らない)。
  */
 public class OtpRelayWorker extends Worker {
     private static final String TAG = "OtpRelay";
@@ -180,8 +181,7 @@ public class OtpRelayWorker extends Worker {
         // 以降、承認で使う依頼時刻は補正済みの値にする (iOS と同じく、承認時に二重に補正しない)。
         OtpRelayRequest effective = new OtpRelayRequest(request.pairingId, request.requestId,
                 OtpRelayTiming.effectiveRequestedAt(request.requestedAt, deliveredAt), request.expiresAt);
-        boolean consented = PreferenceManager.getInstance(ctx).isOtpAutoFetchEnabled();
-        if (!pairing.autoApprove() || !consented) {
+        if (!pairing.readsMailWithoutApproval()) {
             OtpRelayNotifications.approval(ctx, pairing, effective);
             return;
         }

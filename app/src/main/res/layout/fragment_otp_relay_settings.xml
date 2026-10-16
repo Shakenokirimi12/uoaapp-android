@@ -22,7 +22,7 @@
             android:paddingEnd="20dp"
             android:text="@string/otp_relay_intro" />
 
-        <!-- メールからの自動取得に同意していないときだけ出す。 -->
+        <!-- メールを読むことへの同意が無い連携 (同意の確認ができる前の連携) があるときだけ出す。 -->
         <TextView
             android:id="@+id/text_consent_note"
             style="@style/Widget.Uoa.Notice"
