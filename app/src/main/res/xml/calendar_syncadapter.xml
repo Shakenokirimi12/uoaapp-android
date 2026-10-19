@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<sync-adapter xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accountType="com.shakenokirimi12.uoa_app.calendar"
+    android:contentAuthority="com.android.calendar"
+    android:allowParallelSyncs="false"
+    android:isAlwaysSyncable="true"
+    android:supportsUploading="false"
+    android:userVisible="true" />

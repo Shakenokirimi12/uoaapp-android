@@ -48,6 +48,8 @@ public class UoaApplication extends Application {
         });
         // Context を持たないサービス層が PreferenceManager.getInstance() で取れるよう、ここで初期化する。
         PreferenceManager.getInstance(this);
+        // 時計のアプリを後から入れた場合でも、次の時間割の取り直しを待たずに表示できるようにする。
+        com.shakenokirimi12.uoa_app.services.wear.WearTimetableSync.pushFromCache(this);
         // The UI is Japanese only. Without a Japanese locale on the context, Android picks
         // Chinese glyph forms for kanji (Han unification), which is what an English-locale
         // device or emulator shows. Pin the per-app locale so text always renders with the

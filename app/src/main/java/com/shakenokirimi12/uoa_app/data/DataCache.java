@@ -10,6 +10,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
+import com.shakenokirimi12.uoa_app.data.models.CreditSummary;
 import com.shakenokirimi12.uoa_app.data.models.GakushokuMenu;
 import com.shakenokirimi12.uoa_app.data.models.Grade;
 import com.shakenokirimi12.uoa_app.data.models.MoodleCourse;
@@ -24,6 +25,7 @@ public class DataCache {
     private static final String KEY_ASSIGNMENTS = "assignments";
     private static final String KEY_COURSES = "courses";
     private static final String KEY_GRADES = "grades";
+    private static final String KEY_CREDIT_SUMMARY = "credit_summary";
     // "menu" held the v1 list; a new key keeps an old build's cache from being read as v2 or as fresh.
     private static final String KEY_MENU = "menu_v2";
     // "<dataset>_fetched_at": epoch ms of the last successful save. Lives in the same prefs so
@@ -103,6 +105,22 @@ public class DataCache {
 
     public List<Grade> loadGrades() {
         return loadList(KEY_GRADES, new TypeToken<List<Grade>>() {}.getType());
+    }
+
+    public void saveCreditSummary(CreditSummary summary) {
+        prefs.edit().putString(KEY_CREDIT_SUMMARY, gson.toJson(summary)).apply();
+    }
+
+    /** 無い・読めないときは null。 */
+    @Nullable
+    public CreditSummary loadCreditSummary() {
+        String json = prefs.getString(KEY_CREDIT_SUMMARY, null);
+        if (json == null || json.isEmpty()) return null;
+        try {
+            return gson.fromJson(json, CreditSummary.class);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public void saveMenu(GakushokuMenu menu) {

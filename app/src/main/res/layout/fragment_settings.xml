@@ -246,6 +246,43 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
 
+                <!-- Class change (休講・教室変更) notifications -->
+                <LinearLayout
+                    style="@style/Widget.Uoa.ListRow.Container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Uoa.ListRow.Title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="休講・教室変更の通知" />
+
+                        <TextView
+                            style="@style/Widget.Uoa.ListRow.Supporting"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="時間割の取り直しで、2 週間先までの休講・教室変更・補講を見つけたら知らせます" />
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_class_change_notify"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp" />
+                </LinearLayout>
+
+                <com.google.android.material.divider.MaterialDivider
+                    style="@style/Widget.Uoa.Divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
                 <!-- Lunch notifications -->
                 <LinearLayout
                     style="@style/Widget.Uoa.ListRow.Container"
@@ -456,6 +493,51 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="16dp" />
                 </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Device calendar (opt-in) -->
+        <TextView
+            style="@style/Widget.Uoa.SectionHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="カレンダー連携" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
+
+            <LinearLayout
+                style="@style/Widget.Uoa.ListRow.Container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Widget.Uoa.ListRow.Title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="端末のカレンダーに表示" />
+
+                    <TextView
+                        style="@style/Widget.Uoa.ListRow.Supporting"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="時間割を「UoA 時間割」カレンダーとして端末内に作ります。Google カレンダーなどから見られます (クラウドには同期されません)" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_device_calendar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

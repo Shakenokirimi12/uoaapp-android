@@ -4,6 +4,9 @@ junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 appcompat = "1.8.0"
+# ライブアップデート (ProgressStyle / setRequestPromotedOngoing) は core 1.17.0 以降。
+# appcompat が連れてくるのは 1.16.0 なので明示的に上げる。
+core = "1.17.0"
 material = "1.14.0"
 navigation = "2.10.1"
 lifecycle = "2.11.0"
@@ -20,12 +23,27 @@ securityCrypto = "1.1.0"
 work = "2.11.2"
 googleServices = "4.5.0"
 firebaseBom = "34.19.0"
+# Wear OS (wear モジュール)。Wear だけ Kotlin + Compose。
+# AGP 8.13 / compileSdk 36 のまま使える最新に揃えている。wearCompose 1.7 以降は AGP 9.1 + compileSdk 37 が要る。
+kotlin = "2.4.20"
+playServicesWearable = "20.0.1"
+activityCompose = "1.13.0"
+wearCompose = "1.6.2"
+wearTiles = "1.6.2"
+protolayout = "1.4.2"
+wearComplications = "1.3.0"
+coroutinesPlayServices = "1.11.0"
+concurrentFutures = "1.3.0"
+wearOngoing = "1.1.0"
+# play-services-wearable が古い fragment を連れてきて、通知許可の registerForActivityResult が lint で落ちる。
+fragment = "1.8.9"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+core = { group = "androidx.core", name = "core", version.ref = "core" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigation" }
 navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigation" }
@@ -45,7 +63,21 @@ security-crypto = { group = "androidx.security", name = "security-crypto", versi
 work-runtime = { group = "androidx.work", name = "work-runtime", version.ref = "work" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+wear-compose-material3 = { group = "androidx.wear.compose", name = "compose-material3", version.ref = "wearCompose" }
+wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
+wear-tiles = { group = "androidx.wear.tiles", name = "tiles", version.ref = "wearTiles" }
+wear-protolayout = { group = "androidx.wear.protolayout", name = "protolayout", version.ref = "protolayout" }
+wear-protolayout-material = { group = "androidx.wear.protolayout", name = "protolayout-material", version.ref = "protolayout" }
+wear-complications-data-source-ktx = { group = "androidx.wear.watchface", name = "watchface-complications-data-source-ktx", version.ref = "wearComplications" }
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutinesPlayServices" }
+fragment = { group = "androidx.fragment", name = "fragment", version.ref = "fragment" }
+wear-ongoing = { group = "androidx.wear", name = "wear-ongoing", version.ref = "wearOngoing" }
+concurrent-futures = { group = "androidx.concurrent", name = "concurrent-futures", version.ref = "concurrentFutures" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

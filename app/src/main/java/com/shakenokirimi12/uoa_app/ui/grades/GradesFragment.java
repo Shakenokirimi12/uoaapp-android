@@ -10,6 +10,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -18,10 +19,12 @@ import com.google.android.material.color.MaterialColors;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
+import com.shakenokirimi12.uoa_app.data.models.CreditSummary;
 import com.shakenokirimi12.uoa_app.data.models.Grade;
 import com.shakenokirimi12.uoa_app.services.CampusSquareService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
 import com.shakenokirimi12.uoa_app.ui.adapters.GradeAdapter;
+import com.shakenokirimi12.uoa_app.ui.adapters.GradeSummaryAdapter;
 
 import java.util.List;
 
@@ -30,6 +33,7 @@ public class GradesFragment extends Fragment {
     private SwipeRefreshLayout swipeRefresh;
     private TextView textEmpty;
     private final GradeAdapter gradeAdapter = new GradeAdapter();
+    private final GradeSummaryAdapter summaryAdapter = new GradeSummaryAdapter();
     private final CampusSquareService csService = new CampusSquareService();
 
     @Nullable
@@ -48,7 +52,7 @@ public class GradesFragment extends Fragment {
         textEmpty = view.findViewById(R.id.text_empty);
         RecyclerView recycler = view.findViewById(R.id.recycler_grades);
         recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
-        recycler.setAdapter(gradeAdapter);
+        recycler.setAdapter(new ConcatAdapter(summaryAdapter, gradeAdapter));
 
         swipeRefresh.setColorSchemeColors(
                 MaterialColors.getColor(view, androidx.appcompat.R.attr.colorPrimary));
@@ -56,8 +60,9 @@ public class GradesFragment extends Fragment {
 
         List<Grade> cached = DataCache.getInstance(requireContext()).loadGrades();
         if (!cached.isEmpty()) {
-            gradeAdapter.setItems(cached);
+            showGrades(cached);
         }
+        summaryAdapter.setSummary(DataCache.getInstance(requireContext()).loadCreditSummary());
         updateEmptyState();
 
         loadGrades(false);
@@ -88,10 +93,11 @@ public class GradesFragment extends Fragment {
             @Override
             public void onSuccess(List<Grade> grades) {
                 if (!isAdded()) return;
-                gradeAdapter.setItems(grades);
+                showGrades(grades);
                 updateEmptyState();
                 swipeRefresh.setRefreshing(false);
                 DataCache.getInstance(requireContext()).saveGrades(grades);
+                loadCreditSummary(user, pass);
             }
 
             @Override
@@ -99,6 +105,30 @@ public class GradesFragment extends Fragment {
                 if (isAdded()) com.shakenokirimi12.uoa_app.services.AuthErrors.markInvalidIfCredentialsError(requireContext(), message);
                 swipeRefresh.setRefreshing(false);
                 if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void showGrades(List<Grade> grades) {
+        gradeAdapter.setItems(grades);
+    }
+
+    /**
+     * 累積 GPA・修得単位数は「単位修得状況照会」から取る (成績一覧には単位数も GPA も載っていない)。
+     * 成績一覧の取得に成功した後に続けて呼ぶ。失敗しても一覧は出ているので、前回の値を残して黙る。
+     */
+    private void loadCreditSummary(String user, String pass) {
+        csService.fetchCreditSummary(user, pass, new ServiceCallback<CreditSummary>() {
+            @Override
+            public void onSuccess(CreditSummary summary) {
+                if (!isAdded()) return;
+                DataCache.getInstance(requireContext()).saveCreditSummary(summary);
+                summaryAdapter.setSummary(summary);
+            }
+
+            @Override
+            public void onError(String message) {
+                android.util.Log.w("GradesFragment", "credit summary: " + message);
             }
         });
     }
