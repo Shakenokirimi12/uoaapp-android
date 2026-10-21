@@ -19,7 +19,6 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.materialswitch.MaterialSwitch;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayLink;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairing;
@@ -34,7 +33,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** PC との連携 (OTP)。連携の一覧・自動/承認の切り替え・解除・リンクの貼り付けによる連携。 */
+/** PC との連携 (OTP)。連携の一覧・解除・リンクの貼り付けによる連携。依頼にはいつも自動で返す。 */
 public class OtpRelaySettingsFragment extends Fragment {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -58,6 +57,8 @@ public class OtpRelaySettingsFragment extends Fragment {
         super.onResume();
         // 連携は別の画面 (OtpRelayActivity) で増えるので、戻ってくるたびに読み直す。
         render();
+        // 同意を記録する前に作った連携があれば、ここで確かめる (iOS の OTPRelaySettingsView.onAppear と同じ)。
+        OtpRelayConsentPrompt.show(requireActivity(), this::render);
     }
 
     @Override
@@ -71,10 +72,6 @@ public class OtpRelaySettingsFragment extends Fragment {
         if (root == null) return;
         container.removeAllViews();
         List<OtpRelayPairing> pairings = OtpRelayStore.all();
-        // 中継の同意は連携ごと (連携の確認ダイアログ)。アプリ自身のログインの同意 (メールからの自動取得) とは別。
-        boolean anyWithoutConsent = false;
-        for (OtpRelayPairing p : pairings) anyWithoutConsent |= !p.hasMailConsent();
-        root.findViewById(R.id.text_consent_note).setVisibility(anyWithoutConsent ? View.VISIBLE : View.GONE);
         LayoutInflater inflater = LayoutInflater.from(requireContext());
         if (pairings.isEmpty()) {
             TextView empty = (TextView) inflater.inflate(R.layout.item_otp_relay_empty, container, false);
@@ -88,16 +85,8 @@ public class OtpRelaySettingsFragment extends Fragment {
             ((TextView) row.findViewById(R.id.text_browser_name)).setText(p.browserName);
             ((TextView) row.findViewById(R.id.text_paired_at)).setText(
                     getString(R.string.otp_relay_paired_on, dateFmt.format(new Date(p.pairedAt))));
-            MaterialSwitch auto = row.findViewById(R.id.switch_auto_approve);
-            // 実際の動き (承認なしでメールを読むか) を出す。同意の無い連携は自動の設定があってもオフに見せる。
-            auto.setChecked(p.readsMailWithoutApproval());
-            auto.setOnCheckedChangeListener((b, checked) -> {
-                if (checked && !p.hasMailConsent()) {
-                    confirmConsent(p);
-                } else {
-                    OtpRelayStore.setAutoApprove(p.pairingId, checked);
-                }
-            });
+            // 同意を記録する前に作った連携。確認 (この画面を開いたときに出る) が済むまで送らない。
+            row.findViewById(R.id.text_consent_pending).setVisibility(p.hasMailConsent() ? View.GONE : View.VISIBLE);
             row.findViewById(R.id.button_unpair).setOnClickListener(v -> confirmUnpair(p));
             container.addView(row);
         }
@@ -115,20 +104,6 @@ public class OtpRelaySettingsFragment extends Fragment {
             detail.setVisibility(last.detail != null && !last.detail.isEmpty() ? View.VISIBLE : View.GONE);
             detail.setText(last.detail);
         }
-    }
-
-    /** 同意の無い連携を自動にするとき。断られたらスイッチを戻す (render で保存済みの状態を出し直す)。 */
-    private void confirmConsent(OtpRelayPairing p) {
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.otp_relay_consent_title)
-                .setMessage(getString(R.string.otp_relay_consent_message, p.browserName))
-                .setPositiveButton(R.string.otp_relay_consent_accept, (d, w) -> {
-                    OtpRelayStore.setAutoApproveWithConsent(p.pairingId, System.currentTimeMillis());
-                    render();
-                })
-                .setNegativeButton(R.string.cancel, (d, w) -> render())
-                .setOnCancelListener(d -> render())
-                .show();
     }
 
     private void showPasteDialog() {
@@ -178,7 +153,7 @@ public class OtpRelaySettingsFragment extends Fragment {
                 ok = OtpRelayPairingService.unpair(p);
             } catch (IOException e) {
                 ok = false;
-                error = "中継サーバに接続できませんでした。";
+                error = getString(R.string.otp_relay_unreachable);
             }
             boolean done = ok;
             String message = error;

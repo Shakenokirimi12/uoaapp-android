@@ -12,10 +12,21 @@ public final class OtpRelayTiming {
     static final long ALREADY_SENT_LOOKBACK_MS = 10 * 60_000;
     /** 信用できない時刻のときは、通知が届いた時刻のこれだけ前からのメールを探す。 */
     static final long DELIVERY_LEAD_MS = 20_000;
-    /** メールを待つ上限 (承認後・自動とも)。 */
+    /** メールを待つ上限。 */
     public static final long MAIL_WAIT_LIMIT_MS = 18_000;
     /** 応答の POST のタイムアウト。 */
     public static final long POST_TIMEOUT_MS = 4_000;
+    /**
+     * 処理を始めてからこの時間までに中継サーバへ答え始めていなければ、見張りが自分で失敗を返す
+     * (iOS の NotificationService.respondDeadline と同じ 24 秒)。ふつうの流れはメールの待ち (18 秒) から
+     * 返送 (4 秒) までで答え始めるので、それより後に置く。IMAP の読み取りは 1 回で最大 15 秒待つので、
+     * メールの待ちの上限だけでは答え始める時刻が決まらない。
+     */
+    static final long RESPOND_DEADLINE_MS = 24_000;
+    /** 見張りが失敗を送るときの上限。 */
+    public static final long EXPIRY_POST_TIMEOUT_MS = 4_000;
+    /** 依頼の期限のこれだけ前には見張りが答える (期限を過ぎると 410 で受け付けられない)。 */
+    static final long EXPIRY_MARGIN_MS = 5_000;
 
     /**
      * IMAP で「この時刻以降に届いた OTP メール」を探すときの起点。
@@ -27,6 +38,14 @@ public final class OtpRelayTiming {
         boolean usual = Math.abs(offset) <= MAX_CLOCK_SKEW_MS;
         boolean alreadySent = Math.abs(offset + ALREADY_SENT_LOOKBACK_MS) <= MAX_CLOCK_SKEW_MS;
         return usual || alreadySent ? requestedAt : deliveredAt - DELIVERY_LEAD_MS;
+    }
+
+    /**
+     * 見張りが失敗を返す時刻。処理を始めてから RESPOND_DEADLINE_MS 後か、依頼の期限の EXPIRY_MARGIN_MS 前の
+     * 早い方。配信が遅れて期限間際に始まったときは、すぐに (メールを読み終わるのを待たずに) 返す。
+     */
+    public static long respondDeadline(long startedAt, long expiresAt) {
+        return Math.min(startedAt + RESPOND_DEADLINE_MS, expiresAt - EXPIRY_MARGIN_MS);
     }
 
     /**

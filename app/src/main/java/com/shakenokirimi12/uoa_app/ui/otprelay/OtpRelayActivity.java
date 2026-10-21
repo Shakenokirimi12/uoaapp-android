@@ -13,11 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayLink;
-import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairing;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairingService;
-import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayRequest;
-import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayStore;
-import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayWorker;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -26,13 +22,9 @@ import java.util.concurrent.Executors;
  * PC 中継の確認ダイアログだけを出す透明な画面。
  * - 連携: 標準のカメラ / Google レンズで QR を読むと uoa-app://otp-pair#... で開かれる。設定画面の
  *   「リンクを貼り付けて連携」もここへ来る。確認してから中継サーバへ登録する。
- * - 依頼: 承認通知の本体を押したとき。通知のボタンが出ない端末でも承認・拒否できるように。
- * 文面は iOS (AuthPresentations の OTPRelayAlertsModifier) と同じ。
+ * 文面は iOS (AuthPresentations の OTPRelayAlertsModifier) と同じ。依頼ごとの承認は無い (2026-10-21 に廃止)。
  */
 public class OtpRelayActivity extends AppCompatActivity {
-    private static final String EXTRA_MODE = "otp_relay_mode";
-    private static final String MODE_REQUEST = "request";
-
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
 
@@ -41,18 +33,6 @@ public class OtpRelayActivity extends AppCompatActivity {
     public static Intent pairIntent(@NonNull Context ctx, @NonNull String link) {
         return new Intent(ctx, OtpRelayActivity.class).setAction(Intent.ACTION_VIEW).setData(Uri.parse(link));
     }
-
-    /** 承認通知の本体から。 */
-    @NonNull
-    public static Intent requestIntent(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
-        Intent intent = new Intent(ctx, OtpRelayRequestActivity.class).putExtra(EXTRA_MODE, MODE_REQUEST)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        OtpRelayWorker.putRequestExtras(intent, request);
-        return intent;
-    }
-
-    /** 依頼の承認を受け付けるか。公開している (QR 用の) この画面では受け付けない。 */
-    boolean acceptsRequests() { return false; }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -80,11 +60,6 @@ public class OtpRelayActivity extends AppCompatActivity {
 
     private void handle(@Nullable Intent intent) {
         if (intent == null) { finish(); return; }
-        if (MODE_REQUEST.equals(intent.getStringExtra(EXTRA_MODE))) {
-            if (acceptsRequests()) showRequest(OtpRelayWorker.getRequest(intent));
-            else finish();
-            return;
-        }
         Uri data = intent.getData();
         OtpRelayLink.Pending pending = OtpRelayLink.parse(data != null ? data.toString() : null);
         if (pending == null) {
@@ -99,12 +74,10 @@ public class OtpRelayActivity extends AppCompatActivity {
                 .setTitle("PC と連携しますか？")
                 // 「連携する」がこの連携でメールを読むことへの同意になる (OtpRelayPairing.mailConsentAt)。
                 // 何を読んでどこへ返すかを、ここで明示する。
-                .setMessage("連携すると、「" + pending.browserName + "」で OTP の画面が出るたびに、"
-                        + "このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に返します。"
-                        + "ID とパスワードは送りません。\n\n"
-                        + "依頼のたびに通知で承認を求めます (毎回承認)。承認なしで自動で返すには、"
-                        + "設定の「PC との連携 (OTP)」で連携ごとに切り替えてください。\n\n"
-                        + "自分の PC の拡張で出した QR のときだけ連携してください。")
+                .setMessage("「" + pending.browserName + "」で OTP の入力画面が出ると、このアプリが大学のメールを"
+                        + "読んで OTP を取り出し、暗号化してその PC に自動で送ります。ID とパスワードは送りません。"
+                        + "「同意して連携する」を押すと、そのためにメールを読むことに同意したことになります。\n\n"
+                        + "自分の PC の拡張で出した QR を読み取ったのでなければ、「キャンセル」を押してください。")
                 .setPositiveButton("同意して連携する", (d, w) -> pair(pending))
                 .setNegativeButton("キャンセル", (d, w) -> finish())
                 .setOnCancelListener(d -> finish())
@@ -118,7 +91,8 @@ public class OtpRelayActivity extends AppCompatActivity {
             String text;
             try {
                 OtpRelayPairingService.pair(app, pending);
-                text = "「" + pending.browserName + "」と連携しました。PC で OTP の画面が出ると、この端末に通知が届きます。";
+                text = "「" + pending.browserName + "」と連携しました。PC で OTP の入力画面が出ると、この端末が OTP を"
+                        + "自動で送ります。通信状況や通知の設定によっては、送れないことがあります。";
             } catch (OtpRelayPairingService.PairingException e) {
                 text = e.getMessage();
             }
@@ -127,28 +101,6 @@ public class OtpRelayActivity extends AppCompatActivity {
                 if (!isFinishing() && !isDestroyed()) message(title, finalText);
             });
         });
-    }
-
-    private void showRequest(@Nullable OtpRelayRequest request) {
-        OtpRelayPairing pairing = request != null ? OtpRelayStore.find(request.pairingId) : null;
-        if (request == null || pairing == null) { finish(); return; }
-        if (request.expiresAt <= System.currentTimeMillis()) {
-            message("PC からの OTP 依頼", "期限が切れました。PC でもう一度ログインしてください。");
-            return;
-        }
-        new MaterialAlertDialogBuilder(this)
-                .setTitle("PC からの OTP 依頼")
-                .setMessage("「" + pairing.browserName + "」が OTP を求めています。心当たりが無ければ拒否してください。")
-                .setPositiveButton("承認して送る", (d, w) -> {
-                    OtpRelayWorker.approveFromUi(getApplicationContext(), request);
-                    finish();
-                })
-                .setNegativeButton("拒否", (d, w) -> {
-                    OtpRelayWorker.rejectFromUi(getApplicationContext(), request);
-                    finish();
-                })
-                .setOnCancelListener(d -> finish())
-                .show();
     }
 
     private void message(String title, String text) {

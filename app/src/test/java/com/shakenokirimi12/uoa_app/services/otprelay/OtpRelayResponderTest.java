@@ -21,7 +21,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-/** 依頼への応答 (iOS の fetchAndRespond / approve と同じ結果になるか) と、中継サーバへ送る形。 */
+/** 依頼への応答 (iOS の fetchAndRespond / respondExpired と同じ結果になるか) と、中継サーバへ送る形。 */
 public class OtpRelayResponderTest {
     private static final String K = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8";
     private static final String RESPOND_TOKEN = "G5OzomdYgm_Yvhu8edKe3oOnlxQjj5tFLOYpMhRRXCE";
@@ -36,6 +36,8 @@ public class OtpRelayResponderTest {
     private final List<Integer> deleted = new ArrayList<>();
     private String username = "s1234567";
     private final List<String> lastResults = new ArrayList<>();
+    /** メールを読んでいる途中に割り込ませる処理 (見張りの期限が来た、など)。 */
+    private Runnable duringFetch;
 
     private final OtpRelayPairing pairing = new OtpRelayPairing("PAIRING0000000000000000", K, "Mac の Chrome", NOW);
     private final OtpRelayRequest request = new OtpRelayRequest("PAIRING0000000000000000", "REQ0000000000000000000",
@@ -58,8 +60,10 @@ public class OtpRelayResponderTest {
                     @NonNull
                     @Override
                     public ImapOtpFetcher.OtpMail fetch(@NonNull String uid, @NonNull String pass, long timeoutSeconds,
-                                                        long since) throws Exception {
+                                                        long since, @NonNull ImapOtpFetcher.Progress progress)
+                            throws Exception {
                         mailSince.add(since);
+                        if (duringFetch != null) duringFetch.run();
                         if (mailError != null) throw mailError;
                         return newMail("048213", 42);
                     }
@@ -77,6 +81,10 @@ public class OtpRelayResponderTest {
                 () -> NOW);
     }
 
+    private OtpRelayResponder.Outcome respond(OtpRelayPairing p) {
+        return responder().fetchAndRespond(p, request, NOW, 18_000, new OtpRelayResponder.Attempt());
+    }
+
     private static ImapOtpFetcher.OtpMail newMail(String code, int uid) throws Exception {
         java.lang.reflect.Constructor<ImapOtpFetcher.OtpMail> c =
                 ImapOtpFetcher.OtpMail.class.getDeclaredConstructor(String.class, int.class);
@@ -91,7 +99,7 @@ public class OtpRelayResponderTest {
 
     @Test
     public void autoSuccess_postsSealedBox_thenDeletesTheUsedMail() {
-        OtpRelayResponder.Outcome outcome = responder().fetchAndRespond(pairing, request, NOW, 18_000);
+        OtpRelayResponder.Outcome outcome = respond(pairing);
 
         assertEquals(OtpRelayResponder.Kind.SENT, outcome.kind);
         LoopbackHttpServer.Recorded post = server.first("/v1/requests/" + request.requestId + "/response");
@@ -103,44 +111,66 @@ public class OtpRelayResponderTest {
         // 依頼時刻 (5 秒前) は信用できる範囲なので、そのまま探索の起点になる。
         assertEquals(Long.valueOf(NOW - 5_000), mailSince.get(0));
         assertEquals(Integer.valueOf(42), deleted.get(0));
-        assertEquals("true:PC にコードを送りました", lastResults.get(0));
+        assertEquals("true:PC に OTP を送りました", lastResults.get(0));
     }
 
     @Test
-    public void alreadyAnswered_409_stillDeletesTheMail() {
-        responseStatus = 409;
-        assertEquals(OtpRelayResponder.Kind.ALREADY_ANSWERED,
-                responder().fetchAndRespond(pairing, request, NOW, 18_000).kind);
-        assertEquals(1, deleted.size());
+    public void notAccepted_409or410_keepsTheMail_andIsNotReportedAsSent() {
+        // 応答するのはこの端末だけなので、409 / 410 は PC に届いていない (手入力に使えるようメールを残す)。
+        for (int status : new int[] {409, 410}) {
+            responseStatus = status;
+            OtpRelayResponder.Outcome outcome = respond(pairing);
+            assertEquals(OtpRelayResponder.Kind.FAILED, outcome.kind);
+            assertEquals("expired", outcome.reason);
+        }
+        assertTrue(deleted.isEmpty());
     }
 
     @Test
-    public void serverError_needsApproval_andKeepsTheMail() {
+    public void serverError_isRelayUnreachable_andKeepsTheMail() {
         responseStatus = 500;
-        assertEquals(OtpRelayResponder.Kind.NEEDS_APPROVAL,
-                responder().fetchAndRespond(pairing, request, NOW, 18_000).kind);
+        OtpRelayResponder.Outcome outcome = respond(pairing);
+        assertEquals("relay-unreachable", outcome.reason);
         assertTrue(deleted.isEmpty());
         assertEquals("false:中継サーバの応答: 500", lastResults.get(0));
+        // 返せなかった approved の 1 件だけ。失敗を重ねて送らない。
+        assertEquals(1, server.requests().size());
     }
 
     @Test
-    public void mailTimeout_needsApproval_withoutTellingTheServer() {
+    public void mailTimeout_isReportedToTheRelay_withDetail() {
         mailError = new ImapOtpFetcher.ImapException("mailNotFound");
-        assertEquals(OtpRelayResponder.Kind.NEEDS_APPROVAL,
-                responder().fetchAndRespond(pairing, request, NOW, 18_000).kind);
-        assertTrue(server.requests().isEmpty());
+        OtpRelayResponder.Outcome outcome = respond(pairing);
+        assertEquals(OtpRelayResponder.Kind.FAILED, outcome.kind);
+        assertEquals("mail-timeout", outcome.reason);
+        JsonObject body = lastPostBody();
+        assertEquals("failed", body.get("result").getAsString());
+        assertEquals("mail-timeout", body.get("error").getAsString());
+        // 中継サーバの形 (^[a-z0-9][a-z0-9._:-]{0,79}$) に合う detail を付ける。
+        assertTrue(body.get("detail").getAsString().matches("^[a-z0-9][a-z0-9._:-]{0,79}$"));
     }
 
     @Test
     public void loginFailure_isReportedAsLoginFailed() {
-        mailError = new ImapOtpFetcher.ImapException("commandFailed(a1): a1 NO [AUTHENTICATIONFAILED]");
-        OtpRelayResponder.Outcome outcome = responder().fetchAndRespond(pairing, request, NOW, 18_000);
+        mailError = new ImapOtpFetcher.ImapException("commandFailed(a1): a1 NO [AUTHENTICATIONFAILED] Authenticat");
+        OtpRelayResponder.Outcome outcome = respond(pairing);
         assertEquals(OtpRelayResponder.Kind.FAILED, outcome.kind);
         assertEquals("login-failed", outcome.reason);
         JsonObject body = lastPostBody();
         assertEquals("failed", body.get("result").getAsString());
         assertEquals("login-failed", body.get("error").getAsString());
+        // 差し替えた MailSource は段階を進めないので connect のまま。
+        assertEquals("connect-no:authenticationfailed", body.get("detail").getAsString());
         assertFalse(body.has("box"));
+    }
+
+    @Test
+    public void transientLoginNo_isImapError_notLoginFailed() {
+        // 同時接続数の超過など。パスワードは正しいので「ID かパスワードが違う」と言わない。
+        assertEquals("imap-error", OtpRelayResponder.failureCode(
+                new ImapOtpFetcher.ImapException("commandFailed(a1): a1 NO [UNAVAILABLE] Temporary failure")));
+        assertEquals("imap-error", OtpRelayResponder.failureCode(
+                new ImapOtpFetcher.ImapException("commandFailed(a1): a1 NO [INUSE] Mailbox in use")));
     }
 
     @Test
@@ -153,26 +183,71 @@ public class OtpRelayResponderTest {
     @Test
     public void noCredentials_isReportedWithoutReadingMail() {
         username = "";
-        OtpRelayResponder.Outcome outcome = responder().fetchAndRespond(pairing, request, NOW, 18_000);
+        OtpRelayResponder.Outcome outcome = respond(pairing);
         assertEquals("no-credentials", outcome.reason);
         assertTrue(mailSince.isEmpty());
         assertEquals("no-credentials", lastPostBody().get("error").getAsString());
     }
 
     @Test
-    public void approve_afterExpiry_doesNothing() {
-        OtpRelayRequest expired = new OtpRelayRequest(request.pairingId, request.requestId, NOW - 200_000, NOW - 1);
-        assertEquals("expired", responder().approve(pairing, expired).reason);
+    public void pairingWithoutConsent_rejectsWithoutReadingMail() {
+        // 同意を記録する前に作った連携 (以前の版の保存データ)。確認が済むまでメールを読まない。
+        OtpRelayPairing legacy = new com.google.gson.Gson().fromJson(
+                "{\"pairingId\":\"PAIRING0000000000000000\",\"key\":\"" + K + "\",\"browserName\":\"B\","
+                        + "\"pairedAt\":1,\"autoApprove\":true}", OtpRelayPairing.class);
+        OtpRelayResponder.Outcome outcome = respond(legacy);
+        assertEquals(OtpRelayResponder.CONSENT_REQUIRED, outcome.reason);
         assertTrue(mailSince.isEmpty());
-        assertTrue(server.requests().isEmpty());
+        JsonObject body = lastPostBody();
+        assertEquals("rejected", body.get("result").getAsString());
+        assertFalse(body.has("box"));
+        assertEquals(1, server.requests().size());
     }
 
     @Test
-    public void approve_whenMailNeverArrives_reportsMailTimeout() {
-        mailError = new ImapOtpFetcher.ImapException("mailNotFound");
-        OtpRelayResponder.Outcome outcome = responder().approve(pairing, request);
-        assertEquals("mail-timeout", outcome.reason);
-        assertEquals("mail-timeout", lastPostBody().get("error").getAsString());
+    public void expiryAfterTheAnswerStarted_sendsNothing() {
+        OtpRelayResponder.Attempt attempt = new OtpRelayResponder.Attempt();
+        OtpRelayResponder r = responder();
+        assertEquals(OtpRelayResponder.Kind.SENT, r.fetchAndRespond(pairing, request, NOW, 18_000, attempt).kind);
+        assertEquals(OtpRelayResponder.ExpiryResult.NOT_CLAIMED, r.respondExpired(pairing, request, attempt, 2_000));
+        assertEquals(1, server.requests().size());
+    }
+
+    @Test
+    public void expiryDuringTheFetch_answersOnce_andKeepsTheMail() {
+        OtpRelayResponder.Attempt attempt = new OtpRelayResponder.Attempt();
+        OtpRelayResponder r = responder();
+        // メールを読んでいる間に見張りの期限が来た (読み終わるのは期限の後)。
+        List<OtpRelayResponder.ExpiryResult> expiry = new ArrayList<>();
+        duringFetch = () -> expiry.add(r.respondExpired(pairing, request, attempt, 2_000));
+        OtpRelayResponder.Outcome outcome = r.fetchAndRespond(pairing, request, NOW, 18_000, attempt);
+
+        assertEquals(OtpRelayResponder.ExpiryResult.ACCEPTED, expiry.get(0));
+        assertEquals(OtpRelayResponder.DEADLINE_PASSED, outcome.reason);
+        // 中継サーバに答えたのは見張りの失敗の 1 件だけ。コードは送らず、メールも消さない (PC で手入力に使う)。
+        assertEquals(1, server.requests().size());
+        JsonObject body = lastPostBody();
+        assertEquals("failed", body.get("result").getAsString());
+        assertEquals("imap-error", body.get("error").getAsString());
+        assertEquals("expired:connect", body.get("detail").getAsString());
+        assertTrue(deleted.isEmpty());
+    }
+
+    @Test
+    public void expiryWhileWaitingForMail_isMailTimeout() {
+        assertEquals("mail-timeout", OtpRelayResponder.expiredReason(ImapOtpFetcher.Progress.Stage.IDLE));
+        assertEquals("mail-timeout", OtpRelayResponder.expiredReason(ImapOtpFetcher.Progress.Stage.SEARCH));
+        assertEquals("imap-error", OtpRelayResponder.expiredReason(ImapOtpFetcher.Progress.Stage.SELECT));
+        assertEquals("expired:select:r2", OtpRelayResponder.expiredDetail(ImapOtpFetcher.Progress.Stage.SELECT, 2));
+    }
+
+    @Test
+    public void expiry_forPairingWithoutConsent_sendsNothing() {
+        OtpRelayPairing legacy = new OtpRelayPairing("PAIRING0000000000000000", K, "B", NOW);
+        legacy.mailConsentAt = null;
+        assertEquals(OtpRelayResponder.ExpiryResult.NOT_CLAIMED,
+                responder().respondExpired(legacy, request, new OtpRelayResponder.Attempt(), 2_000));
+        assertTrue(server.requests().isEmpty());
     }
 
     @Test
@@ -202,23 +277,4 @@ public class OtpRelayResponderTest {
         assertNull(OtpRelayRequest.parse("not json"));
     }
 
-    @Test
-    public void expired410_isNotReportedAsSent() {
-        responseStatus = 410;
-        OtpRelayResponder.Outcome outcome = responder().fetchAndRespond(pairing, request, NOW, 18_000);
-        assertEquals(OtpRelayResponder.Kind.FAILED, outcome.kind);
-        assertEquals("expired", outcome.reason);
-        // 中継サーバ側で答えが決まっているので、使ったメールは消す (iOS と同じ)。
-        assertEquals(1, deleted.size());
-    }
-
-    @Test
-    public void approve_whenOnlyThePostFails_isNotCalledMailTimeout() {
-        responseStatus = 500;
-        OtpRelayResponder.Outcome outcome = responder().approve(pairing, request);
-        assertEquals("relay-unreachable", outcome.reason);
-        // mail-timeout の失敗報告は送らない (送ったのは approved の 1 件だけ)。
-        assertEquals(1, server.requests().size());
-        assertEquals("approved", lastPostBody().get("result").getAsString());
-    }
 }

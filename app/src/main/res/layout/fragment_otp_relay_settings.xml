@@ -22,19 +22,6 @@
             android:paddingEnd="20dp"
             android:text="@string/otp_relay_intro" />
 
-        <!-- メールを読むことへの同意が無い連携 (同意の確認ができる前の連携) があるときだけ出す。 -->
-        <TextView
-            android:id="@+id/text_consent_note"
-            style="@style/Widget.Uoa.Notice"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="16dp"
-            android:text="@string/otp_relay_consent_note"
-            android:visibility="gone"
-            tools:visibility="visible" />
-
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_paste_link"
             style="@style/Widget.Material3.Button.TonalButton"

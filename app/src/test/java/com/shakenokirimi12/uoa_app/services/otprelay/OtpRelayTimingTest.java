@@ -33,4 +33,12 @@ public class OtpRelayTimingTest {
         assertEquals(7, OtpRelayTiming.mailTimeoutSeconds(now, now + 18_000, now + 10_000));
         assertEquals(5, OtpRelayTiming.mailTimeoutSeconds(now, now + 18_000, now + 2_000));
     }
+
+    @Test
+    public void respondDeadline_is24sAfterStart_butBeforeExpiry() {
+        long start = DELIVERED;
+        assertEquals(start + 24_000, OtpRelayTiming.respondDeadline(start, start + 115_000));
+        // 配信が遅れて期限間際に始まったら、期限の 5 秒前 (過ぎていれば、すぐ)。
+        assertEquals(start + 10_000 - 5_000, OtpRelayTiming.respondDeadline(start, start + 10_000));
+    }
 }

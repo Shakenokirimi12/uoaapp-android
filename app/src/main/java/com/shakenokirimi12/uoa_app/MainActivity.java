@@ -102,6 +102,8 @@ public class MainActivity extends AppCompatActivity {
         // 前面復帰のたびに取り直す。メンテナンス解除や killswitch の変更を、
         // アプリを起動し直さなくても拾えるようにする (iOS と同じタイミング)。
         AppConfigService.getInstance().refresh(this);
+        // 同意を記録する前に作った PC との連携があれば、起動して最初に前面に出たときに 1 回だけ確かめる。
+        com.shakenokirimi12.uoa_app.ui.otprelay.OtpRelayConsentPrompt.showAtLaunch(this);
     }
 
     /** API 33 以降は許可が無いと通知が一切出ない。これまでどこでも求めていなかった。 */

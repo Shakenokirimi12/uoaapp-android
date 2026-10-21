@@ -1,7 +1,6 @@
 package com.shakenokirimi12.uoa_app.services.otprelay;
 
 import android.content.Context;
-import android.content.Intent;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -20,20 +19,29 @@ import androidx.work.WorkerParameters;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 /**
- * PC からの依頼の処理。FCM の受信・通知のボタンから、すぐ動く (expedited) 仕事として積む。
+ * PC からの依頼の処理。FCM の受信から、すぐ動く (expedited) 仕事として積む。
  *
- * 自動で返すのは「連携が自動になっている」かつ「その連携でメールを読むことに同意している」ときだけ
- * (OtpRelayPairing.readsMailWithoutApproval)。同意は連携の確認ダイアログで連携ごとに得る。
- * アプリ自身のログインの同意 (otp_auto_fetch_enabled) とは別。同意の無い連携ではメールを読まず、
- * 承認の通知を出して、押されたときにだけ読む (同意の無いまま大学のメールボックスに入らない)。
+ * 依頼ごとの承認は無い (2026-10-21 に廃止。iOS と同じ)。その連携でメールを読むことに同意している
+ * (OtpRelayPairing.hasMailConsent) なら、メールを読んで自動で返す。同意は連携の確認ダイアログで
+ * 連携ごとに得る。同意を記録する前に作った連携はメールを読まずに断り、アプリでの確認を求める
+ * (OtpRelayConsentPrompt)。アプリ自身のログインのメール方式とは別。
+ *
+ * 返せなかったときは、理由を中継サーバ (PC が手入力に戻るため) と通知 (利用者が理由を知るため) の
+ * 両方に出す。処理を始めてから OtpRelayTiming.respondDeadline までに答え始めていなければ、見張りが
+ * 自分で失敗を返す (依頼が期限の 120 秒まで pending に残らないように)。
  */
 public class OtpRelayWorker extends Worker {
     private static final String TAG = "OtpRelay";
 
     static final String MODE_INCOMING = "incoming";
-    static final String MODE_APPROVE = "approve";
-    static final String MODE_REJECT = "reject";
     static final String MODE_REREGISTER = "reregister";
 
     private static final String K_MODE = "mode";
@@ -50,12 +58,8 @@ public class OtpRelayWorker extends Worker {
 
     /** FCM で依頼が届いた。同じ依頼が二重に届いても 1 回だけ処理する (KEEP)。 */
     public static void onIncoming(@NonNull Context ctx, @NonNull OtpRelayRequest request, long deliveredAt) {
-        enqueue(ctx, MODE_INCOMING, request, deliveredAt);
-    }
-
-    static void enqueue(@NonNull Context ctx, @NonNull String mode, @NonNull OtpRelayRequest request, long deliveredAt) {
         Data data = new Data.Builder()
-                .putString(K_MODE, mode)
+                .putString(K_MODE, MODE_INCOMING)
                 .putString(K_PAIRING, request.pairingId)
                 .putString(K_REQUEST, request.requestId)
                 .putLong(K_REQUESTED_AT, request.requestedAt)
@@ -66,9 +70,7 @@ public class OtpRelayWorker extends Worker {
                 .setInputData(data)
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build();
-        // 受信は重複を捨てる。承認・拒否は前の処理 (承認待ちの通知を出した受信) を置き換える。
-        ExistingWorkPolicy policy = MODE_INCOMING.equals(mode) ? ExistingWorkPolicy.KEEP : ExistingWorkPolicy.REPLACE;
-        WorkManager.getInstance(ctx).enqueueUniqueWork("otp_relay_" + request.requestId, policy, work);
+        WorkManager.getInstance(ctx).enqueueUniqueWork("otp_relay_" + request.requestId, ExistingWorkPolicy.KEEP, work);
     }
 
     /** FCM トークンが変わった。通信できるときに全部の連携を登録し直す。 */
@@ -78,36 +80,6 @@ public class OtpRelayWorker extends Worker {
                 .setConstraints(new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build();
         WorkManager.getInstance(ctx).enqueueUniqueWork("otp_relay_reregister", ExistingWorkPolicy.REPLACE, work);
-    }
-
-    /** アプリ内の確認ダイアログの「承認して送る」。 */
-    public static void approveFromUi(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
-        enqueue(ctx, MODE_APPROVE, request, request.requestedAt);
-    }
-
-    /** アプリ内の確認ダイアログの「拒否」。 */
-    public static void rejectFromUi(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
-        OtpRelayNotifications.cancel(ctx, request);
-        enqueue(ctx, MODE_REJECT, request, request.requestedAt);
-    }
-
-    public static void putRequestExtras(@NonNull Intent intent, @NonNull OtpRelayRequest r) {
-        putRequest(intent, r);
-    }
-
-    static void putRequest(@NonNull Intent intent, @NonNull OtpRelayRequest r) {
-        intent.putExtra(K_PAIRING, r.pairingId).putExtra(K_REQUEST, r.requestId)
-                .putExtra(K_REQUESTED_AT, r.requestedAt).putExtra(K_EXPIRES_AT, r.expiresAt);
-    }
-
-    @Nullable
-    public static OtpRelayRequest getRequest(@Nullable Intent intent) {
-        if (intent == null) return null;
-        String pairingId = intent.getStringExtra(K_PAIRING);
-        String requestId = intent.getStringExtra(K_REQUEST);
-        if (pairingId == null || requestId == null) return null;
-        return new OtpRelayRequest(pairingId, requestId,
-                intent.getLongExtra(K_REQUESTED_AT, 0), intent.getLongExtra(K_EXPIRES_AT, 0));
     }
 
     @Nullable
@@ -143,65 +115,88 @@ public class OtpRelayWorker extends Worker {
             if (token != null && !token.isEmpty()) OtpRelayPairingService.reregisterAll(token);
             return Result.success();
         }
+        // 以前の版が積んだ承認・拒否 (mode approve / reject) は、ここでは扱わない。期限 (2 分) のある依頼なので、
+        // 更新をまたいで残っていても、送らずに捨てる (拒否を押したものを自動で送らない)。
+        if (!MODE_INCOMING.equals(mode)) return Result.success();
 
         OtpRelayRequest request = requestFromInput();
         if (request == null) return Result.success();
         OtpRelayPairing pairing = OtpRelayStore.find(request.pairingId);
-        // 知らない連携 (この端末で解除済み) からの依頼は何もしない。
+        // 知らない連携 (この端末で解除済み) からの依頼は何もしない (鍵が無いので答えられない)。
         if (pairing == null) return Result.success();
-        OtpRelayResponder responder = responder(ctx);
-        long deliveredAt = getInputData().getLong(K_DELIVERED_AT, System.currentTimeMillis());
-
-        if (MODE_REJECT.equals(mode)) {
-            responder.reject(pairing, request);
-            return Result.success();
-        }
-
-        if (MODE_APPROVE.equals(mode)) {
-            showProgress(ctx, pairing, request);
-            report(ctx, pairing, request, responder.approve(pairing, request));
-            return Result.success();
-        }
-
-        // 受信。
         if (request.expiresAt <= System.currentTimeMillis()) return Result.success();
-        // FCM は同じメッセージを再配信することがある。処理済みの依頼でもう一度メールを読みに行かない
-        // (使用済みメールは消してあるので mail-timeout → 承認の通知、という誤った流れになる)。
+        // FCM は同じメッセージを再配信することがある。答えた依頼にもう一度答えない
+        // (使用済みメールは消してあるので、2 回目は mail-timeout の誤った失敗になる)。
         if (OtpRelayStore.wasHandled(request.requestId)) return Result.success();
+
+        long deliveredAt = getInputData().getLong(K_DELIVERED_AT, System.currentTimeMillis());
+        OtpRelayResponder.Attempt attempt = new OtpRelayResponder.Attempt();
         try {
-            handleIncoming(ctx, pairing, request, responder, deliveredAt);
+            handle(ctx, pairing, request, deliveredAt, attempt);
         } finally {
-            if (!isStopped()) OtpRelayStore.markHandled(request.requestId);
+            // 答え始めた依頼は、途中で止められても処理済みにする (再実行で二重に答えない)。
+            // 答える前に止められたものは記録しない (再実行で続きをやる)。
+            if (attempt.responded() || !isStopped()) OtpRelayStore.markHandled(request.requestId);
         }
         return Result.success();
     }
 
-    private void handleIncoming(Context ctx, OtpRelayPairing pairing, OtpRelayRequest request,
-                                OtpRelayResponder responder, long deliveredAt) {
-        // 以降、承認で使う依頼時刻は補正済みの値にする (iOS と同じく、承認時に二重に補正しない)。
-        OtpRelayRequest effective = new OtpRelayRequest(request.pairingId, request.requestId,
-                OtpRelayTiming.effectiveRequestedAt(request.requestedAt, deliveredAt), request.expiresAt);
-        if (!pairing.readsMailWithoutApproval()) {
-            OtpRelayNotifications.approval(ctx, pairing, effective);
+    private void handle(Context ctx, OtpRelayPairing pairing, OtpRelayRequest request, long deliveredAt,
+                        OtpRelayResponder.Attempt attempt) {
+        OtpRelayResponder responder = responder(ctx);
+        if (!pairing.hasMailConsent()) {
+            // メールは読まずに断る。アプリを開くと確認が出る (通知を押しても出る)。
+            OtpRelayResponder.Outcome outcome =
+                    responder.fetchAndRespond(pairing, request, deliveredAt, OtpRelayTiming.MAIL_WAIT_LIMIT_MS, attempt);
+            if (OtpRelayResponder.CONSENT_REQUIRED.equals(outcome.reason)) {
+                OtpRelayNotifications.consentRequired(ctx, pairing, request);
+            }
             return;
         }
+
         showProgress(ctx, pairing, request);
-        OtpRelayResponder.Outcome outcome =
-                responder.fetchAndRespond(pairing, request, deliveredAt, OtpRelayTiming.MAIL_WAIT_LIMIT_MS);
-        if (outcome.kind == OtpRelayResponder.Kind.NEEDS_APPROVAL) {
-            OtpRelayNotifications.approval(ctx, pairing, effective);
-        } else {
-            report(ctx, pairing, request, outcome);
+        long startedAt = System.currentTimeMillis();
+        long delay = Math.max(0, OtpRelayTiming.respondDeadline(startedAt, request.expiresAt) - startedAt);
+        ScheduledExecutorService watchdog = Executors.newSingleThreadScheduledExecutor();
+        ScheduledFuture<?> expiry = watchdog.schedule(() -> {
+            OtpRelayResponder.ExpiryResult result =
+                    responder.respondExpired(pairing, request, attempt, OtpRelayTiming.EXPIRY_POST_TIMEOUT_MS);
+            // 取得の処理が先に答え始めていたなら、通知はそちらが出す。
+            if (result == OtpRelayResponder.ExpiryResult.NOT_CLAIMED) return;
+            OtpRelayStore.markHandled(request.requestId);
+            if (result == OtpRelayResponder.ExpiryResult.ACCEPTED) OtpRelayNotifications.timedOut(ctx, request);
+            else OtpRelayNotifications.unknownResult(ctx, pairing, request);
+        }, delay, TimeUnit.MILLISECONDS);
+        try {
+            OtpRelayResponder.Outcome outcome =
+                    responder.fetchAndRespond(pairing, request, deliveredAt, OtpRelayTiming.MAIL_WAIT_LIMIT_MS, attempt);
+            if (OtpRelayResponder.DEADLINE_PASSED.equals(outcome.reason)) {
+                // 見張りが失敗を返し、通知も出す。送り終わるまで待つ (先に仕事を終えるとプロセスごと止められうる)。
+                awaitQuietly(expiry);
+            } else {
+                expiry.cancel(false);
+                report(ctx, pairing, request, outcome);
+            }
+        } finally {
+            watchdog.shutdown();
+        }
+    }
+
+    /** 見張りが失敗を送り終わるのを待つ。POST の上限 + 余裕で打ち切る。 */
+    private static void awaitQuietly(ScheduledFuture<?> future) {
+        try {
+            future.get(OtpRelayTiming.EXPIRY_POST_TIMEOUT_MS + 2_000, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException | TimeoutException | java.util.concurrent.CancellationException e) {
+            Log.w(TAG, "expiry response did not finish: " + e);
         }
     }
 
     private void showProgress(Context ctx, OtpRelayPairing pairing, OtpRelayRequest request) {
         // Android 11 以前は expedited が前景サービスとして動き、getForegroundInfo の通知が既に出ている。
-        // 同じ文面を 2 つ並べないよう、承認の通知を消すだけにする。
-        if (android.os.Build.VERSION.SDK_INT < 31) {
-            OtpRelayNotifications.cancel(ctx, request);
-            return;
-        }
+        // 同じ文面を 2 つ並べない。
+        if (android.os.Build.VERSION.SDK_INT < 31) return;
         try {
             androidx.core.app.NotificationManagerCompat.from(ctx).notify(
                     OtpRelayNotifications.notificationId(request.requestId),
@@ -213,40 +208,30 @@ public class OtpRelayWorker extends Worker {
 
     private static void report(Context ctx, OtpRelayPairing pairing, OtpRelayRequest request,
                                OtpRelayResponder.Outcome outcome) {
-        switch (outcome.kind) {
-            case SENT:
-                OtpRelayNotifications.sent(ctx, pairing, request);
-                break;
-            case ALREADY_ANSWERED:
-                OtpRelayNotifications.alreadyAnswered(ctx, request);
-                break;
-            case FAILED:
-                OtpRelayNotifications.failed(ctx, request, outcome.reason);
-                break;
-            case NEEDS_APPROVAL:
-                // approve() は NEEDS_APPROVAL を返さない (mail-timeout として終える)。
-                OtpRelayNotifications.failed(ctx, request, "mail-timeout");
-                break;
+        if (outcome.kind == OtpRelayResponder.Kind.SENT) {
+            OtpRelayNotifications.sent(ctx, pairing, request);
+        } else {
+            OtpRelayNotifications.failed(ctx, request, outcome.reason);
         }
     }
 
     @NonNull
     static OtpRelayResponder responder(@NonNull Context ctx) {
         PreferenceManager prefs = PreferenceManager.getInstance(ctx);
-        ImapOtpFetcher fetcher = new ImapOtpFetcher();
         return new OtpRelayResponder(
                 new OtpRelayApi(),
                 new OtpRelayResponder.MailSource() {
                     @NonNull
                     @Override
                     public ImapOtpFetcher.OtpMail fetch(@NonNull String uid, @NonNull String pass, long timeoutSeconds,
-                                                        long since) throws Exception {
-                        return fetcher.fetchOtpMail(uid, pass, timeoutSeconds, since);
+                                                        long since, @NonNull ImapOtpFetcher.Progress progress)
+                            throws Exception {
+                        return new ImapOtpFetcher(progress).fetchOtpMail(uid, pass, timeoutSeconds, since);
                     }
 
                     @Override
                     public void deleteUsed(@NonNull String uid, @NonNull String pass, int upToUid) throws Exception {
-                        fetcher.deleteUsedMails(uid, pass, upToUid, 3_000);
+                        new ImapOtpFetcher().deleteUsedMails(uid, pass, upToUid, 3_000);
                     }
                 },
                 new OtpRelayResponder.Credentials() {

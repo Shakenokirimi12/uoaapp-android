@@ -52,7 +52,10 @@ public final class NotificationChannels {
         return LOGIN_REQUIRED;
     }
 
-    /** PC からの OTP 依頼の承認と結果。ロック画面で押せるよう、目立つ重要度にする。 */
+    /**
+     * PC からの OTP 依頼の結果 (送った・送れなかった)。ID は承認の通知があった頃と同じ (利用者が変えた
+     * 通知の設定を引き継ぐ)。送れなかったときは PC で手入力が要るので、目立つ重要度のままにする。
+     */
     public static final String OTP_RELAY = "otp_relay";
     /** メールを読んでいる間の進行中表示。音も振動も要らない。 */
     public static final String OTP_RELAY_PROGRESS = "otp_relay_progress";

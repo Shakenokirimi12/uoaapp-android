@@ -71,19 +71,15 @@
             </intent-filter>
         </activity>
 
-        <!-- 承認通知の本体から開く確認。外部から開かせないので非公開。 -->
+        <!-- 同意を記録する前に作った連携の確認 (断った依頼の通知から開く)。外部から開かせないので非公開。 -->
         <activity
-            android:name=".ui.otprelay.OtpRelayRequestActivity"
+            android:name=".ui.otprelay.OtpRelayConsentActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density"
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
             android:theme="@style/Theme.Uoaapp.Translucent" />
-
-        <receiver
-            android:name=".services.otprelay.OtpRelayActionReceiver"
-            android:exported="false" />
 
         <activity
             android:name=".ui.browser.InAppBrowserActivity"

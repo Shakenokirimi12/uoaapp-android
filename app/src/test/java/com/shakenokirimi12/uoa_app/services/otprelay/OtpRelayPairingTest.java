@@ -7,7 +7,7 @@ import com.google.gson.Gson;
 
 import org.junit.Test;
 
-/** 依頼が来たときに承認なしでメールを読んでよいか (連携ごとの同意)。 */
+/** 依頼が来たときにメールを読んで返してよいか (連携ごとの同意) と、以前の版の保存データの読み方。 */
 public class OtpRelayPairingTest {
     private static final Gson GSON = new Gson();
 
@@ -18,31 +18,24 @@ public class OtpRelayPairingTest {
     }
 
     @Test
-    public void newPairing_requiresApprovalEveryTime() {
-        OtpRelayPairing p = new OtpRelayPairing("P", "K", "B", 1_000L);
-        assertFalse(p.autoApprove());
-        assertFalse(p.readsMailWithoutApproval());
-        // 自動の項目が無い古い保存データも承認制。
-        OtpRelayPairing legacy = GSON.fromJson("{\"pairingId\":\"P\",\"mailConsentAt\":1}", OtpRelayPairing.class);
-        assertFalse(legacy.autoApprove());
+    public void legacyAutoApprove_isDropped_andConsentDecides() {
+        // 以前の版の「毎回承認」(autoApprove false) でも、同意があれば自動で返す。
+        OtpRelayPairing manual = GSON.fromJson(
+                "{\"pairingId\":\"P\",\"key\":\"K\",\"browserName\":\"B\",\"pairedAt\":1,"
+                        + "\"autoApprove\":false,\"mailConsentAt\":5}", OtpRelayPairing.class);
+        assertTrue(manual.hasMailConsent());
+        // 次に保存するときに autoApprove は消える。
+        assertFalse(GSON.toJson(manual).contains("autoApprove"));
     }
 
     @Test
-    public void pairingSavedBeforeConsentExisted_neverReadsMailWithoutApproval() {
-        // 同意の項目ができる前に保存された連携。自動の設定が true でも、承認されるまでメールを読まない。
+    public void pairingSavedBeforeConsentExisted_needsConsent() {
+        // 同意の項目ができる前に保存された連携。自動の設定が true でも、確認が済むまでメールを読まない。
         OtpRelayPairing p = GSON.fromJson(
                 "{\"pairingId\":\"P\",\"key\":\"K\",\"browserName\":\"B\",\"pairedAt\":1,\"autoApprove\":true}",
                 OtpRelayPairing.class);
         assertFalse(p.hasMailConsent());
-        assertFalse(p.readsMailWithoutApproval());
-    }
-
-    @Test
-    public void consentAndAuto_readsMailWithoutApproval() {
-        OtpRelayPairing p = new OtpRelayPairing("P", "K", "B", 1_000L);
-        p.autoApprove = true;
-        assertTrue(p.readsMailWithoutApproval());
-        p.autoApprove = false;
-        assertFalse(p.readsMailWithoutApproval());
+        p.mailConsentAt = 0L;
+        assertFalse(p.hasMailConsent());
     }
 }

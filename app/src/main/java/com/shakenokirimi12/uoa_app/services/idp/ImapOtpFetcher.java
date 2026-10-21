@@ -52,14 +52,25 @@ public final class ImapOtpFetcher {
 
     private final String host;
     private final int port;
+    /** どこまで進んだか (失敗したときの切り分け用)。取得の動きには影響しない。 */
+    @NonNull private final Progress progress;
 
     public ImapOtpFetcher() {
-        this(DEFAULT_HOST, DEFAULT_PORT);
+        this(DEFAULT_HOST, DEFAULT_PORT, new Progress());
+    }
+
+    public ImapOtpFetcher(@NonNull Progress progress) {
+        this(DEFAULT_HOST, DEFAULT_PORT, progress);
     }
 
     public ImapOtpFetcher(@NonNull String host, int port) {
+        this(host, port, new Progress());
+    }
+
+    public ImapOtpFetcher(@NonNull String host, int port, @NonNull Progress progress) {
         this.host = host;
         this.port = port;
+        this.progress = progress;
     }
 
     /**
@@ -99,7 +110,7 @@ public final class ImapOtpFetcher {
 
     /**
      * PC 中継用。fetchOtpCode と同じ探し方だが、メールは消さない。中継サーバがコードを受け取った
-     * (204/409/410) と分かってから {@link #deleteUsedMails} で消す (送れなかったときに手で使えるように)。
+     * (204) と分かってから {@link #deleteUsedMails} で消す (送れなかったときに手で使えるように)。
      */
     @NonNull
     public OtpMail fetchOtpMail(@NonNull String uid, @NonNull String pass, long timeoutSeconds,
@@ -167,10 +178,13 @@ public final class ImapOtpFetcher {
         int floorUid = -1;
         // From を確かめた結果 (UID ごと)。数秒おきに探し直すたびに同じメールのヘッダを取りに行かない。
         java.util.Map<Integer, Boolean> checked = new java.util.HashMap<>();
+        int connections = 0;
         try {
             while (true) {
                 try {
                     if (stream == null) {
+                        // 2 本目からは繋ぎ直し。detail に回数を付ける。
+                        if (connections++ > 0) progress.reconnected();
                         // LOGIN/SELECT の失敗 (ImapException) はここで抜ける。ID/PW 誤りを 3 秒おきに
                         // 試し直すとアカウントロックの危険があるので再試行しない。
                         stream = openAndSelect(uid, pass);
@@ -179,18 +193,22 @@ public final class ImapOtpFetcher {
                     OtpMail mail = searchAndFetch(stream, floorUid, deleteAfterRead, checked);
                     if (mail != null) return mail;
                     lastError = new ImapException("mailNotFound");
+                    progress.recordFailure(lastError);
                 } catch (IOException e) {
+                    progress.recordFailure(e);
                     lastError = e;
                     closeQuietly(stream);
                     stream = null;
                     checked.clear();
                     if (++reconnects > MAX_RECONNECTS) throw e;
                 } catch (ImapException e) {
+                    progress.recordFailure(e);
                     if (stream == null) throw e;
                     // codeNotFound 等: メールはあるが本文から取れない。配信途中の可能性もあるので待つ。
                     lastError = e;
                 }
                 if (System.currentTimeMillis() >= deadline) throw lastError;
+                progress.enter(Progress.Stage.IDLE);
                 Thread.sleep(RETRY_INTERVAL_MS);
             }
         } finally {
@@ -203,14 +221,18 @@ public final class ImapOtpFetcher {
 
     /** 接続して LOGIN + SELECT INBOX まで済ませる。失敗したら接続を閉じてから投げる。 */
     private ImapStream openAndSelect(String uid, String pass) throws IOException, ImapException {
+        progress.enter(Progress.Stage.CONNECT);
         ImapStream stream = new ImapStream(host, port);
         try {
+            progress.enter(Progress.Stage.GREETING);
             stream.readLine(); // "* OK ... Dovecot ready."
 
+            progress.enter(Progress.Stage.LOGIN);
             String tag = stream.nextTag();
             stream.send(tag + " LOGIN " + quote(uid) + " " + quote(pass));
             stream.readUntilTagged(tag);
 
+            progress.enter(Progress.Stage.SELECT);
             tag = stream.nextTag();
             stream.send(tag + " SELECT INBOX");
             stream.readUntilTagged(tag);
@@ -232,6 +254,7 @@ public final class ImapOtpFetcher {
         // 下限は From を確かめる前の候補 (SEARCH FROM の結果) で決める。今ある候補はどれも今回のコードより
         // 古いので、本物かどうかに関係なく下限にしてよい。確かめた本物だけで決めると、偽メールが多くて
         // 本物まで確かめきれなかったときに下限が 0 になり、期限切れの古い本物を新しいコードとして使ってしまう。
+        progress.enter(Progress.Stage.SEARCH);
         String tag = stream.nextTag();
         stream.send(tag + " UID SEARCH FROM \"" + OTP_SENDER + "\" SINCE "
                 + imapDate(new Date(System.currentTimeMillis() - 24L * 60 * 60 * 1000)));
@@ -268,6 +291,7 @@ public final class ImapOtpFetcher {
     @Nullable
     private Integer latestGenuineUid(ImapStream stream, int aboveUid, java.util.Map<Integer, Boolean> checked)
             throws IOException, ImapException {
+        progress.enter(Progress.Stage.SEARCH);
         String tag = stream.nextTag();
         // 前日から探す。今日だけだと、日付をまたいだ直後 (23:55 に届いたメールを 0:01 に探す、PC 中継の
         // 「10 分前」を含む) に見つからない。新しさは UID と INTERNALDATE で判定しているので広げても困らない。
@@ -319,6 +343,7 @@ public final class ImapOtpFetcher {
 
         String tag;
 
+        progress.enter(Progress.Stage.FETCH);
         tag = stream.nextTag();
         stream.send(tag + " UID FETCH " + targetUid + " (BODY.PEEK[TEXT])");
         String body = stream.readFetchBody(tag);
@@ -347,6 +372,124 @@ public final class ImapOtpFetcher {
 
     private static void closeQuietly(@Nullable ImapStream stream) {
         if (stream != null) stream.close();
+    }
+
+    /**
+     * LOGIN の NO が ID / パスワードの誤りか。Dovecot は資格情報の誤りに
+     * {@code NO [AUTHENTICATIONFAILED] Authentication failed.} を返す (RFC 5530)。同時接続数の超過などの
+     * 一時的な NO ([UNAVAILABLE] など) は誤りではない。iOS の IMAPOTPFetcher.isAuthenticationFailure と同じ。
+     */
+    public static boolean isAuthenticationFailure(@NonNull String response) {
+        return response.contains("[AUTHENTICATIONFAILED]")
+                || response.toLowerCase(Locale.ROOT).contains("authentication failed");
+    }
+
+    /**
+     * 自動取得がどの段階まで進み、どこで止まったか。PC への中継で失敗を返すとき、中継サーバへ送る
+     * detail の材料にする (iOS の IMAPOTPProgress と同じ)。取得の動きには影響しない。
+     * 中継の時間切れの見張り (別のスレッド) からも読むので synchronized にする。
+     * メールの中身・アドレス・コード・ID は持たない。
+     */
+    public static final class Progress {
+        public enum Stage {
+            CONNECT, GREETING, LOGIN, SELECT, SEARCH, FETCH, IDLE;
+
+            @NonNull
+            public String code() { return name().toLowerCase(Locale.ROOT); }
+        }
+
+        private Stage stage = Stage.CONNECT;
+        private int reconnects;
+        @Nullable private Exception failure;
+        private Stage failureStage = Stage.CONNECT;
+        private int failureReconnects;
+
+        synchronized void enter(@NonNull Stage s) { stage = s; }
+
+        synchronized void reconnected() { reconnects++; }
+
+        /** エラーを受け取った時点の段階を残す。最後に投げるエラーと組にして detail を作る。 */
+        synchronized void recordFailure(@NonNull Exception e) {
+            failure = e;
+            failureStage = stage;
+            failureReconnects = reconnects;
+        }
+
+        @NonNull
+        public synchronized Stage stage() { return stage; }
+
+        public synchronized int reconnects() { return reconnects; }
+
+        /** fetchOtpMail が投げたエラーの detail。記録したエラーと違うもの (割り込みなど) なら、今の段階で作る。 */
+        @NonNull
+        public String detail(@NonNull Exception error) {
+            Stage s;
+            int r;
+            synchronized (this) {
+                boolean same = failure == error;
+                s = same ? failureStage : stage;
+                r = same ? failureReconnects : reconnects;
+            }
+            return detail(error, s, r);
+        }
+
+        /**
+         * 中継サーバの detail ({@code ^[a-z0-9][a-z0-9._:-]{0,79}$}) にする。どの段階で何が起きたかと、
+         * 繋ぎ直した回数 (":r2" など)。サーバの応答は角括弧の応答コード ([INUSE] など、英字だけ) しか使わない。
+         * 例外の文面はホスト名や IP を含みうるので、errno の名前 (ECONNREFUSED など) だけを取り出す。
+         */
+        @NonNull
+        static String detail(@NonNull Exception error, @NonNull Stage s, int reconnects) {
+            String stage = s.code();
+            String code;
+            String message = String.valueOf(error.getMessage());
+            if (error instanceof InterruptedException) {
+                code = "cancelled";
+            } else if (error instanceof ImapException && message.equals("mailNotFound")) {
+                code = "mail-timeout";
+            } else if (error instanceof ImapException && message.equals("codeNotFound")) {
+                code = "code-not-found";
+            } else if (error instanceof ImapException && message.startsWith("commandFailed(")) {
+                // "commandFailed(a1): a1 NO [UNAVAILABLE] ..." (応答行が無い形もある)
+                int colon = message.indexOf("): ");
+                String line = colon >= 0 ? message.substring(colon + 3) : "";
+                String[] words = line.split(" ");
+                code = stage + "-" + (words.length > 1 && words[1].equalsIgnoreCase("BAD") ? "bad" : "no");
+                Matcher m = Pattern.compile("\\[([A-Za-z-]{1,24})[\\] ]").matcher(line);
+                if (m.find()) code += ":" + m.group(1).toLowerCase(Locale.ROOT);
+            } else if (error instanceof java.net.SocketTimeoutException) {
+                // 接続 (TCP + TLS) の時間切れか、読み取りの無応答 (setSoTimeout)。
+                code = s == Stage.CONNECT ? "connect-timeout" : stage + "-stall";
+            } else if (error instanceof java.net.UnknownHostException) {
+                code = stage + "-failed:dns";
+            } else if (error instanceof javax.net.ssl.SSLException) {
+                code = stage + "-failed:tls";
+            } else if (error instanceof IOException && message.equals("connectionFailed")) {
+                code = stage + "-closed";
+            } else if (error instanceof IOException) {
+                Matcher m = Pattern.compile("\\b(E[A-Z]{2,15})\\b").matcher(message);
+                code = stage + (m.find() ? "-failed:" + m.group(1).toLowerCase(Locale.ROOT) : "-error");
+            } else {
+                code = stage + "-error";
+            }
+            if (reconnects > 0) code += ":r" + reconnects;
+            return sanitize(code);
+        }
+
+        @NonNull
+        static String sanitize(@NonNull String raw) {
+            StringBuilder b = new StringBuilder();
+            for (char c : raw.toLowerCase(Locale.ROOT).toCharArray()) {
+                if (b.length() >= 80) break;
+                boolean ok = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == ':' || c == '-';
+                b.append(ok ? c : '-');
+            }
+            if (b.length() == 0 || !Character.isLetterOrDigit(b.charAt(0))) {
+                if (b.length() >= 80) b.setLength(79);
+                b.insert(0, 'x');
+            }
+            return b.toString();
+        }
     }
 
     // ---- Parsing helpers (pure, unit-tested) ----

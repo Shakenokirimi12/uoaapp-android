@@ -115,28 +115,29 @@
     <string name="lunch_channel_name">学食メニュー</string>
     <string name="otp_relay_channel_name">PC からの OTP 依頼</string>
     <string name="otp_relay_title">PC との連携 (OTP)</string>
-    <string name="otp_relay_intro">PC のブラウザで IdP のワンタイムパスワード画面が出ると、この端末に通知が届きます。「承認して送る」を押すと、大学のメールに届いたコードを暗号化して PC に送ります。連携は毎回承認で始まり、下のスイッチで連携ごとに承認なしの自動にできます。自動で送れなかったときも、通知に承認ボタンが出ます。ID とパスワードは端末から出ません。</string>
-    <string name="otp_relay_consent_note">メールを読むことへの同意を連携のときに確認していない連携があります。その連携では依頼のたびに通知で承認を求め、承認したときだけ大学のメールを読みます。自動にするときに同意を確認します。</string>
-    <string name="otp_relay_consent_title">メールを読んで返すことに同意しますか？</string>
-    <string name="otp_relay_consent_message">「%1$s」から OTP の依頼が来るたびに、このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に返します。承認は求めません (メールが届かないなどで自動で返せなかったときだけ、承認の通知が出ます)。ID とパスワードは送りません。</string>
-    <string name="otp_relay_consent_accept">同意して自動にする</string>
+    <string name="otp_relay_intro">PC のブラウザで IdP のワンタイムパスワード画面が出ると、この端末が大学のメールから OTP を読み取り、暗号化して自動で PC に送ります。ID とパスワードは端末から出ません。</string>
+    <string name="otp_relay_consent_continue">続ける</string>
+    <string name="otp_relay_consent_pending">確認が済むまで OTP を送りません</string>
+    <string name="otp_relay_consent_save_failed">この端末に保存できませんでした。設定の「PC との連携 (OTP)」を開いて、もう一度お試しください。</string>
+    <string name="otp_relay_unreachable">中継サーバに接続できませんでした。</string>
+    <string name="otp_relay_consent_title">PC との連携を続けますか？</string>
+    <string name="otp_relay_consent_message">「%1$s」で OTP の入力画面が出ると、このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に自動で送ります。ID とパスワードは送りません。「続ける」を押すと、そのためにメールを読むことに同意したことになります。\n\n心当たりのない PC なら、「解除」を押してください。</string>
     <string name="otp_relay_paste_link">リンクを貼り付けて連携</string>
     <string name="otp_relay_paste_title">連携用のリンクを貼り付け</string>
     <string name="otp_relay_paste_hint">uoa-app://otp-pair#…</string>
     <string name="otp_relay_paste_invalid">連携用のリンクではありません。PC の拡張で連携用の QR を出し直し、その中身のリンクを貼り付けてください。</string>
     <string name="otp_relay_section_pairings">連携しているブラウザ</string>
     <string name="otp_relay_none">まだありません</string>
-    <string name="otp_relay_auto_approve">承認なしで自動で返す</string>
     <string name="otp_relay_unpair">解除</string>
     <string name="otp_relay_paired_on">%1$s に連携</string>
-    <string name="otp_relay_section_last_result">直近の自動応答</string>
+    <string name="otp_relay_section_last_result">直近の結果</string>
     <string name="otp_relay_section_howto">連携のしかた</string>
     <string name="otp_relay_howto">1. PC の拡張の設定で「OTP 自動入力」の「メール方式」を、このアプリに依頼する方式にする
 2. 拡張で連携用の QR を出し、この端末の標準のカメラ (または Google レンズ) で読む。カメラから開けないときは、QR の中身のリンクをコピーして「リンクを貼り付けて連携」に貼る
-3. このアプリが開いたら「連携する」を押す</string>
+3. このアプリが開いたら「同意して連携する」を押す</string>
     <string name="otp_relay_unpair_confirm">「%1$s」との連携を解除しますか？</string>
     <string name="otp_relay_unpair_failed_title">中継サーバで解除できませんでした</string>
-    <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からだけ削除してください。削除しても、PC 側の拡張で連携を解除するまで依頼は届きます (承認しなければ何も送りません)。</string>
+    <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からだけ削除してください。削除しても、PC 側の拡張で連携を解除するまで依頼は届きます。届いても OTP は送りません。</string>
     <string name="otp_relay_forget_local">この端末からだけ削除</string>
     <string name="otp_relay_progress_channel_name">PC への OTP 送信中</string>
     <string name="class_channel_description">授業中・次の授業の常駐通知と、自動出席登録の完了を表示します</string>
