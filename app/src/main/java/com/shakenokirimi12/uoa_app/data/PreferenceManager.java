@@ -342,7 +342,6 @@ public class PreferenceManager {
     public boolean hasSeenIdPTutorial() { return prefs.getBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, false); }
     public void setHasSeenIdPTutorial(boolean seen) { prefs.edit().putBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, seen).apply(); }
 
-
     /**
      * OTP をどこから受け取るか ("mail" / "authenticator")。既定はメール (大学が既定で設定する方式)。
      * 認証アプリ方式を選んだ場合、アプリはシークレットを保持しないので毎回手入力になる。

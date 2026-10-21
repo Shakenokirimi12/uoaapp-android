@@ -46,8 +46,8 @@
     <string name="settings_otp_method">ワンタイムパスワード</string>
     <string name="settings_otp_method_mail">メールで受け取る</string>
     <string name="settings_otp_method_authenticator">認証アプリを使う</string>
-    <string name="idp_tutorial_otp_mail">メールで届くワンタイムパスワードは、このアプリが大学のメール (stdmsv1) から読み取って入力します。読み取れないときは、届いたコードを入力してください。認証アプリを使う場合は、設定の「ワンタイムパスワード」で切り替えます。</string>
-    <string name="settings_otp_method_mail_description">大学のメールに届く確認コードを、このアプリが読み取って入力します。</string>
+    <string name="idp_tutorial_otp_mail">メールで届くワンタイムパスワードは、このアプリが大学のメールから読み取って入力します。読み取れないときは、届いたコードを入力してください。認証アプリを使う場合は、設定の「ワンタイムパスワード」で切り替えます。</string>
+    <string name="settings_otp_method_mail_description">大学のメールに届くワンタイムパスワードを、このアプリが読み取って入力します。</string>
     <string name="settings_otp_method_authenticator_description">認証アプリに表示されるコードを毎回入力します。バックグラウンド更新では再ログインできません。</string>
     <string name="settings_username">ユーザー名</string>
     <string name="settings_password">パスワード</string>
@@ -64,7 +64,7 @@
     <string name="onboarding_disclaimer">このアプリは会津大学の非公式アプリです。\n大学とは一切の関係がありません。</string>
     <!-- 「同意して続ける」の対象を明示する。プライバシーポリシーのページは無いので、同意内容はこの場に書く。 -->
     <string name="onboarding_consent_title">続ける前に</string>
-    <string name="onboarding_consent_body">「同意して続ける」を押すと、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquare と大学のメールにあなたの代わりにログインするためだけに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールで受け取る設定 (既定) では、大学のメールに届く確認コードを、このアプリが読み取って入力します。認証アプリを使う設定にすると、メールは読みません。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
+    <string name="onboarding_consent_body">「同意して続ける」を押すと、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquare や大学のメールにあなたの代わりにログインするためだけに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールで受け取る設定 (既定) では、大学のメールに届いたワンタイムパスワードを、このアプリが読み取って入力します。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
     <string name="onboarding_agree">同意して続ける</string>
     <string name="onboarding_login_title">ログイン</string>
     <string name="onboarding_login_desc">Moodle / CampusSquare のアカウントでログインしてください。</string>

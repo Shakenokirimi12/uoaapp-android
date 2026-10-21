@@ -49,6 +49,8 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
     @Nullable private String authenticatorSecretFallback;
     private String uid = "";
     private String pass = "";
+    /** 確認コードの送り先がこの人の大学のメール (uid@u-aizu.ac.jp) か。違えば受信箱を読みに行っても見つからない。 */
+    private boolean codeSentToOwnMailbox = true;
     private boolean started = false;
 
     @Nullable private SeciossRegistrationSession session;
@@ -151,6 +153,7 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
         if (s == null) return;
         String trimmed = emailInput.trim();
         String address = trimmed.isEmpty() ? defaultEmailAddress() : trimmed;
+        codeSentToOwnMailbox = address.equalsIgnoreCase(defaultEmailAddress());
         executor.execute(() -> {
             try {
                 s.requestEmailCode(address);
@@ -171,8 +174,8 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
     public void proceedAfterConfirmation() {
         stage.setValue(Stage.WAITING_FOR_CODE);
         // メールで受け取る方式なら、届いたコードはいつもアプリが読み取る (iOS の IdPOTPRegistrationFlow と同じ)。
-        // 取れなければ手入力に任せる。
-        if (method != Method.EMAIL) return;
+        // 取れなければ手入力に任せる。別のアドレスに送ったときは、大学の受信箱を読みに行かない。
+        if (method != Method.EMAIL || !codeSentToOwnMailbox) return;
         autoFetchingEmailCode.setValue(true);
         executor.execute(() -> {
             try {
