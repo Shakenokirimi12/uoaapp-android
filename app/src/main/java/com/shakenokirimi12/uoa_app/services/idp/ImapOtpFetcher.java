@@ -212,7 +212,7 @@ public final class ImapOtpFetcher {
                     lastError = e;
                 }
                 if (System.currentTimeMillis() >= deadline) throw lastError;
-                // 受信箱を開いたままメールを待つ間だけ idle にする。繋ぎ直しを待つ間は、失敗した段階のまま
+                // 受信箱を開いたままメールを待つ間だけ idle にする。繋ぎ直しを待つ間は connect のまま
                 // (中継の見張りが「メールが来ない」と取り違えないように)。
                 if (stream != null) progress.enter(Progress.Stage.IDLE);
                 Thread.sleep(RETRY_INTERVAL_MS);

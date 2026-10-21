@@ -39,10 +39,11 @@ public class OtpRelayConsentActivity extends AppCompatActivity {
     /**
      * 答えずに離れたら閉じる。残すと確認を持ったまま見えないところに居座り、アプリを開いても
      * 確認を出せなくなる (同時に 2 つ出さないため)。次は起動時か設定を開いたときに確かめる。
+     * onStop では遅い: アプリを前に出すと、こちらの onStop より先にアプリの onResume が確認を出そうとする。
      */
     @Override
-    protected void onStop() {
-        super.onStop();
+    protected void onPause() {
+        super.onPause();
         if (!isChangingConfigurations()) finish();
     }
 }

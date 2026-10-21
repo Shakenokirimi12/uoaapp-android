@@ -84,13 +84,11 @@ public class OtpRelaySettingsFragment extends Fragment {
             if (address == null) return;
             String subject = getString(R.string.otp_relay_ext_mail_subject);
             String body = getString(R.string.otp_relay_ext_mail_body, EXTENSION_URL);
-            // 件名と本文は mailto: の中にも入れる (extras を読まないメールのアプリがある)。
+            // 宛先・件名・本文は mailto: (RFC 6068) だけで渡す。extras にも入れると、両方を読んで
+            // 宛先や本文を二重にするメールのアプリがある。
             Uri mailto = Uri.parse("mailto:" + Uri.encode(address, "@") + "?subject=" + Uri.encode(subject)
                     + "&body=" + Uri.encode(body));
-            Intent intent = new Intent(Intent.ACTION_SENDTO, mailto)
-                    .putExtra(Intent.EXTRA_EMAIL, new String[] {address})
-                    .putExtra(Intent.EXTRA_SUBJECT, subject)
-                    .putExtra(Intent.EXTRA_TEXT, body);
+            Intent intent = new Intent(Intent.ACTION_SENDTO, mailto);
             try {
                 startActivity(intent);
             } catch (ActivityNotFoundException e) {

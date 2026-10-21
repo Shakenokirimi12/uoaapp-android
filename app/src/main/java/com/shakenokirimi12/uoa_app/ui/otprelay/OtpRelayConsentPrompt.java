@@ -104,6 +104,7 @@ public final class OtpRelayConsentPrompt {
                 ok = OtpRelayPairingService.unpair(p);
             } catch (IOException | RuntimeException e) {
                 // RuntimeException も拾う。拾わないと確認の途中のまま止まり、以後どの画面からも確認を出せない。
+                android.util.Log.w("OtpRelay", "unpair from consent prompt failed: " + e);
                 ok = false;
                 error = activity.getString(R.string.otp_relay_unreachable);
             }
