@@ -26,7 +26,13 @@ public class OtpRelayConsentActivity extends AppCompatActivity {
             finish();
             return;
         }
-        // 別の画面で確認を出している途中なら、そちらに任せて閉じる。
-        if (!OtpRelayConsentPrompt.show(this, this::finish)) finish();
+        // 別の画面 (後ろに回ったアプリの画面) で確認を出している途中なら、そのアプリを前に出して閉じる。
+        // ここで閉じるだけだと、通知を押しても何も起きないように見える。
+        if (!OtpRelayConsentPrompt.show(this, this::finish)) {
+            Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
+            // 確認の画面は別のタスク (taskAffinity="") にいるので、NEW_TASK でアプリのタスクを前に出す。
+            if (launch != null) startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            finish();
+        }
     }
 }

@@ -34,14 +34,18 @@ public final class OtpRelayConsentPrompt {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     /** 確認を出している画面。同時に 2 つ出さない (画面が無くなったら出し直せる)。 */
     @Nullable private static WeakReference<Activity> owner;
-    private static boolean checkedAtLaunch;
+    /** 起動してからの確認を最後まで終えたか (答え終わった・確かめるものが無かった)。 */
+    private static boolean launchCheckDone;
 
-    /** 起動して最初に前面に出たときに 1 回だけ確かめる (前面に戻るたびには聞かない)。 */
+    /**
+     * 起動して前面に出たときに確かめる。最後まで答えたら、このプロセスでは聞き直さない (前面に戻るたびには
+     * 聞かない)。答える前に画面が作り直された (回転・ダークモードの切り替え) ときはダイアログが消えるので、
+     * 次に前面に出たときにもう一度出す。
+     */
     @MainThread
     public static void showAtLaunch(@NonNull Activity activity) {
-        if (checkedAtLaunch) return;
-        checkedAtLaunch = true;
-        show(activity, null);
+        if (launchCheckDone) return;
+        show(activity, () -> launchCheckDone = true);
     }
 
     /**

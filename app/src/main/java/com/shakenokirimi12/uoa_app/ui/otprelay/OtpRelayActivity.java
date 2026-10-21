@@ -75,7 +75,7 @@ public class OtpRelayActivity extends AppCompatActivity {
                 // 「連携する」がこの連携でメールを読むことへの同意になる (OtpRelayPairing.mailConsentAt)。
                 // 何を読んでどこへ返すかを、ここで明示する。
                 .setMessage("「" + pending.browserName + "」で OTP の入力画面が出ると、このアプリが大学のメールを"
-                        + "読んで OTP を取り出し、暗号化してその PC に自動で送ります。ID とパスワードは送りません。"
+                        + "読んで OTP を取り出し、暗号化してその PC に自動で送ります。ユーザー名とパスワードは送りません。"
                         + "「同意して連携する」を押すと、そのためにメールを読むことに同意したことになります。\n\n"
                         + "自分の PC の拡張で出した QR を読み取ったのでなければ、「キャンセル」を押してください。")
                 .setPositiveButton("同意して連携する", (d, w) -> pair(pending))

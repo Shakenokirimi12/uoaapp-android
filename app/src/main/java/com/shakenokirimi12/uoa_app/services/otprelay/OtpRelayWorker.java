@@ -122,12 +122,17 @@ public class OtpRelayWorker extends Worker {
         OtpRelayRequest request = requestFromInput();
         if (request == null) return Result.success();
         OtpRelayPairing pairing = OtpRelayStore.find(request.pairingId);
-        // 知らない連携 (この端末で解除済み) からの依頼は何もしない (鍵が無いので答えられない)。
-        if (pairing == null) return Result.success();
         if (request.expiresAt <= System.currentTimeMillis()) return Result.success();
         // FCM は同じメッセージを再配信することがある。答えた依頼にもう一度答えない
         // (使用済みメールは消してあるので、2 回目は mail-timeout の誤った失敗になる)。
         if (OtpRelayStore.wasHandled(request.requestId)) return Result.success();
+        if (pairing == null) {
+            // この端末からだけ削除した連携など。鍵が無いので中継サーバには答えられない (PC は期限まで待つ)。
+            // 何も出さないと理由が分からないので、連携し直すよう知らせる (iOS の NotificationService と同じ)。
+            OtpRelayNotifications.notPaired(ctx, request);
+            OtpRelayStore.markHandled(request.requestId);
+            return Result.success();
+        }
 
         long deliveredAt = getInputData().getLong(K_DELIVERED_AT, System.currentTimeMillis());
         OtpRelayResponder.Attempt attempt = new OtpRelayResponder.Attempt();
@@ -164,7 +169,8 @@ public class OtpRelayWorker extends Worker {
             // 取得の処理が先に答え始めていたなら、通知はそちらが出す。
             if (result == OtpRelayResponder.ExpiryResult.NOT_CLAIMED) return;
             OtpRelayStore.markHandled(request.requestId);
-            if (result == OtpRelayResponder.ExpiryResult.ACCEPTED) OtpRelayNotifications.timedOut(ctx, request);
+            if (result == OtpRelayResponder.ExpiryResult.ALREADY_ANSWERED) OtpRelayNotifications.cancel(ctx, request);
+            else if (result == OtpRelayResponder.ExpiryResult.ACCEPTED) OtpRelayNotifications.timedOut(ctx, request);
             else OtpRelayNotifications.unknownResult(ctx, pairing, request);
         }, delay, TimeUnit.MILLISECONDS);
         try {
@@ -210,6 +216,9 @@ public class OtpRelayWorker extends Worker {
                                OtpRelayResponder.Outcome outcome) {
         if (outcome.kind == OtpRelayResponder.Kind.SENT) {
             OtpRelayNotifications.sent(ctx, pairing, request);
+        } else if (OtpRelayResponder.ALREADY_ANSWERED.equals(outcome.reason)) {
+            // 前の実行の結果を上書きしない。この実行で出した「読んでいます」だけを消す。
+            OtpRelayNotifications.cancel(ctx, request);
         } else {
             OtpRelayNotifications.failed(ctx, request, outcome.reason);
         }

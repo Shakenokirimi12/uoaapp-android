@@ -114,15 +114,15 @@
     <!-- Background sync -->
     <string name="class_channel_name">授業通知</string>
     <string name="lunch_channel_name">学食メニュー</string>
-    <string name="otp_relay_channel_name">PC からの OTP 依頼</string>
+    <string name="otp_relay_channel_name">PC への OTP 送信結果</string>
     <string name="otp_relay_title">PC との連携 (OTP)</string>
-    <string name="otp_relay_intro">PC のブラウザで IdP のワンタイムパスワード画面が出ると、この端末が大学のメールから OTP を読み取り、暗号化して自動で PC に送ります。ID とパスワードは端末から出ません。</string>
+    <string name="otp_relay_intro">PC で OTP の入力画面が出ると、この端末が大学のメールから OTP を読み取り、暗号化して自動で PC に送ります。ユーザー名とパスワードは、PC にも中継サーバにも送りません。</string>
     <string name="otp_relay_consent_continue">続ける</string>
     <string name="otp_relay_consent_pending">確認が済むまで OTP を送りません</string>
     <string name="otp_relay_consent_save_failed">この端末に保存できませんでした。設定の「PC との連携 (OTP)」を開いて、もう一度お試しください。</string>
     <string name="otp_relay_unreachable">中継サーバに接続できませんでした。</string>
     <string name="otp_relay_consent_title">PC との連携を続けますか？</string>
-    <string name="otp_relay_consent_message">「%1$s」で OTP の入力画面が出ると、このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に自動で送ります。ID とパスワードは送りません。「続ける」を押すと、そのためにメールを読むことに同意したことになります。\n\n心当たりのない PC なら、「解除」を押してください。</string>
+    <string name="otp_relay_consent_message">「%1$s」で OTP の入力画面が出ると、このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に自動で送ります。ユーザー名とパスワードは送りません。「続ける」を押すと、そのためにメールを読むことに同意したことになります。\n\n心当たりのない PC なら、「解除」を押してください。</string>
     <string name="otp_relay_paste_link">リンクを貼り付けて連携</string>
     <string name="otp_relay_paste_title">連携用のリンクを貼り付け</string>
     <string name="otp_relay_paste_hint">uoa-app://otp-pair#…</string>

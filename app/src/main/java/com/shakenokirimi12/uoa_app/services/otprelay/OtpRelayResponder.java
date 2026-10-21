@@ -29,6 +29,12 @@ public final class OtpRelayResponder {
      * 通知も見張りが出すので、呼び出し側は通知を出さない。
      */
     public static final String DEADLINE_PASSED = "deadline-passed";
+    /**
+     * 中継サーバが 409 (依頼がもう pending でない) を返した。この連携に答えるのはこの端末だけなので、
+     * 前の実行 (処理の途中でプロセスが止められ、WorkManager がやり直した) が既に答えている。
+     * 前の結果を「送れませんでした」で上書きしないよう、呼び出し側は結果の通知を出さない。
+     */
+    public static final String ALREADY_ANSWERED = "already-answered";
 
     public enum Kind { SENT, FAILED }
 
@@ -159,12 +165,15 @@ public final class OtpRelayResponder {
         body.addProperty("result", "approved");
         body.addProperty("box", box);
         int status = post(request, keys, body, OtpRelayTiming.POST_TIMEOUT_MS);
+        // 前の実行が既に答えている。それが失敗だったなら PC は手入力に戻っているので、メールは消さない。
+        if (status == 409) return Outcome.failed(ALREADY_ANSWERED);
 
-        lastResult.save(status == 204, status == 204 ? "PC に OTP を送りました" : "中継サーバの応答: " + status, null);
+        // 通信できなかった (0) ときは、数字ではなく理由を出す。
+        lastResult.save(status == 204, status == 204 ? "PC に OTP を送りました"
+                : status == 0 ? failureText("relay-unreachable") : "中継サーバの応答: " + status, null);
         if (status == 204) {
-            // 中継サーバが受け付けたので、使ったメールを消す。409 / 410 / 通信失敗は PC に届いていない
-            // (応答するのはこの端末だけなので、409 は「既に送った」ではなく、新しい依頼に置き換わった等)。
-            // そのときは消さずに残す (PC で手入力に使う。残ったものは次に成功したときに消える)。
+            // 中継サーバが受け付けたので、使ったメールを消す。410 (期限切れ・新しい依頼に置き換わった) と
+            // 通信失敗は PC に届いていないので、消さずに残す (PC で手入力に使う。残ったものは次に成功したときに消える)。
             try {
                 mail.deleteUsed(uid, pass, found.uid);
             } catch (Exception e) {
@@ -173,7 +182,7 @@ public final class OtpRelayResponder {
             return Outcome.sent();
         }
         // 期限切れか、PC が新しい依頼を出して古い依頼が終わった。
-        if (status == 409 || status == 410) return Outcome.failed("expired");
+        if (status == 410) return Outcome.failed("expired");
         // 中継サーバに届かなかった。PC は期限まで待ってから手入力に戻る。
         return Outcome.failed("relay-unreachable");
     }
@@ -196,11 +205,13 @@ public final class OtpRelayResponder {
         String detail = expiredDetail(stage, attempt.imap.reconnects());
         JsonObject body = failureBody(pairing, reason, detail);
         int status = post(request, keys, body, timeoutMs);
+        if (status == 409) return ExpiryResult.ALREADY_ANSWERED;
         lastResult.save(false, failureText(reason), detail);
         return status == 204 ? ExpiryResult.ACCEPTED : ExpiryResult.UNDELIVERED;
     }
 
-    public enum ExpiryResult { NOT_CLAIMED, ACCEPTED, UNDELIVERED }
+    /** ALREADY_ANSWERED は 409 (前の実行が既に答えている。ALREADY_ANSWERED の定数の説明を参照)。 */
+    public enum ExpiryResult { NOT_CLAIMED, ACCEPTED, UNDELIVERED, ALREADY_ANSWERED }
 
     @NonNull
     static String expiredReason(@NonNull ImapOtpFetcher.Progress.Stage stage) {
@@ -224,7 +235,8 @@ public final class OtpRelayResponder {
     private Outcome fail(OtpRelayPairing pairing, OtpRelayRequest request, OtpRelayCrypto.Keys keys, Attempt attempt,
                          String reason, @Nullable String detail, @Nullable String localDetail) {
         if (!attempt.claimResponse()) return Outcome.failed(DEADLINE_PASSED);
-        post(request, keys, failureBody(pairing, reason, detail), OtpRelayApi.DEFAULT_TIMEOUT_MS);
+        int status = post(request, keys, failureBody(pairing, reason, detail), OtpRelayApi.DEFAULT_TIMEOUT_MS);
+        if (status == 409) return Outcome.failed(ALREADY_ANSWERED);
         lastResult.save(false, failureText(reason), localDetail != null ? localDetail : detail);
         return Outcome.failed(reason);
     }
@@ -273,8 +285,8 @@ public final class OtpRelayResponder {
         if (reason == null) return "大学のメールサーバに接続できませんでした。通信状況を確かめて、PC でもう一度ログインしてください。";
         switch (reason) {
             case CONSENT_REQUIRED: return "この PC との連携の確認が済んでいません。アプリを開いて確認してください。";
-            case "no-credentials": return "アプリに AINS の ID / パスワードが入っていません。設定で入力してください。";
-            case "login-failed": return "AINS の ID かパスワードが違うため、大学のメールを読めませんでした。設定で入力し直してください。";
+            case "no-credentials": return "アプリにユーザー名とパスワードが入っていません。設定で入力してください。";
+            case "login-failed": return "ユーザー名かパスワードが違うため、大学のメールを読めませんでした。設定で入力し直してください。";
             case "code-not-found": return "OTP メールからコードを読み取れませんでした。";
             case "mail-timeout": return "OTP メールが時間内に届きませんでした。PC でもう一度ログインしてください。";
             case "expired": return "期限が切れました。PC でもう一度ログインしてください。";

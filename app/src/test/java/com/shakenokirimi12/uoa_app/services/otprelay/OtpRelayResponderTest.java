@@ -115,15 +115,28 @@ public class OtpRelayResponderTest {
     }
 
     @Test
-    public void notAccepted_409or410_keepsTheMail_andIsNotReportedAsSent() {
-        // 応答するのはこの端末だけなので、409 / 410 は PC に届いていない (手入力に使えるようメールを残す)。
-        for (int status : new int[] {409, 410}) {
-            responseStatus = status;
-            OtpRelayResponder.Outcome outcome = respond(pairing);
-            assertEquals(OtpRelayResponder.Kind.FAILED, outcome.kind);
-            assertEquals("expired", outcome.reason);
-        }
+    public void expired410_keepsTheMail_andIsNotReportedAsSent() {
+        responseStatus = 410;
+        OtpRelayResponder.Outcome outcome = respond(pairing);
+        assertEquals(OtpRelayResponder.Kind.FAILED, outcome.kind);
+        assertEquals("expired", outcome.reason);
         assertTrue(deleted.isEmpty());
+    }
+
+    @Test
+    public void conflict409_meansAnEarlierRunAnswered_andChangesNothing() {
+        // WorkManager のやり直しで、前の実行が既に答えていた。前の結果 (送った) を上書きしない。
+        responseStatus = 409;
+        assertEquals(OtpRelayResponder.ALREADY_ANSWERED, respond(pairing).reason);
+        assertTrue(deleted.isEmpty());
+        assertTrue(lastResults.isEmpty());
+
+        mailError = new ImapOtpFetcher.ImapException("mailNotFound");
+        assertEquals(OtpRelayResponder.ALREADY_ANSWERED, respond(pairing).reason);
+        assertTrue(lastResults.isEmpty());
+        assertEquals(OtpRelayResponder.ExpiryResult.ALREADY_ANSWERED,
+                responder().respondExpired(pairing, request, new OtpRelayResponder.Attempt(), 2_000));
+        assertTrue(lastResults.isEmpty());
     }
 
     @Test
@@ -131,6 +144,7 @@ public class OtpRelayResponderTest {
         responseStatus = 500;
         OtpRelayResponder.Outcome outcome = respond(pairing);
         assertEquals("relay-unreachable", outcome.reason);
+        // 500 は数字のまま残す (0 = 通信できなかった、のときだけ理由の文にする)。
         assertTrue(deleted.isEmpty());
         assertEquals("false:中継サーバの応答: 500", lastResults.get(0));
         // 返せなかった approved の 1 件だけ。失敗を重ねて送らない。
