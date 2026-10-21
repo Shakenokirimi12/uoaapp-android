@@ -1,8 +1,11 @@
 package com.shakenokirimi12.uoa_app.ui.otprelay;
 
+import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,6 +16,7 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -20,6 +24,8 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.data.PreferenceManager;
+import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayLink;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairing;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairingService;
@@ -50,6 +56,43 @@ public class OtpRelaySettingsFragment extends Fragment {
         super.onViewCreated(view, state);
         container = view.findViewById(R.id.container_pairings);
         view.findViewById(R.id.button_paste_link).setOnClickListener(v -> showPasteDialog());
+        setUpExtensionGuide(view);
+    }
+
+    /** 拡張の短縮 URL。ブラウザに合わせて Chrome ウェブストア・Firefox アドオン・案内のページに飛ぶ。 */
+    private static final String EXTENSION_URL = "https://uoa-app.shakenokiri.me/ext";
+
+    /**
+     * 「PC に拡張を入れる」。アプリからは何も送らない。メールは利用者がメールのアプリで送る
+     * (宛先は、OTP を読むのと同じ自分の大学のメール)。
+     */
+    private void setUpExtensionGuide(View view) {
+        view.findViewById(R.id.button_ext_copy).setOnClickListener(v -> {
+            ClipboardManager cm = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm == null) return;
+            cm.setPrimaryClip(ClipData.newPlainText("UoA 非公式拡張", EXTENSION_URL));
+            Toast.makeText(requireContext(), R.string.otp_relay_ext_copied, Toast.LENGTH_SHORT).show();
+        });
+        View mail = view.findViewById(R.id.button_ext_mail);
+        String address = ImapOtpFetcher.mailboxAddress(PreferenceManager.getInstance(requireContext()).getUsername());
+        // ユーザー名が無いと宛先が決まらない。宛先なしのメールは出さない。
+        mail.setVisibility(address != null ? View.VISIBLE : View.GONE);
+        mail.setOnClickListener(v -> {
+            if (address == null) return;
+            Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.fromParts("mailto", address, null))
+                    .putExtra(Intent.EXTRA_EMAIL, new String[] {address})
+                    .putExtra(Intent.EXTRA_SUBJECT, getString(R.string.otp_relay_ext_mail_subject))
+                    .putExtra(Intent.EXTRA_TEXT, getString(R.string.otp_relay_ext_mail_body, EXTENSION_URL));
+            try {
+                startActivity(intent);
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(requireContext(), R.string.otp_relay_ext_no_mail_app, Toast.LENGTH_SHORT).show();
+            }
+        });
+        view.findViewById(R.id.button_ext_share).setOnClickListener(v -> {
+            Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, EXTENSION_URL);
+            startActivity(Intent.createChooser(send, null));
+        });
     }
 
     @Override

@@ -122,7 +122,18 @@
     <string name="otp_relay_consent_save_failed">この端末に保存できませんでした。設定の「PC との連携 (OTP)」を開いて、もう一度お試しください。</string>
     <string name="otp_relay_unreachable">中継サーバに接続できませんでした。</string>
     <string name="otp_relay_consent_title">PC との連携を続けますか？</string>
-    <string name="otp_relay_consent_message">「%1$s」で OTP の入力画面が出ると、このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に自動で送ります。ユーザー名とパスワードは送りません。「続ける」を押すと、そのためにメールを読むことに同意したことになります。\n\n心当たりのない PC なら、「解除」を押してください。</string>
+    <string name="otp_relay_consent_message">「%1$s」で OTP の入力画面が出ると、このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に自動で送ります。ユーザー名とパスワードは送りません。確認コードのメールは、古いものも含めて削除します。「続ける」を押すと、そのためにメールを読むことに同意したことになります。\n\n心当たりのない PC なら、「解除」を押してください。</string>
+    <string name="otp_relay_ext_title">PC に拡張を入れる</string>
+    <string name="otp_relay_ext_lead">PC のブラウザでこのアドレスを開くと、UoA 非公式拡張を入れられます。</string>
+    <string name="otp_relay_ext_url_display" translatable="false">uoa-app.shakenokiri.me/ext</string>
+    <string name="otp_relay_ext_copy">アドレスをコピー</string>
+    <string name="otp_relay_ext_copied">コピーしました</string>
+    <string name="otp_relay_ext_mail">大学のメールに送る</string>
+    <string name="otp_relay_ext_share">共有</string>
+    <string name="otp_relay_ext_search">PC のブラウザで、Chrome ウェブストアか Firefox アドオンで「UoA 非公式拡張」を検索しても見つかります。</string>
+    <string name="otp_relay_ext_mail_subject">UoA 非公式拡張のインストール</string>
+    <string name="otp_relay_ext_mail_body">PC のブラウザで次のアドレスを開くと、UoA 非公式拡張を入れられます。\n%1$s</string>
+    <string name="otp_relay_ext_no_mail_app">メールのアプリが見つかりませんでした。</string>
     <string name="otp_relay_paste_link">リンクを貼り付けて連携</string>
     <string name="otp_relay_paste_title">連携用のリンクを貼り付け</string>
     <string name="otp_relay_paste_hint">uoa-app://otp-pair#…</string>

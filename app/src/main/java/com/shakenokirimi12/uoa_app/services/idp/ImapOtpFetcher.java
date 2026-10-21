@@ -38,6 +38,7 @@ public final class ImapOtpFetcher {
     private static final String DEFAULT_HOST = "stdmsv1.u-aizu.ac.jp";
     private static final int DEFAULT_PORT = 993;
     private static final String OTP_SENDER = "idp-apply@u-aizu.ac.jp";
+    private static final String UNIVERSITY_DOMAIN = "@u-aizu.ac.jp";
     /**
      * 1 回の検索で From を確かめに行くメールの数の上限。同じ送信者名を名乗る偽メールを大量に送られても、
      * ヘッダの取得で待ち続けない (そのときは見つからない扱いになり、手入力に落ちる)。
@@ -374,6 +375,16 @@ public final class ImapOtpFetcher {
 
     private static void closeQuietly(@Nullable ImapStream stream) {
         if (stream != null) stream.close();
+    }
+
+    /**
+     * IMAP で読む受信箱 (stdmsv1 に uid でログインする) のメールアドレス。uid は LOGIN と同じく前後の空白を除く。
+     * uid が空なら null。
+     */
+    @Nullable
+    public static String mailboxAddress(@Nullable String uid) {
+        String trimmed = uid != null ? uid.trim() : "";
+        return trimmed.isEmpty() ? null : trimmed + UNIVERSITY_DOMAIN;
     }
 
     /**
