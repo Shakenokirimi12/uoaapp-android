@@ -30,13 +30,4 @@
             android:autofillHints="smsOTPCode" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <com.google.android.material.progressindicator.CircularProgressIndicator
-        android:id="@+id/progress_otp_fetch"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="16dp"
-        android:indeterminate="true"
-        android:visibility="gone" />
-
 </LinearLayout>

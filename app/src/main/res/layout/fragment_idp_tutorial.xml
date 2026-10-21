@@ -142,7 +142,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- OTP delivery choice -->
+        <!-- OTP delivery. メールで受け取る方式ではいつもアプリが読み取る (選ぶ項目は 2026-10-21 に廃止)。 -->
         <TextView
             style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
@@ -155,95 +155,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <LinearLayout
+            <TextView
+                style="@style/Widget.Uoa.ListRow.Supporting"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:id="@+id/row_otp_auto"
-                    style="@style/Widget.Uoa.ListRow.Container"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:gravity="top"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp">
-
-                    <com.google.android.material.radiobutton.MaterialRadioButton
-                        android:id="@+id/radio_otp_auto"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:clickable="false"
-                        android:focusable="false" />
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            style="@style/Widget.Uoa.ListRow.Title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="自動で取得する" />
-
-                        <TextView
-                            style="@style/Widget.Uoa.ListRow.Supporting"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="アプリがメール(stdmsv1)を確認し、ワンタイムパスワードを自動で入力します。バックグラウンド同期がそのまま使えます。" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <com.google.android.material.divider.MaterialDivider
-                    style="@style/Widget.Uoa.Divider"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-                <LinearLayout
-                    android:id="@+id/row_otp_manual"
-                    style="@style/Widget.Uoa.ListRow.Container"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:gravity="top"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp">
-
-                    <com.google.android.material.radiobutton.MaterialRadioButton
-                        android:id="@+id/radio_otp_manual"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:checked="true"
-                        android:clickable="false"
-                        android:focusable="false" />
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            style="@style/Widget.Uoa.ListRow.Title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="手動で入力する(既定)" />
-
-                        <TextView
-                            style="@style/Widget.Uoa.ListRow.Supporting"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="アプリはメールを読み取りません。ワンタイムパスワードが必要な時は、設定画面から自分でログインして入力してください。" />
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
+                android:padding="16dp"
+                android:text="@string/idp_tutorial_otp_mail" />
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Data handling -->

@@ -143,7 +143,7 @@ public class MoodleService {
     }
 
     /**
-     * OTP の取得は CampusSquare と同じく OtpPromptCoordinator に任せる (同意済みならメールから自動取得、
+     * OTP の取得は CampusSquare と同じく OtpPromptCoordinator に任せる (メール方式ならメールから自動取得、
      * アプリが前面にいれば入力ダイアログ、バックグラウンド同期なら INTERACTIVE_LOGIN_REQUIRED)。
      * 成功した cookie だけを共有 cookie jar へ注入する。順序が逆だと、ログイン失敗時にも IdP 側の cookie が
      * 残り、以降のリクエストに無関係なセッションが乗る。

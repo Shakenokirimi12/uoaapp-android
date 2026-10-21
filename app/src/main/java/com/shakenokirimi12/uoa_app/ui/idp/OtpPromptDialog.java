@@ -3,8 +3,6 @@ package com.shakenokirimi12.uoa_app.ui.idp;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -15,10 +13,6 @@ import androidx.annotation.Nullable;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.shakenokirimi12.uoa_app.R;
-import com.shakenokirimi12.uoa_app.data.PreferenceManager;
-import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
-
-import java.util.concurrent.Executors;
 
 /**
  * ワンタイムパスワードが要求されたときだけ自動で出る入力ダイアログ。iOS の OTPPromptSheet の移植。
@@ -37,19 +31,9 @@ public final class OtpPromptDialog {
 
     private OtpPromptDialog() {}
 
+    /** @param message 案内の文。メール方式なら自動取得に失敗したこと、認証アプリ方式なら入力の案内。 */
     @MainThread
-    /**
-     * @param requestedAt        motp.cgi でメール送信を頼んだ時刻。後追いの自動取得で「古いメール」と
-     *                           誤判定しないために要る。
-     * @param allowMailAutoFetch メールからの自動取得を提案してよいか。**認証アプリ方式では false**。
-     *                           メールを一度も送っていないのに「メールから自動で取得する」を出すと、
-     *                           押した人の自動取得設定が意図せず ON になり、資格情報の無いまま
-     *                           IMAP へ接続しに行く。
-     * @param uid, pass          メール方式のときだけ渡る。認証アプリ方式では null。
-     */
-    public static void show(@NonNull Activity activity, @Nullable String message,
-                            @Nullable String uid, @Nullable String pass, long requestedAt,
-                            boolean allowMailAutoFetch, @NonNull Listener listener) {
+    public static void show(@NonNull Activity activity, @NonNull String message, @NonNull Listener listener) {
         // 送信・キャンセル・破棄のどれで終わっても、待っているスレッドを必ず 1 回だけ解放する。
         final boolean[] delivered = {false};
         Listener once = code -> {
@@ -67,8 +51,7 @@ public final class OtpPromptDialog {
         View view = activity.getLayoutInflater().inflate(R.layout.dialog_otp_prompt, null);
         TextView textMessage = view.findViewById(R.id.text_otp_message);
         EditText editCode = view.findViewById(R.id.edit_otp_code);
-        View progress = view.findViewById(R.id.progress_otp_fetch);
-        textMessage.setText(message != null ? message : "大学から届いたメールに書かれているコードを入力してください。");
+        textMessage.setText(message);
 
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity)
                 .setTitle("ワンタイムパスワード")
@@ -76,14 +59,7 @@ public final class OtpPromptDialog {
                 .setPositiveButton("送信", (d, which) -> once.onResult(editCode.getText().toString().trim()))
                 .setNegativeButton("キャンセル", (d, which) -> once.onResult(null));
 
-        if (allowMailAutoFetch && uid != null && pass != null
-                && !PreferenceManager.getInstance().isOtpAutoFetchEnabled()) {
-            // 中立ボタンは押すとダイアログが閉じてしまうので、閉じない実装を下で差し替える。
-            builder.setNeutralButton("今後はメールから自動で取得する", (d, which) -> { });
-        }
-
         androidx.appcompat.app.AlertDialog dialog = builder.create();
-        dialog.setOnShowListener(d -> setUpAutoFetchButton(dialog, textMessage, progress, uid, pass, requestedAt, once));
 
         Application.ActivityLifecycleCallbacks watcher = new DismissOnDestroy(activity, dialog);
         activity.getApplication().registerActivityLifecycleCallbacks(watcher);
@@ -101,43 +77,6 @@ public final class OtpPromptDialog {
             activity.getApplication().unregisterActivityLifecycleCallbacks(watcher);
             once.onResult(null);
         }
-    }
-
-    /** 「今後はメールから自動で取得する」。同意を保存して取りに行き、取れたらそのまま送信する。 */
-    private static void setUpAutoFetchButton(androidx.appcompat.app.AlertDialog dialog, TextView textMessage,
-                                             View progress, @Nullable String uid, @Nullable String pass,
-                                             long requestedAt, Listener once) {
-        View neutral = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL);
-        // 資格情報が無いのに自動取得へ進ませない (ボタンを出さない経路と二重に塞ぐ)。
-        if (neutral == null || uid == null || pass == null) return;
-        neutral.setOnClickListener(v -> {
-            PreferenceManager.getInstance().setOtpAutoFetchEnabled(true);
-            neutral.setEnabled(false);
-            progress.setVisibility(View.VISIBLE);
-            java.util.concurrent.ExecutorService executor = Executors.newSingleThreadExecutor();
-            executor.execute(() -> {
-                String code = null;
-                try {
-                    code = new ImapOtpFetcher().fetchOtpCode(uid, pass, 30, requestedAt);
-                } catch (Exception e) {
-                    android.util.Log.w("OtpPromptDialog", "メールからの自動取得に失敗: " + e);
-                }
-                final String fetched = code;
-                new Handler(Looper.getMainLooper()).post(() -> {
-                    progress.setVisibility(View.GONE);
-                    if (fetched != null) {
-                        // dismiss より先に結果を渡す (dismiss リスナが null を返すのを防ぐ)。
-                        once.onResult(fetched);
-                        dialog.dismiss();
-                        return;
-                    }
-                    // 取れなければダイアログは開いたまま。手入力を続けてもらう。
-                    textMessage.setText("メールからワンタイムパスワードを取得できませんでした。届いたコードを入力してください。");
-                });
-            });
-            // 実行中のタスクは最後まで走る。押すたびにアイドルスレッドを残さないよう投入後に畳む。
-            executor.shutdown();
-        });
     }
 
     /**

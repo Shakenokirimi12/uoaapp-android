@@ -12,7 +12,6 @@ import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 
@@ -28,10 +27,6 @@ public class IdPTutorialFragment extends Fragment {
     public static final String ACTION_LOGIN = "login";
     public static final String ACTION_OTP_REGISTRATION = "otp_registration";
 
-    private boolean otpAutoFetchChoice = false;
-    private MaterialRadioButton radioAuto;
-    private MaterialRadioButton radioManual;
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -44,28 +39,14 @@ public class IdPTutorialFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         String nextAction = getArguments() != null ? getArguments().getString(ARG_NEXT_ACTION, ACTION_LOGIN) : ACTION_LOGIN;
 
-        radioAuto = view.findViewById(R.id.radio_otp_auto);
-        radioManual = view.findViewById(R.id.radio_otp_manual);
-        view.findViewById(R.id.row_otp_auto).setOnClickListener(v -> setChoice(true));
-        view.findViewById(R.id.row_otp_manual).setOnClickListener(v -> setChoice(false));
-        // 今の設定を出す。未設定なら手動 (自動取得は同意してから。iOS と同じ)。
-        setChoice(PreferenceManager.getInstance(requireContext()).isOtpAutoFetchEnabled());
-
         MaterialButton startNow = view.findViewById(R.id.button_start_now);
         startNow.setText(ACTION_OTP_REGISTRATION.equals(nextAction) ? "今すぐ設定する" : "今すぐログインする");
         startNow.setOnClickListener(v -> finish(true, nextAction));
         view.findViewById(R.id.button_later).setOnClickListener(v -> finish(false, nextAction));
     }
 
-    private void setChoice(boolean auto) {
-        otpAutoFetchChoice = auto;
-        radioAuto.setChecked(auto);
-        radioManual.setChecked(!auto);
-    }
-
     private void finish(boolean startNow, String nextAction) {
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
-        prefs.setOtpAutoFetchEnabled(otpAutoFetchChoice);
         prefs.setHasSeenIdPTutorial(true);
         NavController nav = Navigation.findNavController(requireView());
         if (!startNow) {

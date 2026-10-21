@@ -8,7 +8,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.shakenokirimi12.uoa_app.UoaApplication;
-import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 import com.shakenokirimi12.uoa_app.ui.idp.OtpPromptDialog;
 
@@ -20,13 +19,12 @@ import java.util.concurrent.TimeUnit;
  * IdP ログインの途中でワンタイムパスワードを要求されたときの窓口。iOS の OTPPromptCoordinator の移植。
  *
  * 設定画面に「IdP でログイン」のようなボタンは置かない方針なので、コードが要る瞬間にここが判断する:
- *   1. メール自動取得に同意済みなら、まず IMAP から取る (ユーザーの操作は不要)
- *   2. 取れなかった / 未同意なら、アプリが前面にいるときだけ入力ダイアログを出して待つ
+ *   1. メール方式なら、まず IMAP から取る (ユーザーの操作は不要)。メール方式を選んでいることが、
+ *      メールを読む同意になる (設定の説明に書いてある)。以前の「メールから自動で取得する」の選択は
+ *      2026-10-21 に廃止した
+ *   2. 取れなかったら、アプリが前面にいるときだけ入力ダイアログを出して待つ (手入力が最後の手段)
  *   3. 前面にいない (WorkManager の同期) なら待ち受けられないので INTERACTIVE_LOGIN_REQUIRED を投げ、
  *      次に前面へ来たときの同期に任せる
- *
- * 2 を入れているのは、同意しなかった人を締め出さないため。以前は未同意だと全同期が
- * INTERACTIVE_LOGIN_REQUIRED で止まり、コードを入れる画面がどこにも無かった。
  *
  * 呼び出し元はサービス層のワーカースレッドなので、ダイアログの結果はキュー経由で受け取って
  * そのスレッドをブロックする (UI スレッドからは絶対に呼ばないこと)。
@@ -53,23 +51,18 @@ public final class OtpPromptCoordinator {
         }
         // SeciossIdPClient は motp.cgi を叩いた直後にここへ来る。メール送信の時刻として使う。
         long requestedAt = System.currentTimeMillis();
-        boolean autoFetchEnabled = PreferenceManager.getInstance().isOtpAutoFetchEnabled();
-        if (autoFetchEnabled) {
-            try {
-                return new ImapOtpFetcher().fetchOtpCode(uid, pass, 30, requestedAt);
-            } catch (Exception e) {
-                // メールが届かない・メールサーバーに繋がらない。手入力に落とす。
-                android.util.Log.w("OtpPromptCoordinator", "メールからの自動取得に失敗: " + e);
-            }
+        try {
+            return new ImapOtpFetcher().fetchOtpCode(uid, pass, 30, requestedAt);
+        } catch (Exception e) {
+            // メールが届かない・メールサーバーに繋がらない。手入力に落とす。
+            android.util.Log.w("OtpPromptCoordinator", "メールからの自動取得に失敗: " + e);
         }
 
         Activity activity = UoaApplication.getForegroundActivity();
         if (activity == null) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
 
-        String message = autoFetchEnabled
-                ? "メールからワンタイムパスワードを取得できませんでした。届いたコードを入力してください。"
-                : null;
-        String code = promptOnMainThread(activity, message, uid, pass, requestedAt, true);
+        String code = promptOnMainThread(activity,
+                "メールからワンタイムパスワードを取得できませんでした。届いたコードを入力してください。");
         if (code == null) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
         return code;
     }
@@ -86,22 +79,18 @@ public final class OtpPromptCoordinator {
         Activity activity = UoaApplication.getForegroundActivity();
         if (activity == null) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
 
-        // メールは一度も送っていないので、メールからの自動取得は提案しない。
-        String code = promptOnMainThread(activity,
-                "認証アプリに表示されているコードを入力してください。", null, null, 0, false);
+        String code = promptOnMainThread(activity, "認証アプリに表示されているコードを入力してください。");
         if (code == null) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
         return code;
     }
 
     /** キャンセル・タイムアウトなら null。 */
     @Nullable
-    private String promptOnMainThread(@NonNull Activity activity, @Nullable String message,
-                                      @Nullable String uid, @Nullable String pass, long requestedAt,
-                                      boolean allowMailAutoFetch)
+    private String promptOnMainThread(@NonNull Activity activity, @NonNull String message)
             throws InterruptedException {
         BlockingQueue<String> result = new ArrayBlockingQueue<>(1);
         new Handler(Looper.getMainLooper()).post(() ->
-                OtpPromptDialog.show(activity, message, uid, pass, requestedAt, allowMailAutoFetch, entered ->
+                OtpPromptDialog.show(activity, message, entered ->
                         result.offer(entered != null ? entered : CANCELLED)));
         String value = result.poll(INPUT_TIMEOUT_MINUTES, TimeUnit.MINUTES);
         return value == null || CANCELLED.equals(value) ? null : value;

@@ -170,11 +170,9 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
      */
     public void proceedAfterConfirmation() {
         stage.setValue(Stage.WAITING_FOR_CODE);
+        // メールで受け取る方式なら、届いたコードはいつもアプリが読み取る (iOS の IdPOTPRegistrationFlow と同じ)。
+        // 取れなければ手入力に任せる。
         if (method != Method.EMAIL) return;
-        // メールの自動読み取りは、チュートリアルで明示的に同意した場合だけ。未同意なら手入力に任せる。
-        // iOS (IdPOTPRegistrationFlow) はこの画面だけ同意を見ずに常に取りに行くので、そちらが直るまで
-        // 挙動が食い違う。同意を取っていない受信箱へ接続しない側に揃える。
-        if (!com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance().isOtpAutoFetchEnabled()) return;
         autoFetchingEmailCode.setValue(true);
         executor.execute(() -> {
             try {

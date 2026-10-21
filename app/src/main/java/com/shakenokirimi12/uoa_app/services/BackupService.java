@@ -44,7 +44,7 @@ public class BackupService {
             "bg_notify_change", "bg_notify_success", "bg_notify_failure", "bg_notify_nochange",
             "sync_interval", "auto_attendance_enabled",
             "main_tabs", "other_tabs",
-            "has_seen_idp_tutorial", "otp_auto_fetch_enabled",
+            "has_seen_idp_tutorial",
             "review_consent_given", "review_guidelines_accepted",
     };
 
