@@ -32,6 +32,17 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 tools:text="2026/10/16 に連携" />
+
+            <!-- 同意を記録する前に作った連携だけ出す。 -->
+            <TextView
+                android:id="@+id/text_consent_pending"
+                style="@style/Widget.Uoa.ListRow.Supporting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/otp_relay_consent_pending"
+                android:textColor="?attr/colorError"
+                android:visibility="gone"
+                tools:visibility="visible" />
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
@@ -41,10 +52,4 @@
             android:layout_height="wrap_content"
             android:text="@string/otp_relay_unpair" />
     </LinearLayout>
-
-    <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@+id/switch_auto_approve"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/otp_relay_auto_approve" />
 </LinearLayout>

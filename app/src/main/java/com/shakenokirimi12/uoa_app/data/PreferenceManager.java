@@ -42,7 +42,6 @@ public class PreferenceManager {
     private static final String KEY_REVIEW_CONSENT = "review_consent_given";
     private static final String KEY_REVIEW_USER_ID = "review_user_id";
     private static final String KEY_HAS_SEEN_IDP_TUTORIAL = "has_seen_idp_tutorial";
-    private static final String KEY_OTP_AUTO_FETCH_ENABLED = "otp_auto_fetch_enabled";
     private static final String KEY_OTP_METHOD = "otp_method";
     private static final String KEY_CS_IDP_SESSION_COOKIE_HEADER = "cs_idp_session_cookie_header";
     private static final String KEY_IDP_SSO_COOKIE_HEADER = "idp_sso_cookie_header";
@@ -88,6 +87,9 @@ public class PreferenceManager {
         migrateLegacySecrets();
         // 成績変更の通知は実装されないまま設定だけがあった (iOS にも無い)。キーごと消した。
         if (prefs.contains("notify_grades")) prefs.edit().remove("notify_grades").apply();
+        // OTP をメールから自動で取得するかの選択。メール方式ではいつも自動で取得するようにしたので
+        // (2026-10-21)、キーごと消した。
+        if (prefs.contains("otp_auto_fetch_enabled")) prefs.edit().remove("otp_auto_fetch_enabled").apply();
     }
 
     /**
@@ -336,19 +338,9 @@ public class PreferenceManager {
     public String getReviewUserId() { return getSecret(KEY_REVIEW_USER_ID); }
     public void setReviewUserId(String id) { putSecret(KEY_REVIEW_USER_ID, id); }
 
-    // IdP (SECIOSS) login。iOS の SettingsStore.hasSeenIdPTutorial / otpAutoFetchEnabled と同じ既定値。
+    // IdP (SECIOSS) login。iOS の SettingsStore.hasSeenIdPTutorial と同じ既定値。
     public boolean hasSeenIdPTutorial() { return prefs.getBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, false); }
     public void setHasSeenIdPTutorial(boolean seen) { prefs.edit().putBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, seen).apply(); }
-
-    /**
-     * IdP ログインでワンタイムパスワードが必要なとき、メール (IMAP) から自動取得してよいか。
-     * 既定は false (同意してから)。大学のメールボックスに入る操作なので、iOS (SettingsStore の
-     * otp_auto_fetch_enabled、既定 false) と同じく本人が選んだときだけ有効にする。
-     * 有効にする経路: IdP チュートリアルの選択、OTP 入力ダイアログの「今後はメールから自動で取得する」。
-     * 以前は既定 true だったが、未設定の端末では読まれる値が変わるだけで、保存済みの選択は変えない。
-     */
-    public boolean isOtpAutoFetchEnabled() { return prefs.getBoolean(KEY_OTP_AUTO_FETCH_ENABLED, false); }
-    public void setOtpAutoFetchEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_OTP_AUTO_FETCH_ENABLED, enabled).apply(); }
 
     /**
      * OTP をどこから受け取るか ("mail" / "authenticator")。既定はメール (大学が既定で設定する方式)。

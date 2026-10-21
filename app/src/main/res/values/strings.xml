@@ -46,7 +46,8 @@
     <string name="settings_otp_method">ワンタイムパスワード</string>
     <string name="settings_otp_method_mail">メールで受け取る</string>
     <string name="settings_otp_method_authenticator">認証アプリを使う</string>
-    <string name="settings_otp_method_mail_description">大学から届くメールの確認コードを使います。</string>
+    <string name="idp_tutorial_otp_mail">メールで届くワンタイムパスワードは、このアプリが大学のメールから読み取って入力します。読み取れないときは、届いたコードを入力してください。認証アプリを使う場合は、設定の「ワンタイムパスワード」で切り替えます。</string>
+    <string name="settings_otp_method_mail_description">大学のメールに届くワンタイムパスワードを、このアプリが読み取って入力します。</string>
     <string name="settings_otp_method_authenticator_description">認証アプリに表示されるコードを毎回入力します。バックグラウンド更新では再ログインできません。</string>
     <string name="settings_username">ユーザー名</string>
     <string name="settings_password">パスワード</string>
@@ -63,7 +64,7 @@
     <string name="onboarding_disclaimer">このアプリは会津大学の非公式アプリです。\n大学とは一切の関係がありません。</string>
     <!-- 「同意して続ける」の対象を明示する。プライバシーポリシーのページは無いので、同意内容はこの場に書く。 -->
     <string name="onboarding_consent_title">続ける前に</string>
-    <string name="onboarding_consent_body">「同意して続ける」を押すと、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquare へあなたの代わりにログインするためだけに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールから自動で取得する機能は、あなたが選んだときだけ有効になります。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
+    <string name="onboarding_consent_body">「同意して続ける」を押すと、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquare や大学のメールにあなたの代わりにログインするためだけに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールで受け取る設定 (既定) では、大学のメールに届いたワンタイムパスワードを、このアプリが読み取って入力します。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
     <string name="onboarding_agree">同意して続ける</string>
     <string name="onboarding_login_title">ログイン</string>
     <string name="onboarding_login_desc">Moodle / CampusSquare のアカウントでログインしてください。</string>
@@ -113,30 +114,42 @@
     <!-- Background sync -->
     <string name="class_channel_name">授業通知</string>
     <string name="lunch_channel_name">学食メニュー</string>
-    <string name="otp_relay_channel_name">PC からの OTP 依頼</string>
+    <string name="otp_relay_channel_name">PC への OTP 送信結果</string>
     <string name="otp_relay_title">PC との連携 (OTP)</string>
-    <string name="otp_relay_intro">PC のブラウザで IdP のワンタイムパスワード画面が出ると、この端末に通知が届きます。「承認して送る」を押すと、大学のメールに届いたコードを暗号化して PC に送ります。連携は毎回承認で始まり、下のスイッチで連携ごとに承認なしの自動にできます。自動で送れなかったときも、通知に承認ボタンが出ます。ID とパスワードは端末から出ません。</string>
-    <string name="otp_relay_consent_note">メールを読むことへの同意を連携のときに確認していない連携があります。その連携では依頼のたびに通知で承認を求め、承認したときだけ大学のメールを読みます。自動にするときに同意を確認します。</string>
-    <string name="otp_relay_consent_title">メールを読んで返すことに同意しますか？</string>
-    <string name="otp_relay_consent_message">「%1$s」から OTP の依頼が来るたびに、このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に返します。承認は求めません (メールが届かないなどで自動で返せなかったときだけ、承認の通知が出ます)。ID とパスワードは送りません。</string>
-    <string name="otp_relay_consent_accept">同意して自動にする</string>
+    <string name="otp_relay_intro">PC で OTP の入力画面が出ると、この端末が大学のメールから OTP を読み取り、暗号化して自動で PC に送ります。ユーザー名とパスワードは、PC にも中継サーバにも送りません。</string>
+    <string name="otp_relay_consent_continue">続ける</string>
+    <string name="otp_relay_consent_pending">確認が済むまで OTP を送りません</string>
+    <string name="otp_relay_consent_save_failed">この端末に保存できませんでした。設定の「PC との連携 (OTP)」を開いて、もう一度お試しください。</string>
+    <string name="otp_relay_unreachable">中継サーバに接続できませんでした。</string>
+    <string name="otp_relay_consent_title">PC との連携を続けますか？</string>
+    <string name="otp_relay_consent_message">「%1$s」で OTP の入力画面が出ると、このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に自動で送ります。ユーザー名とパスワードは送りません。「続ける」を押すと、そのためにメールを読むことに同意したことになります。確認コードのメールは、古いものも含めて削除します。\n\n心当たりのない PC なら、「解除」を押してください。</string>
+    <string name="otp_relay_ext_title">PC に拡張を入れる</string>
+    <string name="otp_relay_ext_lead">PC のブラウザでこの URL を開くと、UoA 非公式拡張を入れられます。</string>
+    <string name="otp_relay_ext_url_display" translatable="false">uoa-app.shakenokiri.me/ext</string>
+    <string name="otp_relay_ext_copy">URL をコピー</string>
+    <string name="otp_relay_ext_copied">コピーしました</string>
+    <string name="otp_relay_ext_mail">大学のメールに送る</string>
+    <string name="otp_relay_ext_share">共有</string>
+    <string name="otp_relay_ext_search">PC のブラウザで、Chrome ウェブストアか Firefox アドオンで「UoA 非公式拡張」を検索しても見つかります。</string>
+    <string name="otp_relay_ext_mail_subject">UoA 非公式拡張のインストール</string>
+    <string name="otp_relay_ext_mail_body">PC のブラウザで次の URL を開くと、UoA 非公式拡張を入れられます。\n%1$s</string>
+    <string name="otp_relay_ext_no_mail_app">メールのアプリが見つかりませんでした。</string>
     <string name="otp_relay_paste_link">リンクを貼り付けて連携</string>
     <string name="otp_relay_paste_title">連携用のリンクを貼り付け</string>
     <string name="otp_relay_paste_hint">uoa-app://otp-pair#…</string>
     <string name="otp_relay_paste_invalid">連携用のリンクではありません。PC の拡張で連携用の QR を出し直し、その中身のリンクを貼り付けてください。</string>
     <string name="otp_relay_section_pairings">連携しているブラウザ</string>
     <string name="otp_relay_none">まだありません</string>
-    <string name="otp_relay_auto_approve">承認なしで自動で返す</string>
     <string name="otp_relay_unpair">解除</string>
     <string name="otp_relay_paired_on">%1$s に連携</string>
-    <string name="otp_relay_section_last_result">直近の自動応答</string>
+    <string name="otp_relay_section_last_result">直近の結果</string>
     <string name="otp_relay_section_howto">連携のしかた</string>
     <string name="otp_relay_howto">1. PC の拡張の設定で「OTP 自動入力」の「メール方式」を、このアプリに依頼する方式にする
 2. 拡張で連携用の QR を出し、この端末の標準のカメラ (または Google レンズ) で読む。カメラから開けないときは、QR の中身のリンクをコピーして「リンクを貼り付けて連携」に貼る
-3. このアプリが開いたら「連携する」を押す</string>
+3. このアプリが開いたら「同意して連携する」を押す</string>
     <string name="otp_relay_unpair_confirm">「%1$s」との連携を解除しますか？</string>
     <string name="otp_relay_unpair_failed_title">中継サーバで解除できませんでした</string>
-    <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からだけ削除してください。削除しても、PC 側の拡張で連携を解除するまで依頼は届きます (承認しなければ何も送りません)。</string>
+    <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からだけ削除してください。削除しても、PC 側の拡張で連携を解除するまで依頼は届きます。届いても OTP は送りません。</string>
     <string name="otp_relay_forget_local">この端末からだけ削除</string>
     <string name="otp_relay_progress_channel_name">PC への OTP 送信中</string>
     <string name="class_channel_description">授業中・次の授業の常駐通知と、自動出席登録の完了を表示します</string>

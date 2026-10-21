@@ -1,8 +1,11 @@
 package com.shakenokirimi12.uoa_app.ui.otprelay;
 
+import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,14 +16,16 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.materialswitch.MaterialSwitch;
 import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.data.PreferenceManager;
+import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayLink;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairing;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairingService;
@@ -34,7 +39,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** PC との連携 (OTP)。連携の一覧・自動/承認の切り替え・解除・リンクの貼り付けによる連携。 */
+/** PC との連携 (OTP)。連携の一覧・解除・リンクの貼り付けによる連携。依頼にはいつも自動で返す。 */
 public class OtpRelaySettingsFragment extends Fragment {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -51,6 +56,49 @@ public class OtpRelaySettingsFragment extends Fragment {
         super.onViewCreated(view, state);
         container = view.findViewById(R.id.container_pairings);
         view.findViewById(R.id.button_paste_link).setOnClickListener(v -> showPasteDialog());
+        setUpExtensionGuide(view);
+    }
+
+    /** 拡張の短縮 URL。ブラウザに合わせて Chrome ウェブストア・Firefox アドオン・案内のページに飛ぶ。 */
+    private static final String EXTENSION_URL = "https://uoa-app.shakenokiri.me/ext";
+
+    /**
+     * 「PC に拡張を入れる」。アプリからは何も送らない。メールは利用者がメールのアプリで送る
+     * (宛先は、OTP を読むのと同じ自分の大学のメール)。
+     */
+    private void setUpExtensionGuide(View view) {
+        view.findViewById(R.id.button_ext_copy).setOnClickListener(v -> {
+            ClipboardManager cm = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm == null) return;
+            cm.setPrimaryClip(ClipData.newPlainText("UoA 非公式拡張", EXTENSION_URL));
+            // Android 13 以降はシステムがコピーしたことを表示するので、重ねて出さない。
+            if (android.os.Build.VERSION.SDK_INT < 33) {
+                Toast.makeText(requireContext(), R.string.otp_relay_ext_copied, Toast.LENGTH_SHORT).show();
+            }
+        });
+        View mail = view.findViewById(R.id.button_ext_mail);
+        String address = ImapOtpFetcher.mailboxAddress(PreferenceManager.getInstance(requireContext()).getUsername());
+        // ユーザー名が無いと宛先が決まらない。宛先なしのメールは出さない。
+        mail.setVisibility(address != null ? View.VISIBLE : View.GONE);
+        mail.setOnClickListener(v -> {
+            if (address == null) return;
+            String subject = getString(R.string.otp_relay_ext_mail_subject);
+            String body = getString(R.string.otp_relay_ext_mail_body, EXTENSION_URL);
+            // 宛先・件名・本文は mailto: (RFC 6068) だけで渡す。extras にも入れると、両方を読んで
+            // 宛先や本文を二重にするメールのアプリがある。
+            Uri mailto = Uri.parse("mailto:" + Uri.encode(address, "@") + "?subject=" + Uri.encode(subject)
+                    + "&body=" + Uri.encode(body));
+            Intent intent = new Intent(Intent.ACTION_SENDTO, mailto);
+            try {
+                startActivity(intent);
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(requireContext(), R.string.otp_relay_ext_no_mail_app, Toast.LENGTH_SHORT).show();
+            }
+        });
+        view.findViewById(R.id.button_ext_share).setOnClickListener(v -> {
+            Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, EXTENSION_URL);
+            startActivity(Intent.createChooser(send, null));
+        });
     }
 
     @Override
@@ -58,6 +106,8 @@ public class OtpRelaySettingsFragment extends Fragment {
         super.onResume();
         // 連携は別の画面 (OtpRelayActivity) で増えるので、戻ってくるたびに読み直す。
         render();
+        // 同意を記録する前に作った連携があれば、ここで確かめる (iOS の OTPRelaySettingsView.onAppear と同じ)。
+        OtpRelayConsentPrompt.show(requireActivity(), this::render);
     }
 
     @Override
@@ -71,10 +121,6 @@ public class OtpRelaySettingsFragment extends Fragment {
         if (root == null) return;
         container.removeAllViews();
         List<OtpRelayPairing> pairings = OtpRelayStore.all();
-        // 中継の同意は連携ごと (連携の確認ダイアログ)。アプリ自身のログインの同意 (メールからの自動取得) とは別。
-        boolean anyWithoutConsent = false;
-        for (OtpRelayPairing p : pairings) anyWithoutConsent |= !p.hasMailConsent();
-        root.findViewById(R.id.text_consent_note).setVisibility(anyWithoutConsent ? View.VISIBLE : View.GONE);
         LayoutInflater inflater = LayoutInflater.from(requireContext());
         if (pairings.isEmpty()) {
             TextView empty = (TextView) inflater.inflate(R.layout.item_otp_relay_empty, container, false);
@@ -88,16 +134,8 @@ public class OtpRelaySettingsFragment extends Fragment {
             ((TextView) row.findViewById(R.id.text_browser_name)).setText(p.browserName);
             ((TextView) row.findViewById(R.id.text_paired_at)).setText(
                     getString(R.string.otp_relay_paired_on, dateFmt.format(new Date(p.pairedAt))));
-            MaterialSwitch auto = row.findViewById(R.id.switch_auto_approve);
-            // 実際の動き (承認なしでメールを読むか) を出す。同意の無い連携は自動の設定があってもオフに見せる。
-            auto.setChecked(p.readsMailWithoutApproval());
-            auto.setOnCheckedChangeListener((b, checked) -> {
-                if (checked && !p.hasMailConsent()) {
-                    confirmConsent(p);
-                } else {
-                    OtpRelayStore.setAutoApprove(p.pairingId, checked);
-                }
-            });
+            // 同意を記録する前に作った連携。確認 (この画面を開いたときに出る) が済むまで送らない。
+            row.findViewById(R.id.text_consent_pending).setVisibility(p.hasMailConsent() ? View.GONE : View.VISIBLE);
             row.findViewById(R.id.button_unpair).setOnClickListener(v -> confirmUnpair(p));
             container.addView(row);
         }
@@ -115,20 +153,6 @@ public class OtpRelaySettingsFragment extends Fragment {
             detail.setVisibility(last.detail != null && !last.detail.isEmpty() ? View.VISIBLE : View.GONE);
             detail.setText(last.detail);
         }
-    }
-
-    /** 同意の無い連携を自動にするとき。断られたらスイッチを戻す (render で保存済みの状態を出し直す)。 */
-    private void confirmConsent(OtpRelayPairing p) {
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.otp_relay_consent_title)
-                .setMessage(getString(R.string.otp_relay_consent_message, p.browserName))
-                .setPositiveButton(R.string.otp_relay_consent_accept, (d, w) -> {
-                    OtpRelayStore.setAutoApproveWithConsent(p.pairingId, System.currentTimeMillis());
-                    render();
-                })
-                .setNegativeButton(R.string.cancel, (d, w) -> render())
-                .setOnCancelListener(d -> render())
-                .show();
     }
 
     private void showPasteDialog() {
@@ -178,7 +202,7 @@ public class OtpRelaySettingsFragment extends Fragment {
                 ok = OtpRelayPairingService.unpair(p);
             } catch (IOException e) {
                 ok = false;
-                error = "中継サーバに接続できませんでした。";
+                error = getString(R.string.otp_relay_unreachable);
             }
             boolean done = ok;
             String message = error;

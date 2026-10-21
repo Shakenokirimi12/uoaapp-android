@@ -49,6 +49,8 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
     @Nullable private String authenticatorSecretFallback;
     private String uid = "";
     private String pass = "";
+    /** 確認コードの送り先がこの人の大学のメール (uid@u-aizu.ac.jp) か。違えば受信箱を読みに行っても見つからない。 */
+    private boolean codeSentToOwnMailbox = true;
     private boolean started = false;
 
     @Nullable private SeciossRegistrationSession session;
@@ -151,6 +153,7 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
         if (s == null) return;
         String trimmed = emailInput.trim();
         String address = trimmed.isEmpty() ? defaultEmailAddress() : trimmed;
+        codeSentToOwnMailbox = address.equalsIgnoreCase(defaultEmailAddress());
         executor.execute(() -> {
             try {
                 s.requestEmailCode(address);
@@ -170,11 +173,9 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
      */
     public void proceedAfterConfirmation() {
         stage.setValue(Stage.WAITING_FOR_CODE);
-        if (method != Method.EMAIL) return;
-        // メールの自動読み取りは、チュートリアルで明示的に同意した場合だけ。未同意なら手入力に任せる。
-        // iOS (IdPOTPRegistrationFlow) はこの画面だけ同意を見ずに常に取りに行くので、そちらが直るまで
-        // 挙動が食い違う。同意を取っていない受信箱へ接続しない側に揃える。
-        if (!com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance().isOtpAutoFetchEnabled()) return;
+        // メールで受け取る方式なら、届いたコードはいつもアプリが読み取る (iOS の IdPOTPRegistrationFlow と同じ)。
+        // 取れなければ手入力に任せる。別のアドレスに送ったときは、大学の受信箱を読みに行かない。
+        if (method != Method.EMAIL || !codeSentToOwnMailbox) return;
         autoFetchingEmailCode.setValue(true);
         executor.execute(() -> {
             try {

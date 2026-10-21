@@ -2,7 +2,12 @@ package com.shakenokirimi12.uoa_app.services.otprelay;
 
 import androidx.annotation.Nullable;
 
-/** 1 つのブラウザとの連携。iOS の OTPRelayPairing と同じ項目 (Gson で保存する)。 */
+/**
+ * 1 つのブラウザとの連携。iOS の OTPRelayPairing と同じ項目 (Gson で保存する)。
+ *
+ * 以前の版が保存した autoApprove (連携ごとの自動 / 毎回承認) は、このクラスに項目が無いので読まずに捨てる
+ * (次に保存するときに消える)。依頼ごとの承認は 2026-10-21 に廃止した。
+ */
 public final class OtpRelayPairing {
     public String pairingId;
     /** QR の K (base64url)。トークンと暗号鍵はここから毎回導出する。 */
@@ -10,37 +15,24 @@ public final class OtpRelayPairing {
     public String browserName;
     /** 連携した時刻 (epoch ミリ秒)。 */
     public long pairedAt;
-    /** 承認なしで自動で返すか。既定は承認制 (毎回承認)。古い保存データに無いときも false。 */
-    @Nullable public Boolean autoApprove;
     /**
      * この連携のためにメールを読むことへの同意を得た時刻 (epoch ミリ秒)。連携の確認ダイアログが
-     * 「大学のメールを読んで OTP をこの PC に返す」と明示しているので、そこで「連携する」を押したことが同意になる。
-     * 同意の無い連携 (この項目ができる前の連携) は、承認されたときにだけメールを読む。
+     * 「大学のメールを読んで OTP をこの PC に返す」と明示しているので、そこで「同意して連携する」を押したことが
+     * 同意になる。同意を記録する前に作った連携は、アプリでの確認 (OtpRelayConsentPrompt) の「続ける」で記録する。
+     * 同意のある連携は、依頼が届くとメールを読んで自動で返す。同意の無い連携はメールを読まずに依頼を断る。
      */
     @Nullable public Long mailConsentAt;
 
-    public boolean autoApprove() { return autoApprove != null && autoApprove; }
-
     public boolean hasMailConsent() { return mailConsentAt != null && mailConsentAt > 0; }
-
-    /**
-     * 依頼が来たとき、承認を待たずにメールを読んで返してよいか。この連携への同意と自動の設定の両方が要る。
-     * アプリ自身のログインの同意 (otp_auto_fetch_enabled) はここでは見ない (中継の同意は連携ごと)。
-     */
-    public boolean readsMailWithoutApproval() { return autoApprove() && hasMailConsent(); }
 
     public OtpRelayPairing() {}
 
-    /**
-     * 確認ダイアログで同意を得て作る連携。作り方 (リンク・カメラ・貼り付け) にかかわらず承認制で始める。
-     * 自動にするのは一覧のスイッチで利用者が選んだときだけ。
-     */
+    /** 確認ダイアログで同意を得て作る連携。作り方 (リンク・カメラ・貼り付け) にかかわらず同じ。 */
     OtpRelayPairing(String pairingId, String key, String browserName, long pairedAt) {
         this.pairingId = pairingId;
         this.key = key;
         this.browserName = browserName;
         this.pairedAt = pairedAt;
-        this.autoApprove = false;
         this.mailConsentAt = pairedAt;
     }
 }

@@ -56,8 +56,7 @@ public final class OtpRelayStore {
         synchronized (LOCK) {
             if (!PreferenceManager.getInstance().isSecureStorageAvailable()) return false;
             List<OtpRelayPairing> list = all();
-            // 同じ QR を読み直したときも、新しい連携と同じく承認制から始める (自動は引き継がない)。
-            // 確認ダイアログは「毎回承認」と言っているし、以前の版の連携は利用者が選ばなくても自動だった。
+            // 同じ QR を読み直したときは、確認ダイアログで得た同意ごと新しいものに置き換える。
             list.removeIf(p -> pairing.pairingId.equals(p.pairingId));
             list.add(pairing);
             return save(list);
@@ -72,28 +71,31 @@ public final class OtpRelayStore {
         }
     }
 
-    public static void setAutoApprove(@NonNull String pairingId, boolean autoApprove) {
+    /**
+     * 同意を記録する前に作った連携で、利用者が「続ける」を押した。保存できたかを返す
+     * (一覧に無い = 解除済みなら何もせず true)。
+     */
+    public static boolean recordConsent(@NonNull String pairingId, long consentAt) {
         synchronized (LOCK) {
             List<OtpRelayPairing> list = all();
+            boolean found = false;
             for (OtpRelayPairing p : list) {
-                if (pairingId.equals(p.pairingId)) p.autoApprove = autoApprove;
+                if (pairingId.equals(p.pairingId)) {
+                    p.mailConsentAt = consentAt;
+                    found = true;
+                }
             }
-            save(list);
+            return !found || save(list);
         }
     }
 
-    /** 同意の無い (古い) 連携を、同意を得たうえで自動にする。 */
-    public static void setAutoApproveWithConsent(@NonNull String pairingId, long consentAt) {
-        synchronized (LOCK) {
-            List<OtpRelayPairing> list = all();
-            for (OtpRelayPairing p : list) {
-                if (pairingId.equals(p.pairingId)) {
-                    p.autoApprove = true;
-                    p.mailConsentAt = consentAt;
-                }
-            }
-            save(list);
+    /** 同意の記録が無い連携のうち最初のもの。無ければ null。 */
+    @Nullable
+    public static OtpRelayPairing firstWithoutConsent() {
+        for (OtpRelayPairing p : all()) {
+            if (!p.hasMailConsent()) return p;
         }
+        return null;
     }
 
     /** 書き込みまで確定させる (apply だと失敗が分からず、連携の巻き戻しが走らない)。 */
@@ -101,7 +103,7 @@ public final class OtpRelayStore {
         return PreferenceManager.getInstance().commitOtpRelayPairingsJson(list.isEmpty() ? null : GSON.toJson(list));
     }
 
-    /** 処理した依頼 ID (直近 20 件)。依頼は 2 分で期限が切れるので、これで足りる。 */
+    /** 答えた依頼 ID (直近 20 件)。依頼は 2 分で期限が切れるので、これで足りる。 */
     private static final java.util.LinkedHashSet<String> HANDLED = new java.util.LinkedHashSet<>();
 
     /** 同じプロセスで処理を終えた依頼か。 */
@@ -111,7 +113,7 @@ public final class OtpRelayStore {
         }
     }
 
-    /** 処理を終えた依頼として記録する (途中で止められた処理は記録しない = 再実行で続きをやる)。 */
+    /** 答えた依頼として記録する (答える前に止められた処理は記録しない = 再実行で続きをやる)。 */
     public static void markHandled(@NonNull String requestId) {
         synchronized (HANDLED) {
             HANDLED.add(requestId);

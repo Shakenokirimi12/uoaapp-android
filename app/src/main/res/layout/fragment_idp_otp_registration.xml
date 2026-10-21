@@ -130,7 +130,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="別のアプリに依存しないため、二段階認証を丸ごと失うリスクが低い方式です。" />
+                            android:text="別のアプリに依存しないため、二段階認証を丸ごと失うリスクが低い方式です。大学のメールに届く確認コードは、このアプリが読み取って入力します。" />
                     </LinearLayout>
 
                     <ImageView

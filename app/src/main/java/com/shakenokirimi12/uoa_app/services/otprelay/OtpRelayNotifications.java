@@ -4,27 +4,29 @@ import android.Manifest;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.services.notification.NotificationChannels;
-import com.shakenokirimi12.uoa_app.ui.otprelay.OtpRelayActivity;
+import com.shakenokirimi12.uoa_app.ui.otprelay.OtpRelayConsentActivity;
 
 /**
- * PC 中継の通知。文面は iOS (NotificationService / AuthPresentations) に合わせる。
- * 1 件の依頼につき通知は 1 つ (requestId から決めた ID を差し替えていく)。
+ * PC 中継の通知。文面は iOS (OTPRelayNotificationService) に合わせる。操作のボタンは無い
+ * (依頼ごとの承認は 2026-10-21 に廃止)。1 件の依頼につき通知は 1 つ (requestId から決めた ID を差し替えていく)。
  */
 public final class OtpRelayNotifications {
     private static final String TAG = "OtpRelay";
 
     private OtpRelayNotifications() {}
+
+    private static final String FAILED_TITLE = "PC に OTP を送れませんでした";
 
     static int notificationId(@NonNull String requestId) {
         return 0x52000000 | (requestId.hashCode() & 0x00ffffff);
@@ -43,40 +45,6 @@ public final class OtpRelayNotifications {
                 .build();
     }
 
-    /**
-     * 承認を求める。「承認して送る」は端末のロック解除を要求する (API 31+)。
-     * @param escalated 自動で送れなかった (メールが届かなかった・中継に返せなかった) ために出す場合。
-     */
-    static void approval(@NonNull Context ctx, @NonNull OtpRelayPairing pairing, @NonNull OtpRelayRequest request) {
-        int id = notificationId(request.requestId);
-        PendingIntent approve = OtpRelayActionReceiver.pendingIntent(ctx, OtpRelayActionReceiver.ACTION_APPROVE, request, id);
-        PendingIntent reject = OtpRelayActionReceiver.pendingIntent(ctx, OtpRelayActionReceiver.ACTION_REJECT, request, id);
-        Intent open = OtpRelayActivity.requestIntent(ctx, request);
-        PendingIntent content = PendingIntent.getActivity(ctx, id, open,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        NotificationCompat.Action approveAction = new NotificationCompat.Action.Builder(0, "承認して送る", approve)
-                .setAuthenticationRequired(true)
-                .build();
-        NotificationCompat.Action rejectAction = new NotificationCompat.Action.Builder(0, "拒否", reject).build();
-        String body = "「承認して送る」を押すと、大学のメールに届いたコードを PC に送ります。心当たりが無ければ拒否してください。";
-        NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, NotificationChannels.ensureOtpRelay(ctx))
-                .setSmallIcon(R.drawable.ic_stat_notification)
-                .setContentTitle("「" + pairing.browserName + "」が OTP を求めています")
-                .setContentText(body)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
-                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-                .setContentIntent(content)
-                .setAutoCancel(true)
-                .addAction(approveAction)
-                .addAction(rejectAction);
-        long remaining = request.expiresAt - System.currentTimeMillis();
-        if (remaining > 0) b.setTimeoutAfter(remaining);
-        notify(ctx, id, b.build());
-    }
-
     /** 前景サービスの表示 (受信直後で、まだメールを読むかどうか決まっていない段階にも出る)。 */
     @NonNull
     static Notification working(@NonNull Context ctx, @NonNull String browserName) {
@@ -90,25 +58,48 @@ public final class OtpRelayNotifications {
                 .build();
     }
 
-    /** 409: 別の操作 (拒否・別の端末) で既に応答が決まっていた。 */
-    static void alreadyAnswered(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
-        result(ctx, request, "この依頼には既に応答済みです", "PC 側で依頼の結果が決まっていたため、今回は送っていません。", false);
-    }
-
     static void sent(@NonNull Context ctx, @NonNull OtpRelayPairing pairing, @NonNull OtpRelayRequest request) {
-        String body = "「" + pairing.browserName + "」の OTP 画面に入力します。心当たりが無ければ、アプリの設定から連携を解除してください。";
-        result(ctx, request, "PC にコードを送りました", body, false);
+        String body = "「" + pairing.browserName + "」の OTP 画面に入力されます。心当たりがなければ、アプリの設定から連携を解除してください。";
+        result(ctx, request, "PC に OTP を送りました", body, false, null);
     }
 
-    static void failed(@NonNull Context ctx, @NonNull OtpRelayRequest request, @NonNull String reason) {
-        result(ctx, request, "PC に OTP を送れませんでした", OtpRelayResponder.failureText(reason), true);
+    static void failed(@NonNull Context ctx, @NonNull OtpRelayRequest request, @Nullable String reason) {
+        result(ctx, request, FAILED_TITLE, OtpRelayResponder.failureText(reason), true, null);
+    }
+
+    /** 見張りが時間切れの失敗を返し、中継サーバが受け付けた。 */
+    static void timedOut(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
+        result(ctx, request, FAILED_TITLE,
+                "時間内に大学のメールから OTP を読み取れませんでした。PC では、メールに届いた OTP を入力してください。", true, null);
+    }
+
+    /** 見張りが失敗を送ったが、届いたか分からない。事実と違うことを言わず、確かめ方だけを伝える。 */
+    static void unknownResult(@NonNull Context ctx, @NonNull OtpRelayPairing pairing, @NonNull OtpRelayRequest request) {
+        result(ctx, request, "「" + pairing.browserName + "」からの OTP の依頼",
+                "PC に OTP が入力されない場合は、メールに届いた OTP を入力してください。", true, null);
+    }
+
+    /** この端末に無い連携からの依頼。鍵が無いので中継サーバには答えていない。 */
+    static void notPaired(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
+        result(ctx, request, FAILED_TITLE,
+                "この端末では、この PC と連携していません。PC の拡張で連携を解除して、連携し直してください。", true, null);
+    }
+
+    /** 同意を記録する前に作った連携の依頼を断った。押すとアプリで確認が出る。 */
+    static void consentRequired(@NonNull Context ctx, @NonNull OtpRelayPairing pairing, @NonNull OtpRelayRequest request) {
+        int id = notificationId(request.requestId);
+        PendingIntent open = PendingIntent.getActivity(ctx, id, OtpRelayConsentActivity.intent(ctx),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        result(ctx, request, FAILED_TITLE,
+                "「" + pairing.browserName + "」との連携の確認が済んでいません。アプリを開いて確認してください。", true, open);
     }
 
     static void cancel(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
         NotificationManagerCompat.from(ctx).cancel(notificationId(request.requestId));
     }
 
-    private static void result(Context ctx, OtpRelayRequest request, String title, String body, boolean alert) {
+    private static void result(Context ctx, OtpRelayRequest request, String title, String body, boolean alert,
+                               @Nullable PendingIntent content) {
         NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, NotificationChannels.ensureOtpRelay(ctx))
                 .setSmallIcon(R.drawable.ic_stat_notification)
                 .setContentTitle(title)
@@ -117,6 +108,7 @@ public final class OtpRelayNotifications {
                 .setOnlyAlertOnce(!alert)
                 .setSilent(!alert)
                 .setAutoCancel(true);
+        if (content != null) b.setContentIntent(content);
         notify(ctx, notificationId(request.requestId), b.build());
     }
 

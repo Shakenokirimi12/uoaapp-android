@@ -59,8 +59,8 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupWithNavController(toolbar, navController, appBarConfiguration);
         EdgeToEdge.apply(this, findViewById(R.id.container), bottomNav);
 
-        // CampusSquare は 2026-09-15 以降 IdP 経由しか無い (旧フォーム消滅)。OTP メール自動取得の同意を
-        // 含むチュートリアルを、この端末でまだ見せていなければリモート設定を待たずに初回起動で出す
+        // CampusSquare は 2026-09-15 以降 IdP 経由しか無い (旧フォーム消滅)。ワンタイムパスワードの
+        // 受け取り方の説明を含むチュートリアルを、この端末でまだ見せていなければリモート設定を待たずに初回起動で出す
         // (iOS の idPTutorialPresented と同じ)。回転などの再生成では出し直さない。
         if (savedInstanceState == null && !prefs.hasSeenIdPTutorial()) {
             navController.navigate(R.id.navigation_idp_tutorial);
@@ -102,6 +102,8 @@ public class MainActivity extends AppCompatActivity {
         // 前面復帰のたびに取り直す。メンテナンス解除や killswitch の変更を、
         // アプリを起動し直さなくても拾えるようにする (iOS と同じタイミング)。
         AppConfigService.getInstance().refresh(this);
+        // 同意を記録する前に作った PC との連携があれば、起動して最初に前面に出たときに 1 回だけ確かめる。
+        com.shakenokirimi12.uoa_app.ui.otprelay.OtpRelayConsentPrompt.showAtLaunch(this);
     }
 
     /** API 33 以降は許可が無いと通知が一切出ない。これまでどこでも求めていなかった。 */
