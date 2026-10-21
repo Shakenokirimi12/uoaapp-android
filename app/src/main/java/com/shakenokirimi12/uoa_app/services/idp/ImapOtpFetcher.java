@@ -197,6 +197,9 @@ public final class ImapOtpFetcher {
                     progress.recordFailure(lastError);
                 } catch (IOException e) {
                     progress.recordFailure(e);
+                    // 繋ぎ直しを待つ間は connect にする。切れた段階 (search など) のままだと、中継の見張りが
+                    // 「メールが来ない」と取り違える。投げるときの detail は記録した段階で作る。
+                    progress.enter(Progress.Stage.CONNECT);
                     lastError = e;
                     closeQuietly(stream);
                     stream = null;

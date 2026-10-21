@@ -102,7 +102,8 @@ public final class OtpRelayConsentPrompt {
             String error = null;
             try {
                 ok = OtpRelayPairingService.unpair(p);
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
+                // RuntimeException も拾う。拾わないと確認の途中のまま止まり、以後どの画面からも確認を出せない。
                 ok = false;
                 error = activity.getString(R.string.otp_relay_unreachable);
             }
