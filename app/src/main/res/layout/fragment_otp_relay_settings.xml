@@ -61,7 +61,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/otp_relay_ext_url_display"
-                        android:textAppearance="?attr/textAppearanceTitleLarge"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:textIsSelectable="true" />
 
                     <com.google.android.material.button.MaterialButton
@@ -88,6 +88,7 @@
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
                     android:text="@string/otp_relay_ext_share" />
 
                 <TextView

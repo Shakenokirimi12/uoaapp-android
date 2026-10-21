@@ -71,7 +71,10 @@ public class OtpRelaySettingsFragment extends Fragment {
             ClipboardManager cm = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
             if (cm == null) return;
             cm.setPrimaryClip(ClipData.newPlainText("UoA 非公式拡張", EXTENSION_URL));
-            Toast.makeText(requireContext(), R.string.otp_relay_ext_copied, Toast.LENGTH_SHORT).show();
+            // Android 13 以降はシステムがコピーしたことを表示するので、重ねて出さない。
+            if (android.os.Build.VERSION.SDK_INT < 33) {
+                Toast.makeText(requireContext(), R.string.otp_relay_ext_copied, Toast.LENGTH_SHORT).show();
+            }
         });
         View mail = view.findViewById(R.id.button_ext_mail);
         String address = ImapOtpFetcher.mailboxAddress(PreferenceManager.getInstance(requireContext()).getUsername());
@@ -79,10 +82,15 @@ public class OtpRelaySettingsFragment extends Fragment {
         mail.setVisibility(address != null ? View.VISIBLE : View.GONE);
         mail.setOnClickListener(v -> {
             if (address == null) return;
-            Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.fromParts("mailto", address, null))
+            String subject = getString(R.string.otp_relay_ext_mail_subject);
+            String body = getString(R.string.otp_relay_ext_mail_body, EXTENSION_URL);
+            // 件名と本文は mailto: の中にも入れる (extras を読まないメールのアプリがある)。
+            Uri mailto = Uri.parse("mailto:" + Uri.encode(address, "@") + "?subject=" + Uri.encode(subject)
+                    + "&body=" + Uri.encode(body));
+            Intent intent = new Intent(Intent.ACTION_SENDTO, mailto)
                     .putExtra(Intent.EXTRA_EMAIL, new String[] {address})
-                    .putExtra(Intent.EXTRA_SUBJECT, getString(R.string.otp_relay_ext_mail_subject))
-                    .putExtra(Intent.EXTRA_TEXT, getString(R.string.otp_relay_ext_mail_body, EXTENSION_URL));
+                    .putExtra(Intent.EXTRA_SUBJECT, subject)
+                    .putExtra(Intent.EXTRA_TEXT, body);
             try {
                 startActivity(intent);
             } catch (ActivityNotFoundException e) {
