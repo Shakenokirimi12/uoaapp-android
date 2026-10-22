@@ -24,15 +24,18 @@ import java.util.Map;
  * 出席記録。以前は存在しない prefs 名 ("app_preferences") を読んでいて、常に "{}" (2 バイト) しか
  * 書き出せていなかった (2026-09-15 に発覚)。
  *
- * パスワード・セッション cookie・FCM トークン・device_id は入れない。平文ファイルに置く価値より
+ * ユーザー名・パスワード・セッション cookie・FCM トークン・device_id は入れない。平文ファイルに置く価値より
  * 漏れたときの損害が大きく、端末固有の値 (PreferenceManager.DEVICE_LOCAL_KEYS) は他端末へ持ち込むと
- * 2 台が同じ id で登録してプッシュを取り合う。ユーザー名だけは入れる。
+ * 2 台が同じ id で登録してプッシュを取り合う。
+ * 以前はユーザー名だけ入れて読み戻していた。別のアカウントでログインしている端末に戻すと、ユーザー名だけが
+ * 入れ替わって今のパスワードと組になり、他人のアカウントへ誤ったパスワードでログインを試み続ける
+ * (大学側でロックされうる)。資格情報はログインし直して入れる。古いファイルにユーザー名があっても読まない。
  * 読み戻しも SETTINGS_KEYS だけを書くので、ファイルに device_id などが入っていても端末の値は変わらない。
  */
 public class BackupService {
 
     private static final String TAG = "BackupService";
-    private static final int FORMAT_VERSION = 2;
+    private static final int FORMAT_VERSION = 3;
 
     private static final String PREFS_NAME = PreferenceManager.PREF_NAME;
     private static final String ATTENDANCE_PREFS_NAME = "attendance_data_v2";
@@ -50,8 +53,7 @@ public class BackupService {
     public static void exportTo(Context ctx, Uri uri) throws Exception {
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences attendancePrefs = ctx.getSharedPreferences(ATTENDANCE_PREFS_NAME, Context.MODE_PRIVATE);
-        JsonObject backup = buildBackup(prefs.getAll(), PreferenceManager.getInstance(ctx).getUsername(),
-                attendancePrefs.getString("data", null));
+        JsonObject backup = buildBackup(prefs.getAll(), attendancePrefs.getString("data", null));
 
         try (OutputStream os = ctx.getContentResolver().openOutputStream(uri, "wt")) {
             if (os == null) throw new Exception("ファイルを開けませんでした");
@@ -81,11 +83,6 @@ public class BackupService {
         // 学食通知の ON/OFF と時刻を戻したので、予約もそれに合わせて作り直す。
         com.shakenokirimi12.uoa_app.services.notification.LunchMenuWorker.reschedule(ctx);
 
-        if (backup.has("username")) {
-            String username = backup.get("username").getAsString();
-            if (!username.isEmpty()) PreferenceManager.getInstance(ctx).setUsername(username);
-        }
-
         if (backup.has("_attendance_data_v2")) {
             ctx.getSharedPreferences(ATTENDANCE_PREFS_NAME, Context.MODE_PRIVATE)
                     .edit()
@@ -96,10 +93,9 @@ public class BackupService {
     }
 
     /** 書き出す JSON。SETTINGS_KEYS だけを拾うので、端末固有の値は prefs にあっても入らない。 */
-    static JsonObject buildBackup(Map<String, ?> all, String username, String attendanceJson) {
+    static JsonObject buildBackup(Map<String, ?> all, String attendanceJson) {
         JsonObject backup = new JsonObject();
         backup.addProperty("_version", FORMAT_VERSION);
-        backup.addProperty("username", username);
         for (String key : SETTINGS_KEYS) {
             Object val = all.get(key);
             if (val instanceof String) backup.addProperty(key, (String) val);
