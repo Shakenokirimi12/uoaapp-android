@@ -138,6 +138,8 @@ public final class OtpRelayStore {
             List<OtpRelayPairing> list = GSON.fromJson(json, new TypeToken<List<OtpRelayPairing>>() {}.getType());
             return list != null ? list : new ArrayList<>();
         } catch (RuntimeException e) {
+            // 壊れた記録は読めない。空として扱うが、黙って捨てたことは残す。
+            android.util.Log.w("OtpRelayStore", "pending unpair list unreadable; treating as empty: " + e.getClass().getSimpleName());
             return new ArrayList<>();
         }
     }

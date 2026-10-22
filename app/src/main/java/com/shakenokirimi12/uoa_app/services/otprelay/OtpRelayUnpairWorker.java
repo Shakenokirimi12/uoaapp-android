@@ -61,12 +61,14 @@ public class OtpRelayUnpairWorker extends Worker {
             OtpRelayCrypto.Keys keys = OtpRelayCrypto.keys(p.key);
             if (keys == null) {
                 // 鍵が壊れていて、どのみち解除できない。
+                Log.w(TAG, "dropping a pending unpair with an unusable key");
                 OtpRelayStore.removePendingUnpair(p.pairingId);
                 continue;
             }
             try {
                 int status = api.unpair(p.pairingId, keys).status;
                 if (isSettled(status)) {
+                    if (status != 204 && status != 404) Log.w(TAG, "unpair rejected (" + status + "); giving up");
                     OtpRelayStore.removePendingUnpair(p.pairingId);
                 } else {
                     Log.w(TAG, "unpair " + status + "; will retry");
@@ -77,6 +79,9 @@ public class OtpRelayUnpairWorker extends Worker {
                 remaining = true;
             }
         }
+        // 走っている間に別のログアウトで解除待ちが増えても、KEEP の enqueue は捨てられる。
+        // 最後に読み直し、残っていればもう一度回す。
+        if (!remaining && !OtpRelayStore.pendingUnpairs().isEmpty()) remaining = true;
         return remaining ? Result.retry() : Result.success();
     }
 }
