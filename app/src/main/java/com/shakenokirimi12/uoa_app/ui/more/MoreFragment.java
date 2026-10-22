@@ -44,11 +44,6 @@ public class MoreFragment extends Fragment {
         ViewGroup features = view.findViewById(R.id.layout_more_features);
         List<View> tabRows = addTabRows(features, moreKeys);
         flags.config().observe(getViewLifecycleOwner(), config -> {
-            for (int i = 0; i < moreKeys.size(); i++) {
-                boolean visible = !"reviews".equals(moreKeys.get(i))
-                        || flags.isFeatureEnabled("review_enabled");
-                tabRows.get(i).setVisibility(visible ? View.VISIBLE : View.GONE);
-            }
             view.findViewById(R.id.button_campus_map).setVisibility(
                     flags.isFeatureEnabled("campus_map_enabled") ? View.VISIBLE : View.GONE);
             hideOrphanDividers(features);

@@ -322,10 +322,6 @@ public class SettingsFragment extends Fragment {
             restoreLauncher.launch(intent);
         });
 
-        // Block list
-        view.findViewById(R.id.button_block_list).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_settings_to_block_list));
-
         // Version
         TextView textVersion = view.findViewById(R.id.text_version);
         textVersion.setText(getString(R.string.settings_version) + " " + BuildConfig.VERSION_NAME);

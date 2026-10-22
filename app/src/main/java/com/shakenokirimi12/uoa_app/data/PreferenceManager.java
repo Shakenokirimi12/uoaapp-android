@@ -22,7 +22,6 @@ public class PreferenceManager {
     private static final String KEY_ONBOARDING_DONE = "onboarding_done";
     private static final String KEY_CREDENTIALS_INVALID = "credentials_invalid";
     private static final String KEY_FCM_TOKEN = "fcm_token";
-    private static final String KEY_REVIEW_GUIDELINES_ACCEPTED = "review_guidelines_accepted";
     private static final String KEY_SERVER_HOLDS_REMINDERS = "server_holds_assignment_reminders";
     private static final String KEY_NOTIFY_ASSIGNMENTS = "notify_assignments";
     private static final String KEY_NOTIFY_LUNCH = "notify_lunch";
@@ -42,8 +41,6 @@ public class PreferenceManager {
     private static final String KEY_LOGIN_REQUIRED_NOTIFIED_DAY = "login_required_notified_day";
     private static final String KEY_MAIN_TABS = "main_tabs";
     private static final String KEY_OTHER_TABS = "other_tabs";
-    private static final String KEY_REVIEW_CONSENT = "review_consent_given";
-    private static final String KEY_REVIEW_USER_ID = "review_user_id";
     private static final String KEY_HAS_SEEN_IDP_TUTORIAL = "has_seen_idp_tutorial";
     private static final String KEY_OTP_METHOD = "otp_method";
     private static final String KEY_CS_IDP_SESSION_COOKIE_HEADER = "cs_idp_session_cookie_header";
@@ -76,7 +73,7 @@ public class PreferenceManager {
      * 以前は作成に失敗すると平文の prefs に同じキーで書いていたので、そこに残った写しは起動時に消す。
      */
     private static final String[] SECRET_KEYS = {
-            KEY_USERNAME, KEY_PASSWORD, KEY_MOODLE_TOKEN, KEY_REVIEW_USER_ID,
+            KEY_USERNAME, KEY_PASSWORD, KEY_MOODLE_TOKEN,
             KEY_CS_IDP_SESSION_COOKIE_HEADER, KEY_IDP_SSO_COOKIE_HEADER, KEY_MOODLE_SESSION_COOKIE_HEADER,
     };
 
@@ -97,6 +94,9 @@ public class PreferenceManager {
         // OTP をメールから自動で取得するかの選択。メール方式ではいつも自動で取得するようにしたので
         // (2026-10-21)、キーごと消した。
         if (prefs.contains("otp_auto_fetch_enabled")) prefs.edit().remove("otp_auto_fetch_enabled").apply();
+        // 授業評価は機能ごと消した (2026-10-22)。端末に残った同意と、サーバーのアカウント ID を消す。
+        dropRemovedKeys(new String[] {"review_consent_given", "review_guidelines_accepted", "review_user_id"},
+                new String[] {"review_user_id", "review_token"});
     }
 
     /**
@@ -179,6 +179,25 @@ public class PreferenceManager {
         plainEdit.apply();
     }
 
+    /** 機能ごと消した設定を、平文側と暗号化側の両方から消す。無ければ何もしない。 */
+    private void dropRemovedKeys(String[] plainKeys, String[] secretKeys) {
+        SharedPreferences.Editor plain = null;
+        for (String key : plainKeys) {
+            if (!prefs.contains(key)) continue;
+            if (plain == null) plain = prefs.edit();
+            plain.remove(key);
+        }
+        if (plain != null) plain.apply();
+        if (encryptedPrefs == null) return;
+        SharedPreferences.Editor secure = null;
+        for (String key : secretKeys) {
+            if (!encryptedPrefs.contains(key)) continue;
+            if (secure == null) secure = encryptedPrefs.edit();
+            secure.remove(key);
+        }
+        if (secure != null) secure.apply();
+    }
+
     /** 資格情報・セッション cookie を保存できるか。false の端末ではログイン情報を保存しない。 */
     public boolean isSecureStorageAvailable() { return encryptedPrefs != null; }
 
@@ -246,9 +265,6 @@ public class PreferenceManager {
      * ロックされうる。パスワードの再入力でだけ解除される。
      */
     public boolean isCredentialsInvalid() { return prefs.getBoolean(KEY_CREDENTIALS_INVALID, false); }
-
-    public boolean isReviewGuidelinesAccepted() { return prefs.getBoolean(KEY_REVIEW_GUIDELINES_ACCEPTED, false); }
-    public void setReviewGuidelinesAccepted(boolean accepted) { prefs.edit().putBoolean(KEY_REVIEW_GUIDELINES_ACCEPTED, accepted).apply(); }
 
     public String getFcmToken() { return prefs.getString(KEY_FCM_TOKEN, ""); }
     public void setFcmToken(String token) { prefs.edit().putString(KEY_FCM_TOKEN, token).apply(); }
@@ -341,14 +357,6 @@ public class PreferenceManager {
 
     public String getOtherTabs() { return prefs.getString(KEY_OTHER_TABS, "facilities,grades"); }
     public void setOtherTabs(String tabs) { prefs.edit().putString(KEY_OTHER_TABS, tabs).apply(); }
-
-    // Review consent
-    public boolean isReviewConsentGiven() { return prefs.getBoolean(KEY_REVIEW_CONSENT, false); }
-    public void setReviewConsentGiven(boolean given) { prefs.edit().putBoolean(KEY_REVIEW_CONSENT, given).apply(); }
-
-    // Review internal user ID (stored securely)
-    public String getReviewUserId() { return getSecret(KEY_REVIEW_USER_ID); }
-    public void setReviewUserId(String id) { putSecret(KEY_REVIEW_USER_ID, id); }
 
     // IdP (SECIOSS) login。iOS の SettingsStore.hasSeenIdPTutorial と同じ既定値。
     public boolean hasSeenIdPTutorial() { return prefs.getBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, false); }

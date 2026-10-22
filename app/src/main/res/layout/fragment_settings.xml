@@ -580,29 +580,6 @@
                 android:text="タブの表示設定" />
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Reviews -->
-        <TextView
-            style="@style/Widget.Uoa.SectionHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/settings_reviews_section" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp">
-
-            <TextView
-                android:id="@+id/button_block_list"
-                style="@style/Widget.Uoa.ListRow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:drawableStart="@drawable/ic_ban"
-                android:drawableEnd="@drawable/ic_chevron_right"
-                android:text="@string/settings_block_list" />
-        </com.google.android.material.card.MaterialCardView>
-
         <!-- Backup -->
         <TextView
             style="@style/Widget.Uoa.SectionHeader"

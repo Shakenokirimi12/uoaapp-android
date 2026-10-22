@@ -51,7 +51,6 @@ public final class MainTabs {
         TABS.put("grades", new Tab(R.id.navigation_grades, R.drawable.ic_grades, "成績", "成績一覧"));
         TABS.put("gakushoku", new Tab(R.id.navigation_gakushoku, R.drawable.ic_restaurant, "学食", "学食メニュー"));
         TABS.put("facilities", new Tab(R.id.navigation_facilities, R.drawable.ic_building, "施設利用", "施設利用状況"));
-        TABS.put("reviews", new Tab(R.id.navigation_reviews, R.drawable.ic_review, "授業評価", "授業評価"));
     }
 
     private MainTabs() {}
