@@ -213,5 +213,10 @@
     <string name="widget_today">今日の授業</string>
     <string name="widget_no_class_today">今日の授業なし</string>
     <string name="widget_no_class_today_short">今日の授業はありません</string>
+    <string name="widget_not_logged_in">ログインすると表示されます</string>
+    <string name="widget_not_fetched">時間割をまだ取得していません</string>
+    <string name="widget_stale">時間割を更新できていません</string>
+    <string name="widget_last_updated">最終更新 %1$s</string>
+    <string name="widget_classes_finished">今日の授業は終わりました</string>
     <string name="widget_more">他 %1$d 件</string>
 </resources>
