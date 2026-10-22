@@ -203,16 +203,6 @@ public class SettingsFragment extends Fragment {
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_facilities));
         view.findViewById(R.id.button_notifications).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_notifications));
-        view.findViewById(R.id.button_campus_map).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_settings_to_campus_map));
-        // Same killswitch as MoreFragment: the shortcut must disappear together with the entry.
-        com.shakenokirimi12.uoa_app.services.AppConfigService flags =
-                com.shakenokirimi12.uoa_app.services.AppConfigService.getInstance();
-        flags.config().observe(getViewLifecycleOwner(), config -> {
-            int vis = flags.isFeatureEnabled("campus_map_enabled") ? View.VISIBLE : View.GONE;
-            view.findViewById(R.id.button_campus_map).setVisibility(vis);
-            view.findViewById(R.id.divider_campus_map).setVisibility(vis);
-        });
 
         // Notification switches
         MaterialSwitch switchAssignment = view.findViewById(R.id.switch_assignment_notify);

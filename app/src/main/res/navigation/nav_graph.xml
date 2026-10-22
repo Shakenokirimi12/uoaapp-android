@@ -38,7 +38,6 @@
         android:name="com.shakenokirimi12.uoa_app.ui.more.MoreFragment"
         android:label="@string/nav_more"
         tools:layout="@layout/fragment_more">
-        <action android:id="@+id/action_more_to_campus_map" app:destination="@id/navigation_campus_map" />
         <action android:id="@+id/action_more_to_notifications" app:destination="@id/navigation_notifications" />
         <action android:id="@+id/action_more_to_settings" app:destination="@id/navigation_settings" />
     </fragment>
@@ -63,7 +62,6 @@
         <action android:id="@+id/action_settings_to_notifications" app:destination="@id/navigation_notifications" />
         <action android:id="@+id/action_settings_to_notify_times" app:destination="@id/navigation_notify_times" />
         <action android:id="@+id/action_settings_to_nav_settings" app:destination="@id/navigation_nav_settings" />
-        <action android:id="@+id/action_settings_to_campus_map" app:destination="@id/navigation_campus_map" />
         <action android:id="@+id/action_settings_to_idp_tutorial" app:destination="@id/navigation_idp_tutorial" />
         <action android:id="@+id/action_settings_to_idp_otp_registration" app:destination="@id/navigation_idp_otp_registration" />
         <action android:id="@+id/action_settings_to_otp_relay" app:destination="@id/navigation_otp_relay" />
@@ -155,9 +153,5 @@
         android:name="com.shakenokirimi12.uoa_app.ui.settings.NavSettingsFragment"
         android:label="ナビゲーション設定" />
 
-    <fragment
-        android:id="@+id/navigation_campus_map"
-        android:name="com.shakenokirimi12.uoa_app.ui.map.CampusMapFragment"
-        android:label="キャンパスマップ" />
 
 </navigation>
