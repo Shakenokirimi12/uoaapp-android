@@ -102,29 +102,6 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Description -->
-        <TextView
-            android:id="@+id/label_description"
-            style="@style/Widget.Uoa.SectionHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingStart="0dp"
-            android:paddingEnd="0dp"
-            android:text="説明"
-            android:visibility="gone"
-            tools:visibility="visible" />
-
-        <TextView
-            android:id="@+id/text_description"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?attr/colorOnSurface"
-            android:textIsSelectable="true"
-            android:visibility="gone"
-            tools:text="課題の説明"
-            tools:visibility="visible" />
-
         <!-- Open in Moodle -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_open_moodle"

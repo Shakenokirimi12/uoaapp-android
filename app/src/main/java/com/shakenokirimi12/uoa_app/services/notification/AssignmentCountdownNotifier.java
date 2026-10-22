@@ -81,7 +81,8 @@ public final class AssignmentCountdownNotifier {
             if (remaining <= 0 || remaining > LEAD_MS) continue;
             active.add(String.valueOf(a.getId()));
 
-            String url = MoodleService.currentBaseUrl() + "/mod/assign/view.php?id=" + a.getId();
+            // 開く先が分からない古いキャッシュでは、別の課題を開くより Moodle のトップへ送る。
+            String url = a.getUrl() != null ? a.getUrl() : MoodleService.currentBaseUrl() + "/my/";
             Intent open = new Intent(ctx, InAppBrowserActivity.class)
                     .putExtra(InAppBrowserActivity.EXTRA_URL, url)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

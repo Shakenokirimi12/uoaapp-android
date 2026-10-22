@@ -526,6 +526,9 @@ public class MoodleService {
                                 a.setId(toInt(e.get("id")));
                                 a.setName(toStr(e.get("name")));
                                 a.setDueDate(toLong(e.get("timesort")));
+                                a.setUrl(MoodleEventUrl.pick(
+                                        e.get("url") instanceof String ? (String) e.get("url") : null,
+                                        e.get("viewurl") instanceof String ? (String) e.get("viewurl") : null));
 
                                 Map<String, Object> course =
                                         (Map<String, Object>) e.get("course");

@@ -1,6 +1,5 @@
 package com.shakenokirimi12.uoa_app.ui.assignment;
 
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -50,8 +49,6 @@ public class AssignmentDetailFragment extends Fragment {
         TextView textCourseName = view.findViewById(R.id.text_course_name);
         TextView textDueDate = view.findViewById(R.id.text_due_date);
         TextView textDueRelative = view.findViewById(R.id.text_due_relative);
-        TextView labelDesc = view.findViewById(R.id.label_description);
-        TextView textDesc = view.findViewById(R.id.text_description);
 
         textName.setText(assignment.getName());
         textCourseName.setText(assignment.getCourseName() != null
@@ -83,20 +80,16 @@ public class AssignmentDetailFragment extends Fragment {
         // Submission status is intentionally not shown: Assignment.submitted is never
         // populated from Moodle, so any value here would be fabricated.
 
-        // Description
-        if (assignment.getIntro() != null && !assignment.getIntro().isEmpty()) {
-            labelDesc.setVisibility(View.VISIBLE);
-            textDesc.setVisibility(View.VISIBLE);
-            textDesc.setText(android.text.Html.fromHtml(
-                    assignment.getIntro(), android.text.Html.FROM_HTML_MODE_COMPACT));
-        }
-
         // Open in Moodle
-        view.findViewById(R.id.button_open_moodle).setOnClickListener(v -> {
-            String url = "https://elms.u-aizu.ac.jp/mod/assign/view.php?id=" + assignment.getId();
+        View buttonOpen = view.findViewById(R.id.button_open_moodle);
+        String url = assignment.getUrl();
+        if (url == null) {
+            // 開く先を知らない古いキャッシュ。ID から組み立てると別の課題が開くので、次の同期を待つ。
+            buttonOpen.setVisibility(View.GONE);
+        } else {
             // Custom Tabs は別プロセスの Chrome でアプリの cookie が届かず、毎回ログインを求められた。
-            InAppBrowserActivity.open(requireContext(), url);
-        });
+            buttonOpen.setOnClickListener(v -> InAppBrowserActivity.open(requireContext(), url));
+        }
     }
 
     private Assignment findAssignment(int id) {
