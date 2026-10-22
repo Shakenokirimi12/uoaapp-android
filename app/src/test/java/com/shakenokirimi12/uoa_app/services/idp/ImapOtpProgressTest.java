@@ -22,7 +22,7 @@ public class ImapOtpProgressTest {
     public void mapsFailuresToStageCodes() {
         assertEquals("mail-timeout", detail(new ImapOtpFetcher.ImapException("mailNotFound"), Stage.IDLE, 0));
         assertEquals("code-not-found", detail(new ImapOtpFetcher.ImapException("codeNotFound"), Stage.FETCH, 0));
-        assertEquals("login-no:unavailable", detail(new ImapOtpFetcher.ImapException(
+        assertEquals("login-no:unavailable-other", detail(new ImapOtpFetcher.ImapException(
                 "commandFailed(a1): a1 NO [UNAVAILABLE] Temporary failure"), Stage.LOGIN, 0));
         assertEquals("select-bad", detail(new ImapOtpFetcher.ImapException("commandFailed(a2): a2 BAD x"), Stage.SELECT, 0));
         assertEquals("fetch-no", detail(new ImapOtpFetcher.ImapException("commandFailed(a7)"), Stage.FETCH, 0));
@@ -32,6 +32,31 @@ public class ImapOtpProgressTest {
         assertEquals("connect-failed:tls", detail(new javax.net.ssl.SSLHandshakeException("x"), Stage.CONNECT, 0));
         assertEquals("search-closed:r1", detail(new IOException("connectionFailed"), Stage.SEARCH, 1));
         assertEquals("cancelled", detail(new InterruptedException(), Stage.IDLE, 0));
+        assertEquals("cancelled", detail(new ImapOtpFetcher.ImapException("aborted"), Stage.SEARCH, 0));
+    }
+
+    /**
+     * LOGIN の NO には、同時接続数の上限 (maxconn) かそれ以外 (other) かを付ける。例外のメッセージは応答の先頭
+     * 40 文字で切ってあるので、応答の全体 (response) から決める。本文そのものは送らない。
+     */
+    @Test
+    public void loginNo_carriesMaxconnOrOther() {
+        String maxconn = "a1 NO [UNAVAILABLE] Maximum number of connections from user+IP exceeded "
+                + "(mail_max_userip_connections=10)";
+        ImapOtpFetcher.ImapException e = new ImapOtpFetcher.ImapException(
+                "commandFailed(a1): " + maxconn.substring(0, 40), maxconn);
+        assertEquals("login-no:unavailable-maxconn:r1", detail(e, Stage.LOGIN, 1));
+        assertEquals("login-no:maxconn", detail(new ImapOtpFetcher.ImapException(
+                "commandFailed(a1): a1 NO Maximum number of connections", "a1 NO Maximum number of connections"),
+                Stage.LOGIN, 0));
+        assertEquals("login-no:other", detail(new ImapOtpFetcher.ImapException("commandFailed(a1): a1 NO x"),
+                Stage.LOGIN, 0));
+        // LOGIN 以外の NO には付けない。
+        assertEquals("select-no:unavailable", detail(new ImapOtpFetcher.ImapException(
+                "commandFailed(a2): a2 NO [UNAVAILABLE] x"), Stage.SELECT, 0));
+        assertTrue(detail(e, Stage.LOGIN, 3).matches("^[a-z0-9][a-z0-9._:-]{0,79}$"));
+        assertEquals("maxconn", ImapOtpFetcher.Progress.loginRefusalKind(maxconn));
+        assertEquals("other", ImapOtpFetcher.Progress.loginRefusalKind("a1 NO [UNAVAILABLE] Temporary authentication failure"));
     }
 
     @Test

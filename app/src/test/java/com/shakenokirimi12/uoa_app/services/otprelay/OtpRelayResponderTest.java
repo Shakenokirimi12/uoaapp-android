@@ -69,8 +69,8 @@ public class OtpRelayResponderTest {
                     }
 
                     @Override
-                    public void deleteUsed(@NonNull String uid, @NonNull String pass, int upToUid) {
-                        deleted.add(upToUid);
+                    public void deleteUsed(@NonNull ImapOtpFetcher.OtpMail mail) {
+                        deleted.add(mail.uid);
                     }
                 },
                 new OtpRelayResponder.Credentials() {
