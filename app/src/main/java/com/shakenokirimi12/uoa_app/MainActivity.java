@@ -64,6 +64,19 @@ public class MainActivity extends AppCompatActivity {
                 new androidx.navigation.ui.AppBarConfiguration.Builder(
                         com.shakenokirimi12.uoa_app.ui.util.MainTabs.allRootDestinationIds()).build();
         NavigationUI.setupWithNavController(toolbar, navController, appBarConfiguration);
+        // ただし下タブに無い画面 (「その他」から開いた成績など) は、根でも「戻る」を出す。出さないと
+        // 「その他」へ戻る手段が下タブの再選択しか無い。NavigationUI の後に登録して、そちらが外した
+        // 矢印を付け直す。押したときは NavigationUI の navigateUp が前の画面 (その他) へ戻す。
+        navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+            if (navigationLocked || controller.getPreviousBackStackEntry() == null) return;
+            if (!com.shakenokirimi12.uoa_app.ui.util.MainTabs.isHiddenTabRoot(
+                    destination.getId(), PreferenceManager.getInstance(this))) return;
+            androidx.appcompat.graphics.drawable.DrawerArrowDrawable arrow =
+                    new androidx.appcompat.graphics.drawable.DrawerArrowDrawable(toolbar.getContext());
+            arrow.setProgress(1f);
+            toolbar.setNavigationIcon(arrow);
+            toolbar.setNavigationContentDescription(androidx.navigation.ui.R.string.nav_app_bar_navigate_up_description);
+        });
         EdgeToEdge.apply(this, findViewById(R.id.container), bottomNav);
 
         // CampusSquare は 2026-09-15 以降 IdP 経由しか無い (旧フォーム消滅)。ワンタイムパスワードの

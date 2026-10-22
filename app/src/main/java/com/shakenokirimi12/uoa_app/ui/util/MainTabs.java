@@ -134,6 +134,18 @@ public final class MainTabs {
         return ids;
     }
 
+    /** タブに置ける画面のうち、いま下タブに出ていないものの遷移先か (「その他」から開く画面)。 */
+    public static boolean isHiddenTabRoot(int destinationId, @NonNull PreferenceManager prefs) {
+        return isHiddenTabRoot(destinationId, mainTabKeys(prefs));
+    }
+
+    static boolean isHiddenTabRoot(int destinationId, @NonNull List<String> mainKeys) {
+        for (Map.Entry<String, Tab> e : TABS.entrySet()) {
+            if (e.getValue().destinationId == destinationId) return !mainKeys.contains(e.getKey());
+        }
+        return false;
+    }
+
     public static List<String> allKeys() { return new ArrayList<>(Arrays.asList(TABS.keySet().toArray(new String[0]))); }
 
     public static int destinationId(@NonNull String key) { return TABS.get(key).destinationId; }
