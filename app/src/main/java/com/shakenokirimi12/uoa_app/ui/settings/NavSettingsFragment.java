@@ -54,6 +54,8 @@ public class NavSettingsFragment extends Fragment {
             prefs.setOtherTabs("facilities,grades");
             loadTabs();
             buildUI();
+            // 入れ替えたときと同じく、表示中の下タブにもすぐ反映する。
+            refreshBottomTabs();
         });
     }
 
@@ -141,6 +143,10 @@ public class NavSettingsFragment extends Fragment {
     private void saveTabs() {
         prefs.setMainTabs(String.join(",", mainTabs));
         prefs.setOtherTabs(String.join(",", otherTabs));
+        refreshBottomTabs();
+    }
+
+    private void refreshBottomTabs() {
         if (getActivity() instanceof com.shakenokirimi12.uoa_app.MainActivity) {
             ((com.shakenokirimi12.uoa_app.MainActivity) getActivity()).refreshBottomTabs();
         }

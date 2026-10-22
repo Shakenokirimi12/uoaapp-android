@@ -69,8 +69,13 @@ public final class MainTabs {
     @NonNull
     public static List<String> mainTabKeys(@Nullable String storedMain) {
         List<String> keys = knownKeys(storedMain);
-        if (!keys.contains(HOME)) keys.add(0, HOME);
-        return keys.size() > MAX_MAIN ? new ArrayList<>(keys.subList(0, MAX_MAIN)) : keys;
+        if (keys.size() > MAX_MAIN) keys = new ArrayList<>(keys.subList(0, MAX_MAIN));
+        // 切り詰めた後で足す。先に確かめると、5 番目以降にあったホームが切り詰めで消える。
+        if (!keys.contains(HOME)) {
+            keys.add(0, HOME);
+            if (keys.size() > MAX_MAIN) keys.remove(keys.size() - 1);
+        }
+        return keys;
     }
 
     /** 「その他」に並べるキー。タブに置ける画面のうち、下タブに無いものすべて。 */

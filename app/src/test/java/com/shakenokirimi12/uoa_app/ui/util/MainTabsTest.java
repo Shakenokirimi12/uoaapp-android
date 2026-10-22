@@ -40,4 +40,11 @@ public class MainTabsTest {
         assertEquals(MainTabs.allKeys().size() - 1, more.size());
         assertFalse(more.contains("map"));
     }
+
+    @Test
+    public void homeBeyondTheLimitIsKeptInTheBottomNav() {
+        List<String> main = MainTabs.mainTabKeys("calendar,courses,grades,gakushoku,home");
+        assertEquals(Arrays.asList(MainTabs.HOME, "calendar", "courses", "grades"), main);
+        assertTrue(MainTabs.moreTabKeys(main, "").contains("gakushoku"));
+    }
 }
