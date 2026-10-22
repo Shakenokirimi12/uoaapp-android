@@ -1,7 +1,6 @@
 package com.shakenokirimi12.uoa_app;
 
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -18,6 +17,8 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.AppConfig;
 import com.shakenokirimi12.uoa_app.services.AppConfigService;
+import com.shakenokirimi12.uoa_app.services.ForceUpdateGate;
+import com.shakenokirimi12.uoa_app.ui.ForceUpdateActivity;
 import com.shakenokirimi12.uoa_app.services.sync.SyncScheduler;
 import com.shakenokirimi12.uoa_app.services.LocationGeofenceService;
 import com.shakenokirimi12.uoa_app.services.PushNotificationService;
@@ -29,6 +30,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 強制アップデートの対象なら、端末登録や同期の予約を始める前に全面表示へ差し替える。
+        if (ForceUpdateGate.getInstance(this).isBlocked()) {
+            ForceUpdateActivity.show(this);
+            return;
+        }
 
         PreferenceManager prefs = PreferenceManager.getInstance(this);
         if (!prefs.isOnboardingDone()) {
@@ -99,9 +106,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 前面復帰のたびに取り直す。メンテナンス解除や killswitch の変更を、
-        // アプリを起動し直さなくても拾えるようにする (iOS と同じタイミング)。
-        AppConfigService.getInstance().refresh(this);
+        // リモート設定の取り直しは、アプリが前面に出るたびに UoaApplication が行う (どの画面から戻っても)。
         // 同意を記録する前に作った PC との連携があれば、起動して最初に前面に出たときに 1 回だけ確かめる。
         com.shakenokirimi12.uoa_app.ui.otprelay.OtpRelayConsentPrompt.showAtLaunch(this);
     }
@@ -180,36 +185,19 @@ public class MainActivity extends AppCompatActivity {
         getOnBackPressedDispatcher().addCallback(this, swallowBack);
 
         AppConfigService.getInstance().config().observe(this, config -> {
-            applyBlockingState(config, overlay, swallowBack);
+            applyBlockingState(overlay, swallowBack);
             applyStatusNotice(config);
         });
     }
 
-    private void applyBlockingState(AppConfig config, View overlay, OnBackPressedCallback swallowBack) {
+    private void applyBlockingState(View overlay, OnBackPressedCallback swallowBack) {
         AppConfigService svc = AppConfigService.getInstance();
         TextView title = findViewById(R.id.blocking_title);
         TextView message = findViewById(R.id.blocking_message);
         Button button = findViewById(R.id.blocking_button);
 
-        // 強制更新を優先する。古いバージョンにメンテナンス解除後の画面を見せても意味がない。
-        if (svc.isForceUpdateRequired()) {
-            title.setText(R.string.force_update_title);
-            String msg = config.forceUpdateMessage;
-            message.setText(msg != null && !msg.isEmpty() ? msg : getString(R.string.force_update_default_message));
-            button.setText(R.string.force_update_open_store);
-            button.setEnabled(true);
-            button.setOnClickListener(v -> {
-                String url = config.forceUpdateURL;
-                if (url == null || url.isEmpty()) {
-                    url = "https://play.google.com/store/apps/details?id=" + getPackageName();
-                }
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-            });
-            overlay.setVisibility(View.VISIBLE);
-            swallowBack.setEnabled(true);
-            return;
-        }
-
+        // 強制更新は ForceUpdateActivity が全画面で出す (UoaApplication がどの画面の上にも出す)。
+        // ここではメンテナンスだけを扱う。
         if (svc.isFlagEnabled("maintenance_mode")) {
             title.setText(R.string.maintenance_title);
             String msg = svc.flagValue("maintenance_message");

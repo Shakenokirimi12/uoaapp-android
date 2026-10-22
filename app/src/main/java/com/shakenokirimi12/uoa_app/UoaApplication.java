@@ -14,6 +14,9 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.os.LocaleListCompat;
 
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
+import com.shakenokirimi12.uoa_app.services.AppConfigService;
+import com.shakenokirimi12.uoa_app.services.ForceUpdateGate;
+import com.shakenokirimi12.uoa_app.ui.ForceUpdateActivity;
 
 public class UoaApplication extends Application {
     /**
@@ -26,11 +29,22 @@ public class UoaApplication extends Application {
     @Nullable
     public static Activity getForegroundActivity() { return foregroundActivity; }
 
+    /** 開始している (画面に見えている) Activity の数。0 から 1 になったときがアプリの前面復帰。 */
+    private int startedActivities = 0;
+
     @Override
     public void onCreate() {
         super.onCreate();
+        // 端末に残っている強制アップデートの条件を、最初の画面より先に読む (取得を待たずに止めるため)。
+        ForceUpdateGate gate = ForceUpdateGate.getInstance(this);
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
-            @Override public void onActivityResumed(@NonNull Activity activity) { foregroundActivity = activity; }
+            @Override public void onActivityResumed(@NonNull Activity activity) {
+                foregroundActivity = activity;
+                // どの画面 (初期設定・アプリ内ブラウザ・通知から開いた画面) から入っても止める。
+                if (gate.isBlocked() && !(activity instanceof ForceUpdateActivity)) {
+                    ForceUpdateActivity.show(activity);
+                }
+            }
 
             @Override public void onActivityPaused(@NonNull Activity activity) {
                 // 別の Activity が既に resume していたら、そちらを消さない。
@@ -41,10 +55,27 @@ public class UoaApplication extends Application {
                 if (foregroundActivity == activity) foregroundActivity = null;
             }
 
+            @Override public void onActivityStarted(@NonNull Activity activity) {
+                // 起動時と前面復帰のたびに、どの画面から入ってもリモート設定 (強制更新・メンテナンス・
+                // killswitch) を取り直す。以前は MainActivity.onResume だけで、初期設定や通知から開いた
+                // 画面では取り直していなかった。
+                if (startedActivities++ == 0) AppConfigService.getInstance().refresh(activity);
+            }
+
+            @Override public void onActivityStopped(@NonNull Activity activity) {
+                if (startedActivities > 0) startedActivities--;
+            }
+
             @Override public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle state) { }
-            @Override public void onActivityStarted(@NonNull Activity activity) { }
-            @Override public void onActivityStopped(@NonNull Activity activity) { }
             @Override public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle out) { }
+        });
+        // 画面を開いている間に取得の結果で止める必要が出たら、その場で差し替える。
+        gate.blocked().observeForever(blocked -> {
+            Activity current = foregroundActivity;
+            if (Boolean.TRUE.equals(blocked) && gate.isBlocked()
+                    && current != null && !(current instanceof ForceUpdateActivity) && !current.isFinishing()) {
+                ForceUpdateActivity.show(current);
+            }
         });
         // Context を持たないサービス層が PreferenceManager.getInstance() で取れるよう、ここで初期化する。
         PreferenceManager.getInstance(this);
