@@ -1,8 +1,10 @@
 package com.shakenokirimi12.uoa_app.ui;
 
 import android.content.Context;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
+import android.widget.Toast;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.webkit.WebSettings;
@@ -44,7 +46,19 @@ public class ClassLocationDialog {
             Uri gmmUri = Uri.parse("geo:" + CAMPUS_LAT + "," + CAMPUS_LNG
                     + "?q=" + Uri.encode(query));
             Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmUri);
-            context.startActivity(mapIntent);
+            // geo: を受ける地図アプリが無い端末では ActivityNotFoundException で落ちていた。
+            // ブラウザの Google マップに落とし、それも無ければその旨を出す。
+            try {
+                context.startActivity(mapIntent);
+            } catch (ActivityNotFoundException noMapApp) {
+                Uri webUri = Uri.parse("https://www.google.com/maps/search/?api=1&query="
+                        + Uri.encode(query));
+                try {
+                    context.startActivity(new Intent(Intent.ACTION_VIEW, webUri));
+                } catch (ActivityNotFoundException noBrowser) {
+                    Toast.makeText(context, "地図を開けるアプリがありません", Toast.LENGTH_SHORT).show();
+                }
+            }
         });
 
         new MaterialAlertDialogBuilder(context)
