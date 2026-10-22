@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -27,6 +28,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClassNotificationService extends Service {
 
+    private static final String TAG = "ClassNotification";
     public static final String CHANNEL_ID = NotificationChannels.CLASS_ONGOING;
     private static final int NOTIFICATION_ID = 1001;
     private static final long UPDATE_INTERVAL = 15_000;
@@ -42,10 +44,18 @@ public class ClassNotificationService extends Service {
         Intent intent = new Intent(context, ClassNotificationService.class);
         intent.setAction(ACTION_UPDATE);
         ClassNotificationService.pendingEvents = events;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent);
-        } else {
-            context.startService(intent);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent);
+            } else {
+                context.startService(intent);
+            }
+        } catch (IllegalStateException e) {
+            // 取得の完了がアプリを裏に回した後になると、ここはバックグラウンドからの起動になり、
+            // Android 12 以降は ForegroundServiceStartNotAllowedException (IllegalStateException の子) で
+            // 落ちていた。常駐通知は次に前面で取得したときに出せばよいので、今回は諦める。
+            pendingEvents = null;
+            Log.w(TAG, "Cannot start the class notification from the background: " + e.getMessage());
         }
     }
 
@@ -72,15 +82,29 @@ public class ClassNotificationService extends Service {
             }
         }
 
+        // startForegroundService で起こされた以上、毎回 startForeground を呼ぶ (既に前面でも、呼ばないと
+        // 5 秒後に ForegroundServiceDidNotStartInTimeException で落ちる)。
+        try {
+            startForeground(NOTIFICATION_ID, buildNotification());
+        } catch (IllegalStateException e) {
+            // 起動を頼んでからここまでの間にアプリが裏に回った (Android 12 以降で拒否される)。
+            Log.w(TAG, "startForeground rejected: " + e.getMessage());
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        if (getCurrentClass() == null && getNextClass() == null) {
+            // 今日の授業がもう残っていない。出し続ける理由が無い。
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         if (!running) {
             running = true;
-            startForeground(NOTIFICATION_ID, buildNotification());
             scheduleUpdate();
-        } else {
-            updateNotification();
         }
 
-        return START_STICKY;
+        // プロセスが落ちたあと OS に再起動させない。再起動された側は授業の一覧を持っておらず、
+        // 授業がある日でも「今日の授業はありません」と出していた。次に前面で取得したときに出し直す。
+        return START_NOT_STICKY;
     }
 
     private void scheduleUpdate() {
@@ -150,7 +174,7 @@ public class ClassNotificationService extends Service {
                             "%s  %d分後", next.getLocation(), untilMin))
                     .setSubText(subtitle);
         } else {
-            builder.setContentTitle("今日の授業はありません")
+            builder.setContentTitle("今日の授業は終わりました")
                     .setContentText("");
         }
 
