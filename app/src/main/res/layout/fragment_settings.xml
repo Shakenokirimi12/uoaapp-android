@@ -198,20 +198,6 @@
                     android:drawableStart="@drawable/ic_building"
                     android:drawableEnd="@drawable/ic_chevron_right"
                     android:text="@string/settings_facilities" />
-
-                <com.google.android.material.divider.MaterialDivider
-                    style="@style/Widget.Uoa.Divider"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-                <TextView
-                    android:id="@+id/button_notifications"
-                    style="@style/Widget.Uoa.ListRow"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:drawableStart="@drawable/ic_inbox"
-                    android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="通知受信ボックス" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

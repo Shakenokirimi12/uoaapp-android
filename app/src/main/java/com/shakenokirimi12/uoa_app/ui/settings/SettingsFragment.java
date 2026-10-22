@@ -201,8 +201,6 @@ public class SettingsFragment extends Fragment {
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_grades));
         view.findViewById(R.id.button_facilities).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_facilities));
-        view.findViewById(R.id.button_notifications).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_settings_to_notifications));
 
         // Notification switches
         MaterialSwitch switchAssignment = view.findViewById(R.id.switch_assignment_notify);

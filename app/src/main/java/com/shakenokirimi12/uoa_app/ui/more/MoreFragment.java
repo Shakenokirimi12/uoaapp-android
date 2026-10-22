@@ -37,8 +37,6 @@ public class MoreFragment extends Fragment {
                 com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(requireContext()));
         addTabRows(view.findViewById(R.id.layout_more_features), moreKeys);
 
-        view.findViewById(R.id.button_notifications).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_more_to_notifications));
         view.findViewById(R.id.button_settings).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_more_to_settings));
     }
