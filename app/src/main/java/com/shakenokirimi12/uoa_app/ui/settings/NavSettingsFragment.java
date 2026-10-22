@@ -18,25 +18,11 @@ import com.google.android.material.divider.MaterialDivider;
 
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
+import com.shakenokirimi12.uoa_app.ui.util.MainTabs;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public class NavSettingsFragment extends Fragment {
-
-    private static final Map<String, String> TAB_LABELS = new LinkedHashMap<>();
-    static {
-        TAB_LABELS.put("home", "ホーム");
-        TAB_LABELS.put("calendar", "カレンダー");
-        TAB_LABELS.put("courses", "履修");
-        TAB_LABELS.put("grades", "成績");
-        TAB_LABELS.put("gakushoku", "学食");
-        TAB_LABELS.put("facilities", "施設利用");
-        TAB_LABELS.put("reviews", "授業評価");
-    }
 
     private PreferenceManager prefs;
     private List<String> mainTabs;
@@ -68,21 +54,16 @@ public class NavSettingsFragment extends Fragment {
             prefs.setOtherTabs("facilities,grades");
             loadTabs();
             buildUI();
+            // 入れ替えたときと同じく、表示中の下タブにもすぐ反映する。
+            refreshBottomTabs();
         });
     }
 
     private void loadTabs() {
-        mainTabs = new ArrayList<>(Arrays.asList(prefs.getMainTabs().split(",")));
-        otherTabs = new ArrayList<>(Arrays.asList(prefs.getOtherTabs().split(",")));
-        mainTabs.removeIf(s -> s.isEmpty());
-        otherTabs.removeIf(s -> s.isEmpty());
-
-        // Ensure all tabs are present
-        for (String key : TAB_LABELS.keySet()) {
-            if (!mainTabs.contains(key) && !otherTabs.contains(key)) {
-                otherTabs.add(key);
-            }
-        }
+        // 下タブと「その他」の画面が実際に使う並びをそのまま出す (MainTabs)。保存値をそのまま
+        // 出すと、未知のキーが行になったり、常に下タブにあるホームが「その他」側に見えたりする。
+        mainTabs = MainTabs.mainTabKeys(prefs);
+        otherTabs = MainTabs.moreTabKeys(prefs);
     }
 
     private void buildUI() {
@@ -98,7 +79,9 @@ public class NavSettingsFragment extends Fragment {
     }
 
     private void addTabRow(LinearLayout parent, String tabKey, boolean isMain) {
-        String label = TAB_LABELS.getOrDefault(tabKey, tabKey);
+        String label = MainTabs.label(tabKey);
+        // ホームは起動時の画面なので、下タブから外せない (MainTabs.mainTabKeys が先頭に戻す)。
+        boolean movable = !(isMain && MainTabs.HOME.equals(tabKey));
 
         if (parent.getChildCount() > 0) {
             MaterialDivider divider = new MaterialDivider(requireContext(), null,
@@ -116,7 +99,7 @@ public class NavSettingsFragment extends Fragment {
         android.util.TypedValue ripple = new android.util.TypedValue();
         requireContext().getTheme().resolveAttribute(
                 android.R.attr.selectableItemBackground, ripple, true);
-        row.setBackgroundResource(ripple.resourceId);
+        if (movable) row.setBackgroundResource(ripple.resourceId);
 
         TextView text = new TextView(requireContext());
         text.setText(label);
@@ -139,14 +122,14 @@ public class NavSettingsFragment extends Fragment {
         arrow.setContentDescription(isMain ? "「その他」へ移動" : "ナビゲーションバーへ移動");
         LinearLayout.LayoutParams arrowParams = new LinearLayout.LayoutParams(dp(24), dp(24));
         arrow.setLayoutParams(arrowParams);
-        row.addView(arrow);
+        if (movable) row.addView(arrow);
 
-        row.setOnClickListener(v -> {
+        if (movable) row.setOnClickListener(v -> {
             if (isMain) {
                 mainTabs.remove(tabKey);
                 otherTabs.add(tabKey);
             } else {
-                if (mainTabs.size() >= 4) return;
+                if (mainTabs.size() >= MainTabs.MAX_MAIN) return;
                 otherTabs.remove(tabKey);
                 mainTabs.add(tabKey);
             }
@@ -160,6 +143,10 @@ public class NavSettingsFragment extends Fragment {
     private void saveTabs() {
         prefs.setMainTabs(String.join(",", mainTabs));
         prefs.setOtherTabs(String.join(",", otherTabs));
+        refreshBottomTabs();
+    }
+
+    private void refreshBottomTabs() {
         if (getActivity() instanceof com.shakenokirimi12.uoa_app.MainActivity) {
             ((com.shakenokirimi12.uoa_app.MainActivity) getActivity()).refreshBottomTabs();
         }

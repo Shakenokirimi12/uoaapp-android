@@ -35,62 +35,13 @@
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp">
 
+            <!-- タブに置ける画面のうち下タブに無いものの行は、MoreFragment が先頭に差し込む
+                 (MainTabs.moreTabKeys)。ここに置くのは「その他」にしか無い画面だけ。 -->
             <LinearLayout
+                android:id="@+id/layout_more_features"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/button_reviews"
-                    style="@style/Widget.Uoa.ListRow"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:drawableStart="@drawable/ic_review"
-                    android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="授業評価" />
-
-                <com.google.android.material.divider.MaterialDivider
-                    android:id="@+id/divider_reviews"
-                    style="@style/Widget.Uoa.Divider"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-                <TextView
-                    android:id="@+id/button_grades"
-                    style="@style/Widget.Uoa.ListRow"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:drawableStart="@drawable/ic_grades"
-                    android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="成績一覧" />
-
-                <com.google.android.material.divider.MaterialDivider
-                    style="@style/Widget.Uoa.Divider"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-                <TextView
-                    android:id="@+id/button_gakushoku"
-                    style="@style/Widget.Uoa.ListRow"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:drawableStart="@drawable/ic_restaurant"
-                    android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="学食メニュー" />
-
-                <com.google.android.material.divider.MaterialDivider
-                    style="@style/Widget.Uoa.Divider"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-                <TextView
-                    android:id="@+id/button_facilities"
-                    style="@style/Widget.Uoa.ListRow"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:drawableStart="@drawable/ic_building"
-                    android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="施設利用状況" />
 
                 <com.google.android.material.divider.MaterialDivider
                     android:id="@+id/divider_campus_map"

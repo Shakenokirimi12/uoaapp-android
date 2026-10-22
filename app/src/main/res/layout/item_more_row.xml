@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 「その他」の機能の行。MoreFragment がタブに置ける画面ごとに差し込む。 -->
+<TextView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/Widget.Uoa.ListRow"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:drawableEnd="@drawable/ic_chevron_right" />

@@ -19,7 +19,7 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:text="タップして表示先を入れ替えます。「その他」タブは常にナビゲーションの末尾に固定表示されます。" />
+            android:text="タップで入れ替えます。ナビゲーションバーに出さない画面は「その他」から開けます。" />
 
         <TextView
             style="@style/Widget.Uoa.SectionHeader"

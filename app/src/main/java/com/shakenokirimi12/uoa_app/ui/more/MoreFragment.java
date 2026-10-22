@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -11,6 +12,10 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
 import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.ui.util.MainTabs;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MoreFragment extends Fragment {
 
@@ -31,38 +36,49 @@ public class MoreFragment extends Fragment {
         // 前面復帰の取り直しで入口が消えるようにするため。
         com.shakenokirimi12.uoa_app.services.AppConfigService flags =
                 com.shakenokirimi12.uoa_app.services.AppConfigService.getInstance();
-        // 下タブに出している機能はここに重ねて出さない (タブの表示設定、iOS と同じ)。
-        com.shakenokirimi12.uoa_app.data.PreferenceManager prefs =
-                com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(requireContext());
+        // 下タブに出していない画面は、すべてここに並べる (タブの表示設定、iOS と同じ)。
+        // 一覧を手で持つと、タブから外した画面 (カレンダー・履修など) がどこからも開けなくなる。
+        // タブの表示設定はこの画面から設定を経由して変えるので、戻ると onViewCreated から作り直される。
+        List<String> moreKeys = MainTabs.moreTabKeys(
+                com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(requireContext()));
+        ViewGroup features = view.findViewById(R.id.layout_more_features);
+        List<View> tabRows = addTabRows(features, moreKeys);
         flags.config().observe(getViewLifecycleOwner(), config -> {
-            boolean reviews = flags.isFeatureEnabled("review_enabled")
-                    && !com.shakenokirimi12.uoa_app.ui.util.MainTabs.isInMainTabs(prefs, "reviews");
-            view.findViewById(R.id.button_reviews).setVisibility(reviews ? View.VISIBLE : View.GONE);
-            view.findViewById(R.id.button_grades).setVisibility(
-                    com.shakenokirimi12.uoa_app.ui.util.MainTabs.isInMainTabs(prefs, "grades") ? View.GONE : View.VISIBLE);
-            view.findViewById(R.id.button_gakushoku).setVisibility(
-                    com.shakenokirimi12.uoa_app.ui.util.MainTabs.isInMainTabs(prefs, "gakushoku") ? View.GONE : View.VISIBLE);
-            view.findViewById(R.id.button_facilities).setVisibility(
-                    com.shakenokirimi12.uoa_app.ui.util.MainTabs.isInMainTabs(prefs, "facilities") ? View.GONE : View.VISIBLE);
+            for (int i = 0; i < moreKeys.size(); i++) {
+                boolean visible = !"reviews".equals(moreKeys.get(i))
+                        || flags.isFeatureEnabled("review_enabled");
+                tabRows.get(i).setVisibility(visible ? View.VISIBLE : View.GONE);
+            }
             view.findViewById(R.id.button_campus_map).setVisibility(
                     flags.isFeatureEnabled("campus_map_enabled") ? View.VISIBLE : View.GONE);
-            hideOrphanDividers((ViewGroup) view.findViewById(R.id.button_grades).getParent());
+            hideOrphanDividers(features);
         });
 
-        view.findViewById(R.id.button_reviews).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_more_to_reviews));
-        view.findViewById(R.id.button_grades).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_more_to_grades));
-        view.findViewById(R.id.button_gakushoku).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.navigation_gakushoku));
-        view.findViewById(R.id.button_facilities).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_more_to_facilities));
         view.findViewById(R.id.button_campus_map).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_more_to_campus_map));
         view.findViewById(R.id.button_notifications).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_more_to_notifications));
         view.findViewById(R.id.button_settings).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_more_to_settings));
+    }
+
+    /** 機能のカードの先頭に、渡したキーの順で行を差し込む。戻り値はキーと同じ順の行。 */
+    private List<View> addTabRows(ViewGroup features, List<String> keys) {
+        LayoutInflater inflater = getLayoutInflater();
+        List<View> rows = new ArrayList<>();
+        int index = 0;
+        for (String key : keys) {
+            // 区切り線は hideOrphanDividers が見えている行の間にだけ出す。行ごとに 1 本置いておく。
+            if (index > 0) features.addView(inflater.inflate(R.layout.item_divider, features, false), index++);
+            TextView row = (TextView) inflater.inflate(R.layout.item_more_row, features, false);
+            row.setText(MainTabs.moreLabel(key));
+            row.setCompoundDrawablesRelativeWithIntrinsicBounds(MainTabs.iconRes(key), 0, R.drawable.ic_chevron_right, 0);
+            int destination = MainTabs.destinationId(key);
+            row.setOnClickListener(v -> Navigation.findNavController(v).navigate(destination));
+            features.addView(row, index++);
+            rows.add(row);
+        }
+        return rows;
     }
 
     /**
