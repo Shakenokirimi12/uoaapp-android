@@ -11,7 +11,8 @@ import com.shakenokirimi12.uoa_app.UoaApplication;
 
 /**
  * ログインの途中で「ワンタイムパスワード未設定」と分かったとき、設定画面を探させずにその場で
- * 登録画面を開く (iOS の AppState.showOTPRegistration と同じ)。設定画面からの手動導線は持たない。
+ * 登録画面を開く (iOS の AppState.showOTPRegistration と同じ)。設定画面から新規登録を始める導線は持たない
+ * (設定画面からは、設定済みのアカウントの方式の切り替えとしてだけ開く)。
  * バックグラウンド同期 (前面 Activity 無し) では開かない。同じプロセス内で何度も積まない。
  */
 public final class OtpRegistrationLauncher {

@@ -17,7 +17,9 @@ import com.shakenokirimi12.uoa_app.data.PreferenceManager;
  *
  * 平文の prefs (uoa_app_prefs.xml) は設定と一緒に丸ごとバックアップされ、そこに device_id と fcm_token も
  * 入っている。そのまま新しい端末へ戻ると、2 台が同じ device_id でサーバーに登録してプッシュと課題リマインダーの
- * 予約を取り合う。バックアップ規則 (xml/backup_rules, xml/data_extraction_rules) はファイル単位でしか除外
+ * 予約を取り合う。OTP の受け取り方 (otp_method) も同じく消す。大学側 (IdP) の方式は復元しても変わらないので、
+ * バックアップの時点の方式を戻すと IdP と食い違ってログインできなくなることがある。
+ * バックアップ規則 (xml/backup_rules, xml/data_extraction_rules) はファイル単位でしか除外
  * できないので、ここで復元後に消す。復元はアプリの初回起動より前なので、消しておけば新しい端末は自分の id を作る。
  *
  * Firebase 側の保存は対象にしない。2026-10-16 にエミュレータで見たところ、Installations の ID は

@@ -2,9 +2,12 @@ package com.shakenokirimi12.uoa_app.data;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import androidx.annotation.NonNull;
 import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKeys;
 import android.util.Log;
+
+import com.shakenokirimi12.uoa_app.services.idp.OtpMethod;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -57,11 +60,15 @@ public class PreferenceManager {
      * device_id をそのまま使うと 2 台が同じ id でサーバーに登録され、プッシュの宛先と課題リマインダーの予約を
      * 取り合う。fcm_token は持ち込んだ先では別端末のトークン。server_holds_assignment_reminders は
      * 「この device_id の予約がサーバーにあるか」なので、id と一緒に意味を失う。
+     * otp_method (OTP の受け取り方) は大学側 (IdP) に登録されている方式と揃っていないとログインできない。
+     * 復元しても IdP の方式は変わらないので、バックアップの時点の方式を戻すと食い違うことがある
+     * (iOS の BackupService も預けも戻しもしない)。書き換えは IdP への登録が済んだときだけ
+     * (applyRegisteredOtpMethod)。
      * SAF のバックアップ (BackupService) は書き出さず、OS の自動バックアップ・端末間転送は
      * UoaBackupAgent が復元直後に消す。消えた端末は getDeviceId() が新しい id を作る。
      */
     public static final String[] DEVICE_LOCAL_KEYS = {
-            KEY_DEVICE_ID, KEY_FCM_TOKEN, KEY_SERVER_HOLDS_REMINDERS,
+            KEY_DEVICE_ID, KEY_FCM_TOKEN, KEY_SERVER_HOLDS_REMINDERS, KEY_OTP_METHOD,
     };
 
     /**
@@ -213,7 +220,12 @@ public class PreferenceManager {
     // Credentials
     public String getUsername() { return getSecret(KEY_USERNAME); }
     public void setUsername(String username) {
+        String previous = getUsername();
+        boolean otherAccount = !previous.isEmpty() && !previous.equals(username != null ? username : "");
         putSecret(KEY_USERNAME, username);
+        // OTP の受け取り方はアカウントごと。別のアカウントにしたら、次のログインで IdP から読み直す
+        // (OtpProviders)。初めて保存するとき (初期設定) は、そのログインで読んだ方式を残す。
+        if (otherAccount) prefs.edit().remove(KEY_OTP_METHOD).apply();
         // 別のアカウントに切り替えたとき、前のユーザーの IdP セッションを引き継がない。
         setCsIdpSessionCookies(null);
         // メモリ上のセッション cookie も含めて消す (ストアはプロセス内に写しを持つ)。
@@ -348,7 +360,30 @@ public class PreferenceManager {
      * そのぶんセッションの永続化が効いていることが前提になる。iOS の SettingsStore.otpMethod と同じ値。
      */
     public String getOtpMethod() { return prefs.getString(KEY_OTP_METHOD, "mail"); }
-    public void setOtpMethod(String method) { prefs.edit().putString(KEY_OTP_METHOD, method).apply(); }
+
+    /**
+     * 受け取り方が決まっているか。新しく入れた端末、復元した端末 (DEVICE_LOCAL_KEYS)、アカウントを
+     * 変えた端末では決まっておらず、次のログインで IdP の OTP 入力画面から読む (OtpProviders)。
+     */
+    public boolean isOtpMethodKnown() { return prefs.contains(KEY_OTP_METHOD); }
+
+    /**
+     * ログインで着いた OTP 入力画面の otp_type から分かった、IdP が実際に使っている方式を保存する。
+     * まだ決まっていないときだけ書く (IdP の方式は変えない。登録の完了で決まった方式を上書きしない)。
+     */
+    public synchronized void adoptOtpMethodFromIdp(@NonNull OtpMethod method) {
+        if (isOtpMethodKnown()) return;
+        prefs.edit().putString(KEY_OTP_METHOD, method.value).apply();
+    }
+    /**
+     * IdP への登録が完了した方式に揃える。受け取り方を新しく変えられるのはここだけで、呼ぶのは
+     * OtpRegistrationCommit (登録が済んだと分かったとき) だけ。大学側 (IdP) に登録されている方式と
+     * 揃っていないとログインできないので、設定画面の切り替えも復元も、値を直接書かない。
+     * (ほかに書くのは、決まっていない端末で IdP の方式を読み取ったときの adoptOtpMethodFromIdp だけ。)
+     */
+    public synchronized void applyRegisteredOtpMethod(@NonNull OtpMethod method) {
+        prefs.edit().putString(KEY_OTP_METHOD, method.value).apply();
+    }
 
     /**
      * IdP 経由で得た CampusSquare のセッション cookie (SpSessionCookies の形式、属性込み)。iOS は Keychain に
