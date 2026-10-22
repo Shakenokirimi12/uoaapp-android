@@ -35,6 +35,7 @@ public final class ForceUpdateGate {
     private final String ownVersion;
     @Nullable private ForceUpdatePolicy.Requirement requirement;
     private final MutableLiveData<Boolean> blocked = new MutableLiveData<>();
+    private final Object saveLock = new Object();
 
     private ForceUpdateGate(@NonNull Context context) {
         prefs = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -74,7 +75,6 @@ public final class ForceUpdateGate {
     public void onFetched(@NonNull AppConfig config) {
         boolean nowBlocked;
         boolean changed = false;
-        ForceUpdatePolicy.Requirement toSave;
         synchronized (this) {
             ForceUpdatePolicy.Requirement next = ForceUpdatePolicy.afterSuccessfulFetch(
                     requirement, config.minRequiredVersion, config.forceUpdateURL, config.forceUpdateMessage);
@@ -85,12 +85,18 @@ public final class ForceUpdateGate {
                 requirement = next;
                 changed = true;
             }
-            toSave = requirement;
             nowBlocked = ForceUpdatePolicy.isBlocked(ownVersion, requirement);
         }
-        // 書き込みはロックの外で行う。メインスレッドの isBlocked() をディスクの書き込みで待たせない。
-        // 判定はメモリ上の requirement で済むので、書き込みが後になっても止める・止めないは変わらない。
-        if (changed) save(toSave);
+        // 書き込みはこのロックの外で行う。メインスレッドの isBlocked() をディスクの書き込みで待たせない。
+        // 書き込みどうしは saveLock で順に並べ、そのときの最新の条件を書く (2 つの取得が同時に
+        // 終わっても、古い方の条件が後から書かれて端末に残ることがないように)。
+        if (changed) {
+            synchronized (saveLock) {
+                ForceUpdatePolicy.Requirement latest;
+                synchronized (this) { latest = requirement; }
+                save(latest);
+            }
+        }
         blocked.postValue(nowBlocked);
     }
 
