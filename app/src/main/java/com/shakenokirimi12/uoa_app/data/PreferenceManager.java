@@ -25,6 +25,7 @@ public class PreferenceManager {
     private static final String KEY_SERVER_HOLDS_REMINDERS = "server_holds_assignment_reminders";
     private static final String KEY_NOTIFY_ASSIGNMENTS = "notify_assignments";
     private static final String KEY_NOTIFY_LUNCH = "notify_lunch";
+    private static final String KEY_CLASS_NOTIFICATION = "class_notification_enabled";
     private static final String KEY_LAST_SYNC = "last_sync";
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_AUTO_ATTENDANCE = "auto_attendance_enabled";
@@ -287,6 +288,10 @@ public class PreferenceManager {
     // Notifications
     public boolean isAssignmentNotifyEnabled() { return prefs.getBoolean(KEY_NOTIFY_ASSIGNMENTS, true); }
     public void setAssignmentNotifyEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_NOTIFY_ASSIGNMENTS, enabled).apply(); }
+
+    /** 授業中・次の授業の常駐通知 (iOS の Live Activity の設定に相当)。既定は今までどおり出す。 */
+    public boolean isClassNotificationEnabled() { return prefs.getBoolean(KEY_CLASS_NOTIFICATION, true); }
+    public void setClassNotificationEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_CLASS_NOTIFICATION, enabled).apply(); }
 
     public boolean isLunchNotifyEnabled() { return prefs.getBoolean(KEY_NOTIFY_LUNCH, false); }
     public void setLunchNotifyEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_NOTIFY_LUNCH, enabled).apply(); }

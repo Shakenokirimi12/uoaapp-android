@@ -69,8 +69,8 @@
     <string name="settings_username">ユーザー名</string>
     <string name="settings_password">パスワード</string>
     <string name="settings_notifications">通知</string>
-    <string name="settings_assignment_notify">課題の通知</string>
-    <string name="settings_lunch_notify">学食メニューの通知</string>
+    <string name="settings_assignment_notify">課題の締切</string>
+    <string name="settings_lunch_notify">学食のメニュー</string>
     <string name="settings_general">一般</string>
     <string name="settings_reset">データをリセット</string>
     <string name="settings_version">バージョン</string>
@@ -92,8 +92,6 @@
     <string name="onboarding_done">完了</string>
 
     <!-- Grades -->
-    <string name="settings_grades">成績一覧</string>
-    <string name="settings_facilities">施設利用状況</string>
 
     <!-- Common -->
     <string name="loading">読み込み中…</string>
@@ -132,7 +130,7 @@
     <string name="class_channel_name">授業通知</string>
     <string name="lunch_channel_name">学食メニュー</string>
     <string name="otp_relay_channel_name">PC への OTP 送信結果</string>
-    <string name="otp_relay_title">PC との連携 (OTP)</string>
+    <string name="otp_relay_title">PC との連携</string>
     <string name="otp_relay_intro">PC で OTP の入力画面が出ると、この端末が大学のメールから OTP を読み取り、暗号化して自動で PC に送ります。ユーザー名とパスワードは、PC にも中継サーバにも送りません。</string>
     <string name="otp_relay_consent_continue">続ける</string>
     <string name="otp_relay_consent_pending">確認が済むまで OTP を送りません</string>
@@ -191,4 +189,18 @@
     <string name="widget_last_updated">最終更新 %1$s</string>
     <string name="widget_classes_finished">今日の授業は終わりました</string>
     <string name="widget_more">他 %1$d 件</string>
+    <string name="settings_assignment_notify_summary">締切前の通知と、締切 2 時間前からの残り時間</string>
+    <string name="settings_notify_times">通知するタイミング</string>
+    <string name="settings_class_notification">授業の常駐通知</string>
+    <string name="settings_class_notification_summary">授業中と次の授業を通知欄に出し続けます</string>
+    <string name="settings_lunch_notify_summary">毎日決まった時刻に、その日のメニューを通知します</string>
+    <string name="settings_lunch_time">時刻</string>
+    <string name="settings_attendance">出席</string>
+    <string name="settings_auto_attendance">自動出席</string>
+    <string name="settings_auto_attendance_summary">キャンパスに着いたら、その時間の授業を出席として記録します。大学には送りません</string>
+    <string name="settings_location_warning">位置情報が「常に許可」でないため、アプリを閉じている間は動きません。タップして変更</string>
+    <string name="settings_other">その他</string>
+    <string name="settings_tabs">タブの並び</string>
+    <string name="settings_backup">設定を書き出す</string>
+    <string name="settings_restore">設定を読み込む</string>
 </resources>

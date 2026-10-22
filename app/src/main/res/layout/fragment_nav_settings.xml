@@ -19,13 +19,13 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:text="タップで入れ替えます。ナビゲーションバーに出さない画面は「その他」から開けます。" />
+            android:text="タップで入れ替えます。下のタブに無い画面は「その他」から開けます。" />
 
         <TextView
             style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="ナビゲーションバーに表示 (最大4つ)" />
+            android:text="下のタブ (4 つまで)" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -44,7 +44,7 @@
             style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="「その他」に表示" />
+            android:text="「その他」" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -67,7 +67,7 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="24dp"
             android:layout_marginEnd="16dp"
-            android:text="デフォルトに戻す"
+            android:text="最初の並びに戻す"
             app:icon="@drawable/ic_rotate_ccw"
             app:iconGravity="textStart" />
     </LinearLayout>

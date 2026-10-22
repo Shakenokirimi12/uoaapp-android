@@ -20,13 +20,13 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:text="課題の締切より前に通知するタイミングを選びます。複数選択できます。" />
+            android:text="締切の何分前に通知するかを選びます。いくつでも選べます。" />
 
         <TextView
             style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="デフォルト" />
+            android:text="よく使うもの" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -48,7 +48,7 @@
             style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="カスタム"
+            android:text="自分で追加"
             android:visibility="gone"
             tools:visibility="visible" />
 
@@ -81,7 +81,7 @@
                     android:layout_marginStart="4dp"
                     android:layout_marginTop="4dp"
                     android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:text="閉じるボタンで削除できます" />
+                    android:text="× で消せます" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -93,7 +93,7 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:text="新しいタイミングを追加"
+            android:text="タイミングを追加"
             app:icon="@drawable/ic_plus"
             app:iconGravity="textStart" />
 

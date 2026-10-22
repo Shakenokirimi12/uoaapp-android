@@ -56,8 +56,6 @@
         android:name="com.shakenokirimi12.uoa_app.ui.settings.SettingsFragment"
         android:label="@string/nav_settings"
         tools:layout="@layout/fragment_settings">
-        <action android:id="@+id/action_settings_to_grades" app:destination="@id/navigation_grades" />
-        <action android:id="@+id/action_settings_to_facilities" app:destination="@id/navigation_facilities" />
         <action android:id="@+id/action_settings_to_notify_times" app:destination="@id/navigation_notify_times" />
         <action android:id="@+id/action_settings_to_nav_settings" app:destination="@id/navigation_nav_settings" />
         <action android:id="@+id/action_settings_to_idp_tutorial" app:destination="@id/navigation_idp_tutorial" />
@@ -139,12 +137,12 @@
     <fragment
         android:id="@+id/navigation_notify_times"
         android:name="com.shakenokirimi12.uoa_app.ui.settings.NotifyTimesFragment"
-        android:label="通知タイミング" />
+        android:label="@string/settings_notify_times" />
 
     <fragment
         android:id="@+id/navigation_nav_settings"
         android:name="com.shakenokirimi12.uoa_app.ui.settings.NavSettingsFragment"
-        android:label="ナビゲーション設定" />
+        android:label="@string/settings_tabs" />
 
 
 </navigation>

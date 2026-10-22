@@ -139,9 +139,9 @@ public class SettingsFragment extends Fragment {
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     try {
                         BackupService.exportTo(requireContext(), result.getData().getData());
-                        Toast.makeText(requireContext(), "バックアップ完了", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "設定を書き出しました", Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
-                        Toast.makeText(requireContext(), "バックアップ失敗: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "書き出せませんでした: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -152,9 +152,9 @@ public class SettingsFragment extends Fragment {
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     try {
                         BackupService.importFrom(requireContext(), result.getData().getData());
-                        Toast.makeText(requireContext(), "リストア完了。アプリを再起動してください。", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "設定を読み込みました。アプリを開き直すと反映されます", Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
-                        Toast.makeText(requireContext(), "リストア失敗: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "読み込めませんでした: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -195,11 +195,6 @@ public class SettingsFragment extends Fragment {
         // ログインは同期の裏で完結し、OTP 未設定はログイン時に検知して自動で登録画面へ案内する
         // (OtpRegistrationLauncher、iOS と同じ)。
 
-        // Academic navigation
-        view.findViewById(R.id.button_grades).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_settings_to_grades));
-        view.findViewById(R.id.button_facilities).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_settings_to_facilities));
 
         // Notification switches
         MaterialSwitch switchAssignment = view.findViewById(R.id.switch_assignment_notify);
@@ -214,6 +209,16 @@ public class SettingsFragment extends Fragment {
                     // OFF にしたらサーバー側の予約も消す。消さないと cron から届き続ける。
                     if (!checked) com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.clear(requireContext());
                 });
+
+        // 授業の常駐通知 (iOS の Live Activity の設定に相当)。以前は止める手段が無かった。
+        MaterialSwitch switchClassNotification = view.findViewById(R.id.switch_class_notification);
+        switchClassNotification.setChecked(prefs.isClassNotificationEnabled());
+        switchClassNotification.setOnCheckedChangeListener((v, checked) -> {
+            prefs.setClassNotificationEnabled(checked);
+            // OFF なら今出ている分を消す。ON なら手元の時間割で今日の分を出す (startForToday が判定する)。
+            com.shakenokirimi12.uoa_app.services.notification.ClassNotificationService.startForToday(
+                    requireContext(), DataCache.getInstance(requireContext()).loadEvents());
+        });
 
         // Lunch notify with time picker
         View layoutLunchTime = view.findViewById(R.id.layout_lunch_time);
@@ -286,7 +291,7 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.button_logout).setOnClickListener(v ->
                 new MaterialAlertDialogBuilder(requireContext())
                         .setTitle(R.string.settings_logout)
-                        .setMessage("ログアウトしてもよろしいですか？")
+                        .setMessage("この端末に保存したログイン情報とデータを消します。")
                         .setPositiveButton(R.string.ok, (dialog, which) -> {
                             // 先にサーバー側の予約を空にする。prefs.clearAll() は deviceId と
                             // 「サーバーが予約を持っている」記録の両方を消すので、後から呼ぶと
@@ -301,6 +306,7 @@ public class SettingsFragment extends Fragment {
                             // 放置すると次の定期更新まで前のユーザーの時間割が出続ける。
                             com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(requireContext());
                             com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier.clearAll(requireContext());
+                            com.shakenokirimi12.uoa_app.services.notification.ClassNotificationService.stop(requireContext());
                             // OkHttp の cookie と WebView の cookie は別の入れ物。片方だけ消しても、
                             // 次のユーザーがアプリ内ブラウザを開いたときに前のセッションが使われる。
                             com.shakenokirimi12.uoa_app.services.NetworkClient.clearCookies();
@@ -331,7 +337,7 @@ public class SettingsFragment extends Fragment {
                 .setTimeFormat(TimeFormat.CLOCK_24H)
                 .setHour(hour)
                 .setMinute(minute)
-                .setTitleText("通知時間を選択")
+                .setTitleText("通知する時刻")
                 .build();
 
         picker.addOnPositiveButtonClickListener(v -> {
@@ -433,7 +439,7 @@ public class SettingsFragment extends Fragment {
         editUsername.setText(prefs.getUsername());
 
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("アカウント情報の変更")
+                .setTitle(R.string.settings_account)
                 .setView(dialogView)
                 .setPositiveButton("保存", (dialog, which) -> {
                     String newUser = editUsername.getText().toString().trim();

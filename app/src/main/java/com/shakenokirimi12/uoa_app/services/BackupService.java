@@ -42,7 +42,7 @@ public class BackupService {
 
     static final String[] SETTINGS_KEYS = {
             "onboarding_done",
-            "notify_assignments", "notify_lunch", "lunch_notify_time",
+            "notify_assignments", "notify_lunch", "lunch_notify_time", "class_notification_enabled",
             "selected_notify_times", "custom_notify_times",
             "auto_attendance_enabled",
             "main_tabs", "other_tabs",

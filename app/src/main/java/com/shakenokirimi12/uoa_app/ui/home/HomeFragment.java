@@ -479,24 +479,7 @@ public class HomeFragment extends Fragment {
 
     private void startClassNotification(List<CalendarEvent> events) {
         if (!isAdded()) return;
-        Calendar todayStart = Calendar.getInstance();
-        todayStart.set(Calendar.HOUR_OF_DAY, 0);
-        todayStart.set(Calendar.MINUTE, 0);
-        todayStart.set(Calendar.SECOND, 0);
-        long start = todayStart.getTimeInMillis();
-        todayStart.add(Calendar.DAY_OF_YEAR, 1);
-        long end = todayStart.getTimeInMillis();
-
-        List<CalendarEvent> todayClasses = new ArrayList<>();
-        for (CalendarEvent e : events) {
-            if (e.getDtstart() == null) continue;
-            long t = e.getDtstart().getTime();
-            if (t >= start && t < end) todayClasses.add(e);
-        }
-
-        if (!todayClasses.isEmpty()) {
-            ClassNotificationService.updateEvents(requireContext(), todayClasses);
-        }
+        ClassNotificationService.startForToday(requireContext(), events);
     }
 
     private void showError(String message) {

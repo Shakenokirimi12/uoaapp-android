@@ -20,7 +20,12 @@ import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
 import com.shakenokirimi12.uoa_app.data.models.GroupedClass;
 
+import com.shakenokirimi12.uoa_app.data.PreferenceManager;
+import com.shakenokirimi12.uoa_app.services.AppConfigService;
+
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -39,6 +44,36 @@ public class ClassNotificationService extends Service {
     private final List<GroupedClass> groupedClasses = new CopyOnWriteArrayList<>();
     private final SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.JAPANESE);
     private boolean running = false;
+
+    /**
+     * 時間割 (何日分でもよい) から今日の授業を選び、あれば常駐通知を出す。設定で切っている、または
+     * killswitch (live_activity_enabled) で止めているときは出さず、出ていれば消す。
+     * 前面にいるときに呼ぶこと (バックグラウンドからは前景サービスを起動できない)。
+     */
+    public static void startForToday(Context context, List<CalendarEvent> events) {
+        if (!PreferenceManager.getInstance(context).isClassNotificationEnabled()
+                || !AppConfigService.getInstance().isFeatureEnabled("live_activity_enabled")) {
+            stop(context);
+            return;
+        }
+        if (events == null) return;
+        Calendar todayStart = Calendar.getInstance();
+        todayStart.set(Calendar.HOUR_OF_DAY, 0);
+        todayStart.set(Calendar.MINUTE, 0);
+        todayStart.set(Calendar.SECOND, 0);
+        todayStart.set(Calendar.MILLISECOND, 0);
+        long start = todayStart.getTimeInMillis();
+        todayStart.add(Calendar.DAY_OF_YEAR, 1);
+        long end = todayStart.getTimeInMillis();
+
+        List<CalendarEvent> todayClasses = new ArrayList<>();
+        for (CalendarEvent e : events) {
+            if (e.getDtstart() == null) continue;
+            long t = e.getDtstart().getTime();
+            if (t >= start && t < end) todayClasses.add(e);
+        }
+        if (!todayClasses.isEmpty()) updateEvents(context, todayClasses);
+    }
 
     public static void updateEvents(Context context, List<CalendarEvent> events) {
         Intent intent = new Intent(context, ClassNotificationService.class);
