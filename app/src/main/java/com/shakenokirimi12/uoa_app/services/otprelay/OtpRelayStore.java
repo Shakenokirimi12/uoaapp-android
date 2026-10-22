@@ -98,6 +98,50 @@ public final class OtpRelayStore {
         return null;
     }
 
+    /** ログアウトで中継サーバからの解除を待っている連携。 */
+    @NonNull
+    public static List<OtpRelayPairing> pendingUnpairs() {
+        synchronized (LOCK) {
+            return parse(PreferenceManager.getInstance().getOtpRelayPendingUnpairsJson());
+        }
+    }
+
+    /**
+     * 今の連携を全部「解除待ち」へ移す (ログアウト)。移せたら true。
+     * 一覧からは消さない。一覧は呼び出し側が clearAll で消す。
+     */
+    public static boolean moveAllToPendingUnpair() {
+        synchronized (LOCK) {
+            List<OtpRelayPairing> pending = parse(PreferenceManager.getInstance().getOtpRelayPendingUnpairsJson());
+            for (OtpRelayPairing p : all()) {
+                pending.removeIf(q -> p.pairingId.equals(q.pairingId));
+                pending.add(p);
+            }
+            return PreferenceManager.getInstance().commitOtpRelayPendingUnpairsJson(
+                    pending.isEmpty() ? null : GSON.toJson(pending));
+        }
+    }
+
+    public static void removePendingUnpair(@NonNull String pairingId) {
+        synchronized (LOCK) {
+            List<OtpRelayPairing> pending = parse(PreferenceManager.getInstance().getOtpRelayPendingUnpairsJson());
+            pending.removeIf(p -> pairingId.equals(p.pairingId));
+            PreferenceManager.getInstance().commitOtpRelayPendingUnpairsJson(
+                    pending.isEmpty() ? null : GSON.toJson(pending));
+        }
+    }
+
+    @NonNull
+    private static List<OtpRelayPairing> parse(@Nullable String json) {
+        if (json == null || json.isEmpty()) return new ArrayList<>();
+        try {
+            List<OtpRelayPairing> list = GSON.fromJson(json, new TypeToken<List<OtpRelayPairing>>() {}.getType());
+            return list != null ? list : new ArrayList<>();
+        } catch (RuntimeException e) {
+            return new ArrayList<>();
+        }
+    }
+
     /** 書き込みまで確定させる (apply だと失敗が分からず、連携の巻き戻しが走らない)。 */
     private static boolean save(List<OtpRelayPairing> list) {
         return PreferenceManager.getInstance().commitOtpRelayPairingsJson(list.isEmpty() ? null : GSON.toJson(list));

@@ -48,6 +48,7 @@ public class PreferenceManager {
     private static final String KEY_IDP_SSO_OWNER = "idp_sso_owner";
     private static final String KEY_OTP_RELAY_PAIRINGS = "otp_relay_pairings";
     private static final String KEY_OTP_RELAY_LAST_RESULT = "otp_relay_last_result";
+    private static final String KEY_OTP_RELAY_PENDING_UNPAIRS = "otp_relay_pending_unpairs";
     private static final String KEY_MOODLE_SESSION_COOKIE_HEADER = "moodle_session_cookie_header";
 
     private static final String TAG = "PreferenceManager";
@@ -440,9 +441,28 @@ public class PreferenceManager {
     public String getOtpRelayLastResultJson() { return getSecret(KEY_OTP_RELAY_LAST_RESULT); }
     public void setOtpRelayLastResultJson(String json) { putSecret(KEY_OTP_RELAY_LAST_RESULT, json); }
 
+    /**
+     * ログアウトで中継サーバからの解除を待っている連携 (JSON、K を含む)。解除が済むまで
+     * clearAll でも消さない (OtpRelayUnpairWorker)。
+     */
+    public String getOtpRelayPendingUnpairsJson() { return getSecret(KEY_OTP_RELAY_PENDING_UNPAIRS); }
+
+    public boolean commitOtpRelayPendingUnpairsJson(String json) {
+        if (encryptedPrefs == null) return false;
+        SharedPreferences.Editor e = encryptedPrefs.edit();
+        if (json == null || json.isEmpty()) e.remove(KEY_OTP_RELAY_PENDING_UNPAIRS);
+        else e.putString(KEY_OTP_RELAY_PENDING_UNPAIRS, json);
+        return e.commit();
+    }
+
     // Reset
     public void clearAll() {
         prefs.edit().clear().apply();
-        if (encryptedPrefs != null) encryptedPrefs.edit().clear().apply();
+        if (encryptedPrefs == null) return;
+        // 解除待ちの連携だけは残す。消すと、中継サーバに残った連携を二度と解除できなくなる。
+        String pendingUnpairs = encryptedPrefs.getString(KEY_OTP_RELAY_PENDING_UNPAIRS, "");
+        SharedPreferences.Editor e = encryptedPrefs.edit().clear();
+        if (pendingUnpairs != null && !pendingUnpairs.isEmpty()) e.putString(KEY_OTP_RELAY_PENDING_UNPAIRS, pendingUnpairs);
+        e.apply();
     }
 }
