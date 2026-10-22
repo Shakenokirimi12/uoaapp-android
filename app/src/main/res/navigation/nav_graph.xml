@@ -38,9 +38,6 @@
         android:name="com.shakenokirimi12.uoa_app.ui.more.MoreFragment"
         android:label="@string/nav_more"
         tools:layout="@layout/fragment_more">
-        <action android:id="@+id/action_more_to_reviews" app:destination="@id/navigation_reviews" />
-        <action android:id="@+id/action_more_to_grades" app:destination="@id/navigation_grades" />
-        <action android:id="@+id/action_more_to_facilities" app:destination="@id/navigation_facilities" />
         <action android:id="@+id/action_more_to_campus_map" app:destination="@id/navigation_campus_map" />
         <action android:id="@+id/action_more_to_notifications" app:destination="@id/navigation_notifications" />
         <action android:id="@+id/action_more_to_settings" app:destination="@id/navigation_settings" />
