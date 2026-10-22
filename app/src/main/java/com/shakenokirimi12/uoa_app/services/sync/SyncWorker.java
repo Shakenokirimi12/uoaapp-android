@@ -23,6 +23,7 @@ import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 import com.shakenokirimi12.uoa_app.services.AppConfigService;
 import com.shakenokirimi12.uoa_app.services.AuthErrors;
 import com.shakenokirimi12.uoa_app.services.CampusSquareService;
+import com.shakenokirimi12.uoa_app.services.ForceUpdateGate;
 import com.shakenokirimi12.uoa_app.services.MoodleService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
 
@@ -47,6 +48,8 @@ public class SyncWorker extends Worker {
     static final String CHANNEL_ID = "background_sync";
     private static final int NOTIFICATION_ID = 4100;
     private static final long STEP_TIMEOUT_SEC = 90;
+    /** 同期の前に設定を取り直すときの上限。取れなくても前に取れた条件で判定できるので短くする。 */
+    static final long CONFIG_TIMEOUT_MS = 10_000L;
 
     // サービスは内部に単一スレッドの executor を持ち、shutdown する口が無い。
     // 実行のたびに new すると 15 分ごとにスレッドが増え続けるので、プロセスで 1 つを使い回す。
@@ -88,6 +91,15 @@ public class SyncWorker extends Worker {
         // 定期的にログインを試行し続け、大学側でアカウントがロックされうる。
         if (prefs.isCredentialsInvalid()) {
             Log.w(TAG, "Skipping sync: credentials marked invalid");
+            return Result.success();
+        }
+
+        // 強制アップデートの対象になった版は、裏で大学のサーバーへ通信しない。通信の前に設定を取り直し
+        // (取れなければ前に取れた条件で) 判定する。あわせて killswitch もこの回の同期に効く
+        // (バックグラウンドだけで起きたプロセスは、これまで設定を一度も取っていなかった)。
+        AppConfigService.getInstance().refreshBlocking(ctx, CONFIG_TIMEOUT_MS);
+        if (ForceUpdateGate.getInstance(ctx).isBlocked()) {
+            Log.w(TAG, "Skipping sync: this version must be updated");
             return Result.success();
         }
 

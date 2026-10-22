@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- メンテナンスモードと強制更新の全面表示。ユーザー操作では閉じられない。
-     どちらを出すかは MainActivity がタイトル・本文・ボタンを差し替えて決める。 -->
+<!-- メンテナンスモード (MainActivity) と強制更新 (ForceUpdateActivity) の全面表示。ユーザー操作では閉じられない。
+     タイトル・本文・ボタンは表示する側が差し替える。 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"

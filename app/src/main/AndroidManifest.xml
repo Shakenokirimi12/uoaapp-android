@@ -85,6 +85,10 @@
             android:name=".ui.browser.InAppBrowserActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden" />
+        <!-- 強制アップデートの全面表示。UoaApplication がどの画面の上にも出す。戻るキーでは閉じない。 -->
+        <activity
+            android:name=".ui.ForceUpdateActivity"
+            android:exported="false" />
         <activity
             android:name=".ui.onboarding.OnboardingActivity"
             android:exported="false"

@@ -24,6 +24,7 @@ import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.GakushokuMenu;
 import com.shakenokirimi12.uoa_app.services.AppConfigService;
+import com.shakenokirimi12.uoa_app.services.ForceUpdateGate;
 import com.shakenokirimi12.uoa_app.services.GakushokuService;
 
 import java.util.concurrent.TimeUnit;
@@ -45,6 +46,8 @@ public class LunchMenuWorker extends Worker {
     private static final int NOTIFICATION_ID = 3001;
     /** 取得に失敗したとき、これより新しいキャッシュだけを使う。 */
     private static final long CACHE_USABLE_MS = 14L * 24 * 60 * 60 * 1000;
+    /** 通知の前に設定を取り直すときの上限。 */
+    private static final long CONFIG_TIMEOUT_MS = 10_000L;
 
     public LunchMenuWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
@@ -91,7 +94,14 @@ public class LunchMenuWorker extends Worker {
         Context ctx = getApplicationContext();
         PreferenceManager prefs = PreferenceManager.getInstance(ctx);
         try {
-            if (prefs.isLunchNotifyEnabled()
+            // 強制アップデートの対象になった版は、裏で通信しない (SyncWorker と同じ)。翌日分の予約は残す。
+            boolean blocked = false;
+            if (prefs.isLunchNotifyEnabled()) {
+                AppConfigService.getInstance().refreshBlocking(ctx, CONFIG_TIMEOUT_MS);
+                blocked = ForceUpdateGate.getInstance(ctx).isBlocked();
+                if (blocked) Log.w(TAG, "Skipping lunch menu: this version must be updated");
+            }
+            if (prefs.isLunchNotifyEnabled() && !blocked
                     && AppConfigService.getInstance().isFeatureEnabled("gakushoku_menu_enabled")) {
                 long scheduledFor = getInputData().getLong(KEY_SCHEDULED_FOR, System.currentTimeMillis());
                 LunchMenuPlan.Content content =
