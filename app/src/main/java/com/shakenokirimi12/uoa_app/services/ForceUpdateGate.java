@@ -73,6 +73,8 @@ public final class ForceUpdateGate {
      */
     public void onFetched(@NonNull AppConfig config) {
         boolean nowBlocked;
+        boolean changed = false;
+        ForceUpdatePolicy.Requirement toSave;
         synchronized (this) {
             ForceUpdatePolicy.Requirement next = ForceUpdatePolicy.afterSuccessfulFetch(
                     requirement, config.minRequiredVersion, config.forceUpdateURL, config.forceUpdateMessage);
@@ -81,10 +83,14 @@ public final class ForceUpdateGate {
             }
             if (next == null ? requirement != null : !next.equals(requirement)) {
                 requirement = next;
-                save(next);
+                changed = true;
             }
+            toSave = requirement;
             nowBlocked = ForceUpdatePolicy.isBlocked(ownVersion, requirement);
         }
+        // 書き込みはロックの外で行う。メインスレッドの isBlocked() をディスクの書き込みで待たせない。
+        // 判定はメモリ上の requirement で済むので、書き込みが後になっても止める・止めないは変わらない。
+        if (changed) save(toSave);
         blocked.postValue(nowBlocked);
     }
 
@@ -103,6 +109,7 @@ public final class ForceUpdateGate {
             e.putString(K_MIN, r.minVersion).putString(K_URL, r.storeUrl).putString(K_MESSAGE, r.message);
         }
         // 直後にプロセスが落ちても、次の起動で同じ条件で止められるよう同期で書く。
-        e.commit();
+        // 書けなくても、このプロセスの間はメモリ上の条件で止める。
+        if (!e.commit()) Log.w(TAG, "Could not store the force-update requirement");
     }
 }

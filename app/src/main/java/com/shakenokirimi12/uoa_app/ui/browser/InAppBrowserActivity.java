@@ -146,6 +146,13 @@ public class InAppBrowserActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 強制アップデートの対象の版では、cookie を写したり大学のページを読み込んだりする前に止める。
+        // UoaApplication の差し替えは onResume なので、ここで止めないと通信が先に出る
+        // (タスクの復元や通知から直接開かれた場合)。
+        if (com.shakenokirimi12.uoa_app.services.ForceUpdateGate.getInstance(this).isBlocked()) {
+            com.shakenokirimi12.uoa_app.ui.ForceUpdateActivity.show(this);
+            return;
+        }
         setContentView(R.layout.activity_in_app_browser);
 
         String url = getIntent().getStringExtra(EXTRA_URL);

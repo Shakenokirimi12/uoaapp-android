@@ -158,12 +158,12 @@ public class MainActivity extends AppCompatActivity {
         getOnBackPressedDispatcher().addCallback(this, swallowBack);
 
         AppConfigService.getInstance().config().observe(this, config -> {
-            applyBlockingState(config, overlay, swallowBack);
+            applyBlockingState(overlay, swallowBack);
             applyStatusNotice(config);
         });
     }
 
-    private void applyBlockingState(AppConfig config, View overlay, OnBackPressedCallback swallowBack) {
+    private void applyBlockingState(View overlay, OnBackPressedCallback swallowBack) {
         AppConfigService svc = AppConfigService.getInstance();
         TextView title = findViewById(R.id.blocking_title);
         TextView message = findViewById(R.id.blocking_message);

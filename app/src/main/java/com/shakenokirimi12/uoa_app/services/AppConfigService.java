@@ -44,6 +44,11 @@ public final class AppConfigService {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Gson gson = new Gson();
     private final MutableLiveData<AppConfig> config = new MutableLiveData<>();
+    /**
+     * 最後に反映した応答。LiveData の値は postValue がメインスレッドで処理されるまで古いままなので、
+     * Worker が refreshBlocking の直後に killswitch を読むときのためにここにも持つ。
+     */
+    @Nullable private volatile AppConfig latest;
 
     private AppConfigService() {}
 
@@ -144,6 +149,7 @@ public final class AppConfigService {
                 }
                 Log.d(TAG, "app-config ok: " + parsed.flagsOrEmpty().size() + " flags, minRequiredVersion=" + parsed.minRequiredVersion);
                 ForceUpdateGate.getInstance(appContext).onFetched(parsed);
+                latest = parsed;
                 config.postValue(parsed);
                 return true;
             }
@@ -160,7 +166,7 @@ public final class AppConfigService {
 
     @Nullable
     public String flagValue(@NonNull String key) {
-        AppConfig c = config.getValue();
+        AppConfig c = latest;
         return c != null ? c.flagsOrEmpty().get(key) : null;
     }
 
