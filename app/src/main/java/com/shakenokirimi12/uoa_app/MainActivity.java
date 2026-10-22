@@ -94,9 +94,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Start geofencing if enabled
-        if (prefs.isAutoAttendanceEnabled()) {
-            LocationGeofenceService.startGeofencing(this, 37.5234, 139.9388, 200);
-        }
+        LocationGeofenceService.startIfEnabled(this);
 
         setupRemoteConfig();
         SyncScheduler.schedule(this);

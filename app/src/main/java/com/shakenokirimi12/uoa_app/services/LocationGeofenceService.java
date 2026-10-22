@@ -35,8 +35,24 @@ public class LocationGeofenceService {
     private static final String GEOFENCE_ID = "university-campus";
     private static final long COOLDOWN_MS = 30 * 60 * 1000;
 
+    // キャンパスの中心と半径 (iOS と同じ値)。
+    private static final double CAMPUS_LAT = 37.5234;
+    private static final double CAMPUS_LNG = 139.9388;
+    private static final float CAMPUS_RADIUS_M = 200;
+
+    /** 自動出席が ON のときだけ、キャンパスのジオフェンスを登録し直す。 */
+    public static void startIfEnabled(Context ctx) {
+        if (!PreferenceManager.getInstance(ctx).isAutoAttendanceEnabled()) return;
+        startCampusGeofence(ctx);
+    }
+
     /** @return ジオフェンスの登録を要求したら true。killswitch や権限不足で何もしなかったら false。 */
-    public static boolean startGeofencing(Context ctx, double lat, double lng, float radius) {
+    public static boolean startCampusGeofence(Context ctx) {
+        return startGeofencing(ctx, CAMPUS_LAT, CAMPUS_LNG, CAMPUS_RADIUS_M);
+    }
+
+    /** @return ジオフェンスの登録を要求したら true。killswitch や権限不足で何もしなかったら false。 */
+    private static boolean startGeofencing(Context ctx, double lat, double lng, float radius) {
         // 出席登録の仕様変更などで誤登録が起きうるとき、リモートから止めるための killswitch。
         if (!AppConfigService.getInstance().isFeatureEnabled("auto_attendance_enabled")) {
             Log.w(TAG, "Auto attendance disabled by remote flag");
@@ -76,6 +92,21 @@ public class LocationGeofenceService {
         Intent intent = new Intent(ctx, GeofenceReceiver.class);
         return PendingIntent.getBroadcast(ctx, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+    }
+
+    /**
+     * 端末の再起動とアプリの更新で、登録したジオフェンスは OS に消される (Google Play 開発者サービスの仕様)。
+     * これまではアプリを開くまで登録し直さず、再起動した日は自動出席が動いていなかった。
+     */
+    public static class RestoreReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (!Intent.ACTION_BOOT_COMPLETED.equals(action)
+                    && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) return;
+            Log.d(TAG, "Restoring geofence after " + action);
+            startIfEnabled(context.getApplicationContext());
+        }
     }
 
     public static class GeofenceReceiver extends BroadcastReceiver {

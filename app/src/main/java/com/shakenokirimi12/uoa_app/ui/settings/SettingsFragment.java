@@ -63,7 +63,7 @@ public class SettingsFragment extends Fragment {
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
                 if (!isAdded()) return;
                 if (granted) {
-                    LocationGeofenceService.startGeofencing(requireContext(), 37.5234, 139.9388, 200);
+                    LocationGeofenceService.startCampusGeofence(requireContext());
                 }
                 updateLocationWarning();
             });
@@ -83,7 +83,7 @@ public class SettingsFragment extends Fragment {
 
     private void enableAutoAttendance() {
         prefs.setAutoAttendanceEnabled(true);
-        LocationGeofenceService.startGeofencing(requireContext(), 37.5234, 139.9388, 200);
+        LocationGeofenceService.startCampusGeofence(requireContext());
         if (!hasBackgroundLocation()) {
             requestBackgroundLocation();
         }
