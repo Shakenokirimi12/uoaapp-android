@@ -18,6 +18,20 @@ public class SeciossIdPClientTest {
             + "<input type=\"text\" name=\"username\">"
             + "</form>";
 
+    // OTP 入力画面の otp_type (uoa-unofficial-extension の fixtures/idp/allotplogin.html と同じ形)
+
+    @Test
+    public void otpType_readsValueFromScript() {
+        String html = "<script nonce=\"x\">\nvar error_onload = 0;\nvar otp_type = 'mail';\n</script>"
+                + "<script>if (otp_type == 'none') {}</script>";
+        assertEquals("mail", SeciossIdPClient.otpType(html));
+    }
+
+    @Test
+    public void otpType_missing_returnsNull() {
+        assertNull(SeciossIdPClient.otpType("<html><body>ログアウト</body></html>"));
+    }
+
     @Test
     public void extractField_ignoresAttributeOrder() {
         // id/name/value の並びはページによって揺れるので、タグ全体を切ってから value を探す

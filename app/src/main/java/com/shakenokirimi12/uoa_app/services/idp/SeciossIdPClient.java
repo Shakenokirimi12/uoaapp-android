@@ -633,9 +633,12 @@ public final class SeciossIdPClient {
             throw new SeciossError(SeciossError.Kind.MISSING_FIELD, "sessid/back/username on OTP form");
         }
 
+        // 受け取り方がまだ決まっていなければ、この画面の otp_type に合わせて決める (OtpProviders)。
+        OtpProvider provider = otp.forOtpPage(otpType(current.html));
+
         // メール方式のときだけ送信を要求する (motprefresh=0)。認証アプリ方式はこのステップを使わない。
         HttpResult motp = current;
-        if (otp.requiresMailDispatch()) {
+        if (provider.requiresMailDispatch()) {
             String motpBody = "username=" + urlEncode(otpUsername) + "&sessid=" + urlEncode(otpSessid)
                     + "&motprefresh=0";
             motp = postForm(MOTP_URL, motpBody, current.cookies, current.url);
@@ -644,7 +647,7 @@ public final class SeciossIdPClient {
             }
         }
 
-        String code = otp.code();
+        String code = provider.code();
 
         String otpBody = "dummy=&username=" + urlEncode(otpUsername) + "&password=" + urlEncode(code)
                 + "&op=login&back=" + urlEncode(otpBack) + "&sessid=" + otpSessid;
@@ -696,6 +699,29 @@ public final class SeciossIdPClient {
         if (reachedPortal(state)) return OtpStatus.REACHED_PORTAL;
         throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
                 "registration entry screen(FunctionID=" + state.functionId + ", url=" + state.result.url + ")");
+    }
+
+    /**
+     * 通常経路 (学外) からパスワードだけで入り、OTP 入力画面 (allotplogin) の otp_type を返す。
+     * メールの送信は頼まない (送信は motp.cgi への POST で、ここでは呼ばない)。OTP 入力画面に
+     * 着かなかった (学内にいてポータルまで通った等) か、値が無ければ null。
+     */
+    @Nullable
+    public String readOtpType(@NonNull String entryUrl, @NonNull String uid, @NonNull String pass) throws Exception {
+        PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass, false);
+        if (!"allotplogin".equals(state.functionId)) return null;
+        return otpType(state.result.html);
+    }
+
+    /**
+     * OTP 入力画面 (allotplogin.cgi) が JS に書く、アカウントの OTP 方式 (var otp_type = '...')。
+     * メール方式のアカウントで 'mail' (2026-09-07 の HAR と uoa-unofficial-extension の
+     * fixtures/idp/allotplogin.html で確認)。認証アプリ方式のアカウントで出る値は未確認なので、
+     * 値の解釈は呼び出し側に任せ、書かれている文字列をそのまま返す (iOS の IdPPageParser.otpType と同じ)。
+     */
+    @Nullable
+    static String otpType(@NonNull String html) {
+        return firstGroup("var\\s+otp_type\\s*=\\s*['\"]([^'\"]*)['\"]", html);
     }
 
     /**

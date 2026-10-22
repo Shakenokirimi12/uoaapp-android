@@ -98,7 +98,14 @@
         android:id="@+id/navigation_idp_otp_registration"
         android:name="com.shakenokirimi12.uoa_app.ui.idp.IdPOtpRegistrationFragment"
         android:label="ワンタイムパスワード設定"
-        tools:layout="@layout/fragment_idp_otp_registration" />
+        tools:layout="@layout/fragment_idp_otp_registration">
+        <!-- 設定画面から受け取り方を切り替えるときの切り替え先 (OtpMethod.value)。無ければ新規登録。 -->
+        <argument
+            android:name="switching_to"
+            android:defaultValue="@null"
+            app:argType="string"
+            app:nullable="true" />
+    </fragment>
 
     <!-- ── Academic ── -->
 

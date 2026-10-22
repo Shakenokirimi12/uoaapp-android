@@ -32,6 +32,7 @@ import com.shakenokirimi12.uoa_app.services.BackupService;
 import com.shakenokirimi12.uoa_app.services.LocationGeofenceService;
 import com.shakenokirimi12.uoa_app.services.MoodleService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
+import com.shakenokirimi12.uoa_app.ui.idp.IdPOtpRegistrationFragment;
 import com.shakenokirimi12.uoa_app.ui.onboarding.OnboardingActivity;
 
 public class SettingsFragment extends Fragment {
@@ -118,10 +119,19 @@ public class SettingsFragment extends Fragment {
     }
 
     @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        getParentFragmentManager().setFragmentResultListener(IdPOtpRegistrationFragment.RESULT_SWITCH, this,
+                (key, result) -> onOtpSwitchResult(result));
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
         // 設定アプリから戻ってきたときに反映する。
         updateLocationWarning();
+        // OTP の受け取り方は、登録の完了やログイン時の読み取り (OtpProviders) で裏で変わることがある。
+        updateOtpMethodLabel();
     }
 
     private final ActivityResultLauncher<Intent> backupLauncher =
@@ -182,8 +192,9 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.button_logout).setVisibility(loggedIn ? View.VISIBLE : View.GONE);
         view.findViewById(R.id.divider_logout).setVisibility(loggedIn ? View.VISIBLE : View.GONE);
 
-        // IdP (SECIOSS) 関連の手動導線は置かない。ログインは同期の裏で完結し、OTP 未設定は
-        // ログイン時に検知して自動で登録画面へ案内する (OtpRegistrationLauncher、iOS と同じ)。
+        // IdP (SECIOSS) のログインや新規登録の手動導線は置かない (方式の切り替えだけは上の行から)。
+        // ログインは同期の裏で完結し、OTP 未設定はログイン時に検知して自動で登録画面へ案内する
+        // (OtpRegistrationLauncher、iOS と同じ)。
 
         // Academic navigation
         view.findViewById(R.id.button_grades).setOnClickListener(v ->
@@ -388,56 +399,78 @@ public class SettingsFragment extends Fragment {
 
     private void updateOtpMethodLabel() {
         if (otpMethodLabel == null) return;
-        OtpMethod method = OtpMethod.from(PreferenceManager.getInstance().getOtpMethod());
+        PreferenceManager p = PreferenceManager.getInstance();
+        OtpMethod method = OtpMethod.from(p.getOtpMethod());
+        boolean known = p.isOtpMethodKnown();
         // PC 中継はメールに届く OTP を読む機能なので、メール方式のときだけ出す (iOS と同じ)。
-        int relayVis = method == OtpMethod.MAIL ? View.VISIBLE : View.GONE;
+        int relayVis = known && method == OtpMethod.MAIL ? View.VISIBLE : View.GONE;
         if (otpRelayRow != null) otpRelayRow.setVisibility(relayVis);
         if (otpRelayDivider != null) otpRelayDivider.setVisibility(relayVis);
+        // まだ決まっていない (新しく入れた・復元した・アカウントを変えた) ときは、次のログインで IdP から読む。
+        if (!known) {
+            otpMethodLabel.setText(R.string.settings_otp_method_unknown);
+            return;
+        }
         otpMethodLabel.setText(method == OtpMethod.AUTHENTICATOR
                 ? R.string.settings_otp_method_authenticator
                 : R.string.settings_otp_method_mail);
     }
 
     /**
-     * ワンタイムパスワードの受け取り方を選ばせる。大学側の設定と揃っていないとログインできない。
-     * 認証アプリ方式はこのアプリがシークレットを持たないため毎回手入力になる
-     * (そのぶんセッションの永続化が効いている前提)。
+     * ワンタイムパスワードの受け取り方を切り替える。方式を変えるには大学側 (IdP) の登録をやり直す。
+     * ここで設定だけを書き換えると、IdP は前の方式のままなのでログインできなくなる。受け取り方は
+     * 登録が済んだときにだけ書き換わる (OtpRegistrationCommit)。中断・失敗したら理由を出す
+     * (onOtpSwitchResult)。
      */
     private void showOtpMethodDialog() {
-        OtpMethod current = OtpMethod.from(PreferenceManager.getInstance().getOtpMethod());
-        // 説明は各選択肢の 2 行目に入れる。setMessage と setSingleChoiceItems を併用すると
-        // AlertController がメッセージを優先してリストを出さず、選べなくなる。
-        CharSequence[] labels = {
-                otpMethodItem(R.string.settings_otp_method_mail, R.string.settings_otp_method_mail_description),
-                otpMethodItem(R.string.settings_otp_method_authenticator,
-                        R.string.settings_otp_method_authenticator_description),
-        };
-        int checked = current == OtpMethod.AUTHENTICATOR ? 1 : 0;
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.settings_otp_method)
-                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
-                    OtpMethod chosen = which == 1 ? OtpMethod.AUTHENTICATOR : OtpMethod.MAIL;
-                    PreferenceManager.getInstance().setOtpMethod(chosen.value);
-                    updateOtpMethodLabel();
-                    dialog.dismiss();
+        OtpMethod current = OtpMethod.from(prefs.getOtpMethod());
+        OtpMethod other = current == OtpMethod.MAIL ? OtpMethod.AUTHENTICATOR : OtpMethod.MAIL;
+        // ID / パスワードの誤りが確定している間は、登録のためのログインも始めない (同じ誤ったパスワードで
+        // 何度も試すと、大学側でアカウントがロックされる)。
+        boolean noAccount = prefs.getUsername().isEmpty() || prefs.getPassword().isEmpty();
+        // 今の方式が分からないうちは、どちらへ切り替えるのかも決められない。ログインで読めるのを待つ。
+        boolean unknown = !prefs.isOtpMethodKnown();
+        boolean blocked = noAccount || unknown || prefs.isCredentialsInvalid();
+        String message = (unknown ? "" : getString(current == OtpMethod.AUTHENTICATOR
+                ? R.string.settings_otp_method_authenticator_description
+                : R.string.settings_otp_method_mail_description) + "\n\n")
+                + getString(noAccount ? R.string.otp_switch_blocked_no_account
+                : unknown ? R.string.otp_switch_blocked_unknown
+                : prefs.isCredentialsInvalid() ? R.string.otp_switch_blocked_credentials
+                : R.string.otp_switch_note);
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(unknown ? R.string.settings_otp_method
+                        : current == OtpMethod.AUTHENTICATOR
+                        ? R.string.settings_otp_method_authenticator
+                        : R.string.settings_otp_method_mail)
+                .setMessage(message)
+                .setPositiveButton(other == OtpMethod.AUTHENTICATOR
+                        ? R.string.otp_switch_to_authenticator
+                        : R.string.otp_switch_to_mail, (d, w) -> {
+                    Bundle args = new Bundle();
+                    args.putString(IdPOtpRegistrationFragment.ARG_SWITCHING_TO, other.value);
+                    Navigation.findNavController(requireView())
+                            .navigate(R.id.action_settings_to_idp_otp_registration, args);
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setEnabled(!blocked);
     }
 
-    /** 1 行目に方式名、2 行目に小さめの補足。 */
-    private CharSequence otpMethodItem(int titleRes, int descriptionRes) {
-        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder(getString(titleRes));
-        sb.append('\n');
-        int start = sb.length();
-        sb.append(getString(descriptionRes));
-        sb.setSpan(new android.text.style.RelativeSizeSpan(0.85f), start, sb.length(),
-                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        int color = com.google.android.material.color.MaterialColors.getColor(requireContext(),
-                com.google.android.material.R.attr.colorOnSurfaceVariant, android.graphics.Color.GRAY);
-        sb.setSpan(new android.text.style.ForegroundColorSpan(color), start, sb.length(),
-                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        return sb;
+    /** 切り替えの画面を閉じたあと。受け取り方が変わっていなければ、その理由を出す。 */
+    private void onOtpSwitchResult(@NonNull Bundle result) {
+        if (!isAdded()) return;
+        updateOtpMethodLabel();
+        OtpMethod current = OtpMethod.from(PreferenceManager.getInstance().getOtpMethod());
+        // 切り替え先になっていれば成功。結果の種類より設定の値を信じる。
+        if (current.value.equals(result.getString(IdPOtpRegistrationFragment.RESULT_TARGET))) return;
+        String name = getString(current == OtpMethod.AUTHENTICATOR
+                ? R.string.otp_method_name_authenticator : R.string.otp_method_name_mail);
+        boolean failed = IdPOtpRegistrationFragment.OUTCOME_FAILED.equals(
+                result.getString(IdPOtpRegistrationFragment.RESULT_OUTCOME));
+        Toast.makeText(requireContext(),
+                getString(failed ? R.string.otp_switch_failed : R.string.otp_switch_cancelled, name),
+                Toast.LENGTH_LONG).show();
     }
 
     private void showEditAccountDialog() {

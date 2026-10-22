@@ -78,13 +78,43 @@ public class BackupServiceTest {
     @Test
     public void osRestore_dropsDeviceLocalValues_andKeepsSettings() {
         Set<String> restored = new HashSet<>(Arrays.asList(
-                "device_id", "fcm_token", "server_holds_assignment_reminders", "notify_lunch", "main_tabs"));
+                "device_id", "fcm_token", "server_holds_assignment_reminders", "otp_method", "notify_lunch", "main_tabs"));
         RecordingEditor editor = new RecordingEditor();
 
         int removed = UoaBackupAgent.removeDeviceLocal(restored, editor);
 
-        assertEquals(3, removed);
+        assertEquals(4, removed);
         assertEquals(new HashSet<>(Arrays.asList(PreferenceManager.DEVICE_LOCAL_KEYS)), editor.removed);
         assertTrue(editor.written.isEmpty());
+    }
+
+    /**
+     * OTP の受け取り方は大学側 (IdP) の登録と揃っている必要がある。復元しても IdP は変わらないので、
+     * バックアップにある方式で受け取り方を書き換えない。
+     */
+    @Test
+    public void osRestore_dropsOtpMethod() {
+        RecordingEditor editor = new RecordingEditor();
+
+        UoaBackupAgent.removeDeviceLocal(new HashSet<>(Arrays.asList("otp_method", "notify_lunch")), editor);
+
+        assertEquals(new HashSet<>(Arrays.asList("otp_method")), editor.removed);
+    }
+
+    @Test
+    public void fileBackup_neitherWritesNorRestoresOtpMethod() {
+        Map<String, Object> prefs = new HashMap<>();
+        prefs.put("otp_method", "authenticator");
+        prefs.put("notify_lunch", true);
+        assertFalse(BackupService.buildBackup(prefs, "s1300000", null).has("otp_method"));
+
+        JsonObject file = new JsonObject();
+        file.addProperty("otp_method", "authenticator");
+        file.addProperty("notify_lunch", true);
+        RecordingEditor editor = new RecordingEditor();
+        BackupService.applySettings(file, new HashMap<>(), editor);
+
+        assertFalse(editor.written.containsKey("otp_method"));
+        assertFalse(editor.removed.contains("otp_method"));
     }
 }

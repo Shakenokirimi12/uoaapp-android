@@ -80,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
 
         // debug ビルド限定: adb から OTP 登録画面 (SSH トンネル経由) を直接開いて確認するための入口。
         //   adb shell am start -n com.shakenokirimi12.uoa_app/.MainActivity --ez open_otp_registration true
-        // 本番では設定画面からの導線を持たず、ログイン時の OTP 未設定検知でしか開かない。
+        // 本番で新規登録として開くのは、ログイン時の OTP 未設定検知だけ (設定画面からは方式の切り替えとして開く)。
         if (BuildConfig.DEBUG && savedInstanceState == null
                 && getIntent() != null && getIntent().getBooleanExtra("open_otp_registration", false)) {
             openOtpRegistration();
@@ -117,6 +117,33 @@ public class MainActivity extends AppCompatActivity {
         // ここで setupWithNavController を呼ぶとリスナーが多重登録される (タブ編集のたびに増える)。
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         com.shakenokirimi12.uoa_app.ui.util.MainTabs.applyTo(bottomNav, PreferenceManager.getInstance(this));
+    }
+
+    private boolean navigationLocked;
+    @androidx.annotation.Nullable private android.graphics.drawable.Drawable lockedNavigationIcon;
+
+    /**
+     * 上バーの「戻る」と下タブで画面を離れられないようにする / 戻す。OTP の登録の POST を送ったあと
+     * (IdPOtpRegistrationFragment) に使う。システムの戻る操作は画面側の OnBackPressedCallback が止める。
+     * 上バーの「戻る」と下タブは NavigationUI が直接 navigate するので、ここで塞ぐ。
+     */
+    public void setNavigationLocked(boolean locked) {
+        if (locked == navigationLocked) return;
+        navigationLocked = locked;
+        com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        android.view.Menu menu = bottomNav.getMenu();
+        for (int i = 0; i < menu.size(); i++) menu.getItem(i).setEnabled(!locked);
+        if (locked) {
+            lockedNavigationIcon = toolbar.getNavigationIcon();
+            toolbar.setNavigationIcon(null);
+        } else {
+            // 塞いでいる間に遷移は起きないが、NavigationUI が付け直していたらそちらを優先する。
+            if (toolbar.getNavigationIcon() == null && lockedNavigationIcon != null) {
+                toolbar.setNavigationIcon(lockedNavigationIcon);
+            }
+            lockedNavigationIcon = null;
+        }
     }
 
     /** ログイン中に OTP 未設定と分かったときに呼ばれる (OtpRegistrationLauncher)。既に開いていれば何もしない。 */

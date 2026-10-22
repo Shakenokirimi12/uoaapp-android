@@ -1,6 +1,7 @@
 package com.shakenokirimi12.uoa_app.services.idp;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
  * コードを 1 つ調達するだけのインターフェース。認証チェーンは方式を知らない。
@@ -18,4 +19,11 @@ public interface OtpProvider {
 
     /** コードを取得する。取れない場合は SeciossError を投げる。 */
     @NonNull String code() throws Exception;
+
+    /**
+     * OTP 入力画面に着いたときに、その画面の otp_type (読めなければ null) を渡して、使う実体を決め直す。
+     * 受け取り方がまだ決まっていない端末で、IdP が実際に使っている方式に合わせるため (OtpProviders)。
+     */
+    @NonNull
+    default OtpProvider forOtpPage(@Nullable String otpType) { return this; }
 }
