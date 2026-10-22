@@ -52,8 +52,23 @@ public class OtpRelayWorker extends Worker {
     private static final String K_DELIVERED_AT = "deliveredAt";
     private static final String K_TOKEN = "token";
 
+    /** 処理中の依頼。止められたときに IMAP の接続を閉じるために持つ。 */
+    @Nullable private volatile OtpRelayResponder.Attempt currentAttempt;
+
     public OtpRelayWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
+    }
+
+    /**
+     * 仕事が止められた。メールの取得をやめ、IMAP の接続を LOGOUT して閉じる (通信は別のスレッドで行う)。
+     * 止められたプロセスは凍結されることがあり、開いたままの接続はサーバ側でセッションとして残り続けて、
+     * 次の依頼の LOGIN を同時接続数の上限で断らせる。取得の本体は失敗として中継サーバに返す (PC は手入力に戻る)。
+     */
+    @Override
+    public void onStopped() {
+        super.onStopped();
+        OtpRelayResponder.Attempt attempt = currentAttempt;
+        if (attempt != null) attempt.imap.abort();
     }
 
     /** FCM で依頼が届いた。同じ依頼が二重に届いても 1 回だけ処理する (KEEP)。 */
@@ -136,11 +151,17 @@ public class OtpRelayWorker extends Worker {
 
         long deliveredAt = getInputData().getLong(K_DELIVERED_AT, System.currentTimeMillis());
         OtpRelayResponder.Attempt attempt = new OtpRelayResponder.Attempt();
+        currentAttempt = attempt;
+        // 登録する前に止められていたら、ここで取りやめる (onStopped が見逃した分)。
+        if (isStopped()) attempt.imap.abort();
         try {
             handle(ctx, pairing, request, deliveredAt, attempt);
         } finally {
+            currentAttempt = null;
             // 答え始めた依頼は、途中で止められても処理済みにする (再実行で二重に答えない)。
-            // 答える前に止められたものは記録しない (再実行で続きをやる)。
+            // メールを読んでいる途中で止められたら、onStopped が取得を取りやめ、失敗として中継サーバに返す
+            // (依頼は 120 秒で切れ、再実行を待つより PC を手入力に戻す方が早い)。答える前に止められて
+            // 何も返せなかったものだけは記録しない (再実行で続きをやる)。
             if (attempt.responded() || !isStopped()) OtpRelayStore.markHandled(request.requestId);
         }
         return Result.success();
@@ -239,8 +260,8 @@ public class OtpRelayWorker extends Worker {
                     }
 
                     @Override
-                    public void deleteUsed(@NonNull String uid, @NonNull String pass, int upToUid) throws Exception {
-                        new ImapOtpFetcher().deleteUsedMails(uid, pass, upToUid, 3_000);
+                    public void deleteUsed(@NonNull ImapOtpFetcher.OtpMail mail) {
+                        mail.deleteUsedMails(3_000);
                     }
                 },
                 new OtpRelayResponder.Credentials() {

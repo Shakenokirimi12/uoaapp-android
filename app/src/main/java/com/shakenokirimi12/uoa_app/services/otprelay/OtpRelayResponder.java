@@ -72,9 +72,11 @@ public final class OtpRelayResponder {
 
     /** IMAP の差し替え口 (テスト用)。 */
     public interface MailSource {
+        /** 返したメールは見つけた接続を持っている。fetchAndRespond が必ず閉じる (OtpMail.close)。 */
         @NonNull ImapOtpFetcher.OtpMail fetch(@NonNull String uid, @NonNull String pass, long timeoutSeconds, long since,
                                               @NonNull ImapOtpFetcher.Progress progress) throws Exception;
-        void deleteUsed(@NonNull String uid, @NonNull String pass, int upToUid) throws Exception;
+        /** 使ったメールを、見つけた接続のまま消す (LOGIN し直さない)。 */
+        void deleteUsed(@NonNull ImapOtpFetcher.OtpMail mail) throws Exception;
     }
 
     public interface Credentials {
@@ -149,7 +151,18 @@ public final class OtpRelayResponder {
             // 画面に出す切り分け用の記録には例外の中身も残す (端末の中だけ。LOGIN の引数は例外に入らない)。
             return fail(pairing, request, keys, attempt, reason, detail, detail + "\n" + e);
         }
+        // 見つけた接続は、消すにしても消さないにしても、ここで LOGOUT して閉じる (サーバ側にセッションを残さない)。
+        try {
+            return respondWith(found, pairing, request, keys, attempt);
+        } finally {
+            found.close();
+        }
+    }
 
+    @NonNull
+    private Outcome respondWith(@NonNull ImapOtpFetcher.OtpMail found, @NonNull OtpRelayPairing pairing,
+                                @NonNull OtpRelayRequest request, @NonNull OtpRelayCrypto.Keys keys,
+                                @NonNull Attempt attempt) {
         String box;
         try {
             box = OtpRelayCrypto.seal(found.code, request.requestId, keys);
@@ -175,7 +188,7 @@ public final class OtpRelayResponder {
             // 中継サーバが受け付けたので、使ったメールを消す。410 (期限切れ・新しい依頼に置き換わった) と
             // 通信失敗は PC に届いていないので、消さずに残す (PC で手入力に使う。残ったものは次に成功したときに消える)。
             try {
-                mail.deleteUsed(uid, pass, found.uid);
+                mail.deleteUsed(found);
             } catch (Exception e) {
                 Log.w(TAG, "could not delete used OTP mails: " + e);
             }
@@ -201,6 +214,10 @@ public final class OtpRelayResponder {
         OtpRelayCrypto.Keys keys = OtpRelayCrypto.keys(pairing.key);
         if (!pairing.hasMailConsent() || keys == null || !attempt.claimResponse()) return ExpiryResult.NOT_CLAIMED;
         ImapOtpFetcher.Progress.Stage stage = attempt.imap.stage();
+        // もうコードは返さないので、メールの取得をやめて接続を閉じる (LOGOUT)。開いたままにすると、止められた
+        // プロセスが凍結されたときにサーバ側のセッションとして残り、次の依頼の LOGIN を断らせる。
+        // 取得の本体は接続が切れて失敗し、答える権利が無いので DEADLINE_PASSED で終わる。
+        attempt.imap.abort();
         String reason = expiredReason(stage);
         String detail = expiredDetail(stage, attempt.imap.reconnects());
         JsonObject body = failureBody(pairing, reason, detail);
