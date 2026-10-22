@@ -44,8 +44,7 @@ public class BackupService {
             "onboarding_done",
             "notify_assignments", "notify_lunch", "lunch_notify_time",
             "selected_notify_times", "custom_notify_times",
-            "bg_notify_change", "bg_notify_success", "bg_notify_failure", "bg_notify_nochange",
-            "sync_interval", "auto_attendance_enabled",
+            "auto_attendance_enabled",
             "main_tabs", "other_tabs",
             "has_seen_idp_tutorial",
     };

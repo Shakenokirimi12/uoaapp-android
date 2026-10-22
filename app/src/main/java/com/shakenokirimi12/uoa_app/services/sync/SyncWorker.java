@@ -1,20 +1,12 @@
 package com.shakenokirimi12.uoa_app.services.sync;
 
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
-import com.shakenokirimi12.uoa_app.MainActivity;
-import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
@@ -27,9 +19,7 @@ import com.shakenokirimi12.uoa_app.services.ForceUpdateGate;
 import com.shakenokirimi12.uoa_app.services.MoodleService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,8 +35,11 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class SyncWorker extends Worker {
     private static final String TAG = "SyncWorker";
-    static final String CHANNEL_ID = "background_sync";
-    private static final int NOTIFICATION_ID = 4100;
+    /**
+     * 以前の「同期結果の通知」のチャンネル。通知は「ログインが必要」だけを残して消した (2026-10-22)。
+     * 端末の通知設定に空のチャンネルが残らないよう、起動時に消す (UoaApplication)。
+     */
+    public static final String REMOVED_CHANNEL_ID = "background_sync";
     private static final long STEP_TIMEOUT_SEC = 90;
     /** 同期の前に設定を取り直すときの上限。取れなくても前に取れた条件で判定できるので短くする。 */
     static final long CONFIG_TIMEOUT_MS = 10_000L;
@@ -110,7 +103,6 @@ public class SyncWorker extends Worker {
         // 保存済みセッションが切れていて、OTP 付きの新規ログインが要る。失敗とは数えない
         // (バックグラウンドからはログインしない決まりなので、待つのが正常)。
         boolean loginRequired = false;
-        boolean changed = false;
 
         // 1. Moodle
         if (AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
@@ -129,7 +121,6 @@ public class SyncWorker extends Worker {
                     }));
                     List<Assignment> assignments = fetched.get();
                     if (assignments != null) {
-                        changed |= differs(cache.loadAssignments(), assignments);
                         cache.saveAssignments(assignments);
                         com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.sync(ctx, assignments);
                         com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier.post(ctx, assignments);
@@ -146,7 +137,6 @@ public class SyncWorker extends Worker {
                         prefs.setCredentialsInvalid(true);
                         Log.w(TAG, "Credentials rejected; disabling automatic sync until password is re-entered");
                         // 同じ資格情報で CampusSquare も試すと試行回数が倍になるだけなので、ここで止める。
-                        notifyIfEnabled(ctx, prefs, false, false, true);
                         return Result.success();
                     }
                 }
@@ -187,7 +177,6 @@ public class SyncWorker extends Worker {
             // ログインし直して同期が通ったら、前に出した「ログインが必要です」は役目を終えている。
             LoginRequiredNotice.cancel(ctx);
         }
-        notifyIfEnabled(ctx, prefs, changed, success, anyFailure);
         // 失敗は次回の定期実行に任せる。retry にすると指数バックオフで短時間に再ログインを重ねる。
         return Result.success();
     }
@@ -203,60 +192,6 @@ public class SyncWorker extends Worker {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return false;
-        }
-    }
-
-    /** 一覧の増減だけでなく、締切や課題名の変更も「変更あり」に含める。 */
-    private static boolean differs(List<Assignment> before, List<Assignment> after) {
-        if (before == null) return !after.isEmpty();
-        Set<String> a = new HashSet<>();
-        for (Assignment x : before) a.add(x.getId() + "|" + x.getDueDate() + "|" + x.getName());
-        Set<String> b = new HashSet<>();
-        for (Assignment x : after) b.add(x.getId() + "|" + x.getDueDate() + "|" + x.getName());
-        return !a.equals(b);
-    }
-
-    /** 設定画面の「バックグラウンド通知」の項目に従って結果を通知する。 */
-    private static void notifyIfEnabled(Context ctx, PreferenceManager prefs,
-                                        boolean changed, boolean success, boolean failure) {
-        // 4 つのトグルはそれぞれ独立に意味を持たせる。具体的な文面 (変更あり / 変更なし) が
-        // 出せるならそちらを優先し、それらが OFF でも「同期成功」が ON なら成功を伝える。
-        String text;
-        // 成功でも失敗でもない (ログイン待ちで何も取れていない) なら、変更なし・成功は言えない。
-        if (!success && !failure && !changed) return;
-        if (failure) {
-            if (!prefs.isBgNotifyFailure()) return;
-            text = prefs.isCredentialsInvalid()
-                    ? ctx.getString(R.string.sync_notify_credentials_invalid)
-                    : ctx.getString(R.string.sync_notify_failure);
-        } else if (changed && prefs.isBgNotifyChange()) {
-            text = ctx.getString(R.string.sync_notify_changed);
-        } else if (!changed && prefs.isBgNotifyNoChange()) {
-            text = ctx.getString(R.string.sync_notify_no_change);
-        } else if (success && prefs.isBgNotifySuccess()) {
-            text = ctx.getString(R.string.sync_notify_success);
-        } else {
-            return;
-        }
-
-        NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
-        nm.createNotificationChannel(new NotificationChannel(
-                CHANNEL_ID, ctx.getString(R.string.sync_channel_name), NotificationManager.IMPORTANCE_LOW));
-
-        PendingIntent open = PendingIntent.getActivity(ctx, 0,
-                new Intent(ctx, MainActivity.class),
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_stat_notification)
-                .setContentTitle(ctx.getString(R.string.app_name))
-                .setContentText(text)
-                .setContentIntent(open)
-                .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW);
-        try {
-            NotificationManagerCompat.from(ctx).notify(NOTIFICATION_ID, b.build());
-        } catch (SecurityException e) {
-            // POST_NOTIFICATIONS 未許可。通知は出せないが同期自体は済んでいる。
         }
     }
 }

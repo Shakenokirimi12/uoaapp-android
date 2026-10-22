@@ -19,7 +19,6 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
-import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.timepicker.MaterialTimePicker;
@@ -233,37 +232,6 @@ public class SettingsFragment extends Fragment {
         // Notification timing settings
         view.findViewById(R.id.button_notify_times).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_notify_times));
-
-        // Sync interval toggle
-        MaterialButtonToggleGroup toggleInterval = view.findViewById(R.id.toggle_sync_interval);
-        int interval = prefs.getSyncInterval();
-        if (interval == 15) toggleInterval.check(R.id.btn_interval_15);
-        else if (interval == 30) toggleInterval.check(R.id.btn_interval_30);
-        else toggleInterval.check(R.id.btn_interval_60);
-
-        toggleInterval.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) return;
-            if (checkedId == R.id.btn_interval_15) prefs.setSyncInterval(15);
-            else if (checkedId == R.id.btn_interval_30) prefs.setSyncInterval(30);
-            else prefs.setSyncInterval(60);
-            com.shakenokirimi12.uoa_app.services.sync.SyncScheduler.schedule(requireContext());
-        });
-
-        // Background sync notification toggles
-        MaterialSwitch switchBgChange = view.findViewById(R.id.switch_bg_change);
-        MaterialSwitch switchBgSuccess = view.findViewById(R.id.switch_bg_success);
-        MaterialSwitch switchBgFailure = view.findViewById(R.id.switch_bg_failure);
-        MaterialSwitch switchBgNoChange = view.findViewById(R.id.switch_bg_nochange);
-
-        switchBgChange.setChecked(prefs.isBgNotifyChange());
-        switchBgSuccess.setChecked(prefs.isBgNotifySuccess());
-        switchBgFailure.setChecked(prefs.isBgNotifyFailure());
-        switchBgNoChange.setChecked(prefs.isBgNotifyNoChange());
-
-        switchBgChange.setOnCheckedChangeListener((v, c) -> prefs.setBgNotifyChange(c));
-        switchBgSuccess.setOnCheckedChangeListener((v, c) -> prefs.setBgNotifySuccess(c));
-        switchBgFailure.setOnCheckedChangeListener((v, c) -> prefs.setBgNotifyFailure(c));
-        switchBgNoChange.setOnCheckedChangeListener((v, c) -> prefs.setBgNotifyNoChange(c));
 
         // Auto attendance. Nothing used to request location permission, so the switch
         // turned on, the geofence silently failed, and the feature never worked.

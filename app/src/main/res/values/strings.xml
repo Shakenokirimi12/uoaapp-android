@@ -170,15 +170,9 @@
     <string name="otp_relay_forget_local">この端末からだけ削除</string>
     <string name="otp_relay_progress_channel_name">PC への OTP 送信中</string>
     <string name="class_channel_description">授業中・次の授業の常駐通知と、自動出席登録の完了を表示します</string>
-    <string name="sync_channel_name">バックグラウンド同期</string>
-    <string name="sync_notify_changed">課題の一覧が更新されました</string>
-    <string name="sync_notify_success">同期が完了しました</string>
-    <string name="sync_notify_no_change">同期しましたが変更はありませんでした</string>
-    <string name="sync_notify_failure">同期に失敗しました</string>
     <string name="login_required_channel_name">ログインのお知らせ</string>
     <string name="login_required_notify_title">ログインが必要です</string>
     <string name="login_required_notify_text">大学のシステムへのログインが切れたため、裏での更新を止めています。アプリを開いてログインしてください。</string>
-    <string name="sync_notify_credentials_invalid">ユーザー名またはパスワードが正しくないため、自動同期を停止しました。設定から入力し直してください。</string>
     <!-- Push -->
     <string name="push_channel_name">課題の期限通知</string>
     <!-- Assignment countdown -->

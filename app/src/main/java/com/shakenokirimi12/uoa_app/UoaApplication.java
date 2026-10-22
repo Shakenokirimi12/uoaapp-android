@@ -35,6 +35,9 @@ public class UoaApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        // 同期結果の通知は消した。端末の通知設定に、もう使わないチャンネルを残さない。
+        getSystemService(android.app.NotificationManager.class)
+                .deleteNotificationChannel(com.shakenokirimi12.uoa_app.services.sync.SyncWorker.REMOVED_CHANNEL_ID);
         // 端末に残っている強制アップデートの条件を、最初の画面より先に読む (取得を待たずに止めるため)。
         ForceUpdateGate gate = ForceUpdateGate.getInstance(this);
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {

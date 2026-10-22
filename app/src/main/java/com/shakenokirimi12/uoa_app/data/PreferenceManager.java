@@ -30,13 +30,8 @@ public class PreferenceManager {
     private static final String KEY_LAST_SYNC = "last_sync";
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_AUTO_ATTENDANCE = "auto_attendance_enabled";
-    private static final String KEY_SYNC_INTERVAL = "sync_interval";
     private static final String KEY_SELECTED_NOTIFY_TIMES = "selected_notify_times";
     private static final String KEY_CUSTOM_NOTIFY_TIMES = "custom_notify_times";
-    private static final String KEY_BG_NOTIFY_CHANGE = "bg_notify_change";
-    private static final String KEY_BG_NOTIFY_SUCCESS = "bg_notify_success";
-    private static final String KEY_BG_NOTIFY_FAILURE = "bg_notify_failure";
-    private static final String KEY_BG_NOTIFY_NOCHANGE = "bg_notify_nochange";
     private static final String KEY_LUNCH_NOTIFY_TIME = "lunch_notify_time";
     private static final String KEY_LOGIN_REQUIRED_NOTIFIED_DAY = "login_required_notified_day";
     private static final String KEY_MAIN_TABS = "main_tabs";
@@ -98,6 +93,9 @@ public class PreferenceManager {
         // 授業評価は機能ごと消した (2026-10-22)。端末に残った同意と、サーバーのアカウント ID を消す。
         dropRemovedKeys(new String[] {"review_consent_given", "review_guidelines_accepted", "review_user_id"},
                 new String[] {"review_user_id", "review_token"});
+        // 同期の間隔 (既定の 1 時間に固定) と同期結果の通知 4 つは設定から消した (2026-10-22)。
+        dropRemovedKeys(new String[] {"sync_interval", "bg_notify_change", "bg_notify_success",
+                "bg_notify_failure", "bg_notify_nochange"}, new String[0]);
     }
 
     /**
@@ -319,10 +317,6 @@ public class PreferenceManager {
     public boolean isAutoAttendanceEnabled() { return prefs.getBoolean(KEY_AUTO_ATTENDANCE, false); }
     public void setAutoAttendanceEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_AUTO_ATTENDANCE, enabled).apply(); }
 
-    // Sync interval (minutes)
-    public int getSyncInterval() { return prefs.getInt(KEY_SYNC_INTERVAL, 60); }
-    public void setSyncInterval(int minutes) { prefs.edit().putInt(KEY_SYNC_INTERVAL, minutes).apply(); }
-
     // Notification timings (comma-separated keys like "prev_20,prev_10")
     public String getSelectedNotifyTimes() { return prefs.getString(KEY_SELECTED_NOTIFY_TIMES, "prev_20"); }
     public void setSelectedNotifyTimes(String times) { prefs.edit().putString(KEY_SELECTED_NOTIFY_TIMES, times).apply(); }
@@ -330,19 +324,6 @@ public class PreferenceManager {
     // Custom notify times (JSON array)
     public String getCustomNotifyTimes() { return prefs.getString(KEY_CUSTOM_NOTIFY_TIMES, "[]"); }
     public void setCustomNotifyTimes(String json) { prefs.edit().putString(KEY_CUSTOM_NOTIFY_TIMES, json).apply(); }
-
-    // Background sync result notifications
-    public boolean isBgNotifyChange() { return prefs.getBoolean(KEY_BG_NOTIFY_CHANGE, true); }
-    public void setBgNotifyChange(boolean v) { prefs.edit().putBoolean(KEY_BG_NOTIFY_CHANGE, v).apply(); }
-
-    public boolean isBgNotifySuccess() { return prefs.getBoolean(KEY_BG_NOTIFY_SUCCESS, true); }
-    public void setBgNotifySuccess(boolean v) { prefs.edit().putBoolean(KEY_BG_NOTIFY_SUCCESS, v).apply(); }
-
-    public boolean isBgNotifyFailure() { return prefs.getBoolean(KEY_BG_NOTIFY_FAILURE, false); }
-    public void setBgNotifyFailure(boolean v) { prefs.edit().putBoolean(KEY_BG_NOTIFY_FAILURE, v).apply(); }
-
-    public boolean isBgNotifyNoChange() { return prefs.getBoolean(KEY_BG_NOTIFY_NOCHANGE, false); }
-    public void setBgNotifyNoChange(boolean v) { prefs.edit().putBoolean(KEY_BG_NOTIFY_NOCHANGE, v).apply(); }
 
     // Lunch notify time (HH:mm)
     public String getLunchNotifyTime() { return prefs.getString(KEY_LUNCH_NOTIFY_TIME, "11:30"); }
