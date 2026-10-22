@@ -954,7 +954,11 @@ public final class ImapOtpFetcher {
                 throw new java.io.InterruptedIOException("aborted");
             }
             try {
-                s.connect(new InetSocketAddress(host, port), currentReadWait());
+                // InetSocketAddress(host, port) はここで名前解決し、DNS が答えないと待ち時間の上限 (currentReadWait)
+                // と関係なく止まっていた。解決にも同じ上限を掛ける。解決した InetAddress はホスト名を持つので、
+                // SNI とホスト名の検証は今までどおり host で行われる。
+                java.net.InetAddress address = com.shakenokirimi12.uoa_app.services.TimedDns.resolve(host, currentReadWait())[0];
+                s.connect(new InetSocketAddress(address, port), currentReadWait());
                 s.setSoTimeout(currentReadWait());
                 // SSLSocket は既定ではホスト名検証をしない。iOS の NWConnection(TLS) と同じ強度にするため明示する。
                 SSLParameters params = s.getSSLParameters();
