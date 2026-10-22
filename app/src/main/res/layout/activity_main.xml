@@ -46,8 +46,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:itemIconTint="@color/bottom_nav_color"
-            app:itemTextColor="@color/bottom_nav_color"
-            app:menu="@menu/bottom_nav_menu" />
+            app:itemTextColor="@color/bottom_nav_color" />
     </LinearLayout>
 
     <include layout="@layout/view_blocking_overlay" />

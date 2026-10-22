@@ -25,8 +25,6 @@ public class PreferenceManager {
     private static final String KEY_SERVER_HOLDS_REMINDERS = "server_holds_assignment_reminders";
     private static final String KEY_NOTIFY_ASSIGNMENTS = "notify_assignments";
     private static final String KEY_NOTIFY_LUNCH = "notify_lunch";
-    private static final String KEY_MOODLE_TOKEN = "moodle_token";
-    private static final String KEY_ICS_URL = "ics_url";
     private static final String KEY_LAST_SYNC = "last_sync";
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_AUTO_ATTENDANCE = "auto_attendance_enabled";
@@ -69,7 +67,7 @@ public class PreferenceManager {
      * 以前は作成に失敗すると平文の prefs に同じキーで書いていたので、そこに残った写しは起動時に消す。
      */
     private static final String[] SECRET_KEYS = {
-            KEY_USERNAME, KEY_PASSWORD, KEY_MOODLE_TOKEN,
+            KEY_USERNAME, KEY_PASSWORD,
             KEY_CS_IDP_SESSION_COOKIE_HEADER, KEY_IDP_SSO_COOKIE_HEADER, KEY_MOODLE_SESSION_COOKIE_HEADER,
     };
 
@@ -96,6 +94,8 @@ public class PreferenceManager {
         // 同期の間隔 (既定の 1 時間に固定) と同期結果の通知 4 つは設定から消した (2026-10-22)。
         dropRemovedKeys(new String[] {"sync_interval", "bg_notify_change", "bg_notify_success",
                 "bg_notify_failure", "bg_notify_nochange"}, new String[0]);
+        // 誰も読み書きしていなかった値 (ICS の URL、Moodle のトークン。以前の平文の写しも)。
+        dropRemovedKeys(new String[] {"ics_url", "moodle_token"}, new String[] {"moodle_token"});
     }
 
     /**
@@ -290,14 +290,6 @@ public class PreferenceManager {
 
     public boolean isLunchNotifyEnabled() { return prefs.getBoolean(KEY_NOTIFY_LUNCH, false); }
     public void setLunchNotifyEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_NOTIFY_LUNCH, enabled).apply(); }
-
-    // Moodle
-    public String getMoodleToken() { return getSecret(KEY_MOODLE_TOKEN); }
-    public void setMoodleToken(String token) { putSecret(KEY_MOODLE_TOKEN, token); }
-
-    // ICS
-    public String getIcsUrl() { return prefs.getString(KEY_ICS_URL, ""); }
-    public void setIcsUrl(String url) { prefs.edit().putString(KEY_ICS_URL, url).apply(); }
 
     // Sync
     public long getLastSync() { return prefs.getLong(KEY_LAST_SYNC, 0); }
