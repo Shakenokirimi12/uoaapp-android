@@ -9,7 +9,7 @@ public enum OtpMethod {
     MAIL("mail"),
     /**
      * 認証アプリ (Google / Microsoft Authenticator、1Password 等) が表示する TOTP。
-     * このアプリはシークレットを保持せず、ユーザーが認証アプリを見て手入力する。
+     * 登録のときにこのアプリにもシークレットを保存し、コードを作って入れる (無ければ認証アプリを見て手入力)。
      */
     AUTHENTICATOR("authenticator");
 
