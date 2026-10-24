@@ -112,7 +112,13 @@ public final class Totp {
         return code(p.key, p.algorithm, p.digits, Math.floorDiv(timeMillis / 1000L, p.periodSeconds));
     }
 
-    /** code が timeMillis の窓か、その前後 1 つの窓のコードと一致するか (時計のずれを 1 窓まで許す)。 */
+    /** 窓の番号 (step) のコード。 */
+    @NonNull
+    public static String codeAtStep(@NonNull Params p, long step) {
+        return code(p.key, p.algorithm, p.digits, step);
+    }
+
+        /** code が timeMillis の窓か、その前後 1 つの窓のコードと一致するか (時計のずれを 1 窓まで許す)。 */
     public static boolean matches(@NonNull Params p, @NonNull String code, long timeMillis) {
         // 認証アプリは "123 456" のように区切って表示するので、空白は無視する。
         String c = code.replace(" ", "").trim();

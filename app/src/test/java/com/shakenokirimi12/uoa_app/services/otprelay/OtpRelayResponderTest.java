@@ -58,6 +58,9 @@ public class OtpRelayResponderTest {
     private boolean authenticator = false;
     private long clockNow = NOW;
     private final List<Long> slept = new ArrayList<>();
+    /** アプリのログインと共有する窓の台帳 (テストではメモリ)。 */
+    private final com.shakenokirimi12.uoa_app.services.idp.TotpStepLedger ledger =
+            com.shakenokirimi12.uoa_app.services.idp.TotpStepLedger.inMemory();
     private static final String RFC_OTPAUTH = "otpauth://totp/u-aizu:s1234567?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
 
     private OtpRelayResponder responder() {
@@ -90,6 +93,7 @@ public class OtpRelayResponderTest {
                     @Override public com.shakenokirimi12.uoa_app.services.idp.Totp.Params keyFor(@NonNull String uid) {
                         return uid.equals("s1234567") ? com.shakenokirimi12.uoa_app.services.idp.Totp.parse(RFC_OTPAUTH) : null;
                     }
+                    @Override public boolean claimStep(long step) { return ledger.claim(step); }
                 },
                 ms -> slept.add(ms));
     }
@@ -114,7 +118,10 @@ public class OtpRelayResponderTest {
         cipher.init(javax.crypto.Cipher.DECRYPT_MODE, new javax.crypto.spec.SecretKeySpec(encKey, "AES"),
                 new javax.crypto.spec.GCMParameterSpec(128, bytes, 0, 12));
         cipher.updateAAD(requestId.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        return new String(cipher.doFinal(bytes, 12, bytes.length - 12), java.nio.charset.StandardCharsets.UTF_8);
+        String plain = new String(cipher.doFinal(bytes, 12, bytes.length - 12), java.nio.charset.StandardCharsets.UTF_8);
+        // 方式つきの box は空白で 96 バイトに埋めてある。
+        assertEquals(96, plain.length());
+        return plain.trim();
     }
 
     @Test
@@ -151,11 +158,57 @@ public class OtpRelayResponderTest {
     }
 
     @Test
-    public void totpPage_nearTheEndOfTheStep_waitsForTheNextCode() {
+    public void totpPage_nearTheEndOfTheStep_waitsForTheNextCode() throws Exception {
         authenticator = true;
         clockNow = 1_234_567_918_000L; // 周期の残り 2 秒
         respondTo(TOTP_REQUEST_ID);
         assertEquals(Long.valueOf(2_300), slept.get(0));
+        // 次の窓のコード (1234567920 秒の窓) を返し、その窓を使用済みにする。
+        com.shakenokirimi12.uoa_app.services.idp.Totp.Params key = com.shakenokirimi12.uoa_app.services.idp.Totp.parse(RFC_OTPAUTH);
+        long next = com.shakenokirimi12.uoa_app.services.idp.Totp.step(key, 1_234_567_920_000L);
+        String expected = com.shakenokirimi12.uoa_app.services.idp.Totp.codeAtStep(key, next);
+        assertEquals("{\"code\":\"" + expected + "\",\"method\":\"totp\"}",
+                openBox(postBodyFor(TOTP_REQUEST_ID).get("box").getAsString(), TOTP_REQUEST_ID));
+        assertFalse(ledger.claim(next));
+    }
+
+    /** アプリのログインが今の窓を使っていたら次の窓を待つ。待てない (15 秒を超える) ときは断る。 */
+    @Test
+    public void totpPage_whenTheStepWasUsedByALogin_waitsOrRefuses() throws Exception {
+        authenticator = true;
+        clockNow = 1_234_567_890_000L; // 窓の始め (残り 30 秒)
+        com.shakenokirimi12.uoa_app.services.idp.Totp.Params key = com.shakenokirimi12.uoa_app.services.idp.Totp.parse(RFC_OTPAUTH);
+        assertTrue(ledger.claim(com.shakenokirimi12.uoa_app.services.idp.Totp.step(key, clockNow)));
+
+        OtpRelayResponder.Outcome outcome = respondTo(TOTP_REQUEST_ID);
+
+        assertEquals(OtpRelayResponder.TOTP_STEP_USED, outcome.reason);
+        assertTrue(slept.isEmpty());
+        assertEquals("{\"error\":\"totp-step-used\",\"method\":\"totp\"}",
+                openBox(postBodyFor(TOTP_REQUEST_ID).get("box").getAsString(), TOTP_REQUEST_ID));
+    }
+
+    /** 以前の文面 (メールだけ) で作った連携には、確かめるまでコードを作らない。 */
+    @Test
+    public void totpPage_withMailOnlyConsent_refusesUntilConfirmed() throws Exception {
+        authenticator = true;
+        pairing.totpConsentAt = null;
+        OtpRelayResponder.Outcome outcome = respondTo(TOTP_REQUEST_ID);
+
+        assertEquals(OtpRelayResponder.TOTP_CONSENT_REQUIRED, outcome.reason);
+        assertTrue(mailSince.isEmpty());
+        assertEquals("{\"error\":\"totp-consent-required\",\"method\":\"totp\"}",
+                openBox(postBodyFor(TOTP_REQUEST_ID).get("box").getAsString(), TOTP_REQUEST_ID));
+    }
+
+    /** 認証アプリの経路では、時間切れの見張りがメールの理由 (mail-timeout) で割り込まない。 */
+    @Test
+    public void expiryWatchdog_doesNotInterruptTheTotpPath() {
+        authenticator = true;
+        OtpRelayResponder.Attempt attempt = new OtpRelayResponder.Attempt();
+        attempt.markAnsweringWithoutMail();
+        assertEquals(OtpRelayResponder.ExpiryResult.NOT_CLAIMED,
+                responder().respondExpired(pairing, request, attempt, 1_000));
     }
 
     /** 鍵が別の ID のもの (設定で ID を書き換えた) なら、コードを作らずに理由を box で返す。 */
@@ -230,7 +283,8 @@ public class OtpRelayResponderTest {
         assertEquals("approved", body.get("result").getAsString());
         assertEquals(pairing.pairingId, body.get("pairingId").getAsString());
         // {"code":"048213","method":"mail"}
-        assertEquals(12 + 33 + 16, OtpRelayCrypto.decode(body.get("box").getAsString()).length);
+        // {"code":"048213","method":"mail"} を空白で 96 バイトに埋めたもの
+        assertEquals(12 + 96 + 16, OtpRelayCrypto.decode(body.get("box").getAsString()).length);
         // 依頼時刻 (5 秒前) は信用できる範囲なので、そのまま探索の起点になる。
         assertEquals(Long.valueOf(NOW - 5_000), mailSince.get(0));
         assertEquals(Integer.valueOf(42), deleted.get(0));

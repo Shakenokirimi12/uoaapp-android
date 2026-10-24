@@ -137,6 +137,10 @@
     <string name="otp_relay_unreachable">中継サーバに接続できませんでした。</string>
     <string name="otp_relay_consent_title">PC との連携を続けますか？</string>
     <string name="otp_relay_consent_message">「%1$s」で OTP の入力画面が出ると、このアプリが OTP を用意し、暗号化してその PC に自動で送ります。メール方式なら大学のメールから読み取り (確認コードのメールは、古いものも含めて削除します)、認証アプリ方式ならこのアプリにあるセットアップキーでコードを作ります。ユーザー名・パスワード・セットアップキーは送りません。「続ける」を押すと、そのためにメールを読み、コードを作って送ることに同意したことになります。\n\n心当たりのない PC なら、「解除」を押してください。</string>
+    <string name="otp_relay_totp_consent_title">「%1$s」に認証アプリのコードを送りますか？</string>
+    <string name="otp_relay_totp_consent_message">この PC で OTP の入力画面が出ると、このアプリが認証アプリのコードを作って自動で送ります。自分の PC でなければ「解除」を押してください。</string>
+    <string name="otp_relay_totp_consent_send">送る</string>
+    <string name="otp_relay_totp_consent_later">あとで</string>
     <string name="otp_relay_ext_title">PC に拡張を入れる</string>
     <string name="otp_relay_ext_lead">PC のブラウザでこの URL を開くと、UoA 非公式拡張を入れられます。</string>
     <string name="otp_relay_ext_url_display" translatable="false">uoa-app.shakenokiri.me/ext</string>

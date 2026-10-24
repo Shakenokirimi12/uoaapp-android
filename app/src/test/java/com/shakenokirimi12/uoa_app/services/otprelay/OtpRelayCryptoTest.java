@@ -30,8 +30,8 @@ public class OtpRelayCryptoTest {
     @Test
     public void randomNonce_boxHasNoncePlusTag() throws Exception {
         String box = OtpRelayCrypto.seal("048213", OtpRelayCrypto.PAGE_MAIL, "REQ", OtpRelayCrypto.keys(K));
-        // 12 (nonce) + 33 ({"code":"048213","method":"mail"}) + 16 (tag)
-        assertEquals(61, OtpRelayCrypto.decode(box).length);
+        // 12 (nonce) + 96 ({"code":"048213","method":"mail"} を空白で 96 バイトに埋めたもの) + 16 (tag)
+        assertEquals(124, OtpRelayCrypto.decode(box).length);
     }
 
     /** 拡張と iOS と同じ値: 乱数 0xc0〜0xcb に「totp」「mail」の目印を付けた requestId。 */
@@ -55,10 +55,13 @@ public class OtpRelayCryptoTest {
         byte[] nonce = new byte[12];
         for (int i = 0; i < nonce.length; i++) nonce[i] = (byte) (0xa0 + i);
         OtpRelayCrypto.Keys keys = OtpRelayCrypto.keys(K);
-        assertEquals("oKGio6SlpqeoqaqrML4K6LX4cIhtPN_P_Ebrh8I5-94QuposHVSmQWLrAGtlsxTQVDtSqo8lwdoeUjkldg",
-                OtpRelayCrypto.sealJson(OtpRelayCrypto.json("code", "048213", "method", "totp"), TOTP_REQUEST_ID, keys, nonce));
-        assertEquals("oKGio6SlpqeoqaqrML4M9aPyIJB1LoaSuh-3wcN2_8gJs4ErV0yoF2D6BCF3YpuS5za5Xe1vnHGN1Q9qLG8jEbDPoKy5NI8",
-                OtpRelayCrypto.sealJson(OtpRelayCrypto.json("error", "method-mismatch", "method", "totp"), MAIL_REQUEST_ID, keys, nonce));
+        assertEquals("oKGio6SlpqeoqaqrML4K6LX4cIhtPN_P_Ebrh8I5-94QuposHVSmQWLrAGtlJpmI5WL2Cb1twZI95aw5oEnjvntVt_I-2TCxQHKeI3jcmneQtAhLtJEEjBrN7LAeTOMvs8jxkiU2p7G_VSgHXrkT5ywc6owmfetRMzMqKw",
+                OtpRelayCrypto.sealJson(OtpRelayCrypto.padded(OtpRelayCrypto.json("code", "048213", "method", "totp")),
+                        TOTP_REQUEST_ID, keys, nonce));
+        assertEquals("oKGio6SlpqeoqaqrML4M9aPyIJB1LoaSuh-3wcN2_8gJs4ErV0yoF2D6BCF3YpuS5za5Xe1vnJI95aw5oEnjvntVt_I-2TCxQHKeI3jcmneQtAhLtJEEjBrN7LAeTOMvs8jxkiU2p7G_VSgHwHPq6GHjwgF_vTEVFmnHUA",
+                OtpRelayCrypto.sealJson(OtpRelayCrypto.padded(OtpRelayCrypto.json("error", "method-mismatch", "method", "totp")),
+                        MAIL_REQUEST_ID, keys, nonce));
+        assertEquals(96, OtpRelayCrypto.padded("{}").length());
         assertEquals("{\"error\":\"no-totp-key\"}", OtpRelayCrypto.json("error", "no-totp-key", "method", null));
     }
 

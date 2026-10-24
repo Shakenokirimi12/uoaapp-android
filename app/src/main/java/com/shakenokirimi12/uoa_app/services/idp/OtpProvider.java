@@ -35,4 +35,10 @@ public interface OtpProvider {
 
     /** code() で渡したコードを IdP が受け付けなかった。 */
     default void onRejected() {}
+
+    /**
+     * 弾かれたとき、同じログインの中で 1 回だけ code() からやり直すか (SeciossIdPClient)。やり直しも弾かれたら
+     * onRejected を呼ぶ。
+     */
+    default boolean retriesRejectedCode() { return false; }
 }

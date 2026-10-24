@@ -283,6 +283,12 @@ public class OtpRelayWorker extends Worker {
                         // 今の ID の鍵だけ (別の ID の鍵は totpOtpauthFor が返さない)。
                         return com.shakenokirimi12.uoa_app.services.idp.Totp.parse(prefs.totpOtpauthFor(uid));
                     }
+
+                    @Override
+                    public boolean claimStep(long step) {
+                        // アプリのログインと同じ台帳。同じコードを中継とログインで二重に使わない。
+                        return com.shakenokirimi12.uoa_app.services.idp.TotpStepLedger.shared().claim(step);
+                    }
                 },
                 Thread::sleep);
     }

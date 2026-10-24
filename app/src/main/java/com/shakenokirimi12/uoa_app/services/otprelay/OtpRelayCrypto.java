@@ -91,7 +91,7 @@ public final class OtpRelayCrypto {
     @NonNull
     public static String seal(@NonNull String code, @NonNull String method, @NonNull String requestId,
                               @NonNull Keys keys) throws GeneralSecurityException {
-        return sealJson(json("code", code, "method", method), requestId, keys, randomNonce());
+        return sealJson(padded(json("code", code, "method", method)), requestId, keys, randomNonce());
     }
 
     /**
@@ -101,7 +101,20 @@ public final class OtpRelayCrypto {
     @NonNull
     public static String sealRefusal(@NonNull String error, @Nullable String method, @NonNull String requestId,
                                      @NonNull Keys keys) throws GeneralSecurityException {
-        return sealJson(json("error", error, "method", method), requestId, keys, randomNonce());
+        return sealJson(padded(json("error", error, "method", method)), requestId, keys, randomNonce());
+    }
+
+    /**
+     * 方式つきの box (コードも断りも) の平文の長さ (iOS の OTPRelayCrypto.paddedLength と同じ)。JSON の後ろを空白で埋めて
+     * この長さにそろえ、暗号文の長さから成功か断りか・どの理由か・コードの桁数をサーバに読ませない。
+     */
+    static final int PADDED_LENGTH = 96;
+
+    @NonNull
+    static String padded(@NonNull String json) {
+        StringBuilder sb = new StringBuilder(json);
+        while (sb.length() < PADDED_LENGTH) sb.append(' ');
+        return sb.toString();
     }
 
     private static byte[] randomNonce() {
