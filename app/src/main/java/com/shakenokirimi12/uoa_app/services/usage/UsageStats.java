@@ -61,8 +61,10 @@ public final class UsageStats {
     /** 機能を 1 回使ったと数える。OFF なら何もしない。どのスレッドからでもよい。 */
     public static void record(@NonNull Context context, @NonNull String feature) {
         Context app = context.getApplicationContext();
-        if (!PreferenceManager.getInstance(app).isUsageStatsEnabled()) return;
+        // ON/OFF は lock の中で見る。外で見ると、見た直後に OFF (setEnabled) が回数を消し、そのあとで
+        // ここが書き戻して、OFF にしたのに回数が残る。
         synchronized (lock) {
+            if (!PreferenceManager.getInstance(app).isUsageStatsEnabled()) return;
             UsageLedger ledger = ledger(app);
             ledger.increment(LocalDate.now(), feature);
             save(app, ledger);
@@ -72,8 +74,11 @@ public final class UsageStats {
     /** 設定の「利用状況を送る」。OFF にしたら、まだ送っていない回数と installId を消す。 */
     public static void setEnabled(@NonNull Context context, boolean enabled) {
         Context app = context.getApplicationContext();
-        PreferenceManager.getInstance(app).setUsageStatsEnabled(enabled);
-        if (!enabled) clearLocal(app);
+        // record と同じ lock の中で切り替えて消す (record が OFF の後に書き戻さないように)。
+        synchronized (lock) {
+            PreferenceManager.getInstance(app).setUsageStatsEnabled(enabled);
+            if (!enabled) clearLocal(app);
+        }
     }
 
     /** 回数・installId・失敗の記録を消す (OFF・ログアウト)。設定の値はここでは変えない。 */
