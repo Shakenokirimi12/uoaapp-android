@@ -20,17 +20,36 @@
         android:textAppearance="?attr/textAppearanceBodySmall"
         android:textColor="?attr/colorOnSurfaceVariant" />
 
+    <!-- どちらも空き = 同じ授業の色を薄くしたもの (TimetableGridView.FREE_ALPHA / 255 ≒ 0.30)。 -->
     <View
         android:layout_width="18dp"
         android:layout_height="14dp"
-        android:layout_marginStart="16dp"
-        android:background="@drawable/bg_timetable_legend_free" />
+        android:layout_marginStart="14dp"
+        android:alpha="0.30"
+        android:background="@drawable/bg_timetable_legend_same" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="6dp"
         android:text="@string/timetable_legend_free"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:text="@string/timetable_legend_mine_label"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="9sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:text="@string/timetable_legend_mine"
         android:textAppearance="?attr/textAppearanceBodySmall"
         android:textColor="?attr/colorOnSurfaceVariant" />
 </LinearLayout>

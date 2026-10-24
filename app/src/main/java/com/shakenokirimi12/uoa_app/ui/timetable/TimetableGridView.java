@@ -77,8 +77,12 @@ public class TimetableGridView extends LinearLayout {
         }
     }
 
+    /** 同じ授業の塗り。どちらも空きは、この色を薄くしたもの (FREE_ALPHA)。凡例 (view_timetable_legend) と同じ。 */
+    static final int FREE_ALPHA = 77;
+
     private View cell(List<SharedClass> classes, @Nullable List<SharedClass> mine, int day, int[] r) {
         List<SharedClass> here = TimetableGrid.classes(classes, day, r);
+        List<SharedClass> mineHere = mine != null ? TimetableGrid.classes(mine, day, r) : Collections.emptyList();
         TimetableGrid.Overlap overlap = mine != null ? TimetableGrid.overlap(classes, mine, day, r) : null;
         int success = ContextCompat.getColor(getContext(), R.color.success);
         int successContainer = ContextCompat.getColor(getContext(), R.color.success_container);
@@ -90,8 +94,10 @@ public class TimetableGridView extends LinearLayout {
         if (overlap == TimetableGrid.Overlap.SAME) {
             bg.setColor(successContainer);
         } else if (overlap == TimetableGrid.Overlap.BOTH_FREE) {
-            bg.setColor(ColorUtils.setAlphaComponent(successContainer, 70));
-            bg.setStroke(dp(1.5f), success, dp(4), dp(3));
+            // どちらも空きは色だけで示す (文字や枠を全部の空きコマに入れると、表が埋まって授業が埋もれる)。
+            bg.setColor(ColorUtils.setAlphaComponent(successContainer, FREE_ALPHA));
+        } else if (overlap == TimetableGrid.Overlap.MINE_ONLY) {
+            bg.setColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurfaceContainerHigh));
         } else if (!here.isEmpty()) {
             // 授業のあるコマと空きのコマが見分けられるよう、授業は色の付いた面、空きはカードより明るい面にする。
             bg.setColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorPrimaryContainer));
@@ -111,7 +117,7 @@ public class TimetableGridView extends LinearLayout {
         if (!here.isEmpty()) {
             SharedClass first = here.get(0);
             TextView title = text(first.title, 11, true, onSurface);
-            title.setMaxLines(3);
+            title.setMaxLines(4);
             title.setEllipsize(TextUtils.TruncateAt.END);
             content.addView(title);
             if (!first.room.isEmpty()) {
@@ -124,7 +130,17 @@ public class TimetableGridView extends LinearLayout {
             for (SharedClass c : here) spoken.add(c.room.isEmpty() ? c.title : c.title + " " + c.room);
         } else {
             spoken.add("授業なし");
+            if (overlap == TimetableGrid.Overlap.MINE_ONLY && !mineHere.isEmpty()) {
+                // 友達は空き、自分は授業。自分の授業名を薄く出して「空き」と取り違えないようにする。
+                content.addView(text("自分", 9, true, onSurfaceVariant));
+                TextView mineTitle = text(mineHere.get(0).title, 10, false, onSurfaceVariant);
+                mineTitle.setMaxLines(3);
+                mineTitle.setEllipsize(TextUtils.TruncateAt.END);
+                content.addView(mineTitle);
+            }
         }
+        // 下に寄せる印 (同じ / 自分も授業)。
+        content.addView(new View(getContext()), new LayoutParams(1, 0, 1f));
         if (overlap == TimetableGrid.Overlap.SAME) {
             TextView badge = text("同じ", 9, true, ContextCompat.getColor(getContext(), R.color.white));
             GradientDrawable pill = new GradientDrawable();
@@ -136,14 +152,16 @@ public class TimetableGridView extends LinearLayout {
             lp.topMargin = dp(2);
             content.addView(badge, lp);
             spoken.add("自分と同じ授業");
+        } else if (overlap == TimetableGrid.Overlap.BOTH_BUSY) {
+            LayoutParams lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+            lp.topMargin = dp(2);
+            content.addView(text("自分も授業", 9, false, onSurfaceVariant), lp);
         }
-        frame.addView(content, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
-        if (overlap == TimetableGrid.Overlap.BOTH_FREE) {
-            TextView free = text("空き", 11, true, success);
-            frame.addView(free, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
-            spoken.add("どちらも空き");
+        if ((overlap == TimetableGrid.Overlap.MINE_ONLY || overlap == TimetableGrid.Overlap.BOTH_BUSY) && !mineHere.isEmpty()) {
+            spoken.add("自分は " + mineHere.get(0).title);
         }
+        if (overlap == TimetableGrid.Overlap.BOTH_FREE) spoken.add("どちらも空き");
+        frame.addView(content, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         frame.setContentDescription(TextUtils.join("、", spoken));
         frame.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
         content.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);

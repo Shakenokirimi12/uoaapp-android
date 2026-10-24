@@ -168,10 +168,19 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_change_name"
-                    style="@style/Widget.Material3.Button.TextButton"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/timetable_change" />
+                    android:layout_marginStart="8dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="36dp"
+                    android:paddingHorizontal="12dp"
+                    android:text="@string/timetable_change_name"
+                    android:textSize="13sp"
+                    app:icon="@drawable/ic_edit"
+                    app:iconPadding="4dp"
+                    app:iconSize="16dp" />
             </LinearLayout>
 
             <TextView

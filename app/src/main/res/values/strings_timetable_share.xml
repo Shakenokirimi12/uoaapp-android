@@ -17,6 +17,8 @@
     <string name="timetable_compare_unavailable">自分の時間割をまだ取得していないので、比べられません。</string>
     <string name="timetable_legend_same">同じ授業</string>
     <string name="timetable_legend_free">どちらも空き</string>
+    <string name="timetable_legend_mine_label">自分</string>
+    <string name="timetable_legend_mine">= 自分だけ授業</string>
     <string name="timetable_rename">名前を変更</string>
     <string name="timetable_delete">削除</string>
     <string name="timetable_name_label">相手に表示する名前</string>
@@ -30,6 +32,7 @@
     <string name="timetable_received_more">一覧から開けます。ほかの友達も、続けて読み取れます。</string>
     <string name="timetable_stop_sharing">共有を止める</string>
     <string name="timetable_change">変更</string>
+    <string name="timetable_change_name">名前を変える</string>
     <string name="timetable_creating">QR コードを作っています…</string>
     <string name="timetable_retry">もう一度試す</string>
     <string name="timetable_unavailable_title">共有できる時間割がありません</string>
@@ -37,7 +40,7 @@
     <string name="timetable_loading">時間割を受け取っています…</string>
     <string name="timetable_saving">保存しています…</string>
     <string name="timetable_save_and_send">保存して、自分の時間割も送る</string>
-    <string name="timetable_save_only">保存だけする</string>
+    <string name="timetable_save_only">保存だけする (相手には送らない)</string>
     <string name="timetable_save">保存する</string>
     <string name="timetable_send_note">送るのは、授業名・曜日・時限・教室と名前だけです。</string>
     <string name="timetable_cannot_send_back">自分の時間割をまだ取得していないので、送り返せません。カレンダーで取得すると送れるようになります。</string>
