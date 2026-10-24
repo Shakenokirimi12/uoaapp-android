@@ -131,30 +131,48 @@ public class TimetableShareTest {
 
     @Test
     public void outgoingShareExpiry() {
-        OutgoingShare share = new OutgoingShare("x", 1000, new ArrayList<>());
+        OutgoingShare share = new OutgoingShare("x", 1000, "", new ArrayList<>());
         assertFalse(share.isExpired(999));
         assertTrue(share.isExpired(1000));
     }
 
-    /** 同じ名前で届いたら上書きし (付けた名前は残す)、名前の無いものは別の友達として増やす。 */
+    /** 同じ名前で届いても上書きしない (返事には認証が無い)。付けた名前と授業はそのまま残る。 */
     @Test
-    public void savingUpdatesTheSameNamedFriend() {
+    public void savingNeverOverwritesBySameName() {
         List<SharedClass> one = new ArrayList<>();
         one.add(new SharedClass(1, 1, 2, "A", ""));
         List<SharedClass> two = new ArrayList<>();
         two.add(new SharedClass(2, 3, 4, "B", ""));
         List<TimetableFriend> friends = new ArrayList<>();
-        TimetableFriend first = TimetableShareStore.upsert(friends, SharedTimetable.create("太郎", 0, one), 1, "1");
-        friends.set(0, new TimetableFriend(first.id, "たろう", first.sentName, first.receivedAt, first.timetable));
-        TimetableShareStore.upsert(friends, SharedTimetable.create("太郎", 0, two), 2, "2");
-        TimetableShareStore.upsert(friends, SharedTimetable.create("", 0, one), 3, "3");
-        TimetableShareStore.upsert(friends, SharedTimetable.create("", 0, two), 4, "4");
+        TimetableFriend first = TimetableShareStore.add(friends, SharedTimetable.create("太郎", 0, one), 1, "1");
+        friends.set(friends.indexOf(first), new TimetableFriend(first.id, "たろう", first.sentName, first.receivedAt, first.timetable));
+        TimetableShareStore.add(friends, SharedTimetable.create("太郎", 0, two), 2, "2");
+        TimetableShareStore.add(friends, SharedTimetable.create("", 0, one), 3, "3");
         assertEquals(3, friends.size());
-        TimetableFriend updated = null;
-        for (TimetableFriend f : friends) if (f.id.equals("1")) updated = f;
-        assertNotNull(updated);
-        assertEquals("たろう", updated.name);
-        assertEquals(two, updated.timetable.classes);
+        TimetableFriend kept = null;
+        for (TimetableFriend f : friends) if (f.id.equals("1")) kept = f;
+        assertNotNull(kept);
+        assertEquals("たろう", kept.name);
+        assertEquals(one, kept.timetable.classes);
         assertEquals(TimetableShareStore.UNNAMED, friends.get(0).name);
+    }
+
+    /** 名前か授業が変わったら、出している共有を使い回さない。作った日時は見ない。 */
+    @Test
+    public void contentKeyChangesWithNameAndClasses() {
+        List<SharedClass> classes = new ArrayList<>();
+        classes.add(new SharedClass(1, 1, 2, "A", "M1"));
+        List<SharedClass> doubled = new ArrayList<>(classes);
+        doubled.addAll(classes);
+        String a = TimetableShareStore.contentKey(SharedTimetable.create("A1", 1_800_000_000_000L, classes));
+        assertEquals(a, TimetableShareStore.contentKey(SharedTimetable.create("A1", 1_800_000_060_000L, classes)));
+        assertFalse(a.equals(TimetableShareStore.contentKey(SharedTimetable.create("A2", 1_800_000_000_000L, classes))));
+        assertFalse(a.equals(TimetableShareStore.contentKey(SharedTimetable.create("A1", 1_800_000_000_000L, doubled))));
+    }
+
+    @Test
+    public void sanitizeDropsLoneSurrogates() {
+        assertEquals("ab", SharedTimetable.sanitize("a\uD800b", 10));
+        assertEquals("a\uD83D\uDE00", SharedTimetable.sanitize("a\uD83D\uDE00", 10));
     }
 }

@@ -31,6 +31,7 @@
     <string name="timetable_waiting">友達が読み取るのを待っています…</string>
     <string name="timetable_received_more">一覧から開けます。ほかの友達も、続けて読み取れます。</string>
     <string name="timetable_stop_sharing">共有を止める</string>
+    <string name="timetable_stop_failed">共有を止められませんでした。通信状況を確認して、もう一度お試しください。</string>
     <string name="timetable_change">変更</string>
     <string name="timetable_change_name">名前を変える</string>
     <string name="timetable_creating">QR コードを作っています…</string>

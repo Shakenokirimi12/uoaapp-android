@@ -38,6 +38,9 @@ public final class SharedTimetable {
     public static final int MAX_DAY = 7;
     public static final int MAX_PERIOD = 11;
 
+    private static final Instant MIN_CREATED = Instant.parse("2000-01-01T00:00:00Z");
+    private static final Instant MAX_CREATED = Instant.parse("2100-01-01T00:00:00Z");
+
     private static final DateTimeFormatter ISO_SECONDS =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneOffset.UTC);
 
@@ -116,7 +119,8 @@ public final class SharedTimetable {
         }
         String createdRaw = string(t.get("createdAt"));
         Instant created = createdRaw != null ? parseInstant(createdRaw) : null;
-        if (created == null) return null;
+        // サーバー・iOS と同じく 2000〜2099 年だけを受ける。
+        if (created == null || created.isBefore(MIN_CREATED) || !created.isBefore(MAX_CREATED)) return null;
         JsonElement list = t.get("classes");
         if (list == null || !list.isJsonArray()) return null;
         JsonArray array = list.getAsJsonArray();
@@ -157,7 +161,8 @@ public final class SharedTimetable {
         StringBuilder kept = new StringBuilder();
         raw.codePoints().forEach(cp -> {
             int type = Character.getType(cp);
-            if (type != Character.CONTROL && type != Character.FORMAT) kept.appendCodePoint(cp);
+            // 対になっていないサロゲート (壊れた UTF-16) も落とす。サーバーへ送ると JSON が不正になる。
+            if (type != Character.CONTROL && type != Character.FORMAT && type != Character.SURROGATE) kept.appendCodePoint(cp);
         });
         String trimmed = trim(kept.toString());
         int count = trimmed.codePointCount(0, trimmed.length());

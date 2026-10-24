@@ -75,10 +75,20 @@ public class TimetableExchangeFragment extends Fragment {
         });
         binding.buttonStop.setOnClickListener(v -> {
             stopPolling();
+            binding.buttonStop.setEnabled(false);
+            binding.textStopError.setVisibility(View.GONE);
             executor.execute(() -> {
-                store.stopSharing();
+                boolean stopped = store.stopSharing();
                 main.post(() -> {
-                    if (binding != null) Navigation.findNavController(binding.getRoot()).popBackStack();
+                    if (binding == null) return;
+                    if (stopped) {
+                        Navigation.findNavController(binding.getRoot()).popBackStack();
+                        return;
+                    }
+                    // 止められなかったときは閉じない。手元の共有は残っているので、もう一度押せる。
+                    binding.buttonStop.setEnabled(true);
+                    binding.textStopError.setVisibility(View.VISIBLE);
+                    if (isResumed()) startPolling();
                 });
             });
         });

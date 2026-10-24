@@ -259,6 +259,16 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/timetable_stop_sharing"
                 android:textColor="?attr/colorError" />
+
+            <TextView
+                android:id="@+id/text_stop_error"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="@string/timetable_stop_failed"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorError"
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- 失敗 -->

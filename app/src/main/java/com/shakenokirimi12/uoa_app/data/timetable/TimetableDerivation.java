@@ -115,14 +115,16 @@ public final class TimetableDerivation {
         List<SharedClass> result = new ArrayList<>();
         for (Map.Entry<Key, Set<Integer>> entry : weeks.entrySet()) {
             if (entry.getValue().size() < needed) continue;
-            String room = "";
+            // 一番多い教室。同数なら空でない教室を優先し、その中では文字列の順で決める (iOS と同じ)。
+            String room = null;
             int best = -1;
             for (Map.Entry<String, Integer> r : rooms.get(entry.getKey()).entrySet()) {
-                if (r.getValue() > best || (r.getValue() == best && r.getKey().compareTo(room) < 0)) {
+                if (room == null || better(r.getKey(), r.getValue(), room, best)) {
                     best = r.getValue();
                     room = r.getKey();
                 }
             }
+            if (room == null) room = "";
             Key k = entry.getKey();
             result.add(new SharedClass(k.day, k.start, k.end, k.title, room));
         }
@@ -133,6 +135,12 @@ public final class TimetableDerivation {
             return a.title.compareTo(b.title);
         });
         return result.size() > SharedTimetable.MAX_CLASSES ? new ArrayList<>(result.subList(0, SharedTimetable.MAX_CLASSES)) : result;
+    }
+
+    private static boolean better(String room, int count, String current, int currentCount) {
+        if (count != currentCount) return count > currentCount;
+        if (room.isEmpty() != current.isEmpty()) return !room.isEmpty();
+        return room.compareTo(current) < 0;
     }
 
     /** 開始時刻 (0 時からの分) がどの時限の始まりか (前後 5 分まで)。どれでもなければ 0。 */

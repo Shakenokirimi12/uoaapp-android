@@ -63,28 +63,21 @@ public final class TimetableShareStore {
         return null;
     }
 
-    /** 届いた時間割を保存する。同じ名前 (相手が付けた名前) の友達が既にいれば、その友達を上書きする。 */
+    /**
+     * 届いた時間割を新しい友達として保存する。同じ名前の友達がいても上書きしない: 返事には認証が無く、QR を見た
+     * 第三者や同じ名前の別の友達の返事で、今の友達の時間割が黙って置き換わってしまうため。
+     */
     @NonNull
     public synchronized TimetableFriend save(@NonNull SharedTimetable timetable, long receivedAt) {
-        TimetableFriend f = upsert(friends, timetable, receivedAt, UUID.randomUUID().toString());
+        TimetableFriend f = add(friends, timetable, receivedAt, UUID.randomUUID().toString());
         persistFriends();
         return f;
     }
 
-    /** save の中身 (保存先に触らない)。名前の無いものは毎回別の友達として先頭に足す。 */
+    /** save の中身 (保存先に触らない)。いつも先頭に足す。 */
     @NonNull
-    static TimetableFriend upsert(@NonNull List<TimetableFriend> friends, @NonNull SharedTimetable timetable,
-                                  long receivedAt, @NonNull String newId) {
-        if (!timetable.name.isEmpty()) {
-            for (int i = 0; i < friends.size(); i++) {
-                TimetableFriend old = friends.get(i);
-                if (old.sentName.equals(timetable.name)) {
-                    TimetableFriend updated = new TimetableFriend(old.id, old.name, old.sentName, receivedAt, timetable);
-                    friends.set(i, updated);
-                    return updated;
-                }
-            }
-        }
+    static TimetableFriend add(@NonNull List<TimetableFriend> friends, @NonNull SharedTimetable timetable,
+                               long receivedAt, @NonNull String newId) {
         TimetableFriend f = new TimetableFriend(newId, timetable.name.isEmpty() ? UNNAMED : timetable.name,
                 timetable.name, receivedAt, timetable);
         friends.add(0, f);
@@ -167,7 +160,8 @@ public final class TimetableShareStore {
             JsonObject o = JsonParser.parseString(json).getAsJsonObject();
             List<String> seen = new ArrayList<>();
             for (JsonElement e : o.getAsJsonArray("seenReplyIds")) seen.add(e.getAsString());
-            return new OutgoingShare(o.get("shareId").getAsString(), o.get("expiresAt").getAsLong(), seen);
+            String key = o.has("contentKey") ? o.get("contentKey").getAsString() : "";
+            return new OutgoingShare(o.get("shareId").getAsString(), o.get("expiresAt").getAsLong(), key, seen);
         } catch (RuntimeException e) {
             return null;
         }
@@ -177,13 +171,15 @@ public final class TimetableShareStore {
         JsonObject o = new JsonObject();
         o.addProperty("shareId", share.shareId);
         o.addProperty("expiresAt", share.expiresAt);
+        o.addProperty("contentKey", share.contentKey);
         JsonArray seen = new JsonArray();
         for (String id : share.seenReplyIds) seen.add(id);
         o.add("seenReplyIds", seen);
         prefs.edit().putString(KEY_OUTGOING, o.toString()).apply();
     }
 
-    private void clearOutgoing() {
+    /** 手元の共有とトークンだけを消す (サーバーの共有は期限で消える)。 */
+    public synchronized void forgetOutgoing() {
         prefs.edit().remove(KEY_OUTGOING).apply();
         secure.setTimetableShareOwnerToken(null);
     }
@@ -194,20 +190,37 @@ public final class TimetableShareStore {
         return t == null || t.isEmpty() ? null : t;
     }
 
-    /** 有効な共有があればそれを、無ければ新しく作る。名前を変えたときは作り直す (forceNew)。 */
+    /** 有効な共有があり、時間割 (名前と授業) が同じならそれを、無ければ新しく作る。 */
     @NonNull
     public OutgoingShare startSharing(@NonNull SharedTimetable timetable, boolean forceNew) throws TimetableShareApi.Failure {
+        String key = contentKey(timetable);
         OutgoingShare current = outgoing();
-        if (!forceNew && current != null && !current.isExpired(System.currentTimeMillis() + 10 * 60_000L)
-                && ownerToken() != null) {
+        if (!forceNew && current != null && current.contentKey.equals(key)
+                && !current.isExpired(System.currentTimeMillis() + 10 * 60_000L) && ownerToken() != null) {
             return current;
         }
-        stopSharing();
+        // 作り直す前に、古い共有に届いている返事を取り込む (止めると返事も消える)。
+        // 古い共有を止められなくても (通信の失敗)、新しい共有は作る。古い方は期限で消える。
+        try {
+            collectReplies();
+        } catch (TimetableShareApi.Failure ignored) {
+            // 取り込めなかった返事は、古い共有と一緒に期限で消える。
+        }
+        if (!stopSharing()) forgetOutgoing();
         TimetableShareApi.Created created = api.create(timetable);
         secure.setTimetableShareOwnerToken(created.ownerToken);
-        OutgoingShare share = new OutgoingShare(created.shareId, created.expiresAt, new ArrayList<>());
+        OutgoingShare share = new OutgoingShare(created.shareId, created.expiresAt, key, new ArrayList<>());
         synchronized (this) { setOutgoing(share); }
         return share;
+    }
+
+    /** 名前と授業の組み合わせ (作った日時は除く)。同じなら同じ共有を使い回せる。iOS の contentKey と同じ。 */
+    @NonNull
+    public static String contentKey(@NonNull SharedTimetable timetable) {
+        List<String> parts = new ArrayList<>();
+        parts.add(timetable.name);
+        for (SharedClass c : timetable.classes) parts.add(c.day + "|" + c.start + "|" + c.end + "|" + c.title + "|" + c.room);
+        return String.join("\n", parts);
     }
 
     /** 届いた返事を友達として保存し、新しく届いた友達を返す。期限切れなら共有を片付ける。 */
@@ -218,7 +231,7 @@ public final class TimetableShareStore {
         if (current == null) return received;
         String token = ownerToken();
         if (current.isExpired(System.currentTimeMillis()) || token == null) {
-            synchronized (this) { clearOutgoing(); }
+            forgetIfStill(current.shareId);
             return received;
         }
         List<TimetableShareApi.Reply> replies;
@@ -226,7 +239,8 @@ public final class TimetableShareStore {
             replies = api.replies(current.shareId, token);
         } catch (TimetableShareApi.Failure e) {
             if (e.isExpired()) {
-                synchronized (this) { clearOutgoing(); }
+                // 待っている間に作り直していたら、新しい共有は消さない。
+                forgetIfStill(current.shareId);
                 return received;
             }
             throw e;
@@ -241,26 +255,56 @@ public final class TimetableShareStore {
                 received.add(save(r.timetable, System.currentTimeMillis()));
                 seen.add(r.replyId);
             }
-            if (!received.isEmpty()) setOutgoing(new OutgoingShare(share.shareId, share.expiresAt, seen));
+            if (!received.isEmpty()) setOutgoing(new OutgoingShare(share.shareId, share.expiresAt, share.contentKey, seen));
         }
         return received;
     }
 
-    /** 共有を止める。サーバーからも消す (消せなくても期限で消える)。 */
-    public void stopSharing() {
+    /**
+     * 共有を止める。サーバーから消せたとき (もう無いときを含む) だけ手元も片付けて true を返す。
+     * 通信できなかったときは、手元の共有とトークンを残して false を返す (もう一度止められるように)。
+     */
+    public boolean stopSharing() {
         OutgoingShare current = outgoing();
-        if (current == null) return;
+        if (current == null) return true;
         String token = ownerToken();
         if (token != null) {
             try {
                 api.delete(current.shareId, token);
-            } catch (TimetableShareApi.Failure ignored) {
-                // 消せなかった共有は 24 時間で切れる。手元は片付ける。
+            } catch (TimetableShareApi.Failure e) {
+                if (!e.isExpired()) return false;
+                // 既に切れている・消えている。
             }
         }
+        forgetIfStill(current.shareId);
+        return true;
+    }
+
+    private synchronized void forgetIfStill(@NonNull String shareId) {
+        OutgoingShare now = outgoing();
+        if (now != null && now.shareId.equals(shareId)) forgetOutgoing();
+    }
+
+    /**
+     * ログアウト (この端末のデータを消す) のとき。受け取った友達・自分の名前・出している共有を手元から消し、
+     * 共有はサーバーからも消しにいく (消せなくても 24 時間で切れる)。トークンは PreferenceManager.clearAll() で
+     * 消えるので、先に写してから消す。通信はメインスレッドでしない。
+     */
+    public void clearAllOnLogout() {
+        OutgoingShare current = outgoing();
+        String token = ownerToken();
         synchronized (this) {
-            OutgoingShare now = outgoing();
-            if (now != null && now.shareId.equals(current.shareId)) clearOutgoing();
+            friends.clear();
+            prefs.edit().clear().apply();
+            secure.setTimetableShareOwnerToken(null);
         }
+        if (current == null || token == null) return;
+        new Thread(() -> {
+            try {
+                api.delete(current.shareId, token);
+            } catch (TimetableShareApi.Failure ignored) {
+                // 消せなかった共有は期限で消える。
+            }
+        }, "timetable-share-stop").start();
     }
 }

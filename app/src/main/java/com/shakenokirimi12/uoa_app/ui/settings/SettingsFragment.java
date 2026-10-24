@@ -277,6 +277,9 @@ public class SettingsFragment extends Fragment {
                             // PC 中継の連携も中継サーバから消す。解除が済むまで鍵は「解除待ち」に残し、
                             // 失敗しても送り直す (clearAll でも消えない)。
                             com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairingService.unpairAllOnLogout(requireContext());
+                            // 時間割共有: 受け取った友達の時間割と、出している共有を消す (共有はサーバーからも)。
+                            // 返事を読むトークンは clearAll が消すので、その前に呼ぶ。
+                            com.shakenokirimi12.uoa_app.data.timetable.TimetableShareStore.getInstance(requireContext()).clearAllOnLogout();
                             prefs.clearAll();
                             DataCache.getInstance(requireContext()).clearAll();
                             // キャッシュを捨てたら、それを映しているウィジェットと通知も片付ける。
