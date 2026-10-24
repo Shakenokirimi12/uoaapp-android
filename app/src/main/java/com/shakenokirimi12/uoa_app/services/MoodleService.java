@@ -5,7 +5,6 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.data.models.MoodleCourse;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
@@ -15,7 +14,6 @@ import com.shakenokirimi12.uoa_app.services.idp.SeciossError;
 import com.shakenokirimi12.uoa_app.services.idp.SeciossIdPClient;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -467,21 +465,14 @@ public class MoodleService {
                         "core_course_get_enrolled_courses_by_timeline_classification",
                         jsonBody));
 
-                Type listType = new TypeToken<List<Map<String, Object>>>() {}.getType();
-                List<Map<String, Object>> arr = gson.fromJson(response, listType);
-
-                if (arr == null || arr.isEmpty()) {
-                    postSuccess(callback, new ArrayList<>());
-                    return;
-                }
-
-                Map<String, Object> first = arr.get(0);
-                if (Boolean.TRUE.equals(first.get("error"))) {
+                Map<String, Object> data;
+                try {
+                    data = MoodleAjax.firstData(gson, response);
+                } catch (MoodleAjax.AjaxException e) {
+                    Log.w(TAG, "core_course_get_enrolled_courses_by_timeline_classification failed: " + e.getMessage());
                     postError(callback, "コース取得に失敗しました");
                     return;
                 }
-
-                Map<String, Object> data = (Map<String, Object>) first.get("data");
                 List<Map<String, Object>> coursesRaw =
                         (List<Map<String, Object>>) data.get("courses");
 
@@ -524,38 +515,42 @@ public class MoodleService {
                         "core_calendar_get_action_events_by_timesort",
                         jsonBody));
 
-                Type listType = new TypeToken<List<Map<String, Object>>>() {}.getType();
-                List<Map<String, Object>> arr = gson.fromJson(response, listType);
+                // 失敗を「課題 0 件」の成功にしない。空で保存すると、保存済みの課題とリマインダーが消える。
+                Map<String, Object> data;
+                try {
+                    data = MoodleAjax.firstData(gson, response);
+                } catch (MoodleAjax.AjaxException e) {
+                    Log.w(TAG, "core_calendar_get_action_events_by_timesort failed: " + e.getMessage());
+                    postError(callback, "課題の取得に失敗しました");
+                    return;
+                }
+                List<Map<String, Object>> events = data.get("events") instanceof List
+                        ? (List<Map<String, Object>>) data.get("events") : null;
+                if (events == null) {
+                    Log.w(TAG, "core_calendar_get_action_events_by_timesort failed: no events");
+                    postError(callback, "課題の取得に失敗しました");
+                    return;
+                }
 
                 List<Assignment> assignments = new ArrayList<>();
-                if (arr != null && !arr.isEmpty()) {
-                    Map<String, Object> first = arr.get(0);
-                    Map<String, Object> data = (Map<String, Object>) first.get("data");
-                    if (data != null) {
-                        List<Map<String, Object>> events =
-                                (List<Map<String, Object>>) data.get("events");
-                        if (events != null) {
-                            for (Map<String, Object> e : events) {
-                                Assignment a = new Assignment();
-                                a.setId(toInt(e.get("id")));
-                                a.setName(toStr(e.get("name")));
-                                a.setDueDate(toLong(e.get("timesort")));
-                                a.setUrl(MoodleEventUrl.pick(
-                                        e.get("url") instanceof String ? (String) e.get("url") : null,
-                                        e.get("viewurl") instanceof String ? (String) e.get("viewurl") : null));
+                for (Map<String, Object> e : events) {
+                    Assignment a = new Assignment();
+                    a.setId(toInt(e.get("id")));
+                    a.setName(toStr(e.get("name")));
+                    a.setDueDate(toLong(e.get("timesort")));
+                    a.setUrl(MoodleEventUrl.pick(
+                            e.get("url") instanceof String ? (String) e.get("url") : null,
+                            e.get("viewurl") instanceof String ? (String) e.get("viewurl") : null));
 
-                                Map<String, Object> course =
-                                        (Map<String, Object>) e.get("course");
-                                if (course != null) {
-                                    a.setCourseName(toStr(course.get("fullname")));
-                                    a.setCourseId(toInt(course.get("id")));
-                                } else {
-                                    a.setCourseName("Moodle Event");
-                                }
-                                assignments.add(a);
-                            }
-                        }
+                    Map<String, Object> course =
+                            (Map<String, Object>) e.get("course");
+                    if (course != null) {
+                        a.setCourseName(toStr(course.get("fullname")));
+                        a.setCourseId(toInt(course.get("id")));
+                    } else {
+                        a.setCourseName("Moodle Event");
                     }
+                    assignments.add(a);
                 }
 
                 postSuccess(callback, assignments);
