@@ -20,7 +20,8 @@ import javax.crypto.spec.SecretKeySpec;
  *   requestToken = base64url(HMAC(K, "uoa-otp-relay/request"))  拡張が依頼に使う
  *   respondToken = base64url(HMAC(K, "uoa-otp-relay/respond"))  この端末が応答に使う
  *   encKey       = HMAC(K, "uoa-otp-relay/encrypt")             AES-256-GCM の鍵 (送らない)
- * 中継サーバはトークンしか知らないので、コードを復号できない。
+ *   pageKey      = HMAC(K, "uoa-otp-relay/page")                requestId の目印を確かめる鍵 (送らない)
+ * 中継サーバはトークンしか知らないので、コードを復号できず、目印も作れない。
  */
 public final class OtpRelayCrypto {
     private OtpRelayCrypto() {}
@@ -29,15 +30,21 @@ public final class OtpRelayCrypto {
     private static final int TAG_BITS = 128;
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    /** PC の OTP 画面の種類 (requestId の目印)。値は box の method にもそのまま使う。 */
+    public static final String PAGE_TOTP = "totp";
+    public static final String PAGE_MAIL = "mail";
+
     public static final class Keys {
         @NonNull public final String requestToken;
         @NonNull public final String respondToken;
         @NonNull final byte[] encKey;
+        @NonNull final byte[] pageKey;
 
-        Keys(@NonNull String requestToken, @NonNull String respondToken, @NonNull byte[] encKey) {
+        Keys(@NonNull String requestToken, @NonNull String respondToken, @NonNull byte[] encKey, @NonNull byte[] pageKey) {
             this.requestToken = requestToken;
             this.respondToken = respondToken;
             this.encKey = encKey;
+            this.pageKey = pageKey;
         }
     }
 
@@ -50,45 +57,125 @@ public final class OtpRelayCrypto {
             return new Keys(
                     encode(hmac(raw, "uoa-otp-relay/request")),
                     encode(hmac(raw, "uoa-otp-relay/respond")),
-                    hmac(raw, "uoa-otp-relay/encrypt"));
+                    hmac(raw, "uoa-otp-relay/encrypt"),
+                    hmac(raw, "uoa-otp-relay/page"));
         } catch (GeneralSecurityException e) {
             return null;
         }
     }
 
-    /** box = base64url(nonce(12) ‖ ciphertext ‖ tag(16))。AAD は requestId。 */
+    /**
+     * requestId (16 バイト) = 乱数 12 バイト ‖ HMAC(pageKey, 乱数 ‖ page) の先頭 4 バイト なら、その page
+     * (PAGE_TOTP / PAGE_MAIL)。目印が無い (古い拡張・画面の種類が読めなかった) か合わなければ null。
+     */
+    @Nullable
+    public static String page(@NonNull String requestId, @NonNull Keys keys) {
+        byte[] bytes = decode(requestId);
+        if (bytes == null || bytes.length != 16) return null;
+        byte[] tag = java.util.Arrays.copyOfRange(bytes, 12, 16);
+        for (String page : new String[] {PAGE_TOTP, PAGE_MAIL}) {
+            try {
+                Mac mac = Mac.getInstance("HmacSHA256");
+                mac.init(new SecretKeySpec(keys.pageKey, "HmacSHA256"));
+                mac.update(bytes, 0, 12);
+                byte[] expected = java.util.Arrays.copyOf(mac.doFinal(page.getBytes(StandardCharsets.UTF_8)), 4);
+                if (java.security.MessageDigest.isEqual(expected, tag)) return page;
+            } catch (GeneralSecurityException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /** box = base64url(nonce(12) ‖ ciphertext ‖ tag(16))。AAD は requestId。中身は {"code":"..","method":".."}。 */
     @NonNull
-    public static String seal(@NonNull String code, @NonNull String requestId, @NonNull Keys keys)
-            throws GeneralSecurityException {
+    public static String seal(@NonNull String code, @NonNull String method, @NonNull String requestId,
+                              @NonNull Keys keys) throws GeneralSecurityException {
+        return sealJson(padded(json("code", code, "method", method)), requestId, keys, randomNonce());
+    }
+
+    /**
+     * コードを作らずに断った理由 ({"error":"..","method":".."}、method はこの端末の方式で省略可)。
+     * 中継サーバの failed の理由は 5 種類に決まっているので、方式の食い違いは暗号文の中で伝える。
+     */
+    @NonNull
+    public static String sealRefusal(@NonNull String error, @Nullable String method, @NonNull String requestId,
+                                     @NonNull Keys keys) throws GeneralSecurityException {
+        return sealJson(padded(json("error", error, "method", method)), requestId, keys, randomNonce());
+    }
+
+    /**
+     * 方式つきの box (コードも断りも) の平文の長さ (iOS の OTPRelayCrypto.paddedLength と同じ)。JSON の後ろを空白で埋めて
+     * この長さにそろえ、暗号文の長さから成功か断りか・どの理由か・コードの桁数をサーバに読ませない。
+     */
+    static final int PADDED_LENGTH = 96;
+
+    @NonNull
+    static String padded(@NonNull String json) {
+        StringBuilder sb = new StringBuilder(json);
+        while (sb.length() < PADDED_LENGTH) sb.append(' ');
+        return sb.toString();
+    }
+
+    private static byte[] randomNonce() {
         byte[] nonce = new byte[NONCE_BYTES];
         RANDOM.nextBytes(nonce);
-        return seal(code, requestId, keys, nonce);
+        return nonce;
+    }
+
+    /** 以前の形 ({"code":".."} だけ)。テストベクタの突き合わせ用。 */
+    @NonNull
+    static String seal(@NonNull String code, @NonNull String requestId, @NonNull Keys keys, @NonNull byte[] nonce)
+            throws GeneralSecurityException {
+        return sealJson(plaintext(code), requestId, keys, nonce);
     }
 
     @NonNull
-    static String seal(@NonNull String code, @NonNull String requestId, @NonNull Keys keys, @NonNull byte[] nonce)
+    static String sealJson(@NonNull String json, @NonNull String requestId, @NonNull Keys keys, @NonNull byte[] nonce)
             throws GeneralSecurityException {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(keys.encKey, "AES"), new GCMParameterSpec(TAG_BITS, nonce));
         cipher.updateAAD(requestId.getBytes(StandardCharsets.UTF_8));
-        byte[] sealed = cipher.doFinal(plaintext(code).getBytes(StandardCharsets.UTF_8));
+        byte[] sealed = cipher.doFinal(json.getBytes(StandardCharsets.UTF_8));
         byte[] box = new byte[nonce.length + sealed.length];
         System.arraycopy(nonce, 0, box, 0, nonce.length);
         System.arraycopy(sealed, 0, box, nonce.length, sealed.length);
         return encode(box);
     }
 
-    /** {"code":"<OTP>"}。キーは 1 つなので sortedKeys と同じ形。コードは数字だが念のためエスケープする。 */
+    /** {"code":"<OTP>"}。キーは 1 つなので sortedKeys と同じ形。 */
     @NonNull
     static String plaintext(@NonNull String code) {
-        StringBuilder sb = new StringBuilder("{\"code\":\"");
-        for (int i = 0; i < code.length(); i++) {
-            char ch = code.charAt(i);
+        return json("code", code, null, null);
+    }
+
+    /**
+     * {"k1":"v1","k2":"v2"} (v2 が null なら k2 は省く)。iOS の JSONSerialization(.sortedKeys) と同じ並びになるよう、
+     * 呼び出し側はキーを辞書順で渡す。値は数字や英小文字だけだが、念のためエスケープする。
+     */
+    @NonNull
+    static String json(@NonNull String k1, @NonNull String v1, @Nullable String k2, @Nullable String v2) {
+        StringBuilder sb = new StringBuilder("{");
+        appendPair(sb, k1, v1);
+        if (k2 != null && v2 != null) appendPair(sb.append(','), k2, v2);
+        return sb.append('}').toString();
+    }
+
+    private static void appendPair(StringBuilder sb, String key, String value) {
+        appendString(sb, key);
+        sb.append(':');
+        appendString(sb, value);
+    }
+
+    private static void appendString(StringBuilder sb, String s) {
+        sb.append('"');
+        for (int i = 0; i < s.length(); i++) {
+            char ch = s.charAt(i);
             if (ch == '"' || ch == '\\') sb.append('\\').append(ch);
             else if (ch < 0x20) sb.append(String.format("\\u%04x", (int) ch));
             else sb.append(ch);
         }
-        return sb.append("\"}").toString();
+        sb.append('"');
     }
 
     private static byte[] hmac(byte[] key, String label) throws GeneralSecurityException {

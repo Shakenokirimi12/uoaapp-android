@@ -32,13 +32,13 @@ public final class OtpRelayNotifications {
         return 0x52000000 | (requestId.hashCode() & 0x00ffffff);
     }
 
-    /** メールを読んでいる間 (Worker の前景表示にも使う)。 */
+    /** 答えを用意している間 (Worker の前景表示にも使う)。メールを読むか、セットアップキーで作るかはまだ分からない。 */
     @NonNull
     static Notification progress(@NonNull Context ctx, @NonNull String browserName) {
         return new NotificationCompat.Builder(ctx, NotificationChannels.ensureOtpRelayProgress(ctx))
                 .setSmallIcon(R.drawable.ic_stat_notification)
                 .setContentTitle("「" + browserName + "」の OTP")
-                .setContentText("大学のメールから OTP を読んでいます")
+                .setContentText("PC に送る OTP を用意しています")
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -76,7 +76,7 @@ public final class OtpRelayNotifications {
     /** 見張りが失敗を送ったが、届いたか分からない。事実と違うことを言わず、確かめ方だけを伝える。 */
     static void unknownResult(@NonNull Context ctx, @NonNull OtpRelayPairing pairing, @NonNull OtpRelayRequest request) {
         result(ctx, request, "「" + pairing.browserName + "」からの OTP の依頼",
-                "PC に OTP が入力されない場合は、メールに届いた OTP を入力してください。", true, null);
+                "PC に OTP が入力されない場合は、PC で手入力してください。", true, null);
     }
 
     /** この端末に無い連携からの依頼。鍵が無いので中継サーバには答えていない。 */

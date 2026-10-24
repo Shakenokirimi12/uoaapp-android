@@ -696,27 +696,50 @@ public final class SeciossIdPClient {
             }
         }
 
-        String code = provider.code();
+        // 保存したシークレットで作ったコードが弾かれたら、戻された OTP の入力画面から次の窓で 1 回だけやり直す
+        // (OtpProvider.retriesRejectedCode)。同じ窓を PC への中継や別のログインが先に使っていた、窓の境目で切れた、
+        // などで正しい鍵でも弾かれうる。2 回続けて弾かれたら onRejected (鍵を捨てる)。
+        HttpResult form = motp;
+        String referer = current.url;
+        HttpResult relayed;
+        for (int attempt = 0; ; attempt++) {
+            String code = provider.code();
 
-        String otpBody = "dummy=&username=" + urlEncode(otpUsername) + "&password=" + urlEncode(code)
-                + "&op=login&back=" + urlEncode(otpBack) + "&sessid=" + otpSessid;
-        HttpResult verify = postForm(ALL_OTP_LOGIN_URL, otpBody, motp.cookies, current.url);
-        if (verify.status != 200) {
-            throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, verify.status,
-                    "allotplogin.cgi(コードが間違っていた可能性も含む)");
-        }
+            String otpBody = "dummy=&username=" + urlEncode(otpUsername) + "&password=" + urlEncode(code)
+                    + "&op=login&back=" + urlEncode(otpBack) + "&sessid=" + otpSessid;
+            HttpResult verify = postForm(ALL_OTP_LOGIN_URL, otpBody, form.cookies, referer);
+            if (verify.status != 200) {
+                throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, verify.status,
+                        "allotplogin.cgi(コードが間違っていた可能性も含む)");
+            }
 
-        HttpResult fin = get(absoluteAgainst(ALL_OTP_LOGIN_URL, otpBack), verify.cookies, Collections.singletonMap("Referer", ALL_OTP_LOGIN_URL));
-        if (fin.status != 200) {
-            throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, fin.status, "post-OTP back");
-        }
-        HttpResult relayed = followAutoSubmitRelays(fin);
-        // otpCode の待ち時間 (IMAP 自動取得は最大 30 秒) を挟むため、ここでのタイムアウトが一番起こりやすい。
-        if (relayed.html.contains(SESSION_TIMED_OUT_MARKER)) {
-            throw new SeciossError(SeciossError.Kind.SESSION_TIMED_OUT);
-        }
-        // OTP の入力画面へ戻された = コードが違うか期限切れ (iOS の IdPClient と同じ見分け方)。
-        if (relayed.url.contains("/pub/allotplogin.cgi") || "allotplogin".equals(extractField("FunctionID", relayed.html))) {
+            HttpResult fin = get(absoluteAgainst(ALL_OTP_LOGIN_URL, otpBack), verify.cookies, Collections.singletonMap("Referer", ALL_OTP_LOGIN_URL));
+            if (fin.status != 200) {
+                throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, fin.status, "post-OTP back");
+            }
+            relayed = followAutoSubmitRelays(fin);
+            // otpCode の待ち時間 (IMAP 自動取得は最大 30 秒) を挟むため、ここでのタイムアウトが一番起こりやすい。
+            if (relayed.html.contains(SESSION_TIMED_OUT_MARKER)) {
+                throw new SeciossError(SeciossError.Kind.SESSION_TIMED_OUT);
+            }
+            // OTP の入力画面へ戻された = コードが違うか期限切れ (iOS の IdPClient と同じ見分け方)。
+            boolean rejected = relayed.url.contains("/pub/allotplogin.cgi")
+                    || "allotplogin".equals(extractField("FunctionID", relayed.html));
+            if (!rejected) break;
+            if (attempt == 0 && provider.retriesRejectedCode()) {
+                String sessid = extractField("sessid", relayed.html);
+                String back = extractField("back", relayed.html);
+                String user = extractField("username", relayed.html);
+                if (sessid != null && back != null && user != null) {
+                    android.util.Log.i("SeciossIdPClient", "stored-key OTP rejected; retrying once with the next step");
+                    otpSessid = sessid;
+                    otpBack = back;
+                    otpUsername = user;
+                    form = relayed;
+                    referer = relayed.url;
+                    continue;
+                }
+            }
             provider.onRejected();
             throw new SeciossError(SeciossError.Kind.INVALID_OTP);
         }

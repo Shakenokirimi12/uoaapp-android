@@ -56,6 +56,8 @@ public class PreferenceManager {
     private static final String KEY_BG_LOGIN_LAST_ATTEMPT_PREFIX = "background_login_last_attempt.";
     /** 認証アプリ方式なのに鍵が無い人へ、登録し直しを案内したか (起動時に一度だけ)。鍵を保存したら戻す。 */
     private static final String KEY_TOTP_REREGISTRATION_PROMPTED = "totp_reregistration_prompted";
+    /** 最後に IdP に渡した (渡す予定の) TOTP の窓の番号 (TotpStepLedger)。番号だけなので平文の prefs に置く。 */
+    private static final String KEY_TOTP_LAST_USED_STEP = "totp_last_used_step";
 
     private static final String TAG = "PreferenceManager";
 
@@ -494,6 +496,10 @@ public class PreferenceManager {
         if (saved) prefs.edit().remove(KEY_TOTP_REREGISTRATION_PROMPTED).apply();
         return saved;
     }
+
+    public long getTotpLastUsedStep() { return prefs.getLong(KEY_TOTP_LAST_USED_STEP, -1L); }
+    /** commit で書く。中継とログインが続けて読むので、書き終えてから返す。 */
+    public void setTotpLastUsedStep(long step) { prefs.edit().putLong(KEY_TOTP_LAST_USED_STEP, step).commit(); }
 
     public boolean isTotpReregistrationPrompted() { return prefs.getBoolean(KEY_TOTP_REREGISTRATION_PROMPTED, false); }
     public void setTotpReregistrationPrompted() { prefs.edit().putBoolean(KEY_TOTP_REREGISTRATION_PROMPTED, true).apply(); }

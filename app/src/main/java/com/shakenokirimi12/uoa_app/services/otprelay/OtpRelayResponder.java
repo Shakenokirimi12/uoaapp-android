@@ -7,13 +7,15 @@ import androidx.annotation.Nullable;
 
 import com.google.gson.JsonObject;
 import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
+import com.shakenokirimi12.uoa_app.services.idp.Totp;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 依頼に応える本体。iOS の OTPRelayShared.fetchAndRespond / respondExpired と同じ手順:
- * 大学のメール (IMAP) から OTP を読み、封緘して中継サーバへ返す。依頼ごとの承認は無い
+ * PC の画面の種類 (requestId の目印) とこの端末の方式で、大学のメール (IMAP) から OTP を読むか、
+ * 認証アプリのセットアップキーでコードを作るか、断るかを決め (route)、封緘して中継サーバへ返す。依頼ごとの承認は無い
  * (2026-10-21 に廃止。iOS と同じく、メールを読む同意のある連携は常に自動で返す)。
  *
  * IdP にはログインしない。使うのは保存済みの ID / パスワードでの IMAP だけ
@@ -35,6 +37,18 @@ public final class OtpRelayResponder {
      * 前の結果を「送れませんでした」で上書きしないよう、呼び出し側は結果の通知を出さない。
      */
     public static final String ALREADY_ANSWERED = "already-answered";
+    /** PC の画面とこの端末の方式が食い違う。理由は box に入れて返す (iOS と同じ)。 */
+    public static final String METHOD_MISMATCH = "method-mismatch";
+    /** PC の画面は認証アプリ方式で、この端末も認証アプリ方式だが、今の ID のセットアップキーが無い。 */
+    public static final String NO_TOTP_KEY = "no-totp-key";
+    /** この PC に認証アプリのコードを送る同意が無い (OtpRelayPairing.hasTotpConsent)。 */
+    public static final String TOTP_CONSENT_REQUIRED = "totp-consent-required";
+    /** 今の窓は使用済みで、次の窓まで待つ時間が無い。 */
+    public static final String TOTP_STEP_USED = "totp-step-used";
+    /** 周期の残りがこれより短いコードは、PC が入れて送るまでに切り替わりうるので次の周期まで待つ。 */
+    static final long TOTP_MIN_REMAINING_MS = 5_000;
+    /** 次の窓を待てる上限 (iOS の maxTOTPWait と同じ)。依頼の期限が近ければもっと短くする (maxTotpWaitMs)。 */
+    static final long MAX_TOTP_WAIT_MS = 15_000;
 
     public enum Kind { SENT, FAILED }
 
@@ -42,7 +56,7 @@ public final class OtpRelayResponder {
         @NonNull public final Kind kind;
         /**
          * FAILED のときの理由 (no-credentials / login-failed / code-not-found / imap-error / mail-timeout /
-         * expired / bad-key / relay-unreachable / consent-required / deadline-passed)。
+         * expired / bad-key / relay-unreachable / consent-required / deadline-passed / method-mismatch / no-totp-key)。
          */
         @Nullable public final String reason;
 
@@ -62,6 +76,15 @@ public final class OtpRelayResponder {
     public static final class Attempt {
         @NonNull public final ImapOtpFetcher.Progress imap = new ImapOtpFetcher.Progress();
         private final AtomicBoolean responded = new AtomicBoolean();
+        private final AtomicBoolean withoutMail = new AtomicBoolean();
+
+        /**
+         * メールを読まずに答える (セットアップキーでコードを作る・断る)。時間切れの見張りはメールの段階から理由
+         * (mail-timeout など) を決めるので、この経路には割り込まない (拡張が「アプリが古い」と読み違える)。
+         * この経路は待っても maxTotpWaitMs + 返送で終わる。
+         */
+        void markAnsweringWithoutMail() { withoutMail.set(true); }
+        boolean answersWithoutMail() { return withoutMail.get(); }
 
         /** これから中継サーバに答える。既に誰かが答え始めていたら false。 */
         boolean claimResponse() { return responded.compareAndSet(false, true); }
@@ -90,19 +113,108 @@ public final class OtpRelayResponder {
 
     public interface Clock { long now(); }
 
+    /** この端末のログインの方式と、認証アプリのセットアップキー。テストで差し替える。 */
+    public interface TotpSource {
+        /** 設定の方式が認証アプリか (PreferenceManager.getOtpMethod)。 */
+        boolean authenticatorMethod();
+        /** uid のセットアップキー。持っていない、または別の ID のものなら null。 */
+        @Nullable Totp.Params keyFor(@NonNull String uid);
+        /** 窓を使用済みにする。既に使っていたら false (アプリのログインと共有する TotpStepLedger)。 */
+        boolean claimStep(long step);
+    }
+
+    public interface Sleeper { void sleep(long ms) throws InterruptedException; }
+
+    /** 古い呼び出し (メールだけ) のための既定。認証アプリ方式でも鍵は無いものとして扱う。 */
+    private static final TotpSource NO_TOTP = new TotpSource() {
+        @Override public boolean authenticatorMethod() { return false; }
+        @Nullable @Override public Totp.Params keyFor(@NonNull String uid) { return null; }
+        @Override public boolean claimStep(long step) { return false; }
+    };
+
+    /** 依頼にどう答えるか。 */
+    static final class Route {
+        enum Kind { MAIL, TOTP, REFUSE }
+        @NonNull final Kind kind;
+        @Nullable final Totp.Params key;
+        @Nullable final String reason;
+        /** 断るときの、この端末の方式 (box の method)。 */
+        @Nullable final String method;
+
+        private Route(@NonNull Kind kind, @Nullable Totp.Params key, @Nullable String reason, @Nullable String method) {
+            this.kind = kind;
+            this.key = key;
+            this.reason = reason;
+            this.method = method;
+        }
+
+        static Route mail() { return new Route(Kind.MAIL, null, null, null); }
+        static Route totp(@NonNull Totp.Params key) { return new Route(Kind.TOTP, key, null, null); }
+        static Route refuse(@NonNull String reason, @Nullable String method) { return new Route(Kind.REFUSE, null, reason, method); }
+    }
+
+    /**
+     * - 目印の無い依頼 (古い拡張・画面の種類が読めなかった) は、以前と同じくメールを読む。古い拡張はメール方式の
+     *   画面でしか頼まないので、認証アプリ方式でもコードは作らない (入れても IdP の失敗が増えるだけ)。
+     * - 目印と方式が食い違えば断る。メールは読まない。
+     *
+     * @param page PC の画面 (OtpRelayCrypto.PAGE_TOTP / PAGE_MAIL / null)
+     * @param key  今の ID のセットアップキー (無ければ null)
+     */
+    @NonNull
+    static Route route(@Nullable String page, boolean authenticatorMethod, @Nullable Totp.Params key) {
+        if (page == null) return Route.mail();
+        if (OtpRelayCrypto.PAGE_TOTP.equals(page)) {
+            if (!authenticatorMethod) return Route.refuse(METHOD_MISMATCH, OtpRelayCrypto.PAGE_MAIL);
+            return key != null ? Route.totp(key) : Route.refuse(NO_TOTP_KEY, OtpRelayCrypto.PAGE_TOTP);
+        }
+        return authenticatorMethod ? Route.refuse(METHOD_MISMATCH, OtpRelayCrypto.PAGE_TOTP) : Route.mail();
+    }
+
+    /**
+     * どの窓のコードを返すか ({窓, 待つミリ秒})。決めた窓は使用済みにする (アプリのログインと同じコードを送らない)。
+     * - 今の窓が未使用で、残りが TOTP_MIN_REMAINING_MS 以上なら、今の窓をすぐに。
+     * - それ以外 (切り替わり間際・使用済み) は、次の窓を切り替わりの 300 ミリ秒後に。
+     * - 次の窓まで maxWaitMs を超えるか、次の窓も使用済みなら null (断る)。iOS の planTOTPStep と同じ。
+     */
+    @Nullable
+    static long[] planStep(@NonNull Totp.Params key, long now, long maxWaitMs, @NonNull TotpSource totp) {
+        long step = Totp.step(key, now);
+        long left = Totp.millisLeftInWindow(key, now);
+        if (left >= TOTP_MIN_REMAINING_MS && totp.claimStep(step)) return new long[] {step, 0};
+        long wait = left + 300;
+        if (wait > maxWaitMs || !totp.claimStep(step + 1)) return null;
+        return new long[] {step + 1, wait};
+    }
+
+    /** 待てる上限。依頼の期限の 8 秒前 (返送と PC の入力の分) までに収める。 */
+    static long maxTotpWaitMs(long now, long expiresAt) {
+        return Math.max(0, Math.min(MAX_TOTP_WAIT_MS, expiresAt - 8_000 - now));
+    }
+
     private final OtpRelayApi api;
     private final MailSource mail;
     private final Credentials credentials;
     private final LastResultSink lastResult;
     private final Clock clock;
+    private final TotpSource totp;
+    private final Sleeper sleeper;
 
     public OtpRelayResponder(@NonNull OtpRelayApi api, @NonNull MailSource mail, @NonNull Credentials credentials,
                              @NonNull LastResultSink lastResult, @NonNull Clock clock) {
+        this(api, mail, credentials, lastResult, clock, NO_TOTP, Thread::sleep);
+    }
+
+    public OtpRelayResponder(@NonNull OtpRelayApi api, @NonNull MailSource mail, @NonNull Credentials credentials,
+                             @NonNull LastResultSink lastResult, @NonNull Clock clock,
+                             @NonNull TotpSource totp, @NonNull Sleeper sleeper) {
         this.api = api;
         this.mail = mail;
         this.credentials = credentials;
         this.lastResult = lastResult;
         this.clock = clock;
+        this.totp = totp;
+        this.sleeper = sleeper;
     }
 
     /**
@@ -136,6 +248,20 @@ public final class OtpRelayResponder {
 
         String uid = credentials.username().trim();
         String pass = credentials.password().trim();
+        // セットアップキーは今の AINS の ID のものだけを使う。依頼の側から ID は指定できない。
+        Route route = route(OtpRelayCrypto.page(request.requestId, keys), totp.authenticatorMethod(),
+                uid.isEmpty() ? null : totp.keyFor(uid));
+        if (route.kind != Route.Kind.MAIL) attempt.markAnsweringWithoutMail();
+        if (route.kind == Route.Kind.TOTP && !pairing.hasTotpConsent()) {
+            // 以前の文面 (メールだけ) で作った連携。アプリで「送る」を押すまでコードは作らない。
+            return refuse(TOTP_CONSENT_REQUIRED, OtpRelayCrypto.PAGE_TOTP, pairing, request, keys, attempt);
+        }
+        if (route.kind == Route.Kind.TOTP && route.key != null) {
+            return respondWithTotp(route.key, pairing, request, keys, attempt);
+        }
+        if (route.kind == Route.Kind.REFUSE && route.reason != null) {
+            return refuse(route.reason, route.method, pairing, request, keys, attempt);
+        }
         if (uid.isEmpty() || pass.isEmpty()) {
             return fail(pairing, request, keys, attempt, "no-credentials", null, null);
         }
@@ -165,7 +291,7 @@ public final class OtpRelayResponder {
                                 @NonNull Attempt attempt) {
         String box;
         try {
-            box = OtpRelayCrypto.seal(found.code, request.requestId, keys);
+            box = OtpRelayCrypto.seal(found.code, OtpRelayCrypto.PAGE_MAIL, request.requestId, keys);
         } catch (java.security.GeneralSecurityException e) {
             Log.e(TAG, "sealing failed", e);
             return fail(pairing, request, keys, attempt, "imap-error", "seal-error", null);
@@ -201,6 +327,71 @@ public final class OtpRelayResponder {
     }
 
     /**
+     * セットアップキーでコードを作って返す。キーはこの端末から出さない。出るのは requestId に結び付けて
+     * 封緘したコードだけで、開けるのは連携した PC だけ。キーもコードもログに出さない。
+     */
+    @NonNull
+    private Outcome respondWithTotp(@NonNull Totp.Params key, @NonNull OtpRelayPairing pairing,
+                                    @NonNull OtpRelayRequest request, @NonNull OtpRelayCrypto.Keys keys,
+                                    @NonNull Attempt attempt) {
+        long now = clock.now();
+        long[] plan = planStep(key, now, maxTotpWaitMs(now, request.expiresAt), totp);
+        if (plan == null) return refuse(TOTP_STEP_USED, OtpRelayCrypto.PAGE_TOTP, pairing, request, keys, attempt);
+        if (plan[1] > 0) {
+            try {
+                sleeper.sleep(plan[1]);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        String box;
+        try {
+            box = OtpRelayCrypto.seal(Totp.codeAtStep(key, plan[0]), OtpRelayCrypto.PAGE_TOTP, request.requestId, keys);
+        } catch (java.security.GeneralSecurityException e) {
+            Log.e(TAG, "sealing failed");
+            return fail(pairing, request, keys, attempt, "imap-error", "totp-seal-error", null);
+        }
+        if (!attempt.claimResponse()) return Outcome.failed(DEADLINE_PASSED);
+        JsonObject body = new JsonObject();
+        body.addProperty("pairingId", pairing.pairingId);
+        body.addProperty("result", "approved");
+        body.addProperty("box", box);
+        int status = post(request, keys, body, OtpRelayTiming.POST_TIMEOUT_MS);
+        if (status == 409) return Outcome.failed(ALREADY_ANSWERED);
+        lastResult.save(status == 204, status == 204 ? "PC に OTP を送りました"
+                : status == 0 ? failureText("relay-unreachable") : "中継サーバの応答: " + status, null);
+        if (status == 204) return Outcome.sent();
+        if (status == 410) return Outcome.failed("expired");
+        return Outcome.failed("relay-unreachable");
+    }
+
+    /**
+     * コードを作らずに断る。理由は封緘した box に入れて approved で返す (中継サーバの failed の理由は 5 種類に
+     * 決まっていて、増やすとサーバの変更とデプロイが要る)。目印を付けた依頼 (新しい拡張) だけがここに来る。
+     */
+    @NonNull
+    private Outcome refuse(@NonNull String reason, @Nullable String method, @NonNull OtpRelayPairing pairing,
+                           @NonNull OtpRelayRequest request, @NonNull OtpRelayCrypto.Keys keys, @NonNull Attempt attempt) {
+        String box;
+        try {
+            box = OtpRelayCrypto.sealRefusal(reason, method, request.requestId, keys);
+        } catch (java.security.GeneralSecurityException e) {
+            Log.e(TAG, "sealing failed");
+            return Outcome.failed(reason);
+        }
+        if (!attempt.claimResponse()) return Outcome.failed(DEADLINE_PASSED);
+        JsonObject body = new JsonObject();
+        body.addProperty("pairingId", pairing.pairingId);
+        body.addProperty("result", "approved");
+        body.addProperty("box", box);
+        int status = post(request, keys, body, OtpRelayApi.DEFAULT_TIMEOUT_MS);
+        if (status == 409) return Outcome.failed(ALREADY_ANSWERED);
+        Log.i(TAG, "refused: " + reason + " -> " + status);
+        lastResult.save(false, failureText(reason), reason);
+        return Outcome.failed(reason);
+    }
+
+    /**
      * 時間切れの見張り。まだ答え始めていなければ失敗を返す (best effort)。返さないと、依頼が期限
      * (120 秒) まで pending のまま残り、PC はその間待たされる。メールを待つ段階 (search / fetch / idle)
      * まで進んでいたら mail-timeout、その手前なら imap-error。detail は "expired:<段階>[:r<回数>]"。
@@ -212,7 +403,9 @@ public final class OtpRelayResponder {
     public ExpiryResult respondExpired(@NonNull OtpRelayPairing pairing, @NonNull OtpRelayRequest request,
                                        @NonNull Attempt attempt, long timeoutMs) {
         OtpRelayCrypto.Keys keys = OtpRelayCrypto.keys(pairing.key);
-        if (!pairing.hasMailConsent() || keys == null || !attempt.claimResponse()) return ExpiryResult.NOT_CLAIMED;
+        if (!pairing.hasMailConsent() || attempt.answersWithoutMail() || keys == null || !attempt.claimResponse()) {
+            return ExpiryResult.NOT_CLAIMED;
+        }
         ImapOtpFetcher.Progress.Stage stage = attempt.imap.stage();
         // もうコードは返さないので、メールの取得をやめて接続を閉じる (LOGOUT)。開いたままにすると、止められた
         // プロセスが凍結されたときにサーバ側のセッションとして残り、次の依頼の LOGIN を断らせる。
@@ -302,6 +495,10 @@ public final class OtpRelayResponder {
         if (reason == null) return "大学のメールサーバに接続できませんでした。通信状況を確かめて、PC でもう一度ログインしてください。";
         switch (reason) {
             case CONSENT_REQUIRED: return "この PC との連携の確認が済んでいません。アプリを開いて確認してください。";
+            case METHOD_MISMATCH: return "PC の画面とこのアプリのログイン方式が合っていません。設定のログイン方式を確かめてください。";
+            case TOTP_CONSENT_REQUIRED: return "この PC に認証アプリのコードを送るかの確認が済んでいません。アプリを開いて確認してください。";
+            case TOTP_STEP_USED: return "同じコードを使ったばかりのため、送れませんでした。PC で少し待ってから、もう一度ログインしてください。";
+            case NO_TOTP_KEY: return "このアプリに認証アプリのセットアップキーがありません。設定で認証アプリを登録し直してください。";
             case "no-credentials": return "アプリにユーザー名とパスワードが入っていません。設定で入力してください。";
             case "login-failed": return "ユーザー名かパスワードが違うため、大学のメールを読めませんでした。設定で入力し直してください。";
             case "code-not-found": return "OTP メールからコードを読み取れませんでした。";

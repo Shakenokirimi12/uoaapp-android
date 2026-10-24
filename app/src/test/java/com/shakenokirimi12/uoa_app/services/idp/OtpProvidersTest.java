@@ -44,6 +44,31 @@ public class OtpProvidersTest {
         assertTrue(Totp.matches(Totp.parse(OTPAUTH), code, System.currentTimeMillis()));
     }
 
+    /**
+     * 鍵で作ったコードは、弾かれても同じログインの中で次の窓で 1 回やり直す (1 回目で鍵を捨てない)。
+     * やり直しの code() は、使用済みの窓を避けて次の窓のコードを作る。
+     */
+    @Test
+    public void authenticatorWithKey_retriesARejectedCodeWithTheNextStep() throws Exception {
+        TotpStepLedger ledger = TotpStepLedger.inMemory();
+        OtpProvider p = new OtpProviders.AuthenticatorOtpProvider("s1300000", AuthorizationContext.BACKGROUND, () -> OTPAUTH, ledger);
+        assertFalse(p.retriesRejectedCode());
+        p.code();
+        assertTrue(p.retriesRejectedCode());
+        // 使った窓は台帳に入っている (それより前の窓は使えない)。
+        assertFalse(ledger.claim(Totp.step(Totp.parse(OTPAUTH), System.currentTimeMillis()) - 1));
+    }
+
+    /** 台帳は新しい窓だけを受け付ける (中継とログインで同じ窓を二重に使わない)。 */
+    @Test
+    public void stepLedger_acceptsOnlyNewerSteps() {
+        TotpStepLedger ledger = TotpStepLedger.inMemory();
+        assertTrue(ledger.claim(10));
+        assertFalse(ledger.claim(10));
+        assertFalse(ledger.claim(9));
+        assertTrue(ledger.claim(11));
+    }
+
     /** 鍵が無ければ (登録し直しが要る)、バックグラウンドではコードを用意できない。 */
     @Test
     public void authenticatorWithoutKey_refusesInBackground() {

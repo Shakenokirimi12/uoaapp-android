@@ -25,6 +25,17 @@ public final class OtpRelayPairing {
 
     public boolean hasMailConsent() { return mailConsentAt != null && mailConsentAt > 0; }
 
+    /**
+     * この PC に、認証アプリ方式のコード (セットアップキーで作ったもの) を送ることへの同意を得た時刻。
+     * 2026-10-24 からの確認の文面 (メールも認証アプリのコードも送ると書いたもの) で同意したときか、認証アプリの
+     * コードの確認 (OtpRelayConsentPrompt) で「送る」を押したときに記録する。それより前の文面 (メールを読むことだけ)
+     * で作った連携には無く、コードを作らずに断る (メールの同意を流用すると、偽の QR で連携させられていた PC に、
+     * 確かめないまま有効なコードを渡してしまう)。
+     */
+    @Nullable public Long totpConsentAt;
+
+    public boolean hasTotpConsent() { return totpConsentAt != null && totpConsentAt > 0; }
+
     public OtpRelayPairing() {}
 
     /** 確認ダイアログで同意を得て作る連携。作り方 (リンク・カメラ・貼り付け) にかかわらず同じ。 */
@@ -34,5 +45,6 @@ public final class OtpRelayPairing {
         this.browserName = browserName;
         this.pairedAt = pairedAt;
         this.mailConsentAt = pairedAt;
+        this.totpConsentAt = pairedAt;
     }
 }

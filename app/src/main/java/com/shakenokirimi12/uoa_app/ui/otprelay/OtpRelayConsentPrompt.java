@@ -75,6 +75,11 @@ public final class OtpRelayConsentPrompt {
             }
         }
         if (pairing == null) {
+            OtpRelayPairing totp = needsTotpConsent(asked);
+            if (totp != null) {
+                askTotpConsent(activity, totp, asked, onDone);
+                return;
+            }
             done(onDone);
             return;
         }
@@ -93,6 +98,41 @@ public final class OtpRelayConsentPrompt {
                     }
                 })
                 .setNegativeButton(R.string.otp_relay_unpair, (d, w) -> unpair(activity, p, asked, onDone))
+                .show();
+    }
+
+    /**
+     * 認証アプリ方式の人 (設定が認証アプリで、今の ID のセットアップキーを持つ) だけに聞く。メールの同意だけがある
+     * (以前の文面で作った) 連携のうち最初のもの。無ければ null。
+     */
+    @Nullable
+    private static OtpRelayPairing needsTotpConsent(Set<String> asked) {
+        com.shakenokirimi12.uoa_app.data.PreferenceManager prefs = com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance();
+        boolean authenticator = com.shakenokirimi12.uoa_app.services.idp.OtpMethod.AUTHENTICATOR.value.equals(prefs.getOtpMethod());
+        String uid = prefs.getUsername().trim();
+        if (!authenticator || uid.isEmpty() || prefs.totpOtpauthFor(uid) == null) return null;
+        for (OtpRelayPairing p : OtpRelayStore.all()) {
+            if (p.hasMailConsent() && !p.hasTotpConsent() && !asked.contains(p.pairingId)) return p;
+        }
+        return null;
+    }
+
+    /** 「「<PC>」に認証アプリのコードを送りますか？」。「あとで」は記録しない (次に起動したときにもう一度聞く)。 */
+    private static void askTotpConsent(Activity activity, OtpRelayPairing p, Set<String> asked, @Nullable Runnable onDone) {
+        asked.add(p.pairingId);
+        new MaterialAlertDialogBuilder(activity)
+                .setTitle(activity.getString(R.string.otp_relay_totp_consent_title, p.browserName))
+                .setMessage(R.string.otp_relay_totp_consent_message)
+                .setCancelable(false)
+                .setPositiveButton(R.string.otp_relay_totp_consent_send, (d, w) -> {
+                    if (OtpRelayStore.recordTotpConsent(p.pairingId, System.currentTimeMillis())) {
+                        next(activity, asked, onDone);
+                    } else {
+                        message(activity, activity.getString(R.string.otp_relay_consent_save_failed), () -> done(onDone));
+                    }
+                })
+                .setNegativeButton(R.string.otp_relay_unpair, (d, w) -> unpair(activity, p, asked, onDone))
+                .setNeutralButton(R.string.otp_relay_totp_consent_later, (d, w) -> next(activity, asked, onDone))
                 .show();
     }
 

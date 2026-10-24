@@ -145,15 +145,21 @@ public final class OtpProviders {
         /** 直前の code() を保存したシークレットから作ったか。 */
         private volatile boolean generated;
         /**
-         * 最後にコードを送った窓。Moodle と CampusSquare のログインが同じ窓に続くと同じコードを 2 回送ることになり、
-         * IdP に弾かれうる (弾かれると鍵を捨てる)。次の窓まで待つ (iOS の TOTPStepLedger と同じ)。
+         * 使った窓の記録。Moodle と CampusSquare のログインが同じ窓に続く、PC への中継が同じ窓を使う、と同じコードを
+         * 2 回送ることになり、IdP に弾かれうる。使用済みなら次の窓まで待つ (iOS の TOTPStepLedger と同じ)。
          */
-        private static long lastUsedStep = -1;
+        private final TotpStepLedger ledger;
 
         AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth) {
+            this(uid, context, otpauth, TotpStepLedger.shared());
+        }
+
+        AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth,
+                                 TotpStepLedger ledger) {
             this.uid = uid;
             this.context = context;
             this.otpauth = otpauth;
+            this.ledger = ledger;
         }
 
         @Override public boolean requiresMailDispatch() { return false; }
@@ -167,37 +173,35 @@ public final class OtpProviders {
             Totp.Params params = Totp.parse(otpauth.get());
             generated = params != null;
             if (params == null) return OtpPromptCoordinator.getInstance().codeFromAuthenticator(context);
-            return unusedCode(params);
+            return unusedCode(params, ledger);
         }
 
         /** 登録の確認で送った窓を使用済みにする。このあとのログインで同じコードを送り直さない (弾かれうる)。 */
         static void markUsed(@NonNull Totp.Params params, long timeMillis) {
-            synchronized (AuthenticatorOtpProvider.class) {
-                lastUsedStep = Math.max(lastUsedStep, Totp.step(params, timeMillis));
-            }
+            // 既に新しい窓を使っていれば何もしない (claim は新しい窓だけを記録する)。
+            TotpStepLedger.shared().claim(Totp.step(params, timeMillis));
         }
 
         /** 残りが十分で、まだ送っていない窓のコード。待つのは高々 2 窓分。 */
         @NonNull
-        private static String unusedCode(@NonNull Totp.Params params) throws Exception {
+        private static String unusedCode(@NonNull Totp.Params params, @NonNull TotpStepLedger ledger) throws Exception {
             for (int i = 0; i < 3; i++) {
                 long now = System.currentTimeMillis();
                 long left = Totp.millisLeftInWindow(params, now);
                 long step = Totp.step(params, now);
-                synchronized (AuthenticatorOtpProvider.class) {
-                    if (left >= MIN_MS_LEFT && step > lastUsedStep) {
-                        lastUsedStep = step;
-                        return Totp.code(params, now);
-                    }
-                }
+                if (left >= MIN_MS_LEFT && ledger.claim(step)) return Totp.code(params, now);
                 Thread.sleep(left + 100);
             }
             throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE, "no unused TOTP step became available");
         }
 
+        /** 保存したシークレットで作ったコードだけ、次の窓で 1 回やり直す (手入力のコードは入れ直してもらう)。 */
+        @Override public boolean retriesRejectedCode() { return generated; }
+
         /**
-         * アプリが作ったコードを IdP が受け付けなかった。保存したシークレットが IdP の登録と食い違っている
-         * (別の場所で登録し直した等) ので捨て、次からは認証アプリのコードを入力してもらう (iOS と同じ)。
+         * アプリが作ったコードを、次の窓でのやり直しも含めて IdP が 2 回続けて受け付けなかった。保存したシークレットが
+         * IdP の登録と食い違っている (別の場所で登録し直した等) ので捨て、次からは認証アプリのコードを入力してもらう
+         * (iOS と同じ)。1 回目では捨てない。同じ窓を PC への中継や別のログインが先に使っていると、正しい鍵でも弾かれうる。
          */
         @Override public void onRejected() {
             if (!generated) return;

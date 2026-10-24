@@ -82,6 +82,23 @@ public final class OtpRelayStore {
             for (OtpRelayPairing p : list) {
                 if (pairingId.equals(p.pairingId)) {
                     p.mailConsentAt = consentAt;
+                    // 2026-10-24 からの確認の文面は、認証アプリのコードを送ることも書いている。
+                    p.totpConsentAt = consentAt;
+                    found = true;
+                }
+            }
+            return !found || save(list);
+        }
+    }
+
+    /** 認証アプリのコードの確認で「送る」を押した。保存できたかを返す (一覧に無ければ何もせず true)。 */
+    public static boolean recordTotpConsent(@NonNull String pairingId, long consentAt) {
+        synchronized (LOCK) {
+            List<OtpRelayPairing> list = all();
+            boolean found = false;
+            for (OtpRelayPairing p : list) {
+                if (pairingId.equals(p.pairingId)) {
+                    p.totpConsentAt = consentAt;
                     found = true;
                 }
             }
