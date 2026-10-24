@@ -30,6 +30,8 @@ public final class OtpRegistrationCommit {
 
     /** 設定画面からの切り替えなら切り替え先。null なら OTP 未設定のアカウントの新規登録。 */
     @Nullable private final OtpMethod switchingTo;
+    /** 始める前の受け取り方。切り替え先と同じなら、同じ方式での登録し直し (認証アプリのシークレットの作り直し)。 */
+    @Nullable private final OtpMethod previous;
     @NonNull private final MethodWriter writer;
     @NonNull private final OtpTypeReader reader;
     private boolean dismissed;
@@ -37,7 +39,13 @@ public final class OtpRegistrationCommit {
 
     public OtpRegistrationCommit(@Nullable OtpMethod switchingTo, @NonNull MethodWriter writer,
                                  @NonNull OtpTypeReader reader) {
+        this(switchingTo, null, writer, reader);
+    }
+
+    public OtpRegistrationCommit(@Nullable OtpMethod switchingTo, @Nullable OtpMethod previous,
+                                 @NonNull MethodWriter writer, @NonNull OtpTypeReader reader) {
         this.switchingTo = switchingTo;
+        this.previous = previous;
         this.writer = writer;
         this.reader = reader;
     }
@@ -79,6 +87,10 @@ public final class OtpRegistrationCommit {
     @NonNull
     public Result afterError(@NonNull OtpMethod registered) {
         if (switchingTo == null) return Result.FAILED;
+        // 同じ方式での登録し直しでは、otp_type は始める前から登録先と同じ。応答が失われたのか登録が
+        // 通らなかったのか (コードの誤りなど) を見分けられないので、成功にしない。成功にすると、IdP が
+        // 受け付けていない新しいシークレットを保存してしまう。
+        if (previous == registered) return Result.FAILED;
         String otpType = reader.read();
         if (otpType == null || otpType.isEmpty() || !idpUsesMethod(registered, otpType)) return Result.FAILED;
         writer.apply(registered);

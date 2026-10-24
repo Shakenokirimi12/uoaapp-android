@@ -203,4 +203,15 @@
     <string name="settings_tabs">タブの並び</string>
     <string name="settings_backup">設定を書き出す</string>
     <string name="settings_restore">設定を読み込む</string>
+    <string name="otp_add_to_authenticator">Google Authenticator に追加</string>
+    <string name="otp_manual_secret_hint">Authy などはコードを手で追加します。下のキーを入力してください。QR はこの画面には出せません。</string>
+    <string name="otp_copy_secret">キーをコピー</string>
+    <string name="otp_method_authenticator_summary">このアプリがコードを作って入力します。Google Authenticator や Authy にも追加できます。</string>
+    <string name="otp_code_generated">このアプリがコードを入れました。「登録する」を押してください。</string>
+    <string name="otp_code_from_app">認証アプリのコードを入力してください</string>
+    <string name="otp_code_mail_prompt">メールに届いたコードを入力してください</string>
+    <string name="otp_no_otpauth_app">開けるアプリがありません。Authy などは下のキーを手で追加してください</string>
+    <string name="otp_secret_copied">キーをコピーしました</string>
+    <string name="otp_reregister_notice">新しいキーを登録します。外部の認証アプリに入れていたら、新しいキーで入れ直してください。</string>
+    <string name="otp_reregister_done">登録し直しました。ログインのコードはこのアプリが入力します。</string>
 </resources>

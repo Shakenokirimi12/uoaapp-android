@@ -11,9 +11,11 @@ public final class SeciossError extends Exception {
     public enum Kind {
         /** 想定外の HTTP ステータス。status と step (どの段階か) を持つ。 */
         UNEXPECTED_STATUS,
-        /** ログインフォーム等に必須フィールドが無い (CampusSquare がまだ IdP に繋がっていない場合もここ)。 */
+        /** ログインフォーム等に必須フィールドが無い (画面の形が想定と違う)。 */
         MISSING_FIELD,
         OTP_REQUEST_FAILED,
+        /** OTP を送ったが、IdP が OTP の入力画面へ戻した (コードの誤りか期限切れ。iOS の invalidOTP と同じ見分け方)。 */
+        INVALID_OTP,
         /**
          * アカウントにワンタイムパスワードが未設定 (pub/error.cgi、2026-09-07 に実機確認済み)。
          * 学内ネットワークから事前設定するまで学外アクセスできないため、リトライしても無駄。
@@ -85,6 +87,8 @@ public final class SeciossError extends Exception {
                 return detail + "で想定外の応答(HTTP " + status + ")でした。";
             case OTP_REQUEST_FAILED:
                 return "ワンタイムパスワードの送信に失敗しました。";
+            case INVALID_OTP:
+                return "ワンタイムパスワードが通りませんでした。もう一度ログインしてください。";
             case OTP_NOT_CONFIGURED:
                 return "このアカウントはワンタイムパスワードが未設定です。学内ネットワークから事前に設定してください(学外からの設定はできません)。";
             case OTP_ALREADY_CONFIGURED:
@@ -121,6 +125,8 @@ public final class SeciossError extends Exception {
                 return detail + "で想定外の応答(HTTP " + status + ")でした。";
             case OTP_REQUEST_FAILED:
                 return "確認コードの送信に失敗しました。";
+            case INVALID_OTP:
+                return "確認コードが通りませんでした。もう一度やり直してください。";
             case OTP_NOT_CONFIGURED:
                 return "このアカウントはワンタイムパスワードが未設定です。";
             case OTP_ALREADY_CONFIGURED:

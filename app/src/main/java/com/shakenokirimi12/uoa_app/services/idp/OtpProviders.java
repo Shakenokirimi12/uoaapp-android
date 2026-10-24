@@ -44,7 +44,7 @@ public final class OtpProviders {
                                   @NonNull AuthorizationContext context) {
         switch (method) {
             case AUTHENTICATOR:
-                return new AuthenticatorOtpProvider(context);
+                return new AuthenticatorOtpProvider(uid, context);
             case MAIL:
             default:
                 return new MailOtpProvider(uid, pass, context);
@@ -114,22 +114,47 @@ public final class OtpProviders {
     }
 
     /**
-     * 認証アプリが表示する TOTP を手入力してもらう。
+     * 認証アプリ方式。IdP に登録したときのシークレットを持っていれば、アプリがコードを作って入れる
+     * (iOS と同じ)。持っていなければ (この機能より前に登録した・別の端末で登録した)、認証アプリの
+     * コードを手入力してもらう。
      *
-     * アプリがシークレットを保持しないため自動取得はできない。バックグラウンド更新では必ず
-     * INTERACTIVE_LOGIN_REQUIRED になる。方式としてこれを選べる代わりに、セッションの永続化が
-     * 効いていることが前提になる。
+     * 手入力の場合はバックグラウンド更新で必ず INTERACTIVE_LOGIN_REQUIRED になる。バックグラウンドは
+     * そもそも新規ログインを始めないので (ServiceAuthenticator)、シークレットがあってもここは通らない。
      */
     private static final class AuthenticatorOtpProvider implements OtpProvider {
-        private final AuthorizationContext context;
+        /** 窓の終わり間際に作ると、送る間に切れて弾かれうる。これより残りが短ければ次の窓を待つ。 */
+        private static final long MIN_MS_LEFT = 3_000L;
 
-        AuthenticatorOtpProvider(AuthorizationContext context) { this.context = context; }
+        private final String uid;
+        private final AuthorizationContext context;
+        /** 直前の code() を保存したシークレットから作ったか。 */
+        private volatile boolean generated;
+
+        AuthenticatorOtpProvider(String uid, AuthorizationContext context) {
+            this.uid = uid;
+            this.context = context;
+        }
 
         @Override public boolean requiresMailDispatch() { return false; }
 
         @NonNull
         @Override public String code() throws Exception {
-            return OtpPromptCoordinator.getInstance().codeFromAuthenticator(context);
+            Totp.Params params = Totp.parse(PreferenceManager.getInstance().totpOtpauthFor(uid));
+            generated = params != null;
+            if (params == null) return OtpPromptCoordinator.getInstance().codeFromAuthenticator(context);
+            long left = Totp.millisLeftInWindow(params, System.currentTimeMillis());
+            if (left < MIN_MS_LEFT) Thread.sleep(left + 100);
+            return Totp.code(params, System.currentTimeMillis());
+        }
+
+        /**
+         * アプリが作ったコードを IdP が受け付けなかった。保存したシークレットが IdP の登録と食い違っている
+         * (別の場所で登録し直した等) ので捨て、次からは認証アプリのコードを入力してもらう (iOS と同じ)。
+         */
+        @Override public void onRejected() {
+            if (!generated) return;
+            android.util.Log.w("OtpProviders", "IdP rejected the generated code; discarding the stored authenticator secret");
+            PreferenceManager.getInstance().clearTotp();
         }
     }
 }

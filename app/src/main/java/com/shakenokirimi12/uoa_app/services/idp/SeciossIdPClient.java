@@ -715,6 +715,11 @@ public final class SeciossIdPClient {
         if (relayed.html.contains(SESSION_TIMED_OUT_MARKER)) {
             throw new SeciossError(SeciossError.Kind.SESSION_TIMED_OUT);
         }
+        // OTP の入力画面へ戻された = コードが違うか期限切れ (iOS の IdPClient と同じ見分け方)。
+        if (relayed.url.contains("/pub/allotplogin.cgi") || "allotplogin".equals(extractField("FunctionID", relayed.html))) {
+            provider.onRejected();
+            throw new SeciossError(SeciossError.Kind.INVALID_OTP);
+        }
         return new Session(relayed.html, relayed.url, relayed.status, sessionCookieHeader(relayed),
                 sessionCookies(relayed));
     }

@@ -43,6 +43,9 @@ public class PreferenceManager {
     private static final String KEY_OTP_RELAY_PAIRINGS = "otp_relay_pairings";
     private static final String KEY_OTP_RELAY_LAST_RESULT = "otp_relay_last_result";
     private static final String KEY_OTP_RELAY_PENDING_UNPAIRS = "otp_relay_pending_unpairs";
+    /** 認証アプリ方式で IdP に登録した otpauth URL (シークレットを含む) と、その持ち主のユーザー名。 */
+    private static final String KEY_TOTP_OTPAUTH = "totp_otpauth_url";
+    private static final String KEY_TOTP_OWNER = "totp_owner";
     private static final String KEY_MOODLE_SESSION_COOKIE_HEADER = "moodle_session_cookie_header";
 
     private static final String TAG = "PreferenceManager";
@@ -245,6 +248,8 @@ public class PreferenceManager {
         // OTP の受け取り方はアカウントごと。別のアカウントにしたら、次のログインで IdP から読み直す
         // (OtpProviders)。初めて保存するとき (初期設定) は、そのログインで読んだ方式を残す。
         if (otherAccount) prefs.edit().remove(KEY_OTP_METHOD).apply();
+        // 認証アプリのシークレットもアカウントごと。別のアカウントの鍵でコードを作らない。
+        if (otherAccount) clearTotp();
         // 別のアカウントに切り替えたとき、前のユーザーの IdP セッションを引き継がない。
         setCsIdpSessionCookies(null);
         // メモリ上のセッション cookie も含めて消す (ストアはプロセス内に写しを持つ)。
@@ -431,6 +436,33 @@ public class PreferenceManager {
         if (json == null || json.isEmpty()) e.remove(KEY_OTP_RELAY_PENDING_UNPAIRS);
         else e.putString(KEY_OTP_RELAY_PENDING_UNPAIRS, json);
         return e.commit();
+    }
+
+    /**
+     * 認証アプリ方式の otpauth URL を保存する (暗号化側だけ。バックアップ規則で暗号化側は除外している)。
+     * IdP への登録が済んだときにだけ呼ぶ。保存できたかを返す。
+     */
+    public boolean saveTotp(@NonNull String otpauthUrl, @NonNull String owner) {
+        if (encryptedPrefs == null) return false;
+        return encryptedPrefs.edit()
+                .putString(KEY_TOTP_OTPAUTH, otpauthUrl)
+                .putString(KEY_TOTP_OWNER, owner.trim())
+                .commit();
+    }
+
+    /** owner の otpauth URL。持っていない、または別のアカウントのものなら null。 */
+    @androidx.annotation.Nullable
+    public String totpOtpauthFor(@NonNull String owner) {
+        if (encryptedPrefs == null) return null;
+        String url = encryptedPrefs.getString(KEY_TOTP_OTPAUTH, "");
+        String stored = encryptedPrefs.getString(KEY_TOTP_OWNER, "");
+        if (url == null || url.isEmpty() || stored == null || !stored.equals(owner.trim())) return null;
+        return url;
+    }
+
+    public void clearTotp() {
+        if (encryptedPrefs == null) return;
+        encryptedPrefs.edit().remove(KEY_TOTP_OTPAUTH).remove(KEY_TOTP_OWNER).apply();
     }
 
     // Reset
