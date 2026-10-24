@@ -61,8 +61,9 @@ public class IdPTutorialFragment extends Fragment {
         // 以前はバックグラウンドの同期を呼ぶだけだった。バックグラウンドは新規ログインを始めない決まり
         // (AuthorizationContext.BACKGROUND) なので、押しても何も起きなかった。ホームへ戻り、
         // ホームの対話的な取得 (引っ張って更新と同じ) でログインさせる。
-        if (!prefs.hasCredentials()) {
-            // ID/パスワードが無ければログインしようが無い。入力できる設定画面へ。
+        if (!prefs.hasCredentials() || prefs.isCredentialsInvalid()) {
+            // ID/パスワードが無い、または誤りと分かっている (ホームはこの状態ではログインを試みない)。
+            // 入力し直せる設定画面へ。
             nav.popBackStack();
             nav.navigate(R.id.navigation_settings);
             return;

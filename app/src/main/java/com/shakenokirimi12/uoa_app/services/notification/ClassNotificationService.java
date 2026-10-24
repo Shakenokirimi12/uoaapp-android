@@ -67,12 +67,19 @@ public class ClassNotificationService extends Service {
         long end = todayStart.getTimeInMillis();
 
         List<CalendarEvent> todayClasses = new ArrayList<>();
+        boolean anyLeft = false;
+        long now = System.currentTimeMillis();
         for (CalendarEvent e : events) {
             if (e.getDtstart() == null) continue;
             long t = e.getDtstart().getTime();
-            if (t >= start && t < end) todayClasses.add(e);
+            if (t >= start && t < end) {
+                todayClasses.add(e);
+                if (e.getDtend() != null && e.getDtend().getTime() > now) anyLeft = true;
+            }
         }
-        if (!todayClasses.isEmpty()) updateEvents(context, todayClasses);
+        // 今日の授業が全部終わっていたら起動しない。起動すると startForeground が要るので、
+        // 「終わりました」を一瞬出してすぐ消すことになる (ホームを開くたびに)。
+        if (anyLeft) updateEvents(context, todayClasses);
     }
 
     public static void updateEvents(Context context, List<CalendarEvent> events) {
