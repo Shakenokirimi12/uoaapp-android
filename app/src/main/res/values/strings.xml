@@ -206,13 +206,15 @@
     <string name="otp_manual_secret_hint">Authy などはコードを手で追加します。下のキーを入力してください。QR はこの画面には出せません。</string>
     <string name="otp_copy_secret">キーをコピー</string>
     <string name="otp_method_authenticator_summary">このアプリがコードを作って入力します。Google Authenticator や Authy にも追加できます。</string>
-    <string name="otp_code_generated">このアプリがコードを入れました。「登録する」を押してください。</string>
-    <string name="otp_code_from_app">認証アプリのコードを入力してください</string>
+    <string name="otp_code_from_app">認証アプリにキーを追加して、表示されたコードを入力してください。このアプリにも同じキーを保存し、ログインのコードを自動で入力します。</string>
+    <string name="otp_code_mismatch">コードが一致しません。認証アプリに今のキーを追加したか確かめて、表示中のコードを入力してください。</string>
+    <string name="otp_secret_unreadable">大学のシステムが発行したキーを読み取れなかったため、登録していません。</string>
+    <string name="otp_secret_not_saved">このアプリにキーを保存できなかったため、登録していません。</string>
     <string name="otp_code_mail_prompt">メールに届いたコードを入力してください</string>
     <string name="otp_no_otpauth_app">開けるアプリがありません。Authy などは下のキーを手で追加してください</string>
     <string name="otp_secret_copied">キーをコピーしました</string>
     <string name="otp_reregister">認証アプリに登録し直す</string>
-    <string name="otp_reregister_summary">自動入力にするときや、コードが通らないとき</string>
+    <string name="otp_reregister_summary">新しいキーを発行して、このアプリと認証アプリに入れ直します</string>
     <string name="otp_reregister_notice">新しいキーを登録します。外部の認証アプリに入れていたら、新しいキーで入れ直してください。</string>
     <string name="otp_reregister_done">登録し直しました。ログインのコードはこのアプリが入力します。</string>
     <string name="login_settings_title">ログインとワンタイムパスワード</string>
@@ -230,7 +232,11 @@
     <string name="login_secret_confirm_description">本人か確かめます</string>
     <string name="close">閉じる</string>
     <string name="login_not_logged_in">未ログイン</string>
-    <string name="login_authenticator_with_secret">コードは自動で入力されます。</string>
-    <string name="login_authenticator_without_secret">コードは毎回手で入力します。登録し直すと、自動で入力されるようになります。</string>
+    <string name="login_authenticator_with_secret">コードはこのアプリが自動で入力します。バックグラウンドでも自動で再ログインします。</string>
+    <string name="login_authenticator_without_secret">このアプリにキーがありません。登録し直してください。</string>
+    <string name="login_reregister_needed_title">認証アプリの登録し直しが必要です</string>
+    <string name="login_reregister_needed_text">このアプリにキーがありません。登録し直すと、このアプリがコードを自動で入力し、バックグラウンドでも再ログインします。それまではログインのたびにコードを入力します。</string>
+    <string name="login_reregister_prompt_open">登録し直す</string>
+    <string name="login_reregister_prompt_later">あとで</string>
     <string name="settings_login_row">ログインとワンタイムパスワード</string>
 </resources>

@@ -137,6 +137,10 @@ public class IdPOtpRegistrationFragment extends Fragment {
         buttonRegister.setOnClickListener(v -> viewModel.submitCode(editCode.getText().toString()));
 
         viewModel.stage().observe(getViewLifecycleOwner(), this::render);
+        // 入力したコードがアプリの計算と合わなかった (登録は送っていない)。同じ画面で入力し直してもらう。
+        viewModel.codeMismatch().observe(getViewLifecycleOwner(), mismatch -> {
+            if (Boolean.TRUE.equals(mismatch)) textCodePrompt.setText(R.string.otp_code_mismatch);
+        });
         viewModel.autoFetchingEmailCode().observe(getViewLifecycleOwner(), fetching -> {
             boolean f = Boolean.TRUE.equals(fetching);
             groupAutoFetch.setVisibility(f ? View.VISIBLE : View.GONE);
@@ -247,16 +251,14 @@ public class IdPOtpRegistrationFragment extends Fragment {
             case WAITING_FOR_CODE: {
                 hideAll();
                 boolean authenticator = viewModel.method() == IdPOtpRegistrationViewModel.Method.AUTHENTICATOR;
-                String generated = authenticator ? viewModel.generatedCode() : null;
-                textCodePrompt.setText(!authenticator ? getString(R.string.otp_code_mail_prompt)
-                        : generated != null ? getString(R.string.otp_code_generated)
-                        : getString(R.string.otp_code_from_app));
+                textCodePrompt.setText(authenticator ? R.string.otp_code_from_app : R.string.otp_code_mail_prompt);
                 buttonOpenAuthenticator.setVisibility(authenticator && viewModel.otpauthUrl() != null ? View.VISIBLE : View.GONE);
                 String secret = authenticator ? viewModel.groupedSecret() : null;
                 groupManualSecret.setVisibility(secret != null ? View.VISIBLE : View.GONE);
                 textManualSecret.setText(secret != null ? secret : "");
-                // アプリが作ったコードを入れておく。外部の認証アプリのコードで上書きしてもよい。
-                editCode.setText(generated != null ? generated : "");
+                // アプリが作ったコードは入れておかない。外部の認証アプリのコードを打ってもらい、それがアプリの計算と
+                // 合うことで、外部のアプリにも同じキーが入っていると確かめる (iOS と同じ)。
+                editCode.setText("");
                 groupCode.setVisibility(View.VISIBLE);
                 break;
             }

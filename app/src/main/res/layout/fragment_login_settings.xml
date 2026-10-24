@@ -14,6 +14,49 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <!-- 認証アプリ方式なのに、このアプリにキーが無い (この決まりより前に登録した・作ったコードを弾かれて捨てた)。
+             普通の状態ではないので、登録し直しを案内する。LoginSettingsFragment.render が出し分ける。 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_reregister_needed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="?attr/colorErrorContainer"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/login_reregister_needed_title"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    android:textColor="?attr/colorOnErrorContainer" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/login_reregister_needed_text"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnErrorContainer" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_reregister_needed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/otp_reregister" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <TextView
             style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"

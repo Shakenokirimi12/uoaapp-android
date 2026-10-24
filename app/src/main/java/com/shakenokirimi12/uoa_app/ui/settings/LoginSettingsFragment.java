@@ -45,6 +45,7 @@ public class LoginSettingsFragment extends Fragment {
     private TextView otpMethodDetail;
     private View groupRelay;
     private View rowShowSecret, dividerShowSecret, rowReregister, dividerReregister;
+    private View cardReregisterNeeded;
 
     /** 画面ロックの確認 (KeyguardManager)。androidx.biometric は依存に無いので使わない。 */
     private final ActivityResultLauncher<Intent> confirmCredential =
@@ -87,17 +88,9 @@ public class LoginSettingsFragment extends Fragment {
         dividerReregister = view.findViewById(R.id.divider_reregister);
         // 認証アプリ → 認証アプリ。方式の切り替えと同じ登録の流れを使う (学内ゲートウェイ経由でパスワードだけで
         // 登録画面に入るので、手元に通るコードが無くても登録し直せる)。
-        rowReregister.setOnClickListener(v -> {
-            // 登録はパスワードでのログインから始まる。無い・誤りと分かっているときは始めない (誤ったパスワードで
-            // 試し続けると大学側でロックされうる)。
-            if (!prefs.hasCredentials() || prefs.isCredentialsInvalid()) {
-                Toast.makeText(requireContext(), prefs.hasCredentials()
-                        ? R.string.otp_switch_blocked_credentials : R.string.otp_switch_blocked_no_account,
-                        Toast.LENGTH_LONG).show();
-                return;
-            }
-            openRegistration(OtpMethod.AUTHENTICATOR);
-        });
+        rowReregister.setOnClickListener(v -> reregister());
+        cardReregisterNeeded = view.findViewById(R.id.card_reregister_needed);
+        view.findViewById(R.id.button_reregister_needed).setOnClickListener(v -> reregister());
 
         groupRelay = view.findViewById(R.id.group_relay);
         view.findViewById(R.id.row_otp_relay).setOnClickListener(v ->
@@ -133,8 +126,22 @@ public class LoginSettingsFragment extends Fragment {
         boolean authenticator = known && method == OtpMethod.AUTHENTICATOR;
         setVisible(authenticator && hasSecret(), rowShowSecret, dividerShowSecret);
         setVisible(authenticator, rowReregister, dividerReregister);
+        // キーが無いのは普通の状態ではない (登録し直しが要る)。上に案内を出す。
+        cardReregisterNeeded.setVisibility(authenticator && !hasSecret() ? View.VISIBLE : View.GONE);
         // PC 連携はメールに届くコードを読む機能なので、メール方式のときだけ出す (iOS と同じ)。
         groupRelay.setVisibility(known && method == OtpMethod.MAIL ? View.VISIBLE : View.GONE);
+    }
+
+    private void reregister() {
+        // 登録はパスワードでのログインから始まる。無い・誤りと分かっているときは始めない (誤ったパスワードで
+        // 試し続けると大学側でロックされうる)。
+        if (!prefs.hasCredentials() || prefs.isCredentialsInvalid()) {
+            Toast.makeText(requireContext(), prefs.hasCredentials()
+                    ? R.string.otp_switch_blocked_credentials : R.string.otp_switch_blocked_no_account,
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        openRegistration(OtpMethod.AUTHENTICATOR);
     }
 
     private static void setVisible(boolean visible, View... views) {
