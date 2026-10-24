@@ -1,7 +1,12 @@
 package com.shakenokirimi12.uoa_app.services.idp;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 
 import org.junit.Test;
 
@@ -20,5 +25,37 @@ public class OtpProvidersTest {
         assertNull(OtpProviders.methodFromOtpType(null));
         assertNull(OtpProviders.methodFromOtpType(""));
         assertNull(OtpProviders.methodFromOtpType("none"));
+    }
+
+    private static final String OTPAUTH = "otpauth://totp/SECIOSS:s1300000?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=SECIOSS";
+
+    /** メール方式はバックグラウンドの新規ログインを始めさせない (ログイン 1 回 = OTP メール 1 通)。 */
+    @Test
+    public void mail_cannotRunUnattended() {
+        assertFalse(OtpProviders.of(OtpMethod.MAIL, "s1300000", "pw", AuthorizationContext.BACKGROUND).canRunUnattended());
+    }
+
+    /** 鍵を持つ認証アプリ方式は、バックグラウンドでも鍵からコードを作る (入力は求めない)。 */
+    @Test
+    public void authenticatorWithKey_generatesCodeInBackground() throws Exception {
+        OtpProvider p = new OtpProviders.AuthenticatorOtpProvider("s1300000", AuthorizationContext.BACKGROUND, () -> OTPAUTH);
+        assertTrue(p.canRunUnattended());
+        String code = p.code();
+        assertTrue(Totp.matches(Totp.parse(OTPAUTH), code, System.currentTimeMillis()));
+    }
+
+    /** 鍵が無ければ (登録し直しが要る)、バックグラウンドではコードを用意できない。 */
+    @Test
+    public void authenticatorWithoutKey_refusesInBackground() {
+        OtpProvider p = new OtpProviders.AuthenticatorOtpProvider("s1300000", AuthorizationContext.BACKGROUND, () -> null);
+        assertFalse(p.canRunUnattended());
+        try {
+            p.code();
+            fail("background must not prompt");
+        } catch (SeciossError e) {
+            assertEquals(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED, e.kind);
+        } catch (Exception e) {
+            fail("unexpected " + e);
+        }
     }
 }

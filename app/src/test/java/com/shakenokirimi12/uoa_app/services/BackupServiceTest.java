@@ -78,12 +78,13 @@ public class BackupServiceTest {
     @Test
     public void osRestore_dropsDeviceLocalValues_andKeepsSettings() {
         Set<String> restored = new HashSet<>(Arrays.asList(
-                "device_id", "fcm_token", "server_holds_assignment_reminders", "otp_method", "notify_lunch", "main_tabs"));
+                "device_id", "fcm_token", "server_holds_assignment_reminders", "otp_method",
+                "totp_reregistration_prompted", "notify_lunch", "main_tabs"));
         RecordingEditor editor = new RecordingEditor();
 
         int removed = UoaBackupAgent.removeDeviceLocal(restored, editor);
 
-        assertEquals(4, removed);
+        assertEquals(5, removed);
         assertEquals(new HashSet<>(Arrays.asList(PreferenceManager.DEVICE_LOCAL_KEYS)), editor.removed);
         assertTrue(editor.written.isEmpty());
     }

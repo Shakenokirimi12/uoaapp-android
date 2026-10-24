@@ -62,7 +62,8 @@ public class CampusSquareService {
     public void login(String username, String password, ServiceCallback<Boolean> callback) {
         executor.execute(() -> {
             try {
-                coordinator.forceLogin(SESSION_KIND, () -> freshLogin(username, password));
+                coordinator.forceLogin(SESSION_KIND, () -> freshLogin(username, password, AuthorizationContext.INTERACTIVE),
+                        unattended(username, password));
                 postSuccess(callback, true);
             } catch (Exception e) {
                 postError(callback, e.getMessage());
@@ -72,7 +73,8 @@ public class CampusSquareService {
 
     /**
      * 必要ならログインして、認証済みであることを確認する。既に 10 分以内に検証済みなら通信しない。
-     * BACKGROUND (SyncWorker) は新規ログインを開始しない。保存済みセッションが死んでいたら諦める。
+     * BACKGROUND (SyncWorker) は、BackgroundLoginPolicy が許すとき (認証アプリ方式でこのアプリが鍵を持つ等)
+     * だけ新規ログインする。許さなければ、保存済みセッションが死んでいたら諦める。
      */
     public void ensureLoggedIn(String username, String password, AuthorizationContext context, ServiceCallback<Boolean> callback) {
         executor.execute(() -> {
@@ -114,7 +116,12 @@ public class CampusSquareService {
         String cached = storedSessionHeader();
         String candidate = cached.isEmpty() ? null : cached;
         return coordinator.session(SESSION_KIND, context, candidate, this::probeSession,
-                () -> freshLogin(username, password));
+                () -> freshLogin(username, password, context), unattended(username, password));
+    }
+
+    /** バックグラウンドの再ログインの判定。ログインに使うのと同じ ID / パスワードで作る。 */
+    private static SessionCoordinator.Unattended unattended(String username, String password) {
+        return BackgroundLoginPolicy.getInstance().forAccount("campussquare", username, password);
     }
 
     /**
@@ -132,10 +139,10 @@ public class CampusSquareService {
         return SpSessionCookies.headerFor(cookies, base, now);
     }
 
-    private String freshLogin(String username, String password) throws Exception {
+    private String freshLogin(String username, String password, AuthorizationContext context) throws Exception {
         // ここに来るのは永続化した cookie も死んでいたとき。捨ててから取り直す。
         PreferenceManager.getInstance().setCsIdpSessionCookies(null);
-        return loginViaIdPAutomatic(null, username, password);
+        return loginViaIdPAutomatic(null, username, password, context);
     }
 
     /**
@@ -292,12 +299,19 @@ public class CampusSquareService {
 
     /**
      * OTP の方式 (メール / 認証アプリ) は OtpProviders が設定から決める。
-     * ここに来るのは SessionCoordinator が新規ログインを許した場合だけなので、常に対話文脈。
+     * ここに来るのは SessionCoordinator が新規ログインを許した場合だけ。BACKGROUND なら、OTP を人もメールも
+     * 使わずに用意できると確かめてある (認証アプリ方式で、このアプリが鍵を持っている)。
      */
-    public String loginViaIdPAutomatic(String entryUrl, String username, String password) throws Exception {
-        return loginViaIdP(entryUrl, username, password,
-                com.shakenokirimi12.uoa_app.services.idp.OtpProviders.forLogin(
-                        username.trim(), password.trim(), AuthorizationContext.INTERACTIVE));
+    public String loginViaIdPAutomatic(String entryUrl, String username, String password,
+                                       AuthorizationContext context) throws Exception {
+        com.shakenokirimi12.uoa_app.services.idp.OtpProvider otp =
+                com.shakenokirimi12.uoa_app.services.idp.OtpProviders.forLogin(username.trim(), password.trim(), context);
+        // バックグラウンドでは、判定 (BackgroundLoginPolicy) のあとで方式が変わっていたら IdP に触れずに止める。
+        // 触れるとメール方式では motp.cgi が OTP メールを送ってしまう (送ったあとで code() が止めても遅い)。
+        if (!context.allowsNewLogin() && !otp.canRunUnattended()) {
+            throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
+        }
+        return loginViaIdP(entryUrl, username, password, otp);
     }
 
     /**
