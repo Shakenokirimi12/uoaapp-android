@@ -181,4 +181,13 @@ public class TimetableShareTest {
         assertEquals("ab", SharedTimetable.sanitize("a\uD800b", 10));
         assertEquals("a\uD83D\uDE00", SharedTimetable.sanitize("a\uD83D\uDE00", 10));
     }
+
+    @Test
+    public void featureShownOnlyWhenFlagIsExactlyTrue() {
+        assertTrue(TimetableShareFeature.isEnabled("true"));
+        assertFalse(TimetableShareFeature.isEnabled(null));
+        assertFalse(TimetableShareFeature.isEnabled("false"));
+        assertFalse(TimetableShareFeature.isEnabled(""));
+        assertFalse(TimetableShareFeature.isEnabled("TRUE"));
+    }
 }
