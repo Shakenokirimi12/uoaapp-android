@@ -204,12 +204,7 @@ public final class ImapOtpFetcher {
                     if (set.length() > 0) set.append(',');
                     set.append(u);
                 }
-                String tag = stream.nextTag();
-                stream.send(tag + " UID STORE " + set + " +FLAGS (\\Deleted)");
-                stream.readUntilTagged(tag);
-                tag = stream.nextTag();
-                stream.send(tag + " EXPUNGE");
-                stream.readUntilTagged(tag);
+                deleteUids(stream, set.toString());
             } catch (Exception e) {
                 android.util.Log.w("ImapOtpFetcher", "使用済みの OTP メールを消せなかった: " + e);
             } finally {
@@ -539,18 +534,48 @@ public final class ImapOtpFetcher {
         // 読み取り済みの OTP メールは削除する (ユーザー了承済み、2026-09-07)。
         // 抽出に失敗した場合は消さずに残す (デバッグのため)。
         try {
-            tag = stream.nextTag();
-            stream.send(tag + " UID STORE " + targetUid + " +FLAGS (\\Deleted)");
-            stream.readUntilTagged(tag);
-            tag = stream.nextTag();
-            stream.send(tag + " EXPUNGE");
-            stream.readUntilTagged(tag);
+            deleteUids(stream, targetUid);
         } catch (Exception e) {
             // 削除に失敗してもコードは取れているので、ログインは続ける。ただし黙って捨てると
             // 「メールが消えない」ときに原因が分からなくなるので必ずログへ残す (コードは出さない)。
             android.util.Log.w("ImapOtpFetcher", "OTPメールの削除に失敗: " + e);
         }
         return mail;
+    }
+
+    /**
+     * uidSet (UID のカンマ区切り) のメールだけを消す。
+     *
+     * 以前は \Deleted を付けたあと素の EXPUNGE を送っていた。EXPUNGE は受信箱で \Deleted の付いた
+     * メールを全部消すので、利用者が別のメールソフトで「削除済み」にしただけ (まだ戻せる) のメールまで
+     * 消していた。UIDPLUS (RFC 4315) があれば UID EXPUNGE で指定した UID だけを消す。無ければ
+     * EXPUNGE はしない (印は付いたまま残り、利用者のメールソフトが消すか戻すかを決める)。
+     */
+    private static void deleteUids(ImapStream stream, String uidSet) throws IOException, ImapException {
+        String tag = stream.nextTag();
+        stream.send(tag + " UID STORE " + uidSet + " +FLAGS (\\Deleted)");
+        stream.readUntilTagged(tag);
+        tag = stream.nextTag();
+        stream.send(tag + " CAPABILITY");
+        if (!hasCapability(stream.readUntilTagged(tag), "UIDPLUS")) {
+            android.util.Log.w("ImapOtpFetcher", "UIDPLUS が無いので EXPUNGE しない (削除の印だけ付けた)");
+            return;
+        }
+        tag = stream.nextTag();
+        stream.send(tag + " UID EXPUNGE " + uidSet);
+        stream.readUntilTagged(tag);
+    }
+
+    /** CAPABILITY の未タグ応答 ("* CAPABILITY IMAP4rev1 UIDPLUS ...") に capability があるか。 */
+    static boolean hasCapability(@NonNull List<String> lines, @NonNull String capability) {
+        for (String line : lines) {
+            String[] words = line.trim().split("\\s+");
+            if (words.length < 2 || !"*".equals(words[0]) || !"CAPABILITY".equalsIgnoreCase(words[1])) continue;
+            for (int i = 2; i < words.length; i++) {
+                if (capability.equalsIgnoreCase(words[i])) return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -954,7 +979,11 @@ public final class ImapOtpFetcher {
                 throw new java.io.InterruptedIOException("aborted");
             }
             try {
-                s.connect(new InetSocketAddress(host, port), currentReadWait());
+                // InetSocketAddress(host, port) はここで名前解決し、DNS が答えないと待ち時間の上限 (currentReadWait)
+                // と関係なく止まっていた。解決にも同じ上限を掛ける。解決した InetAddress はホスト名を持つので、
+                // SNI とホスト名の検証は今までどおり host で行われる。
+                java.net.InetAddress address = com.shakenokirimi12.uoa_app.services.TimedDns.resolve(host, currentReadWait())[0];
+                s.connect(new InetSocketAddress(address, port), currentReadWait());
                 s.setSoTimeout(currentReadWait());
                 // SSLSocket は既定ではホスト名検証をしない。iOS の NWConnection(TLS) と同じ強度にするため明示する。
                 SSLParameters params = s.getSSLParameters();

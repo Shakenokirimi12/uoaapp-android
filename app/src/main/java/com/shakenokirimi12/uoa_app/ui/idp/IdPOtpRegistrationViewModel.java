@@ -1,7 +1,6 @@
 package com.shakenokirimi12.uoa_app.ui.idp;
 
 import android.app.Application;
-import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -80,11 +79,21 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
     private Method method = Method.EMAIL;
     @Nullable private String existingStatusLabel;
     @Nullable private String otpauthUrl;
-    @Nullable private String authenticatorSecretFallback;
     private String uid = "";
     private String pass = "";
     /** 確認コードの送り先がこの人の大学のメール (uid@u-aizu.ac.jp) か。違えば受信箱を読みに行っても見つからない。 */
     private boolean codeSentToOwnMailbox = true;
+    /**
+     * 確認コードのメールを頼んだ時刻。受信箱はこれ以降に届いたメールだけを今回のコードとみなす。
+     * 以前は渡しておらず、読み始めた時刻 (確認の画面を挟むので数十秒あとになりうる) が基準になって、
+     * その間に届いた目当てのメールを古いものとして取りこぼしていた。
+     */
+    private volatile long emailRequestedAt;
+    /**
+     * 登録に送ったコードが、受け取ったシークレットからアプリが作るコードと一致したか。一致したときだけ
+     * シークレットを保存する (iOS と同じ。アプリの計算が合っていると確かめてから持つ)。
+     */
+    private volatile boolean secretVerified;
     private boolean started = false;
     /** startOnce で作る。POST の可否と、登録が済んだときの受け取り方の書き換えを受け持つ。 */
     @Nullable private volatile OtpRegistrationCommit commit;
@@ -99,8 +108,6 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
     @NonNull public Method method() { return method; }
     @Nullable public String existingStatusLabel() { return existingStatusLabel; }
     @Nullable public String otpauthUrl() { return otpauthUrl; }
-    /** 外部の認証アプリが 1 つも無い場合の手動追加用フォールバック表示にだけ使う。 */
-    @Nullable public String authenticatorSecretFallback() { return authenticatorSecretFallback; }
     @NonNull public String defaultEmailAddress() { return uid + DOMAIN; }
     /** 設定画面からの切り替えなら切り替え先。新規登録なら null。 */
     @Nullable public OtpMethod switchingTo() {
@@ -122,9 +129,9 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
         this.uid = uid.trim();
         this.pass = pass.trim();
         // 受け取り方を書き換えるのは、IdP への登録が済んだと分かったときだけ (OtpRegistrationCommit)。
-        commit = new OtpRegistrationCommit(switchingTo,
-                registered -> PreferenceManager.getInstance(getApplication()).applyRegisteredOtpMethod(registered),
-                this::readOtpTypeWithinLimit);
+        PreferenceManager prefs = PreferenceManager.getInstance(getApplication());
+        OtpMethod previous = prefs.isOtpMethodKnown() ? OtpMethod.from(prefs.getOtpMethod()) : null;
+        commit = new OtpRegistrationCommit(switchingTo, previous, this::applyRegistered, this::readOtpTypeWithinLimit);
         stage.setValue(Stage.CHECKING);
         executor.execute(() -> {
             try {
@@ -186,6 +193,43 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
         });
     }
 
+    /**
+     * 登録が済んだ方式を保存する。認証アプリ方式なら、IdP から受け取ったシークレット (otpauth URL) を
+     * このアカウントのものとして暗号化側に保存し、以後のログインでアプリがコードを作る。
+     * メール方式に切り替えたら、もう使わないシークレットは消す。
+     */
+    private void applyRegistered(@NonNull OtpMethod registered) {
+        PreferenceManager prefs = PreferenceManager.getInstance(getApplication());
+        prefs.applyRegisteredOtpMethod(registered);
+        String url = otpauthUrl;
+        if (registered == OtpMethod.AUTHENTICATOR && url != null && !secretVerified) {
+            // 送ったコードがアプリの計算と合わなかった (外部の認証アプリの時計がずれている等)。アプリの計算が
+            // 正しいと確かめられないので持たない。前のキーも、もう IdP では使えないので消す。
+            android.util.Log.w("IdPOtpRegistration", "submitted code did not match the app's calculation; not keeping the secret");
+            prefs.clearTotp();
+        } else if (registered == OtpMethod.AUTHENTICATOR && url != null) {
+            if (!prefs.saveTotp(url, uid)) {
+                android.util.Log.w("IdPOtpRegistration", "could not keep the authenticator secret; codes must be typed");
+            }
+        } else if (registered == OtpMethod.MAIL) {
+            prefs.clearTotp();
+        }
+    }
+
+    /** 今のコード (受け取ったシークレットから作る)。シークレットが読めなければ null。 */
+    @Nullable
+    public String generatedCode() {
+        com.shakenokirimi12.uoa_app.services.idp.Totp.Params p =
+                com.shakenokirimi12.uoa_app.services.idp.Totp.parse(otpauthUrl);
+        return p != null ? com.shakenokirimi12.uoa_app.services.idp.Totp.code(p, System.currentTimeMillis()) : null;
+    }
+
+    /** 手で追加するとき用に、4 文字ずつ区切ったシークレット。 */
+    @Nullable
+    public String groupedSecret() {
+        return com.shakenokirimi12.uoa_app.services.idp.Totp.groupedSecret(otpauthUrl);
+    }
+
     public void chooseEmail() {
         method = Method.EMAIL;
         stage.setValue(Stage.ENTERING_EMAIL_ADDRESS);
@@ -208,11 +252,6 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
             SeciossRegistrationSession.AuthenticatorChallenge challenge = s.beginAuthenticatorRegistration();
             authChallenge = challenge;
             otpauthUrl = challenge.otpauthUrl;
-            try {
-                authenticatorSecretFallback = Uri.parse(challenge.otpauthUrl).getQueryParameter("secret");
-            } catch (UnsupportedOperationException e) {
-                authenticatorSecretFallback = null;
-            }
             existingStatusLabel = challenge.existingStatusLabel;
             post(Stage.CONFIRMING_REGISTRATION);
         } catch (Exception e) {
@@ -232,6 +271,7 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
         codeSentToOwnMailbox = address.equalsIgnoreCase(defaultEmailAddress());
         executor.execute(() -> {
             try {
+                emailRequestedAt = System.currentTimeMillis();
                 s.requestEmailCode(address);
                 SeciossRegistrationSession.EmailChallenge challenge = s.fetchEmailConfirmationChallenge();
                 emailChallenge = challenge;
@@ -255,7 +295,7 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
         autoFetchingEmailCode.setValue(true);
         executor.execute(() -> {
             try {
-                String code = new ImapOtpFetcher().fetchOtpCode(uid, pass, 30);
+                String code = new ImapOtpFetcher().fetchOtpCode(uid, pass, 30, emailRequestedAt);
                 autoFetchingEmailCode.postValue(false);
                 completeEmail(code);
             } catch (Exception e) {
@@ -266,7 +306,8 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
     }
 
     public void submitCode(@NonNull String input) {
-        String code = input.trim();
+        // 認証アプリの表示 ("123 456") をそのまま打っても通るよう、空白を除く。
+        String code = input.replace(" ", "").trim();
         if (code.isEmpty()) return;
         executor.execute(() -> {
             if (method == Method.EMAIL) completeEmail(code);
@@ -297,6 +338,10 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
         SeciossRegistrationSession.AuthenticatorChallenge challenge = authChallenge;
         OtpRegistrationCommit c = commit;
         if (s == null || challenge == null || c == null || !beginPostOnMain(c)) return;
+        com.shakenokirimi12.uoa_app.services.idp.Totp.Params params =
+                com.shakenokirimi12.uoa_app.services.idp.Totp.parse(otpauthUrl);
+        secretVerified = params != null
+                && com.shakenokirimi12.uoa_app.services.idp.Totp.matches(params, code, System.currentTimeMillis());
         try {
             s.completeAuthenticatorRegistration(challenge, code);
             closeTunnel();

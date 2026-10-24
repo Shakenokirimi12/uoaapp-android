@@ -20,7 +20,7 @@ import com.shakenokirimi12.uoa_app.data.PreferenceManager;
  * iOS はページ送り形式だが、Android は 1 枚のスクロール画面にしている (カード単位で区切れば情報量は
  * 収まり、ViewPager2 とインジケータを増やす理由が無いため)。
  * 引数 next_action ("login" / "otp_registration") で、「今すぐ」を押したときの動作を決める。
- * login の場合は画面を出さずに同期を 1 回走らせるだけ (ログインは同期の裏で完結する)。
+ * login の場合はホームへ戻り、ホームの対話的な取得でログインする。
  */
 public class IdPTutorialFragment extends Fragment {
     public static final String ARG_NEXT_ACTION = "next_action";
@@ -58,8 +58,18 @@ public class IdPTutorialFragment extends Fragment {
             nav.navigate(R.id.action_idp_tutorial_to_otp_registration);
             return;
         }
-        // ログインは同期の裏で完結する。専用のログイン画面は出さず、普通に同期する (iOS と同じ)。
-        nav.popBackStack();
-        com.shakenokirimi12.uoa_app.services.sync.SyncScheduler.syncNow(requireContext().getApplicationContext());
+        // 以前はバックグラウンドの同期を呼ぶだけだった。バックグラウンドは新規ログインを始めない決まり
+        // (AuthorizationContext.BACKGROUND) なので、押しても何も起きなかった。ホームへ戻り、
+        // ホームの対話的な取得 (引っ張って更新と同じ) でログインさせる。
+        if (!prefs.hasCredentials() || prefs.isCredentialsInvalid()) {
+            // ID/パスワードが無い、または誤りと分かっている (ホームはこの状態ではログインを試みない)。
+            // 入力し直せるログインの画面へ。
+            nav.popBackStack();
+            nav.navigate(R.id.navigation_login_settings);
+            return;
+        }
+        nav.getBackStackEntry(R.id.navigation_home).getSavedStateHandle()
+                .set(com.shakenokirimi12.uoa_app.ui.home.HomeFragment.KEY_FORCE_SYNC, true);
+        nav.popBackStack(R.id.navigation_home, false);
     }
 }

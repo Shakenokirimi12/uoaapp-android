@@ -114,7 +114,8 @@ public final class AssignmentReminderSync {
                 if (minutes == null) continue;
                 long triggerMs = dueMs - minutes * 60_000L;
                 if (triggerMs <= now) continue;
-                String url = MoodleService.currentBaseUrl() + "/mod/assign/view.php?id=" + a.getId();
+                // 開く先が分からない古いキャッシュでは、別の課題を開くより Moodle のトップへ送る。
+                String url = a.getUrl() != null ? a.getUrl() : MoodleService.currentBaseUrl() + "/my/";
                 out.add(new PushNotificationService.AssignmentReminder(
                         a.getId(), id, iso.format(new Date(triggerMs)),
                         "課題提出期限",

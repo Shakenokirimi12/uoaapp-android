@@ -119,7 +119,7 @@ public class NavSettingsFragment extends Fragment {
         arrow.setColorFilter(MaterialColors.getColor(arrow, isMain
                 ? com.google.android.material.R.attr.colorOnSurfaceVariant
                 : androidx.appcompat.R.attr.colorPrimary));
-        arrow.setContentDescription(isMain ? "「その他」へ移動" : "ナビゲーションバーへ移動");
+        arrow.setContentDescription(isMain ? "「その他」へ移動" : "下のタブへ移動");
         LinearLayout.LayoutParams arrowParams = new LinearLayout.LayoutParams(dp(24), dp(24));
         arrow.setLayoutParams(arrowParams);
         if (movable) row.addView(arrow);

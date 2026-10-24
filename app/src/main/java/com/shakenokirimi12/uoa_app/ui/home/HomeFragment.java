@@ -45,6 +45,9 @@ import java.util.List;
 import java.util.Locale;
 
 public class HomeFragment extends Fragment {
+    /** IdP のチュートリアルから戻ったとき、キャッシュに関係なく取り直す。 */
+    public static final String KEY_FORCE_SYNC = "force_sync";
+
 
     private SwipeRefreshLayout swipeRefresh;
     private RecyclerView recyclerClasses;
@@ -183,7 +186,12 @@ public class HomeFragment extends Fragment {
 
         // Every tab switch recreates this fragment; hitting CampusSquare / Moodle each time is
         // needless load on the university servers, so automatic loads honor the cache age.
-        syncData(false);
+        // IdP のチュートリアルで「今すぐログインする」を押して戻ってきたときだけは、キャッシュに
+        // 関係なく取り直してログインさせる。
+        Boolean forceSync = Navigation.findNavController(view).getCurrentBackStackEntry() != null
+                ? Navigation.findNavController(view).getCurrentBackStackEntry().getSavedStateHandle().remove(KEY_FORCE_SYNC)
+                : null;
+        syncData(Boolean.TRUE.equals(forceSync));
         loadCafeteriaMenu(false);
     }
 
@@ -471,24 +479,7 @@ public class HomeFragment extends Fragment {
 
     private void startClassNotification(List<CalendarEvent> events) {
         if (!isAdded()) return;
-        Calendar todayStart = Calendar.getInstance();
-        todayStart.set(Calendar.HOUR_OF_DAY, 0);
-        todayStart.set(Calendar.MINUTE, 0);
-        todayStart.set(Calendar.SECOND, 0);
-        long start = todayStart.getTimeInMillis();
-        todayStart.add(Calendar.DAY_OF_YEAR, 1);
-        long end = todayStart.getTimeInMillis();
-
-        List<CalendarEvent> todayClasses = new ArrayList<>();
-        for (CalendarEvent e : events) {
-            if (e.getDtstart() == null) continue;
-            long t = e.getDtstart().getTime();
-            if (t >= start && t < end) todayClasses.add(e);
-        }
-
-        if (!todayClasses.isEmpty()) {
-            ClassNotificationService.updateEvents(requireContext(), todayClasses);
-        }
+        ClassNotificationService.startForToday(requireContext(), events);
     }
 
     private void showError(String message) {

@@ -22,28 +22,19 @@ public class PreferenceManager {
     private static final String KEY_ONBOARDING_DONE = "onboarding_done";
     private static final String KEY_CREDENTIALS_INVALID = "credentials_invalid";
     private static final String KEY_FCM_TOKEN = "fcm_token";
-    private static final String KEY_REVIEW_GUIDELINES_ACCEPTED = "review_guidelines_accepted";
     private static final String KEY_SERVER_HOLDS_REMINDERS = "server_holds_assignment_reminders";
     private static final String KEY_NOTIFY_ASSIGNMENTS = "notify_assignments";
     private static final String KEY_NOTIFY_LUNCH = "notify_lunch";
-    private static final String KEY_MOODLE_TOKEN = "moodle_token";
-    private static final String KEY_ICS_URL = "ics_url";
+    private static final String KEY_CLASS_NOTIFICATION = "class_notification_enabled";
     private static final String KEY_LAST_SYNC = "last_sync";
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_AUTO_ATTENDANCE = "auto_attendance_enabled";
-    private static final String KEY_SYNC_INTERVAL = "sync_interval";
     private static final String KEY_SELECTED_NOTIFY_TIMES = "selected_notify_times";
     private static final String KEY_CUSTOM_NOTIFY_TIMES = "custom_notify_times";
-    private static final String KEY_BG_NOTIFY_CHANGE = "bg_notify_change";
-    private static final String KEY_BG_NOTIFY_SUCCESS = "bg_notify_success";
-    private static final String KEY_BG_NOTIFY_FAILURE = "bg_notify_failure";
-    private static final String KEY_BG_NOTIFY_NOCHANGE = "bg_notify_nochange";
     private static final String KEY_LUNCH_NOTIFY_TIME = "lunch_notify_time";
     private static final String KEY_LOGIN_REQUIRED_NOTIFIED_DAY = "login_required_notified_day";
     private static final String KEY_MAIN_TABS = "main_tabs";
     private static final String KEY_OTHER_TABS = "other_tabs";
-    private static final String KEY_REVIEW_CONSENT = "review_consent_given";
-    private static final String KEY_REVIEW_USER_ID = "review_user_id";
     private static final String KEY_HAS_SEEN_IDP_TUTORIAL = "has_seen_idp_tutorial";
     private static final String KEY_OTP_METHOD = "otp_method";
     private static final String KEY_CS_IDP_SESSION_COOKIE_HEADER = "cs_idp_session_cookie_header";
@@ -51,6 +42,10 @@ public class PreferenceManager {
     private static final String KEY_IDP_SSO_OWNER = "idp_sso_owner";
     private static final String KEY_OTP_RELAY_PAIRINGS = "otp_relay_pairings";
     private static final String KEY_OTP_RELAY_LAST_RESULT = "otp_relay_last_result";
+    private static final String KEY_OTP_RELAY_PENDING_UNPAIRS = "otp_relay_pending_unpairs";
+    /** 認証アプリ方式で IdP に登録した otpauth URL (シークレットを含む) と、その持ち主のユーザー名。 */
+    private static final String KEY_TOTP_OTPAUTH = "totp_otpauth_url";
+    private static final String KEY_TOTP_OWNER = "totp_owner";
     private static final String KEY_MOODLE_SESSION_COOKIE_HEADER = "moodle_session_cookie_header";
 
     private static final String TAG = "PreferenceManager";
@@ -76,7 +71,7 @@ public class PreferenceManager {
      * 以前は作成に失敗すると平文の prefs に同じキーで書いていたので、そこに残った写しは起動時に消す。
      */
     private static final String[] SECRET_KEYS = {
-            KEY_USERNAME, KEY_PASSWORD, KEY_MOODLE_TOKEN, KEY_REVIEW_USER_ID,
+            KEY_USERNAME, KEY_PASSWORD,
             KEY_CS_IDP_SESSION_COOKIE_HEADER, KEY_IDP_SSO_COOKIE_HEADER, KEY_MOODLE_SESSION_COOKIE_HEADER,
     };
 
@@ -97,6 +92,14 @@ public class PreferenceManager {
         // OTP をメールから自動で取得するかの選択。メール方式ではいつも自動で取得するようにしたので
         // (2026-10-21)、キーごと消した。
         if (prefs.contains("otp_auto_fetch_enabled")) prefs.edit().remove("otp_auto_fetch_enabled").apply();
+        // 授業評価は機能ごと消した (2026-10-22)。端末に残った同意と、サーバーのアカウント ID を消す。
+        dropRemovedKeys(new String[] {"review_consent_given", "review_guidelines_accepted", "review_user_id"},
+                new String[] {"review_user_id", "review_token"});
+        // 同期の間隔 (既定の 1 時間に固定) と同期結果の通知 4 つは設定から消した (2026-10-22)。
+        dropRemovedKeys(new String[] {"sync_interval", "bg_notify_change", "bg_notify_success",
+                "bg_notify_failure", "bg_notify_nochange"}, new String[0]);
+        // 誰も読み書きしていなかった値 (ICS の URL、Moodle のトークン。以前の平文の写しも)。
+        dropRemovedKeys(new String[] {"ics_url", "moodle_token"}, new String[] {"moodle_token"});
     }
 
     /**
@@ -179,6 +182,25 @@ public class PreferenceManager {
         plainEdit.apply();
     }
 
+    /** 機能ごと消した設定を、平文側と暗号化側の両方から消す。無ければ何もしない。 */
+    private void dropRemovedKeys(String[] plainKeys, String[] secretKeys) {
+        SharedPreferences.Editor plain = null;
+        for (String key : plainKeys) {
+            if (!prefs.contains(key)) continue;
+            if (plain == null) plain = prefs.edit();
+            plain.remove(key);
+        }
+        if (plain != null) plain.apply();
+        if (encryptedPrefs == null) return;
+        SharedPreferences.Editor secure = null;
+        for (String key : secretKeys) {
+            if (!encryptedPrefs.contains(key)) continue;
+            if (secure == null) secure = encryptedPrefs.edit();
+            secure.remove(key);
+        }
+        if (secure != null) secure.apply();
+    }
+
     /** 資格情報・セッション cookie を保存できるか。false の端末ではログイン情報を保存しない。 */
     public boolean isSecureStorageAvailable() { return encryptedPrefs != null; }
 
@@ -226,6 +248,8 @@ public class PreferenceManager {
         // OTP の受け取り方はアカウントごと。別のアカウントにしたら、次のログインで IdP から読み直す
         // (OtpProviders)。初めて保存するとき (初期設定) は、そのログインで読んだ方式を残す。
         if (otherAccount) prefs.edit().remove(KEY_OTP_METHOD).apply();
+        // 認証アプリのシークレットもアカウントごと。別のアカウントの鍵でコードを作らない。
+        if (otherAccount) clearTotp();
         // 別のアカウントに切り替えたとき、前のユーザーの IdP セッションを引き継がない。
         setCsIdpSessionCookies(null);
         // メモリ上のセッション cookie も含めて消す (ストアはプロセス内に写しを持つ)。
@@ -246,9 +270,6 @@ public class PreferenceManager {
      * ロックされうる。パスワードの再入力でだけ解除される。
      */
     public boolean isCredentialsInvalid() { return prefs.getBoolean(KEY_CREDENTIALS_INVALID, false); }
-
-    public boolean isReviewGuidelinesAccepted() { return prefs.getBoolean(KEY_REVIEW_GUIDELINES_ACCEPTED, false); }
-    public void setReviewGuidelinesAccepted(boolean accepted) { prefs.edit().putBoolean(KEY_REVIEW_GUIDELINES_ACCEPTED, accepted).apply(); }
 
     public String getFcmToken() { return prefs.getString(KEY_FCM_TOKEN, ""); }
     public void setFcmToken(String token) { prefs.edit().putString(KEY_FCM_TOKEN, token).apply(); }
@@ -273,16 +294,12 @@ public class PreferenceManager {
     public boolean isAssignmentNotifyEnabled() { return prefs.getBoolean(KEY_NOTIFY_ASSIGNMENTS, true); }
     public void setAssignmentNotifyEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_NOTIFY_ASSIGNMENTS, enabled).apply(); }
 
+    /** 授業中・次の授業の常駐通知 (iOS の Live Activity の設定に相当)。既定は今までどおり出す。 */
+    public boolean isClassNotificationEnabled() { return prefs.getBoolean(KEY_CLASS_NOTIFICATION, true); }
+    public void setClassNotificationEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_CLASS_NOTIFICATION, enabled).apply(); }
+
     public boolean isLunchNotifyEnabled() { return prefs.getBoolean(KEY_NOTIFY_LUNCH, false); }
     public void setLunchNotifyEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_NOTIFY_LUNCH, enabled).apply(); }
-
-    // Moodle
-    public String getMoodleToken() { return getSecret(KEY_MOODLE_TOKEN); }
-    public void setMoodleToken(String token) { putSecret(KEY_MOODLE_TOKEN, token); }
-
-    // ICS
-    public String getIcsUrl() { return prefs.getString(KEY_ICS_URL, ""); }
-    public void setIcsUrl(String url) { prefs.edit().putString(KEY_ICS_URL, url).apply(); }
 
     // Sync
     public long getLastSync() { return prefs.getLong(KEY_LAST_SYNC, 0); }
@@ -302,10 +319,6 @@ public class PreferenceManager {
     public boolean isAutoAttendanceEnabled() { return prefs.getBoolean(KEY_AUTO_ATTENDANCE, false); }
     public void setAutoAttendanceEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_AUTO_ATTENDANCE, enabled).apply(); }
 
-    // Sync interval (minutes)
-    public int getSyncInterval() { return prefs.getInt(KEY_SYNC_INTERVAL, 60); }
-    public void setSyncInterval(int minutes) { prefs.edit().putInt(KEY_SYNC_INTERVAL, minutes).apply(); }
-
     // Notification timings (comma-separated keys like "prev_20,prev_10")
     public String getSelectedNotifyTimes() { return prefs.getString(KEY_SELECTED_NOTIFY_TIMES, "prev_20"); }
     public void setSelectedNotifyTimes(String times) { prefs.edit().putString(KEY_SELECTED_NOTIFY_TIMES, times).apply(); }
@@ -313,19 +326,6 @@ public class PreferenceManager {
     // Custom notify times (JSON array)
     public String getCustomNotifyTimes() { return prefs.getString(KEY_CUSTOM_NOTIFY_TIMES, "[]"); }
     public void setCustomNotifyTimes(String json) { prefs.edit().putString(KEY_CUSTOM_NOTIFY_TIMES, json).apply(); }
-
-    // Background sync result notifications
-    public boolean isBgNotifyChange() { return prefs.getBoolean(KEY_BG_NOTIFY_CHANGE, true); }
-    public void setBgNotifyChange(boolean v) { prefs.edit().putBoolean(KEY_BG_NOTIFY_CHANGE, v).apply(); }
-
-    public boolean isBgNotifySuccess() { return prefs.getBoolean(KEY_BG_NOTIFY_SUCCESS, true); }
-    public void setBgNotifySuccess(boolean v) { prefs.edit().putBoolean(KEY_BG_NOTIFY_SUCCESS, v).apply(); }
-
-    public boolean isBgNotifyFailure() { return prefs.getBoolean(KEY_BG_NOTIFY_FAILURE, false); }
-    public void setBgNotifyFailure(boolean v) { prefs.edit().putBoolean(KEY_BG_NOTIFY_FAILURE, v).apply(); }
-
-    public boolean isBgNotifyNoChange() { return prefs.getBoolean(KEY_BG_NOTIFY_NOCHANGE, false); }
-    public void setBgNotifyNoChange(boolean v) { prefs.edit().putBoolean(KEY_BG_NOTIFY_NOCHANGE, v).apply(); }
 
     // Lunch notify time (HH:mm)
     public String getLunchNotifyTime() { return prefs.getString(KEY_LUNCH_NOTIFY_TIME, "11:30"); }
@@ -341,14 +341,6 @@ public class PreferenceManager {
 
     public String getOtherTabs() { return prefs.getString(KEY_OTHER_TABS, "facilities,grades"); }
     public void setOtherTabs(String tabs) { prefs.edit().putString(KEY_OTHER_TABS, tabs).apply(); }
-
-    // Review consent
-    public boolean isReviewConsentGiven() { return prefs.getBoolean(KEY_REVIEW_CONSENT, false); }
-    public void setReviewConsentGiven(boolean given) { prefs.edit().putBoolean(KEY_REVIEW_CONSENT, given).apply(); }
-
-    // Review internal user ID (stored securely)
-    public String getReviewUserId() { return getSecret(KEY_REVIEW_USER_ID); }
-    public void setReviewUserId(String id) { putSecret(KEY_REVIEW_USER_ID, id); }
 
     // IdP (SECIOSS) login。iOS の SettingsStore.hasSeenIdPTutorial と同じ既定値。
     public boolean hasSeenIdPTutorial() { return prefs.getBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, false); }
@@ -432,9 +424,55 @@ public class PreferenceManager {
     public String getOtpRelayLastResultJson() { return getSecret(KEY_OTP_RELAY_LAST_RESULT); }
     public void setOtpRelayLastResultJson(String json) { putSecret(KEY_OTP_RELAY_LAST_RESULT, json); }
 
+    /**
+     * ログアウトで中継サーバからの解除を待っている連携 (JSON、K を含む)。解除が済むまで
+     * clearAll でも消さない (OtpRelayUnpairWorker)。
+     */
+    public String getOtpRelayPendingUnpairsJson() { return getSecret(KEY_OTP_RELAY_PENDING_UNPAIRS); }
+
+    public boolean commitOtpRelayPendingUnpairsJson(String json) {
+        if (encryptedPrefs == null) return false;
+        SharedPreferences.Editor e = encryptedPrefs.edit();
+        if (json == null || json.isEmpty()) e.remove(KEY_OTP_RELAY_PENDING_UNPAIRS);
+        else e.putString(KEY_OTP_RELAY_PENDING_UNPAIRS, json);
+        return e.commit();
+    }
+
+    /**
+     * 認証アプリ方式の otpauth URL を保存する (暗号化側だけ。バックアップ規則で暗号化側は除外している)。
+     * IdP への登録が済んだときにだけ呼ぶ。保存できたかを返す。
+     */
+    public boolean saveTotp(@NonNull String otpauthUrl, @NonNull String owner) {
+        if (encryptedPrefs == null) return false;
+        return encryptedPrefs.edit()
+                .putString(KEY_TOTP_OTPAUTH, otpauthUrl)
+                .putString(KEY_TOTP_OWNER, owner.trim())
+                .commit();
+    }
+
+    /** owner の otpauth URL。持っていない、または別のアカウントのものなら null。 */
+    @androidx.annotation.Nullable
+    public String totpOtpauthFor(@NonNull String owner) {
+        if (encryptedPrefs == null) return null;
+        String url = encryptedPrefs.getString(KEY_TOTP_OTPAUTH, "");
+        String stored = encryptedPrefs.getString(KEY_TOTP_OWNER, "");
+        if (url == null || url.isEmpty() || stored == null || !stored.equals(owner.trim())) return null;
+        return url;
+    }
+
+    public void clearTotp() {
+        if (encryptedPrefs == null) return;
+        encryptedPrefs.edit().remove(KEY_TOTP_OTPAUTH).remove(KEY_TOTP_OWNER).apply();
+    }
+
     // Reset
     public void clearAll() {
         prefs.edit().clear().apply();
-        if (encryptedPrefs != null) encryptedPrefs.edit().clear().apply();
+        if (encryptedPrefs == null) return;
+        // 解除待ちの連携だけは残す。消すと、中継サーバに残った連携を二度と解除できなくなる。
+        String pendingUnpairs = encryptedPrefs.getString(KEY_OTP_RELAY_PENDING_UNPAIRS, "");
+        SharedPreferences.Editor e = encryptedPrefs.edit().clear();
+        if (pendingUnpairs != null && !pendingUnpairs.isEmpty()) e.putString(KEY_OTP_RELAY_PENDING_UNPAIRS, pendingUnpairs);
+        e.apply();
     }
 }

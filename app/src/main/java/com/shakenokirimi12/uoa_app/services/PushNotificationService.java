@@ -6,11 +6,8 @@ import android.os.Looper;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
 import com.shakenokirimi12.uoa_app.BuildConfig;
-import com.shakenokirimi12.uoa_app.data.models.PushNotification;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -47,11 +44,6 @@ public class PushNotificationService {
         return shared;
     }
 
-    public interface NotificationCallback {
-        void onResult(List<PushNotification> notifications, int unreadCount);
-        void onError(String message);
-    }
-
     public void init(String storedDeviceId) {
         if (storedDeviceId != null && !storedDeviceId.isEmpty()) {
             this.deviceId = storedDeviceId;
@@ -82,54 +74,6 @@ public class PushNotificationService {
                 OkHttpClient client = NetworkClient.getNoCookieClient();
                 Request req = new Request.Builder()
                         .url(BASE_URL + "/api/devices/register")
-                        .post(RequestBody.create(body.toString(), JSON))
-                        .build();
-                try (Response resp = client.newCall(req).execute()) {
-                    // ignore result
-                }
-            } catch (Exception ignored) {}
-        });
-    }
-
-    public void fetchNotifications(NotificationCallback callback) {
-        executor.execute(() -> {
-            try {
-                OkHttpClient client = NetworkClient.getNoCookieClient();
-                Request req = new Request.Builder()
-                        .url(BASE_URL + "/api/notifications?deviceId=" + deviceId)
-                        .build();
-
-                try (Response resp = client.newCall(req).execute()) {
-                    String json = resp.body().string();
-                    JsonObject obj = gson.fromJson(json, JsonObject.class);
-                    JsonArray arr = obj.getAsJsonArray("notifications");
-                    List<PushNotification> list = gson.fromJson(arr,
-                            new TypeToken<List<PushNotification>>() {}.getType());
-                    if (list == null) list = new ArrayList<>();
-
-                    int unread = 0;
-                    for (PushNotification n : list) {
-                        if (!n.isRead()) unread++;
-                    }
-                    int finalUnread = unread;
-                    List<PushNotification> finalList = list;
-                    mainHandler.post(() -> callback.onResult(finalList, finalUnread));
-                }
-            } catch (Exception e) {
-                mainHandler.post(() -> callback.onError(e.getMessage()));
-            }
-        });
-    }
-
-    public void markAsRead(String notificationId) {
-        executor.execute(() -> {
-            try {
-                JsonObject body = new JsonObject();
-                body.addProperty("deviceId", deviceId);
-
-                OkHttpClient client = NetworkClient.getNoCookieClient();
-                Request req = new Request.Builder()
-                        .url(BASE_URL + "/api/notifications/" + notificationId + "/read")
                         .post(RequestBody.create(body.toString(), JSON))
                         .build();
                 try (Response resp = client.newCall(req).execute()) {

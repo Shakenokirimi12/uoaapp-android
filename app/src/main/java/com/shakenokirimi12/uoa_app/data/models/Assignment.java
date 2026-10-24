@@ -7,7 +7,8 @@ public class Assignment {
     private int courseId;
     private long dueDate;       // epoch seconds
     private long allowSubmissionsFrom;
-    private String intro;
+    // Moodle の活動の画面。イベント ID から組み立てると別の課題になるので、API の値をそのまま持つ。
+    private String url;
     private boolean submitted;
 
     public Assignment() {}
@@ -38,8 +39,9 @@ public class Assignment {
     public long getAllowSubmissionsFrom() { return allowSubmissionsFrom; }
     public void setAllowSubmissionsFrom(long from) { this.allowSubmissionsFrom = from; }
 
-    public String getIntro() { return intro; }
-    public void setIntro(String intro) { this.intro = intro; }
+    /** 開く先が分からないとき (古いキャッシュなど) は null。 */
+    public String getUrl() { return url; }
+    public void setUrl(String url) { this.url = url; }
 
     public boolean isSubmitted() { return submitted; }
     public void setSubmitted(boolean submitted) { this.submitted = submitted; }

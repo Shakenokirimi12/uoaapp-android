@@ -56,6 +56,12 @@ public class MainActivity extends AppCompatActivity {
         // タブ構成を変えたときは refreshBottomTabs() でメニュー項目だけ差し替える (再結線しない)。
         com.shakenokirimi12.uoa_app.ui.util.MainTabs.applyTo(bottomNav, PreferenceManager.getInstance(this));
         NavigationUI.setupWithNavController(bottomNav, navController);
+        // 選んでいるタブをもう一度押したら、そのタブの最初の画面へ戻す。リスナーが無いと NavigationUI が
+        // 同じタブへ遷移し直すだけで、「その他」から開いた画面 (成績など) から「その他」へ戻れなかった。
+        bottomNav.setOnItemReselectedListener(item -> {
+            if (navigationLocked) return;
+            navController.popBackStack(item.getItemId(), false);
+        });
         com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbar);
         // 上バーの「戻る」はタブの根では出さない。どのタブが下に出ていても根として扱えるよう、
         // 取りうるタブの遷移先すべて (+その他) をトップレベルにしておく。こうすればタブ構成を
@@ -64,6 +70,19 @@ public class MainActivity extends AppCompatActivity {
                 new androidx.navigation.ui.AppBarConfiguration.Builder(
                         com.shakenokirimi12.uoa_app.ui.util.MainTabs.allRootDestinationIds()).build();
         NavigationUI.setupWithNavController(toolbar, navController, appBarConfiguration);
+        // ただし下タブに無い画面 (「その他」から開いた成績など) は、根でも「戻る」を出す。出さないと
+        // 「その他」へ戻る手段が下タブの再選択しか無い。NavigationUI の後に登録して、そちらが外した
+        // 矢印を付け直す。押したときは NavigationUI の navigateUp が前の画面 (その他) へ戻す。
+        navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+            if (navigationLocked || controller.getPreviousBackStackEntry() == null) return;
+            if (!com.shakenokirimi12.uoa_app.ui.util.MainTabs.isHiddenTabRoot(
+                    destination.getId(), PreferenceManager.getInstance(this))) return;
+            androidx.appcompat.graphics.drawable.DrawerArrowDrawable arrow =
+                    new androidx.appcompat.graphics.drawable.DrawerArrowDrawable(toolbar.getContext());
+            arrow.setProgress(1f);
+            toolbar.setNavigationIcon(arrow);
+            toolbar.setNavigationContentDescription(androidx.navigation.ui.R.string.nav_app_bar_navigate_up_description);
+        });
         EdgeToEdge.apply(this, findViewById(R.id.container), bottomNav);
 
         // CampusSquare は 2026-09-15 以降 IdP 経由しか無い (旧フォーム消滅)。ワンタイムパスワードの
@@ -94,9 +113,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Start geofencing if enabled
-        if (prefs.isAutoAttendanceEnabled()) {
-            LocationGeofenceService.startGeofencing(this, 37.5234, 139.9388, 200);
-        }
+        LocationGeofenceService.startIfEnabled(this);
 
         setupRemoteConfig();
         SyncScheduler.schedule(this);

@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import com.shakenokirimi12.uoa_app.MainActivity;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.DataCache;
+import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
 import com.shakenokirimi12.uoa_app.data.models.GroupedClass;
 
@@ -87,6 +88,11 @@ public class ClassScheduleWidgetProvider extends AppWidgetProvider {
             rv.setViewVisibility(R.id.headline, View.GONE);
             rv.setViewVisibility(R.id.headline_empty, View.VISIBLE);
         }
+        WidgetHeadlineState state = WidgetHeadlineState.of(
+                PreferenceManager.getInstance(ctx).hasCredentials(),
+                DataCache.getInstance(ctx).fetchedAt(DataCache.Dataset.EVENTS),
+                System.currentTimeMillis(), today.size());
+        if (headline == null) rv.setTextViewText(R.id.headline_empty, ctx.getString(headlineText(state)));
 
         for (int i = 0; i < ROW_IDS.length; i++) {
             if (i < today.size()) {
@@ -101,8 +107,30 @@ public class ClassScheduleWidgetProvider extends AppWidgetProvider {
         int more = today.size() - ROW_IDS.length;
         rv.setViewVisibility(R.id.row_more, more > 0 ? View.VISIBLE : View.GONE);
         if (more > 0) rv.setTextViewText(R.id.row_more, ctx.getString(R.string.widget_more, more));
-        rv.setViewVisibility(R.id.today_empty, today.isEmpty() ? View.VISIBLE : View.GONE);
+        // 「今日の授業はありません」は取れた時間割が空のときだけ言う。古いときは最終更新を出す。
+        if (today.isEmpty() && state == WidgetHeadlineState.NONE) {
+            rv.setTextViewText(R.id.today_empty, ctx.getString(R.string.widget_no_class_today_short));
+            rv.setViewVisibility(R.id.today_empty, View.VISIBLE);
+        } else if (state == WidgetHeadlineState.STALE) {
+            long fetchedAt = DataCache.getInstance(ctx).fetchedAt(DataCache.Dataset.EVENTS);
+            rv.setTextViewText(R.id.today_empty, ctx.getString(R.string.widget_last_updated,
+                    new SimpleDateFormat("M/d HH:mm", Locale.JAPANESE).format(new Date(fetchedAt))));
+            rv.setViewVisibility(R.id.today_empty, View.VISIBLE);
+        } else {
+            rv.setViewVisibility(R.id.today_empty, View.GONE);
+        }
         return rv;
+    }
+
+    private static int headlineText(WidgetHeadlineState state) {
+        switch (state) {
+            case NOT_LOGGED_IN: return R.string.widget_not_logged_in;
+            case NOT_FETCHED: return R.string.widget_not_fetched;
+            case STALE: return R.string.widget_stale;
+            case FINISHED: return R.string.widget_classes_finished;
+            case NONE:
+            default: return R.string.widget_no_class_today;
+        }
     }
 
     private static List<GroupedClass> todayClasses(Context ctx) {

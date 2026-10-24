@@ -250,39 +250,6 @@
                         </com.google.android.material.card.MaterialCardView>
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/text_absence_label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:textAppearance="?attr/textAppearanceLabelMedium"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        tools:text="欠席・遅刻許容数 (0/5)" />
-
-                    <com.google.android.material.progressindicator.LinearProgressIndicator
-                        android:id="@+id/progress_absence"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:max="5"
-                        app:indicatorColor="?attr/colorError"
-                        app:trackColor="?attr/colorSurfaceContainerHighest"
-                        app:trackCornerRadius="4dp"
-                        app:trackThickness="8dp" />
-
-                    <TextView
-                        android:id="@+id/text_danger_warning"
-                        style="@style/Widget.Uoa.Notice"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:drawablePadding="8dp"
-                        android:drawableStart="@drawable/ic_alert"
-                        android:drawableTint="@color/on_warning_container"
-                        android:gravity="center_vertical"
-                        android:text="落単の危険があります"
-                        android:visibility="gone"
-                        tools:visibility="visible" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

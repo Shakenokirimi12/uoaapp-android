@@ -118,4 +118,13 @@ public class OtpRegistrationCommitTest {
         assertTrue(OtpRegistrationCommit.idpUsesMethod(OtpMethod.AUTHENTICATOR, null));
         assertTrue(OtpRegistrationCommit.idpUsesMethod(OtpMethod.AUTHENTICATOR, ""));
     }
+
+    @Test
+    public void reRegisteringTheSameMethod_doesNotGuessSuccessFromOtpType() {
+        Store store = new Store();
+        OtpRegistrationCommit commit = new OtpRegistrationCommit(
+                OtpMethod.AUTHENTICATOR, OtpMethod.AUTHENTICATOR, store, new Reader("totp"));
+        assertEquals(OtpRegistrationCommit.Result.FAILED, commit.afterError(OtpMethod.AUTHENTICATOR));
+        assertEquals(OtpRegistrationCommit.Result.SUCCEEDED, commit.afterCompletion(OtpMethod.AUTHENTICATOR));
+    }
 }

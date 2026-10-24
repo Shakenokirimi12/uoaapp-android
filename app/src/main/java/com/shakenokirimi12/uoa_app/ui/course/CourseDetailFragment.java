@@ -61,8 +61,8 @@ public class CourseDetailFragment extends Fragment {
     private CalendarEvent todayEvent;
 
     private TextView textPresentCount, textAbsentCount, textLateCount;
-    private TextView textAbsenceLabel, textDangerWarning, textTodayClassInfo;
-    private ProgressBar progressAbsence, progressContents;
+    private TextView textTodayClassInfo;
+    private ProgressBar progressContents;
     private MaterialCardView cardSyllabus, cardAttendance, cardTodayAction;
     private TextView textSyllabusCredits, textSyllabusCategory;
     private LinearLayout layoutContents;
@@ -106,9 +106,6 @@ public class CourseDetailFragment extends Fragment {
         textPresentCount = view.findViewById(R.id.text_present_count);
         textAbsentCount = view.findViewById(R.id.text_absent_count);
         textLateCount = view.findViewById(R.id.text_late_count);
-        textAbsenceLabel = view.findViewById(R.id.text_absence_label);
-        progressAbsence = view.findViewById(R.id.progress_absence);
-        textDangerWarning = view.findViewById(R.id.text_danger_warning);
         textTodayClassInfo = view.findViewById(R.id.text_today_class_info);
         progressContents = view.findViewById(R.id.progress_contents);
         layoutContents = view.findViewById(R.id.layout_contents);
@@ -183,11 +180,8 @@ public class CourseDetailFragment extends Fragment {
         textPresentCount.setText(String.valueOf(summary.present));
         textAbsentCount.setText(String.valueOf(summary.absent));
         textLateCount.setText(String.valueOf(summary.late));
-
-        int absence = summary.absent;
-        textAbsenceLabel.setText(String.format(Locale.JAPANESE, "欠席・遅刻許容数 (%d/5)", absence));
-        progressAbsence.setProgress(Math.min(absence, 5));
-        textDangerWarning.setVisibility(absence >= 5 ? View.VISIBLE : View.GONE);
+        // 以前は「欠席・遅刻許容数 (n/5)」と「落単の危険があります」を出していたが、5 には根拠が無い
+        // (科目ごとに違い、大学から取れる値でもない)。作った数字で警告しないよう、回数だけを出す。
 
         updateHistoryList(summary.history);
     }

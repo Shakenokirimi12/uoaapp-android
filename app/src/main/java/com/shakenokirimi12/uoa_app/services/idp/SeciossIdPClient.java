@@ -385,12 +385,13 @@ public final class SeciossIdPClient {
         return value != null ? htmlUnescape(value) : null;
     }
 
+    /** &amp; は最後に戻す。先に戻すと "&amp;lt;" (本文としての "&lt;") が "<" まで二重に戻る (iOS と同じ順)。 */
     static String htmlUnescape(@NonNull String s) {
-        return s.replace("&amp;", "&")
-                .replace("&quot;", "\"")
+        return s.replace("&quot;", "\"")
                 .replace("&#39;", "'")
                 .replace("&lt;", "<")
-                .replace("&gt;", ">");
+                .replace("&gt;", ">")
+                .replace("&amp;", "&");
     }
 
     /**
@@ -492,6 +493,13 @@ public final class SeciossIdPClient {
         return resolved != null ? resolved.toString() : relative;
     }
 
+    /** 絶対 URL ならそのまま (正規化で形を変えない)。相対なら base で解決する。 */
+    @NonNull
+    static String absoluteAgainst(@NonNull String base, @NonNull String url) {
+        String t = url.trim().toLowerCase(java.util.Locale.ROOT);
+        return t.startsWith("https://") || t.startsWith("http://") ? url : resolve(base, url);
+    }
+
     private HttpResult followAutoSubmitRelays(@NonNull HttpResult start) throws IOException {
         HttpResult current = start;
         for (int i = 0; i < MAX_RELAY_HOPS; i++) {
@@ -519,6 +527,26 @@ public final class SeciossIdPClient {
     }
 
     // ---- Login chain ----
+
+    /** 入口 (SSO を載せて叩いた SP の入口) が返した画面の種類。 */
+    enum EntryPage {
+        /** パスワードのログインフォーム (sessid / back / tenant がある)。 */
+        LOGIN_FORM,
+        /** OTP の入力画面 (FunctionID=allotplogin)。途中まで済んだ SSO を載せたときに返る。 */
+        OTP_FORM,
+        /** フォームが無い。SSO で通り、中継 (SAMLResponse の自動 submit) が返った。 */
+        NO_FORM,
+        /** sessid はあるが、ログインフォームの項目が揃っていない。 */
+        INCOMPLETE
+    }
+
+    @NonNull
+    static EntryPage classifyEntryPage(@NonNull String html) {
+        if (extractField("sessid", html) == null) return EntryPage.NO_FORM;
+        if ("allotplogin".equals(extractField("FunctionID", html))) return EntryPage.OTP_FORM;
+        if (extractField("back", html) != null && extractField("tenant", html) != null) return EntryPage.LOGIN_FORM;
+        return EntryPage.INCOMPLETE;
+    }
 
     private static final class PostPasswordState {
         @NonNull final HttpResult result;
@@ -560,18 +588,36 @@ public final class SeciossIdPClient {
         if (entry.status != 200) {
             throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, entry.status, "entry page (" + entryUrl + ")");
         }
-        if (extractField("sessid", entry.html) == null) {
+        EntryPage page = classifyEntryPage(entry.html);
+        if ((page == EntryPage.OTP_FORM || page == EntryPage.INCOMPLETE) && !initialCookies.isEmpty()) {
+            // 載せた SSO が「パスワードは通ったが OTP が済んでいない」途中のセッションだと、IdP は
+            // ログインフォームではなく OTP の入力画面 (tenant が無い) を返す。前回のログインで OTP の
+            // 取得に失敗した直後 (SSO のセッション cookie は最大 1 時間残る) にここへ来て、以前は
+            // MISSING_FIELD (「IdP のログイン画面が見つかりませんでした」) で止まっていた (2026-10-23、
+            // Android のテスターから報告。原因はコードからの推定で、実アカウントでは未確認)。
+            // ループのときと同じく SSO を捨て、パスワードから 1 回だけ入り直す。
+            android.util.Log.w("SeciossIdPClient", "entry with stored SSO returned " + page + "; clearing it and retrying from the password");
+            sso.clear();
+            sso.claimFor(uid);
+            entry = get(entryUrl, Collections.emptyList(), Collections.emptyMap());
+            if (entry.status != 200) {
+                throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, entry.status, "entry page (" + entryUrl + ")");
+            }
+            page = classifyEntryPage(entry.html);
+        }
+        if (page == EntryPage.NO_FORM) {
             // ログインフォームが無い = 既存の SSO セッションで通った可能性が高い。中継を追って SP まで
             // 戻す。想定と違う画面なら、呼び出し側 (成功マーカー / ホスト検証) が弾く。
             HttpResult passthrough = followAutoSubmitRelays(entry);
             return new PostPasswordState(passthrough, extractField("FunctionID", passthrough.html));
         }
+        if (page != EntryPage.LOGIN_FORM) {
+            throw new SeciossError(SeciossError.Kind.MISSING_FIELD,
+                    "sessid/back/tenant on login form, FunctionID=" + extractField("FunctionID", entry.html));
+        }
         String sessid = extractField("sessid", entry.html);
         String back = extractField("back", entry.html);
         String tenant = extractField("tenant", entry.html);
-        if (sessid == null || back == null || tenant == null) {
-            throw new SeciossError(SeciossError.Kind.MISSING_FIELD, "sessid/back/tenant on login form");
-        }
 
         String loginBody = "dummy=&username=" + urlEncode(uid) + "&tenant=" + urlEncode(tenant)
                 + "&password=" + urlEncode(pass) + "&op=login&back=" + urlEncode(back) + "&sessid=" + sessid;
@@ -585,7 +631,10 @@ public final class SeciossIdPClient {
             throw new SeciossError(SeciossError.Kind.INVALID_CREDENTIALS);
         }
 
-        HttpResult after = get(back, login.cookies, Collections.singletonMap("Referer", TENANT_LOGIN_URL));
+        // back は実測では絶対 URL。相対で返されても追えるよう、iOS と同じく tenantlogin.cgi を基準に解決する
+        // (送り返す値は IdP が出したまま)。
+        HttpResult after = get(absoluteAgainst(TENANT_LOGIN_URL, back), login.cookies,
+                Collections.singletonMap("Referer", TENANT_LOGIN_URL));
         if (after.status != 200) {
             throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, after.status, "post-login back");
         }
@@ -657,7 +706,7 @@ public final class SeciossIdPClient {
                     "allotplogin.cgi(コードが間違っていた可能性も含む)");
         }
 
-        HttpResult fin = get(otpBack, verify.cookies, Collections.singletonMap("Referer", ALL_OTP_LOGIN_URL));
+        HttpResult fin = get(absoluteAgainst(ALL_OTP_LOGIN_URL, otpBack), verify.cookies, Collections.singletonMap("Referer", ALL_OTP_LOGIN_URL));
         if (fin.status != 200) {
             throw new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, fin.status, "post-OTP back");
         }
@@ -665,6 +714,11 @@ public final class SeciossIdPClient {
         // otpCode の待ち時間 (IMAP 自動取得は最大 30 秒) を挟むため、ここでのタイムアウトが一番起こりやすい。
         if (relayed.html.contains(SESSION_TIMED_OUT_MARKER)) {
             throw new SeciossError(SeciossError.Kind.SESSION_TIMED_OUT);
+        }
+        // OTP の入力画面へ戻された = コードが違うか期限切れ (iOS の IdPClient と同じ見分け方)。
+        if (relayed.url.contains("/pub/allotplogin.cgi") || "allotplogin".equals(extractField("FunctionID", relayed.html))) {
+            provider.onRejected();
+            throw new SeciossError(SeciossError.Kind.INVALID_OTP);
         }
         return new Session(relayed.html, relayed.url, relayed.status, sessionCookieHeader(relayed),
                 sessionCookies(relayed));

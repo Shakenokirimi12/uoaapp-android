@@ -38,8 +38,6 @@
         android:name="com.shakenokirimi12.uoa_app.ui.more.MoreFragment"
         android:label="@string/nav_more"
         tools:layout="@layout/fragment_more">
-        <action android:id="@+id/action_more_to_campus_map" app:destination="@id/navigation_campus_map" />
-        <action android:id="@+id/action_more_to_notifications" app:destination="@id/navigation_notifications" />
         <action android:id="@+id/action_more_to_settings" app:destination="@id/navigation_settings" />
     </fragment>
 
@@ -58,16 +56,19 @@
         android:name="com.shakenokirimi12.uoa_app.ui.settings.SettingsFragment"
         android:label="@string/nav_settings"
         tools:layout="@layout/fragment_settings">
-        <action android:id="@+id/action_settings_to_block_list" app:destination="@id/navigation_block_list" />
-        <action android:id="@+id/action_settings_to_grades" app:destination="@id/navigation_grades" />
-        <action android:id="@+id/action_settings_to_facilities" app:destination="@id/navigation_facilities" />
-        <action android:id="@+id/action_settings_to_notifications" app:destination="@id/navigation_notifications" />
         <action android:id="@+id/action_settings_to_notify_times" app:destination="@id/navigation_notify_times" />
         <action android:id="@+id/action_settings_to_nav_settings" app:destination="@id/navigation_nav_settings" />
-        <action android:id="@+id/action_settings_to_campus_map" app:destination="@id/navigation_campus_map" />
         <action android:id="@+id/action_settings_to_idp_tutorial" app:destination="@id/navigation_idp_tutorial" />
-        <action android:id="@+id/action_settings_to_idp_otp_registration" app:destination="@id/navigation_idp_otp_registration" />
-        <action android:id="@+id/action_settings_to_otp_relay" app:destination="@id/navigation_otp_relay" />
+        <action android:id="@+id/action_settings_to_login_settings" app:destination="@id/navigation_login_settings" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_login_settings"
+        android:name="com.shakenokirimi12.uoa_app.ui.settings.LoginSettingsFragment"
+        android:label="@string/login_settings_title"
+        tools:layout="@layout/fragment_login_settings">
+        <action android:id="@+id/action_login_settings_to_idp_otp_registration" app:destination="@id/navigation_idp_otp_registration" />
+        <action android:id="@+id/action_login_settings_to_otp_relay" app:destination="@id/navigation_otp_relay" />
     </fragment>
 
     <fragment
@@ -131,11 +132,6 @@
         android:name="com.shakenokirimi12.uoa_app.ui.syllabus.SyllabusFragment"
         android:label="シラバス" />
 
-    <fragment
-        android:id="@+id/navigation_notifications"
-        android:name="com.shakenokirimi12.uoa_app.ui.notifications.NotificationListFragment"
-        android:label="通知"
-        tools:layout="@layout/fragment_notification_list" />
 
     <fragment
         android:id="@+id/navigation_assignment_detail"
@@ -144,66 +140,17 @@
         <argument android:name="assignment_id" app:argType="integer" android:defaultValue="0" />
     </fragment>
 
-    <!-- ── Reviews ── -->
-
-    <fragment
-        android:id="@+id/navigation_reviews"
-        android:name="com.shakenokirimi12.uoa_app.ui.reviews.ReviewListFragment"
-        android:label="授業評価">
-        <action android:id="@+id/action_reviews_to_course_reviews" app:destination="@id/navigation_course_reviews" />
-        <action android:id="@+id/action_reviews_to_instructor_reviews" app:destination="@id/navigation_instructor_reviews" />
-        <action android:id="@+id/action_reviews_to_write_review" app:destination="@id/navigation_write_review" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/navigation_course_reviews"
-        android:name="com.shakenokirimi12.uoa_app.ui.reviews.CourseReviewsFragment"
-        android:label="レビュー">
-        <argument android:name="course_id" app:argType="string" android:defaultValue="" />
-        <argument android:name="course_name" app:argType="string" android:defaultValue="" />
-        <argument android:name="syllabus_url" app:argType="string" android:defaultValue="" />
-        <argument android:name="review_count" app:argType="integer" android:defaultValue="0" />
-        <argument android:name="avg_rating" app:argType="float" android:defaultValue="0" />
-        <action android:id="@+id/action_course_reviews_to_write" app:destination="@id/navigation_write_review" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/navigation_instructor_reviews"
-        android:name="com.shakenokirimi12.uoa_app.ui.reviews.InstructorReviewsFragment"
-        android:label="教員評価">
-        <argument android:name="course_id" app:argType="string" android:defaultValue="" />
-        <argument android:name="course_name" app:argType="string" android:defaultValue="" />
-        <action android:id="@+id/action_instructor_reviews_to_write" app:destination="@id/navigation_write_review" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/navigation_write_review"
-        android:name="com.shakenokirimi12.uoa_app.ui.reviews.WriteReviewFragment"
-        android:label="レビューを書く">
-        <argument android:name="course_id" app:argType="string" android:defaultValue="" />
-        <argument android:name="course_name" app:argType="string" android:defaultValue="" />
-        <argument android:name="review_type" app:argType="string" android:defaultValue="course" />
-    </fragment>
-
     <!-- ── Settings sub-screens ── -->
 
     <fragment
         android:id="@+id/navigation_notify_times"
         android:name="com.shakenokirimi12.uoa_app.ui.settings.NotifyTimesFragment"
-        android:label="通知タイミング" />
+        android:label="@string/settings_notify_times" />
 
     <fragment
         android:id="@+id/navigation_nav_settings"
         android:name="com.shakenokirimi12.uoa_app.ui.settings.NavSettingsFragment"
-        android:label="ナビゲーション設定" />
+        android:label="@string/settings_tabs" />
 
-    <fragment
-        android:id="@+id/navigation_campus_map"
-        android:name="com.shakenokirimi12.uoa_app.ui.map.CampusMapFragment"
-        android:label="キャンパスマップ" />
 
-    <fragment
-        android:id="@+id/navigation_block_list"
-        android:name="com.shakenokirimi12.uoa_app.ui.reviews.BlockListFragment"
-        android:label="ブロック中のユーザー" />
 </navigation>

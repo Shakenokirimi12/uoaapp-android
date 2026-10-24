@@ -68,25 +68,32 @@ public final class AppConfigService {
     public void refresh(@NonNull Context context) { refresh(context, null); }
 
     // 取得に失敗したときの再試行。killswitch は「取れなければ有効」に倒しているので、
-    // 起動直後に Wi-Fi がまだ繋がっていない等で 1 回落ちると、次に前面復帰するまで
-    // 止めたはずの機能の入口が出続ける。数回だけ間隔を空けて取り直す。
-    private static final long[] RETRY_DELAYS_MS = {5_000L, 15_000L, 45_000L};
+    // 起動直後に Wi-Fi がまだ繋がっていない等で 1 回落ちると、止めたはずの機能の入口が出続ける。
+    // 以前は 3 回で打ち切り、しかも回数を成功するまで戻さなかったので、一度 3 回失敗すると
+    // そのプロセスでは二度と再試行しなかった。間隔を延ばしながら、取れるまで続ける
+    // (最長 5 分おき。プロセスが裏で凍結されている間は Handler も止まる)。
+    // 起動や前面復帰からの取り直しは、間隔を最初からにする。
+    private static final long[] RETRY_DELAYS_MS = {5_000L, 15_000L, 45_000L, 120_000L, 300_000L};
     private int retryAttempt = 0;
     private final Runnable retryRunnable = new Runnable() {
         @Override
         public void run() {
             if (retryContext == null) return;
-            refresh(retryContext, null);
+            fetchInBackground(retryContext, null);
         }
     };
     @Nullable private Context retryContext;
 
+    /** attempt 回目 (0 始まり) の再試行までの待ち時間。最後の間隔で頭打ちにする。 */
+    static long retryDelayMs(int attempt) {
+        return RETRY_DELAYS_MS[Math.min(Math.max(attempt, 0), RETRY_DELAYS_MS.length - 1)];
+    }
+
     private void scheduleRetry(@NonNull Context appContext) {
-        if (retryAttempt >= RETRY_DELAYS_MS.length) return;
         retryContext = appContext;
         mainHandler.removeCallbacks(retryRunnable);
-        mainHandler.postDelayed(retryRunnable, RETRY_DELAYS_MS[retryAttempt]);
-        retryAttempt++;
+        mainHandler.postDelayed(retryRunnable, retryDelayMs(retryAttempt));
+        if (retryAttempt < RETRY_DELAYS_MS.length) retryAttempt++;
     }
 
     /**
@@ -94,7 +101,12 @@ public final class AppConfigService {
      * メンテナンス画面の「再確認する」ボタンが完了を待ちたいので callback がある。
      */
     public void refresh(@NonNull Context context, @Nullable RefreshCallback callback) {
-        final Context appContext = context.getApplicationContext();
+        // 呼び出し側 (起動・前面復帰・再確認) からの取り直し。再試行の間隔を最初からにする。
+        mainHandler.post(() -> retryAttempt = 0);
+        fetchInBackground(context.getApplicationContext(), callback);
+    }
+
+    private void fetchInBackground(@NonNull Context appContext, @Nullable RefreshCallback callback) {
         executor.execute(() -> {
             final boolean result = fetchAndApply(appContext, NetworkClient.getNoCookieClient());
             mainHandler.post(() -> {

@@ -94,22 +94,16 @@ public final class OtpRelayPairingService {
 
     /**
      * ログアウト時。端末の連携 (K) を消す前に、中継サーバからも消す。消さないと PC の依頼が
-     * 届き続け、K が無いので端末からは二度と解除できない。通信するので別スレッドで、結果は待たない。
+     * 届き続け、K が無いので端末からは二度と解除できない。連携は「解除待ち」に移して
+     * (clearAll でも残る)、解除が済むまで OtpRelayUnpairWorker が送り直す。
+     * 呼んだあとで PreferenceManager.clearAll() を呼んでよい。
      */
-    public static void unpairAllInBackground(@NonNull java.util.List<OtpRelayPairing> pairings) {
-        if (pairings.isEmpty()) return;
-        new Thread(() -> {
-            OtpRelayApi api = new OtpRelayApi();
-            for (OtpRelayPairing p : pairings) {
-                OtpRelayCrypto.Keys keys = OtpRelayCrypto.keys(p.key);
-                if (keys == null) continue;
-                try {
-                    api.unpair(p.pairingId, keys);
-                } catch (IOException e) {
-                    Log.w(TAG, "unpair on logout failed: " + e);
-                }
-            }
-        }, "otp-relay-unpair").start();
+    public static void unpairAllOnLogout(@NonNull Context ctx) {
+        if (OtpRelayStore.all().isEmpty() && OtpRelayStore.pendingUnpairs().isEmpty()) return;
+        if (!OtpRelayStore.moveAllToPendingUnpair()) {
+            Log.w(TAG, "could not keep the pairings for unpair; the relay may keep them");
+        }
+        OtpRelayUnpairWorker.enqueue(ctx.getApplicationContext());
     }
 
     /**

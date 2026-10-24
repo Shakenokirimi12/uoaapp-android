@@ -26,6 +26,7 @@ public class NetworkClient {
     public static synchronized OkHttpClient getCookieClient() {
         if (cookieClient == null) {
             cookieClient = new OkHttpClient.Builder()
+                    .dns(TimedDns.INSTANCE)
                     .cookieJar(cookieStore)
                     .followRedirects(true)
                     .followSslRedirects(true)
@@ -43,6 +44,7 @@ public class NetworkClient {
     public static synchronized OkHttpClient getNoCookieClient() {
         if (noCookieClient == null) {
             noCookieClient = new OkHttpClient.Builder()
+                    .dns(TimedDns.INSTANCE)
                     .addNetworkInterceptor(DROP_COOKIE_HEADER_ACROSS_HOSTS)
                     .followRedirects(true)
                     .followSslRedirects(true)
@@ -97,6 +99,7 @@ public class NetworkClient {
     public static synchronized OkHttpClient getNoRedirectClient() {
         if (noRedirectClient == null) {
             noRedirectClient = new OkHttpClient.Builder()
+                    .dns(TimedDns.INSTANCE)
                     .followRedirects(false)
                     .followSslRedirects(false)
                     .build();

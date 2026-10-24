@@ -182,7 +182,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Google Authenticator等、お使いの認証アプリで管理します。" />
+                            android:text="@string/otp_method_authenticator_summary" />
                     </LinearLayout>
 
                     <ImageView
@@ -319,11 +319,47 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="Authenticatorアプリを開く"
+                android:text="@string/otp_add_to_authenticator"
                 android:visibility="gone"
                 app:icon="@drawable/ic_smartphone"
                 app:iconGravity="textStart"
                 tools:visibility="visible" />
+
+            <!-- 手で追加するキー。otpauth:// を受けない認証アプリ (Authy など) 向け。QR の部品は入っていない。 -->
+            <LinearLayout
+                android:id="@+id/group_manual_secret"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/otp_manual_secret_hint"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <TextView
+                    android:id="@+id/text_manual_secret"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="monospace"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textIsSelectable="true"
+                    tools:text="GEZD GNBV GY3T QOJQ" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_copy_secret"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/otp_copy_secret" />
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/group_auto_fetch"

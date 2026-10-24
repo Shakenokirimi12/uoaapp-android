@@ -51,7 +51,6 @@ public final class MainTabs {
         TABS.put("grades", new Tab(R.id.navigation_grades, R.drawable.ic_grades, "成績", "成績一覧"));
         TABS.put("gakushoku", new Tab(R.id.navigation_gakushoku, R.drawable.ic_restaurant, "学食", "学食メニュー"));
         TABS.put("facilities", new Tab(R.id.navigation_facilities, R.drawable.ic_building, "施設利用", "施設利用状況"));
-        TABS.put("reviews", new Tab(R.id.navigation_reviews, R.drawable.ic_review, "授業評価", "授業評価"));
     }
 
     private MainTabs() {}
@@ -133,6 +132,18 @@ public final class MainTabs {
         for (Tab tab : TABS.values()) ids.add(tab.destinationId);
         ids.add(R.id.navigation_more);
         return ids;
+    }
+
+    /** タブに置ける画面のうち、いま下タブに出ていないものの遷移先か (「その他」から開く画面)。 */
+    public static boolean isHiddenTabRoot(int destinationId, @NonNull PreferenceManager prefs) {
+        return isHiddenTabRoot(destinationId, mainTabKeys(prefs));
+    }
+
+    static boolean isHiddenTabRoot(int destinationId, @NonNull List<String> mainKeys) {
+        for (Map.Entry<String, Tab> e : TABS.entrySet()) {
+            if (e.getValue().destinationId == destinationId) return !mainKeys.contains(e.getKey());
+        }
+        return false;
     }
 
     public static List<String> allKeys() { return new ArrayList<>(Arrays.asList(TABS.keySet().toArray(new String[0]))); }

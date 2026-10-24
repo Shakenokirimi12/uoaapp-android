@@ -11,6 +11,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -75,6 +76,13 @@ public class CalendarFragment extends Fragment {
 
         classAdapter.setOnClassClickListener(cls ->
                 ClassDetailDialog.show(requireContext(), cls));
+        // ホームと同じ課題の詳細へ。以前はリスナーが無く、タップしても何も起きなかった。
+        assignmentAdapter.setOnAssignmentClickListener(assignment -> {
+            Bundle args = new Bundle();
+            args.putInt("assignment_id", assignment.getId());
+            Navigation.findNavController(requireView())
+                    .navigate(R.id.navigation_assignment_detail, args);
+        });
 
         calendarView.setOnDateSelectedListener((year, month, dayOfMonth) -> {
             selectedDate.set(year, month, dayOfMonth);

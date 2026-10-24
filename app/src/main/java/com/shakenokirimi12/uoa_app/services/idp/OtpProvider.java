@@ -26,4 +26,7 @@ public interface OtpProvider {
      */
     @NonNull
     default OtpProvider forOtpPage(@Nullable String otpType) { return this; }
+
+    /** code() で渡したコードを IdP が受け付けなかった。 */
+    default void onRejected() {}
 }

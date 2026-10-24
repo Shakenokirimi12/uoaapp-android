@@ -48,7 +48,7 @@ public class BackupServiceTest {
         prefs.put("server_holds_assignment_reminders", true);
         prefs.put("notify_lunch", true);
 
-        JsonObject backup = BackupService.buildBackup(prefs, "s1300000", null);
+        JsonObject backup = BackupService.buildBackup(prefs, null);
 
         for (String key : PreferenceManager.DEVICE_LOCAL_KEYS) assertFalse(key, backup.has(key));
         assertTrue(backup.get("notify_lunch").getAsBoolean());
@@ -106,7 +106,7 @@ public class BackupServiceTest {
         Map<String, Object> prefs = new HashMap<>();
         prefs.put("otp_method", "authenticator");
         prefs.put("notify_lunch", true);
-        assertFalse(BackupService.buildBackup(prefs, "s1300000", null).has("otp_method"));
+        assertFalse(BackupService.buildBackup(prefs, null).has("otp_method"));
 
         JsonObject file = new JsonObject();
         file.addProperty("otp_method", "authenticator");
@@ -116,5 +116,26 @@ public class BackupServiceTest {
 
         assertFalse(editor.written.containsKey("otp_method"));
         assertFalse(editor.removed.contains("otp_method"));
+    }
+
+    /**
+     * 資格情報は書き出さない。ユーザー名だけ戻すと、別のアカウントの端末で今のパスワードと組になり、
+     * 他人のアカウントへ誤ったパスワードでログインを試み続ける。
+     */
+    @Test
+    public void fileBackup_neitherWritesNorRestoresCredentials() {
+        Map<String, Object> prefs = new HashMap<>();
+        prefs.put("username", "s1300000");
+        prefs.put("password", "secret");
+        prefs.put("notify_lunch", true);
+        JsonObject backup = BackupService.buildBackup(prefs, null);
+        assertFalse(backup.has("username"));
+        assertFalse(backup.has("password"));
+
+        JsonObject oldFile = new JsonObject();
+        oldFile.addProperty("username", "s1399999");
+        RecordingEditor editor = new RecordingEditor();
+        BackupService.applySettings(oldFile, new HashMap<>(), editor);
+        assertTrue(editor.written.isEmpty());
     }
 }
