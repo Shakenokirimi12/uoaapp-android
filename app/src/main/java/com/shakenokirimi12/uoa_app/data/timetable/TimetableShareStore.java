@@ -208,7 +208,15 @@ public final class TimetableShareStore {
         }
         if (!stopSharing()) forgetOutgoing();
         TimetableShareApi.Created created = api.create(timetable);
-        secure.setTimetableShareOwnerToken(created.ownerToken);
+        if (!secure.setTimetableShareOwnerToken(created.ownerToken)) {
+            // トークンを置けないと返事を読めず、後で「期限切れ」と取り違える。サーバーの共有は消して、始めなかったことにする。
+            try {
+                api.delete(created.shareId, created.ownerToken);
+            } catch (TimetableShareApi.Failure ignored) {
+                // 消せなかった共有は 24 時間で切れる。
+            }
+            throw TimetableShareApi.Failure.cannotStoreOnDevice();
+        }
         OutgoingShare share = new OutgoingShare(created.shareId, created.expiresAt, key, new ArrayList<>());
         synchronized (this) { setOutgoing(share); }
         return share;

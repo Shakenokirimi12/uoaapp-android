@@ -74,9 +74,11 @@
         </activity>
 
         <!-- 時間割共有: 友達の QR (uoa-app://timetable?id=...) を標準のカメラで読む・案内ページの「アプリで開く」・
-             一覧の「リンクを貼り付けて開く」でここが開く。友達の時間割を見せ、保存と送り返しは利用者が選ぶ。 -->
+             一覧の「リンクを貼り付けて開く」でここが開く。友達の時間割を見せ、保存と送り返しは利用者が選ぶ。
+             回転などで作り直すと保存の途中で画面が戻り、もう一度保存・返事ができてしまうので、作り直さない。 -->
         <activity
             android:name=".ui.timetable.TimetableIncomingActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density"
             android:exported="true"
             android:launchMode="singleTop">
             <intent-filter>

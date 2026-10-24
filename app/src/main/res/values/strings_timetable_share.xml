@@ -15,6 +15,7 @@
     <string name="timetable_mode_friend">友達の時間割</string>
     <string name="timetable_mode_compare">自分と比べる</string>
     <string name="timetable_compare_unavailable">自分の時間割をまだ取得していないので、比べられません。</string>
+    <string name="timetable_legend_class">友達の授業</string>
     <string name="timetable_legend_same">同じ授業</string>
     <string name="timetable_legend_free">どちらも空き</string>
     <string name="timetable_legend_mine_label">自分</string>
@@ -46,7 +47,8 @@
     <string name="timetable_send_note">送るのは、授業名・曜日・時限・教室と名前だけです。</string>
     <string name="timetable_cannot_send_back">自分の時間割をまだ取得していないので、送り返せません。カレンダーで取得すると送れるようになります。</string>
     <string name="timetable_my_name_label">相手に表示する自分の名前</string>
-    <string name="timetable_open_from_list">カレンダーの「友達の時間割」から開けます。</string>
+    <string name="timetable_open_from_list">あとからは、カレンダーの「友達の時間割」から開けます。</string>
     <string name="timetable_close">閉じる</string>
+    <string name="timetable_open_saved">保存した時間割を見る</string>
     <string name="timetable_cancel">キャンセル</string>
 </resources>

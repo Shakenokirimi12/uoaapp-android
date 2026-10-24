@@ -91,7 +91,24 @@ public class FriendTimetableFragment extends Fragment {
         binding.grid.setData(f.timetable.classes, compare ? mine : null);
         binding.legend.getRoot().setVisibility(compare ? View.VISIBLE : View.GONE);
         binding.cardSummary.setVisibility(compare ? View.VISIBLE : View.GONE);
-        if (compare) renderSummary(f.timetable.classes);
+        binding.textCompareCounts.setVisibility(compare ? View.VISIBLE : View.GONE);
+        if (compare) {
+            binding.textCompareCounts.setText(countsLine(f.timetable.classes));
+            renderSummary(f.timetable.classes);
+        }
+    }
+
+    /** 「同じ授業 N コマ ・ どちらも空き M コマ」。表に出しているコマ (曜日 × 行) で数える。iOS と同じ。 */
+    private String countsLine(List<SharedClass> friend) {
+        int same = 0, free = 0;
+        for (int day : TimetableGrid.days(friend, mine)) {
+            for (int[] r : TimetableGrid.rows(friend, mine)) {
+                TimetableGrid.Overlap o = TimetableGrid.overlap(friend, mine, day, r);
+                if (o == TimetableGrid.Overlap.SAME) same++;
+                else if (o == TimetableGrid.Overlap.BOTH_FREE) free++;
+            }
+        }
+        return "同じ授業 " + same + " コマ ・ どちらも空き " + free + " コマ";
     }
 
     /** 「どちらも空き」と「同じ授業」を文で並べる。表で色を見分けにくい人にも分かるように。 */

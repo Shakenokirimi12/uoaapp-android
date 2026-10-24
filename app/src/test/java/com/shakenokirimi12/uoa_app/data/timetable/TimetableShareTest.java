@@ -171,6 +171,12 @@ public class TimetableShareTest {
     }
 
     @Test
+    public void titlesMatchAcrossUnicodeSpaces() {
+        assertEquals(TimetableGrid.comparableTitle("線形代数 II"), TimetableGrid.comparableTitle("線形代数\u3000II"));
+        assertEquals("a b", TimetableGrid.comparableTitle(" A\u00A0 B "));
+    }
+
+    @Test
     public void sanitizeDropsLoneSurrogates() {
         assertEquals("ab", SharedTimetable.sanitize("a\uD800b", 10));
         assertEquals("a\uD83D\uDE00", SharedTimetable.sanitize("a\uD83D\uDE00", 10));

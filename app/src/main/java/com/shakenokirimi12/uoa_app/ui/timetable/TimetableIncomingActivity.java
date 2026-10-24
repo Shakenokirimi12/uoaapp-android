@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import com.shakenokirimi12.uoa_app.MainActivity;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.timetable.SharedTimetable;
@@ -107,6 +108,7 @@ public class TimetableIncomingActivity extends AppCompatActivity {
     }
 
     private void progress(int textRes) {
+        binding.buttonOpenSaved.setVisibility(View.GONE);
         binding.groupProgress.setVisibility(View.VISIBLE);
         binding.textProgress.setText(textRes);
         binding.groupLoaded.setVisibility(View.GONE);
@@ -155,6 +157,16 @@ public class TimetableIncomingActivity extends AppCompatActivity {
                 String body = s ? "自分の時間割も送りました。相手の画面にも届きます。"
                         : err != null ? "自分の時間割は送れませんでした。" + err : null;
                 result(true, friend.name + " さんの時間割を保存しました", body, err != null);
+                binding.buttonOpenSaved.setVisibility(View.VISIBLE);
+                binding.buttonOpenSaved.setOnClickListener(v -> {
+                    // アプリの画面 (MainActivity) で、保存した友達の時間割を開く。カメラから開いたときは
+                    // カメラのタスクにいるので、アプリのタスクへ移る。
+                    startActivity(new Intent(this, MainActivity.class)
+                            .putExtra(MainActivity.EXTRA_OPEN_TIMETABLE_FRIEND, friend.id)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                    | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+                    finish();
+                });
             });
         });
     }

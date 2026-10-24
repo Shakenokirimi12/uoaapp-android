@@ -51,6 +51,12 @@ public final class TimetableShareApi {
         }
 
         public boolean isExpired() { return status == 404; }
+
+        /** 返事を読むトークンを端末に置けなかった (暗号化 prefs が使えないなど)。通信の失敗ではない。 */
+        @NonNull
+        public static Failure cannotStoreOnDevice() {
+            return new Failure(-2, "この端末では共有を始められませんでした。");
+        }
     }
 
     public static final class Created {

@@ -56,6 +56,16 @@
                 android:text="@string/timetable_mode_compare" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
+        <!-- 比べているときの要約。表を下まで見なくても分かるように、表の上に出す。 -->
+        <TextView
+            android:id="@+id/text_compare_counts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="?attr/colorOnSurface"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/text_compare_unavailable"
             style="@style/Widget.Uoa.ListRow.Supporting"

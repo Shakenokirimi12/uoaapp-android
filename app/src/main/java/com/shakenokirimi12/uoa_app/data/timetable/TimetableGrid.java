@@ -85,8 +85,21 @@ public final class TimetableGrid {
     /** 同じ授業かを比べるための形。大文字小文字と空白の違いは同じとみなす。 */
     @NonNull
     public static String comparableTitle(@NonNull String title) {
-        String[] parts = title.toLowerCase(Locale.ROOT).trim().split("\\s+");
-        return String.join(" ", Arrays.asList(parts));
+        // 空白は Unicode の空白すべて (全角空白 U+3000 や U+00A0 も) で区切る。iOS の isWhitespace と同じ。
+        List<String> parts = new ArrayList<>();
+        StringBuilder word = new StringBuilder();
+        String lower = title.toLowerCase(Locale.ROOT);
+        for (int i = 0; i < lower.length(); ) {
+            int cp = lower.codePointAt(i);
+            i += Character.charCount(cp);
+            if (Character.isWhitespace(cp) || Character.isSpaceChar(cp)) {
+                if (word.length() > 0) { parts.add(word.toString()); word.setLength(0); }
+            } else {
+                word.appendCodePoint(cp);
+            }
+        }
+        if (word.length() > 0) parts.add(word.toString());
+        return String.join(" ", parts);
     }
 
     @NonNull

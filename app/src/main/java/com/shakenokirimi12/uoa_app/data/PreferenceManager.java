@@ -261,7 +261,14 @@ public class PreferenceManager {
 
     /** 時間割共有の返事を読むトークン。暗号化 prefs にだけ置く (使えない端末では保存されず、空)。 */
     public String getTimetableShareOwnerToken() { return getSecret(KEY_TIMETABLE_SHARE_OWNER_TOKEN); }
-    public void setTimetableShareOwnerToken(String token) { putSecret(KEY_TIMETABLE_SHARE_OWNER_TOKEN, token); }
+    /** 保存できたか (暗号化 prefs が使えない端末・書き込みの失敗では false)。null / 空文字は削除。 */
+    public boolean setTimetableShareOwnerToken(String token) {
+        if (encryptedPrefs == null) return token == null || token.isEmpty();
+        SharedPreferences.Editor e = encryptedPrefs.edit();
+        if (token == null || token.isEmpty()) e.remove(KEY_TIMETABLE_SHARE_OWNER_TOKEN);
+        else e.putString(KEY_TIMETABLE_SHARE_OWNER_TOKEN, token);
+        return e.commit();
+    }
 
     public String getPassword() { return getSecret(KEY_PASSWORD); }
     public void setPassword(String password) {
