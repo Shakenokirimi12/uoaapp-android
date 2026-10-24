@@ -56,6 +56,12 @@ public class MainActivity extends AppCompatActivity {
         // タブ構成を変えたときは refreshBottomTabs() でメニュー項目だけ差し替える (再結線しない)。
         com.shakenokirimi12.uoa_app.ui.util.MainTabs.applyTo(bottomNav, PreferenceManager.getInstance(this));
         NavigationUI.setupWithNavController(bottomNav, navController);
+        // 選んでいるタブをもう一度押したら、そのタブの最初の画面へ戻す。リスナーが無いと NavigationUI が
+        // 同じタブへ遷移し直すだけで、「その他」から開いた画面 (成績など) から「その他」へ戻れなかった。
+        bottomNav.setOnItemReselectedListener(item -> {
+            if (navigationLocked) return;
+            navController.popBackStack(item.getItemId(), false);
+        });
         com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbar);
         // 上バーの「戻る」はタブの根では出さない。どのタブが下に出ていても根として扱えるよう、
         // 取りうるタブの遷移先すべて (+その他) をトップレベルにしておく。こうすればタブ構成を
