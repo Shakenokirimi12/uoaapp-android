@@ -126,6 +126,20 @@ public class MainActivity extends AppCompatActivity {
         // リモート設定の取り直しは、アプリが前面に出るたびに UoaApplication が行う (どの画面から戻っても)。
         // 同意を記録する前に作った PC との連携があれば、起動して最初に前面に出たときに 1 回だけ確かめる。
         com.shakenokirimi12.uoa_app.ui.otprelay.OtpRelayConsentPrompt.showAtLaunch(this);
+        // 認証アプリ方式なのにキーが無い人へ、登録し直しを一度だけ案内する。
+        com.shakenokirimi12.uoa_app.ui.settings.AuthenticatorKeyPrompt.showAtLaunch(this, this::openLoginSettings);
+    }
+
+    /** ログインとワンタイムパスワードの設定を開く。既に開いていれば何もしない。 */
+    private void openLoginSettings() {
+        if (isFinishing() || isDestroyed()) return;
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.nav_host_fragment);
+        if (navHostFragment == null) return;
+        NavController navController = navHostFragment.getNavController();
+        androidx.navigation.NavDestination current = navController.getCurrentDestination();
+        if (current != null && current.getId() == R.id.navigation_login_settings) return;
+        navController.navigate(R.id.navigation_login_settings);
     }
 
     /** API 33 以降は許可が無いと通知が一切出ない。これまでどこでも求めていなかった。 */

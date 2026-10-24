@@ -148,15 +148,22 @@ public class MoodleService {
      * 成功した cookie だけを共有 cookie jar へ注入する。順序が逆だと、ログイン失敗時にも IdP 側の cookie が
      * 残り、以降のリクエストに無関係なセッションが乗る。
      */
-    private void loginViaIdP(String username, String password) throws Exception {
+    private void loginViaIdP(String username, String password, AuthorizationContext context) throws Exception {
         String uid = username.trim();
         String pass = password.trim();
+        // ここに来るのは SessionCoordinator が新規ログインを許した場合だけ。BACKGROUND なら、OTP を人もメールも
+        // 使わずに用意できると確かめてある (認証アプリ方式で、このアプリが鍵を持っている)。
+        com.shakenokirimi12.uoa_app.services.idp.OtpProvider otp =
+                com.shakenokirimi12.uoa_app.services.idp.OtpProviders.forLogin(uid, pass, context);
+        // バックグラウンドでは、判定 (BackgroundLoginPolicy) のあとで方式が変わっていたら IdP に触れずに止める。
+        // 触れるとメール方式では motp.cgi が OTP メールを送ってしまう (送ったあとで code() が止めても遅い)。
+        // 下の catch で文言に包むと SyncWorker が「ログインが必要」と見分けられないので、try の外で投げる。
+        if (!context.allowsNewLogin() && !otp.canRunUnattended()) {
+            throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
+        }
         SeciossIdPClient.Session session;
         try {
-            // ここに来るのは SessionCoordinator が新規ログインを許した場合だけなので、常に対話文脈。
-            session = seciossClient.login(samlEntryUrl(), uid, pass,
-                    com.shakenokirimi12.uoa_app.services.idp.OtpProviders.forLogin(
-                            uid, pass, AuthorizationContext.INTERACTIVE));
+            session = seciossClient.login(samlEntryUrl(), uid, pass, otp);
         } catch (SeciossError e) {
             // OTP 未設定はここでしか分からない。設定画面を探させず、その場で登録画面を開く。
             com.shakenokirimi12.uoa_app.services.idp.OtpRegistrationLauncher.launchIfNeeded(e);
@@ -169,24 +176,24 @@ public class MoodleService {
         // (2) IdP 側のページで止まっても復帰先ホストで弾く、(3) login/index.php へ戻された = SP 側で
         // このユーザーが未開放。
         if (SeciossIdPClient.isMaintenancePage(session.finalStatus, session.finalHtml)) {
-            throw new Exception(new SeciossError(SeciossError.Kind.MAINTENANCE,
-                    SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).loginMessage());
+            throw new SeciossError(SeciossError.Kind.MAINTENANCE,
+                    SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).asLoginException();
         }
         okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl());
         String host = base != null ? base.host() : "elms.u-aizu.ac.jp";
         okhttp3.HttpUrl finalUrl = okhttp3.HttpUrl.parse(session.finalUrl);
         String finalHost = finalUrl != null ? finalUrl.host().toLowerCase() : "";
         if (!finalHost.equals(host.toLowerCase())) {
-            throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
-                    "Moodle へ戻れていない(final=" + session.finalUrl + ")").loginMessage());
+            throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+                    "Moodle へ戻れていない(final=" + session.finalUrl + ")").asLoginException();
         }
         if (session.finalUrl.contains("login/index.php")) {
-            throw new Exception(new SeciossError(SeciossError.Kind.ACCESS_DENIED, "moodle_login_page").loginMessage());
+            throw new SeciossError(SeciossError.Kind.ACCESS_DENIED, "moodle_login_page").asLoginException();
         }
         if (!containsAnySuccessMarker(session.finalHtml)) {
-            throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+            throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
                     "Moodle への復帰後、成功マーカーが見つからない(url=" + session.finalUrl + ") "
-                            + SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).loginMessage());
+                            + SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).asLoginException();
         }
         NetworkClient.addCookies(session.spCookies);
     }
@@ -202,7 +209,8 @@ public class MoodleService {
         }
         executor.execute(() -> {
             try {
-                coordinator.forceLogin(resolveLoginMethod(), () -> doLogin(username, password));
+                coordinator.forceLogin(resolveLoginMethod(), () -> doLogin(username, password, AuthorizationContext.INTERACTIVE),
+                        unattended(username, password));
                 postSuccess(callback, true);
             } catch (Exception e) {
                 postLoginError(callback, e);
@@ -212,7 +220,8 @@ public class MoodleService {
 
     /**
      * 必要ならログインして、認証済みであることを確認する。10 分以内に検証済みなら通信しない。
-     * BACKGROUND (SyncWorker) は新規ログインを開始しない。保存済みセッションが死んでいたら諦める。
+     * BACKGROUND (SyncWorker) は、BackgroundLoginPolicy が許すとき (認証アプリ方式でこのアプリが鍵を持つ等)
+     * だけ新規ログインする。許さなければ、保存済みセッションが死んでいたら諦める。
      */
     public void ensureLoggedIn(String username, String password, AuthorizationContext context, ServiceCallback<Boolean> callback) {
         if (!AppConfigService.getInstance().isFeatureEnabled("moodle_enabled")) {
@@ -246,7 +255,12 @@ public class MoodleService {
             }
         }
         return coordinator.session(resolveLoginMethod(), context, candidate,
-                key -> probeDashboardQuietly(), () -> doLogin(username, password));
+                key -> probeDashboardQuietly(), () -> doLogin(username, password, context), unattended(username, password));
+    }
+
+    /** バックグラウンドの再ログインの判定。ログインに使うのと同じ ID / パスワードで作る。 */
+    private static SessionCoordinator.Unattended unattended(String username, String password) {
+        return BackgroundLoginPolicy.getInstance().forAccount("moodle", username, password);
     }
 
     private static String moodleHost() {
@@ -285,7 +299,7 @@ public class MoodleService {
     }
 
     /** ログイン手順 (旧方式 / IdP) を実行し、/my/ から sesskey を取り出して返す。 */
-    private String doLogin(String username, String password) throws Exception {
+    private String doLogin(String username, String password, AuthorizationContext context) throws Exception {
         OkHttpClient client = NetworkClient.getCookieClient();
 
         Log.d(TAG, "Starting login for: " + username);
@@ -296,7 +310,7 @@ public class MoodleService {
         if (resolveLoginMethod() == LoginMethod.IDP) {
             // IdP 経由でセッション cookie を得たら、以降 (/my/ で sesskey 取得) は旧方式と共通。
             try {
-                loginViaIdP(username, password);
+                loginViaIdP(username, password, context);
             } catch (Exception e) {
                 if (AuthErrors.isInvalidCredentials(e.getMessage())) throw new LoginFailure(e.getMessage());
                 throw e;

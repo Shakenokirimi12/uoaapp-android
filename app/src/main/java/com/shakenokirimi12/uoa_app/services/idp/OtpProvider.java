@@ -27,6 +27,12 @@ public interface OtpProvider {
     @NonNull
     default OtpProvider forOtpPage(@Nullable String otpType) { return this; }
 
+    /**
+     * 人に入力を求めず、メールも使わずにコードを用意できるか。バックグラウンドの新規ログインを始めてよいかは
+     * これで決まる (BackgroundLoginPolicy)。メール方式は常に false (ログイン 1 回 = OTP メール 1 通)。
+     */
+    default boolean canRunUnattended() { return false; }
+
     /** code() で渡したコードを IdP が受け付けなかった。 */
     default void onRejected() {}
 }

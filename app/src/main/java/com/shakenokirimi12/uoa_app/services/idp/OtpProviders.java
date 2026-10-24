@@ -14,6 +14,19 @@ public final class OtpProviders {
 
     private OtpProviders() {}
 
+    /** 登録の確認で送った窓を使用済みにする (AuthenticatorOtpProvider.markUsed)。 */
+    public static void markStepUsed(@NonNull Totp.Params params, long timeMillis) {
+        AuthenticatorOtpProvider.markUsed(params, timeMillis);
+    }
+
+    /**
+     * バックグラウンドの文脈で、人もメールも使わずにコードを用意できるか。認証アプリ方式で、このアプリが
+     * uid の鍵を持っているときだけ true。受け取り方がまだ決まっていない端末とメール方式は false。
+     */
+    public static boolean canRunUnattended(@NonNull String uid, @NonNull String pass) {
+        return forLogin(uid, pass, AuthorizationContext.BACKGROUND).canRunUnattended();
+    }
+
     @NonNull
     public static OtpProvider forLogin(@NonNull String uid, @NonNull String pass,
                                        @NonNull AuthorizationContext context) {
@@ -40,11 +53,12 @@ public final class OtpProviders {
     }
 
     @NonNull
-    private static OtpProvider of(@NonNull OtpMethod method, @NonNull String uid, @NonNull String pass,
+    static OtpProvider of(@NonNull OtpMethod method, @NonNull String uid, @NonNull String pass,
                                   @NonNull AuthorizationContext context) {
         switch (method) {
             case AUTHENTICATOR:
-                return new AuthenticatorOtpProvider(uid, context);
+                return new AuthenticatorOtpProvider(uid, context,
+                        () -> PreferenceManager.getInstance().totpOtpauthFor(uid));
             case MAIL:
             default:
                 return new MailOtpProvider(uid, pass, context);
@@ -114,37 +128,71 @@ public final class OtpProviders {
     }
 
     /**
-     * 認証アプリ方式。IdP に登録したときのシークレットを持っていれば、アプリがコードを作って入れる
-     * (iOS と同じ)。持っていなければ (この機能より前に登録した・別の端末で登録した)、認証アプリの
-     * コードを手入力してもらう。
-     *
-     * 手入力の場合はバックグラウンド更新で必ず INTERACTIVE_LOGIN_REQUIRED になる。バックグラウンドは
-     * そもそも新規ログインを始めないので (ServiceAuthenticator)、シークレットがあってもここは通らない。
+     * 認証アプリ方式。登録のときに必ずシークレットをこのアプリにも保存し、アプリがコードを作って入れる
+     * (iOS と同じ)。バックグラウンドの再ログインも同じシークレットで作る (canRunUnattended)。
+     * 持っていないのは、この決まりより前に登録した人か、作ったコードを IdP に弾かれて捨てたときだけ
+     * (登録し直しが要る)。その間は前面でだけ認証アプリのコードを手入力してもらい、バックグラウンドでは
+     * INTERACTIVE_LOGIN_REQUIRED で止める (OtpPromptCoordinator.codeFromAuthenticator)。
      */
-    private static final class AuthenticatorOtpProvider implements OtpProvider {
+    static final class AuthenticatorOtpProvider implements OtpProvider {
         /** 窓の終わり間際に作ると、送る間に切れて弾かれうる。これより残りが短ければ次の窓を待つ。 */
         private static final long MIN_MS_LEFT = 3_000L;
 
         private final String uid;
         private final AuthorizationContext context;
+        /** このアプリが持つ uid の otpauth URL。持っていなければ null。 */
+        private final java.util.function.Supplier<String> otpauth;
         /** 直前の code() を保存したシークレットから作ったか。 */
         private volatile boolean generated;
+        /**
+         * 最後にコードを送った窓。Moodle と CampusSquare のログインが同じ窓に続くと同じコードを 2 回送ることになり、
+         * IdP に弾かれうる (弾かれると鍵を捨てる)。次の窓まで待つ (iOS の TOTPStepLedger と同じ)。
+         */
+        private static long lastUsedStep = -1;
 
-        AuthenticatorOtpProvider(String uid, AuthorizationContext context) {
+        AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth) {
             this.uid = uid;
             this.context = context;
+            this.otpauth = otpauth;
         }
 
         @Override public boolean requiresMailDispatch() { return false; }
 
+        @Override public boolean canRunUnattended() {
+            return Totp.parse(otpauth.get()) != null;
+        }
+
         @NonNull
         @Override public String code() throws Exception {
-            Totp.Params params = Totp.parse(PreferenceManager.getInstance().totpOtpauthFor(uid));
+            Totp.Params params = Totp.parse(otpauth.get());
             generated = params != null;
             if (params == null) return OtpPromptCoordinator.getInstance().codeFromAuthenticator(context);
-            long left = Totp.millisLeftInWindow(params, System.currentTimeMillis());
-            if (left < MIN_MS_LEFT) Thread.sleep(left + 100);
-            return Totp.code(params, System.currentTimeMillis());
+            return unusedCode(params);
+        }
+
+        /** 登録の確認で送った窓を使用済みにする。このあとのログインで同じコードを送り直さない (弾かれうる)。 */
+        static void markUsed(@NonNull Totp.Params params, long timeMillis) {
+            synchronized (AuthenticatorOtpProvider.class) {
+                lastUsedStep = Math.max(lastUsedStep, Totp.step(params, timeMillis));
+            }
+        }
+
+        /** 残りが十分で、まだ送っていない窓のコード。待つのは高々 2 窓分。 */
+        @NonNull
+        private static String unusedCode(@NonNull Totp.Params params) throws Exception {
+            for (int i = 0; i < 3; i++) {
+                long now = System.currentTimeMillis();
+                long left = Totp.millisLeftInWindow(params, now);
+                long step = Totp.step(params, now);
+                synchronized (AuthenticatorOtpProvider.class) {
+                    if (left >= MIN_MS_LEFT && step > lastUsedStep) {
+                        lastUsedStep = step;
+                        return Totp.code(params, now);
+                    }
+                }
+                Thread.sleep(left + 100);
+            }
+            throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE, "no unused TOTP step became available");
         }
 
         /**

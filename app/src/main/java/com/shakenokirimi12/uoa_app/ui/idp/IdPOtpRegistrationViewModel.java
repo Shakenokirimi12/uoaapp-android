@@ -75,6 +75,8 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
     private final MutableLiveData<Stage> stage = new MutableLiveData<>(Stage.CHECKING);
     private final MutableLiveData<String> failureMessage = new MutableLiveData<>();
     private final MutableLiveData<Boolean> autoFetchingEmailCode = new MutableLiveData<>(false);
+    /** 認証アプリのコードがアプリの計算と合わなかった。合わなければ登録を送らず、入力し直してもらう。 */
+    private final MutableLiveData<Boolean> codeMismatch = new MutableLiveData<>(false);
 
     private Method method = Method.EMAIL;
     @Nullable private String existingStatusLabel;
@@ -89,11 +91,6 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
      * その間に届いた目当てのメールを古いものとして取りこぼしていた。
      */
     private volatile long emailRequestedAt;
-    /**
-     * 登録に送ったコードが、受け取ったシークレットからアプリが作るコードと一致したか。一致したときだけ
-     * シークレットを保存する (iOS と同じ。アプリの計算が合っていると確かめてから持つ)。
-     */
-    private volatile boolean secretVerified;
     private boolean started = false;
     /** startOnce で作る。POST の可否と、登録が済んだときの受け取り方の書き換えを受け持つ。 */
     @Nullable private volatile OtpRegistrationCommit commit;
@@ -105,6 +102,7 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
     @NonNull public LiveData<Stage> stage() { return stage; }
     @NonNull public LiveData<String> failureMessage() { return failureMessage; }
     @NonNull public LiveData<Boolean> autoFetchingEmailCode() { return autoFetchingEmailCode; }
+    @NonNull public LiveData<Boolean> codeMismatch() { return codeMismatch; }
     @NonNull public Method method() { return method; }
     @Nullable public String existingStatusLabel() { return existingStatusLabel; }
     @Nullable public String otpauthUrl() { return otpauthUrl; }
@@ -194,34 +192,13 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
     }
 
     /**
-     * 登録が済んだ方式を保存する。認証アプリ方式なら、IdP から受け取ったシークレット (otpauth URL) を
-     * このアカウントのものとして暗号化側に保存し、以後のログインでアプリがコードを作る。
-     * メール方式に切り替えたら、もう使わないシークレットは消す。
+     * 登録が済んだ方式を保存する。認証アプリ方式のシークレットは、登録を送る前に保存してある
+     * (completeAuthenticator)。メール方式に切り替えたら、もう使わないシークレットは消す。
      */
     private void applyRegistered(@NonNull OtpMethod registered) {
         PreferenceManager prefs = PreferenceManager.getInstance(getApplication());
         prefs.applyRegisteredOtpMethod(registered);
-        String url = otpauthUrl;
-        if (registered == OtpMethod.AUTHENTICATOR && url != null && !secretVerified) {
-            // 送ったコードがアプリの計算と合わなかった (外部の認証アプリの時計がずれている等)。アプリの計算が
-            // 正しいと確かめられないので持たない。前のキーも、もう IdP では使えないので消す。
-            android.util.Log.w("IdPOtpRegistration", "submitted code did not match the app's calculation; not keeping the secret");
-            prefs.clearTotp();
-        } else if (registered == OtpMethod.AUTHENTICATOR && url != null) {
-            if (!prefs.saveTotp(url, uid)) {
-                android.util.Log.w("IdPOtpRegistration", "could not keep the authenticator secret; codes must be typed");
-            }
-        } else if (registered == OtpMethod.MAIL) {
-            prefs.clearTotp();
-        }
-    }
-
-    /** 今のコード (受け取ったシークレットから作る)。シークレットが読めなければ null。 */
-    @Nullable
-    public String generatedCode() {
-        com.shakenokirimi12.uoa_app.services.idp.Totp.Params p =
-                com.shakenokirimi12.uoa_app.services.idp.Totp.parse(otpauthUrl);
-        return p != null ? com.shakenokirimi12.uoa_app.services.idp.Totp.code(p, System.currentTimeMillis()) : null;
+        if (registered == OtpMethod.MAIL) prefs.clearTotp();
     }
 
     /** 手で追加するとき用に、4 文字ずつ区切ったシークレット。 */
@@ -250,6 +227,13 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
     private void loadAuthenticatorChallenge(@NonNull SeciossRegistrationSession s) {
         try {
             SeciossRegistrationSession.AuthenticatorChallenge challenge = s.beginAuthenticatorRegistration();
+            // 認証アプリ方式は、このアプリにもシークレットを持たせて自動入力とバックグラウンドの再ログインに使う
+            // (利用者の判断、2026-10-24)。読めないシークレットでは登録しない (アカウントを書き換える前にやめる)。
+            if (com.shakenokirimi12.uoa_app.services.idp.Totp.parse(challenge.otpauthUrl) == null) {
+                closeTunnel();
+                postFailure(string(R.string.otp_secret_unreadable));
+                return;
+            }
             authChallenge = challenge;
             otpauthUrl = challenge.otpauthUrl;
             existingStatusLabel = challenge.existingStatusLabel;
@@ -333,42 +317,79 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
         }
     }
 
+    /**
+     * 認証アプリ方式の確定。シークレットは外部の認証アプリとこのアプリの両方に必ず持たせる (iOS と同じ)。
+     * 登録が終わるのは次の全部を満たしたときだけ:
+     * - 利用者が外部の認証アプリを見て入力したコードが、アプリの計算 (前後 1 窓) と一致した。一致は「外部の
+     *   アプリにも同じシークレットが入っている」ことの確かめになる (このアプリだけが 2 段目を持つ状態にしない)。
+     *   コードを先に埋めておかないのはこのため。合わなければ登録を送らない。
+     * - このアプリにシークレットを保存できた。保存できなければ登録を送らない。
+     * - IdP が登録完了を返した。失敗で終わったら、前のシークレット (IdP は前のまま) に戻す。
+     */
     private void completeAuthenticator(String code) {
         SeciossRegistrationSession s = session;
         SeciossRegistrationSession.AuthenticatorChallenge challenge = authChallenge;
         OtpRegistrationCommit c = commit;
-        if (s == null || challenge == null || c == null || !beginPostOnMain(c)) return;
+        String url = otpauthUrl;
+        if (s == null || challenge == null || c == null || url == null) return;
         com.shakenokirimi12.uoa_app.services.idp.Totp.Params params =
-                com.shakenokirimi12.uoa_app.services.idp.Totp.parse(otpauthUrl);
-        secretVerified = params != null
-                && com.shakenokirimi12.uoa_app.services.idp.Totp.matches(params, code, System.currentTimeMillis());
+                com.shakenokirimi12.uoa_app.services.idp.Totp.parse(url);
+        if (params == null
+                || !com.shakenokirimi12.uoa_app.services.idp.Totp.matches(params, code, System.currentTimeMillis())) {
+            codeMismatch.postValue(true);
+            return;
+        }
+        codeMismatch.postValue(false);
+        PreferenceManager prefs = PreferenceManager.getInstance(getApplication());
+        String previous = prefs.totpOtpauthFor(uid);
+        if (!beginPostOnMain(c)) return;
+        // 送る前に保存する。IdP だけが新しいシークレットになり、このアプリが持てない状態を作らない。
+        if (!prefs.saveTotp(url, uid)) {
+            closeTunnel();
+            postFailure(string(R.string.otp_secret_not_saved));
+            return;
+        }
+        boolean registered = false;
         try {
             s.completeAuthenticatorRegistration(challenge, code);
             closeTunnel();
-            finishRegistration(c, Method.AUTHENTICATOR);
+            registered = finishRegistration(c, Method.AUTHENTICATOR);
         } catch (Exception e) {
-            failRegistration(c, Method.AUTHENTICATOR, e);
+            registered = failRegistration(c, Method.AUTHENTICATOR, e);
+        } finally {
+            if (!registered) {
+                if (previous != null) prefs.saveTotp(previous, uid);
+                else prefs.clearTotp();
+            }
         }
+        if (!registered) return;
+        // 登録の確認に使った窓のコードを、このあとのログインで送り直さない。
+        com.shakenokirimi12.uoa_app.services.idp.OtpProviders.markStepUsed(params, System.currentTimeMillis());
+        // 送っている間に別のログインがこの新しいキーのコードを送り (IdP はまだ前のキー)、弾かれてキーが消されて
+        // いることがある。登録が済んだ今は新しいキーが正しいので、持っていなければ書き直す。
+        if (!url.equals(prefs.totpOtpauthFor(uid))) prefs.saveTotp(url, uid);
     }
 
     /** IdP が「設定が完了しました」を返したあと。 */
-    private void finishRegistration(@NonNull OtpRegistrationCommit c, @NonNull Method registered) {
+    private boolean finishRegistration(@NonNull OtpRegistrationCommit c, @NonNull Method registered) {
         if (c.afterCompletion(registered.otpMethod) == OtpRegistrationCommit.Result.SUCCEEDED) {
             post(Stage.SUCCESS);
-        } else {
-            postFailure(string(R.string.otp_switch_not_switched));
+            return true;
         }
+        postFailure(string(R.string.otp_switch_not_switched));
+        return false;
     }
 
     /** 登録の POST が完了の表示を返さなかったとき。 */
-    private void failRegistration(@NonNull OtpRegistrationCommit c, @NonNull Method registered, @NonNull Exception e) {
+    private boolean failRegistration(@NonNull OtpRegistrationCommit c, @NonNull Method registered, @NonNull Exception e) {
         closeTunnel();
         if (c.afterError(registered.otpMethod) == OtpRegistrationCommit.Result.SUCCEEDED) {
             android.util.Log.i("IdPOtpRegistration", "registration response unrecognized, but otp_type shows the new method");
             post(Stage.SUCCESS);
-        } else {
-            fail(e);
+            return true;
         }
+        fail(e);
+        return false;
     }
 
     /**

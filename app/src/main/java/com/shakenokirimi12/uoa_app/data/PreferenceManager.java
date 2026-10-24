@@ -49,6 +49,13 @@ public class PreferenceManager {
     private static final String KEY_TOTP_OTPAUTH = "totp_otpauth_url";
     private static final String KEY_TOTP_OWNER = "totp_owner";
     private static final String KEY_MOODLE_SESSION_COOKIE_HEADER = "moodle_session_cookie_header";
+    /** 最後にログインに成功した ID / パスワードの指紋 (BackgroundLoginPolicy)。パスワードそのものは置かない。 */
+    private static final String KEY_BG_LOGIN_VERIFIED = "background_login_verified";
+    /** バックグラウンドのログインが失敗して、前面で成功するまで止めている。 */
+    private static final String KEY_BG_LOGIN_BLOCKED = "background_login_blocked";
+    private static final String KEY_BG_LOGIN_LAST_ATTEMPT_PREFIX = "background_login_last_attempt.";
+    /** 認証アプリ方式なのに鍵が無い人へ、登録し直しを案内したか (起動時に一度だけ)。鍵を保存したら戻す。 */
+    private static final String KEY_TOTP_REREGISTRATION_PROMPTED = "totp_reregistration_prompted";
 
     private static final String TAG = "PreferenceManager";
 
@@ -67,6 +74,9 @@ public class PreferenceManager {
      */
     public static final String[] DEVICE_LOCAL_KEYS = {
             KEY_DEVICE_ID, KEY_FCM_TOKEN, KEY_SERVER_HOLDS_REMINDERS, KEY_OTP_METHOD, KEY_SUPPORT_ID,
+            // 認証アプリのキーは暗号化側でバックアップの対象外。「案内した」だけが別の端末へ移ると、キーの無い新しい
+            // 端末で登録し直しの案内が出ない。
+            KEY_TOTP_REREGISTRATION_PROMPTED,
     };
 
     /**
@@ -476,10 +486,34 @@ public class PreferenceManager {
      */
     public boolean saveTotp(@NonNull String otpauthUrl, @NonNull String owner) {
         if (encryptedPrefs == null) return false;
-        return encryptedPrefs.edit()
+        boolean saved = encryptedPrefs.edit()
                 .putString(KEY_TOTP_OTPAUTH, otpauthUrl)
                 .putString(KEY_TOTP_OWNER, owner.trim())
                 .commit();
+        // 鍵を持てたので、また無くなったら (作ったコードを IdP に弾かれて捨てたら) もう一度案内する。
+        if (saved) prefs.edit().remove(KEY_TOTP_REREGISTRATION_PROMPTED).apply();
+        return saved;
+    }
+
+    public boolean isTotpReregistrationPrompted() { return prefs.getBoolean(KEY_TOTP_REREGISTRATION_PROMPTED, false); }
+    public void setTotpReregistrationPrompted() { prefs.edit().putBoolean(KEY_TOTP_REREGISTRATION_PROMPTED, true).apply(); }
+
+    // ---- バックグラウンドの再ログイン (BackgroundLoginPolicy) ----
+
+    @NonNull public String getBackgroundLoginVerified() { return getSecret(KEY_BG_LOGIN_VERIFIED); }
+    public void setBackgroundLoginVerified(@androidx.annotation.Nullable String fingerprint) {
+        putSecret(KEY_BG_LOGIN_VERIFIED, fingerprint);
+    }
+    public boolean isBackgroundLoginBlocked() { return prefs.getBoolean(KEY_BG_LOGIN_BLOCKED, false); }
+    /** commit で書く。止めたことはプロセスが終わっても残す必要がある (次の定期実行は別プロセスのことが多い)。 */
+    public void setBackgroundLoginBlocked(boolean blocked) {
+        prefs.edit().putBoolean(KEY_BG_LOGIN_BLOCKED, blocked).commit();
+    }
+    public long getBackgroundLoginLastAttempt(@NonNull String scope) {
+        return prefs.getLong(KEY_BG_LOGIN_LAST_ATTEMPT_PREFIX + scope, 0L);
+    }
+    public void setBackgroundLoginLastAttempt(@NonNull String scope, long at) {
+        prefs.edit().putLong(KEY_BG_LOGIN_LAST_ATTEMPT_PREFIX + scope, at).commit();
     }
 
     /** owner の otpauth URL。持っていない、または別のアカウントのものなら null。 */

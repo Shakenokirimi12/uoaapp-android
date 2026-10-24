@@ -123,6 +123,11 @@ public final class Totp {
         return false;
     }
 
+    /** timeMillis の窓の番号 (RFC 6238 の T)。同じ窓のコードを 2 回送らないために使う。 */
+    public static long step(@NonNull Params p, long timeMillis) {
+        return Math.floorDiv(timeMillis / 1000L, p.periodSeconds);
+    }
+
     /** 今の窓が終わるまでのミリ秒。 */
     public static long millisLeftInWindow(@NonNull Params p, long timeMillis) {
         long periodMs = p.periodSeconds * 1000L;

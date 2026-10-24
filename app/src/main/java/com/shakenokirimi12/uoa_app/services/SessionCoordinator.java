@@ -14,10 +14,12 @@ import java.util.concurrent.FutureTask;
  *   1. 直近 TRUST_WINDOW_MS 以内に検証済み → そのまま使う (リクエスト 0)
  *   2. それ以外は probe で 1 リクエストだけ確認し、認証済みなら検証時刻だけ更新
  *   3. 未認証なら単一飛行でログイン。同時に来た呼び出しは同じログインの結果を待つ。
- *      バックグラウンド (AuthorizationContext.BACKGROUND) からの要求は、そもそも新規ログインを
- *      開始しない。保存済みセッションが死んでいたら INTERACTIVE_LOGIN_REQUIRED を返して諦め、
- *      次にユーザーが画面を開いたときに任せる (ログイン 1 回 = OTP メール 1 通のため)。
- *      ユーザー操作からの要求は、直前の障害系失敗から LOGIN_BACKOFF_MS 以内なら再試行しない
+ *      バックグラウンド (AuthorizationContext.BACKGROUND) からの要求は、Unattended (BackgroundLoginPolicy)
+ *      が許したときだけ新規ログインを始める: 認証アプリ方式でこのアプリが鍵を持ち、パスワードが前回成功した
+ *      ものと同じで、前のバックグラウンドのログインが失敗しておらず、間隔の制限 (30 分) も通ったとき。
+ *      メール方式では決して始めない (ログイン 1 回 = OTP メール 1 通のため)。始めないときは
+ *      INTERACTIVE_LOGIN_REQUIRED を返して諦め、次にユーザーが画面を開いたときに任せる。
+ *      直前の障害系失敗から LOGIN_BACKOFF_MS 以内なら再試行しない
  *
  * 各画面と SyncWorker はそれぞれ別のサービスインスタンス (= 別の単一スレッド executor) から
  * 同時にここへ来るため、素の static フィールドでは単一飛行が破れて二重ログイン (= 二重 OTP メール)
@@ -29,6 +31,28 @@ final class SessionCoordinator<S> {
     /** 生存確認。生きていればそのセッション (確認の副産物で更新された値でもよい) を、死んでいれば null を返す。 */
     interface Probe<S> { S refresh(S session); }
     interface Login<S> { S login() throws Exception; }
+
+    /**
+     * バックグラウンドで新規ログインを始めてよいか。login と同じ ID / パスワードで作る
+     * (BackgroundLoginPolicy.forAccount)。既定 (NEVER) は決して始めない。
+     */
+    interface Unattended {
+        /** OTP を人もメールも使わずに用意できるか、など (間隔の制限は含まない)。lock の外で呼ぶ。 */
+        boolean permits();
+        /** 間隔の制限。始めてよければ試行として記録して true。始めると決める直前に lock の下で呼ぶ。 */
+        boolean claimSlot();
+        /** ログインが成功した (文脈を問わない)。 */
+        void succeeded();
+        /** バックグラウンドのログインが失敗した。 */
+        void failed(Exception e);
+
+        Unattended NEVER = new Unattended() {
+            @Override public boolean permits() { return false; }
+            @Override public boolean claimSlot() { return false; }
+            @Override public void succeeded() {}
+            @Override public void failed(Exception e) {}
+        };
+    }
 
     static final long TRUST_WINDOW_MS = 10 * 60 * 1000L;
     static final long LOGIN_BACKOFF_MS = 60 * 1000L;
@@ -70,6 +94,12 @@ final class SessionCoordinator<S> {
      * @param candidate live が無いときに、ログインの前に試す候補 (前回プロセスが永続化した cookie 等)。無ければ null
      */
     S session(Object method, AuthorizationContext context, S candidate, Probe<S> probe, Login<S> login) throws Exception {
+        return session(method, context, candidate, probe, login, Unattended.NEVER);
+    }
+
+    /** unattended: バックグラウンドの新規ログインの判定。login と同じ ID / パスワードで作ったもの。 */
+    S session(Object method, AuthorizationContext context, S candidate, Probe<S> probe, Login<S> login,
+              Unattended unattended) throws Exception {
         S current;
         long currentGen;
         synchronized (lock) {
@@ -109,6 +139,11 @@ final class SessionCoordinator<S> {
             }
         }
 
+        // バックグラウンドで新規ログインしてよいか。暗号化した設定を読むので lock の外で先に決める。
+        // 始めるかどうか (間隔の枠を取る) は下の lock の中で決める。
+        boolean background = !context.allowsNewLogin();
+        boolean mayLoginUnattended = background && unattended.permits();
+
         while (true) {
             FutureTask<S> task;
             boolean owner;
@@ -123,14 +158,18 @@ final class SessionCoordinator<S> {
                     // 終わるのを待ってから自分の方式でやり直す (待つのは lock の外)。
                     otherMethod = !Objects.equals(inFlightMethod, method);
                 } else {
-                    // バックグラウンドでは新規ログインを始めない。ここが唯一の判断点で、
-                    // login クロージャ自体を呼ばない (フラグを見落とす経路を作らないため)。
-                    if (!context.allowsNewLogin()) {
+                    // バックグラウンドでは、Unattended が許したときだけ新規ログインを始める。ここが唯一の判断点で、
+                    // 許さなければ login クロージャ自体を呼ばない (フラグを見落とす経路を作らないため)。
+                    if (background && !mayLoginUnattended) {
                         throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
                     }
                     if (lastFailure != null
                             && System.currentTimeMillis() - lastFailureAt < LOGIN_BACKOFF_MS) {
                         throw lastFailure;
+                    }
+                    // 間隔の枠は、ほかの条件を全部通ってから取る (取ったら試行として記録される)。
+                    if (background && !unattended.claimSlot()) {
+                        throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
                     }
                     task = new FutureTask<>(login::login);
                     inFlight = task;
@@ -143,7 +182,7 @@ final class SessionCoordinator<S> {
                 continue;
             }
             if (!owner) return await(task);
-            return runLogin(task, method);
+            return runLogin(task, method, unattended, background);
         }
     }
 
@@ -162,6 +201,11 @@ final class SessionCoordinator<S> {
      * 入力し直した資格情報を検証しているのに、古い資格情報のログイン結果を返しては意味が無いため。
      */
     S forceLogin(Object method, Login<S> login) throws Exception {
+        return forceLogin(method, login, Unattended.NEVER);
+    }
+
+    /** 前面のログインなので、成功したら unattended に伝える (パスワードの確認と、止めていた再ログインの解除)。 */
+    S forceLogin(Object method, Login<S> login, Unattended unattended) throws Exception {
         while (true) {
             FutureTask<S> mine = null;
             FutureTask<S> other = null;
@@ -175,7 +219,7 @@ final class SessionCoordinator<S> {
                     other = inFlight;
                 }
             }
-            if (mine != null) return runLogin(mine, method);
+            if (mine != null) return runLogin(mine, method, unattended, false);
             // 先行ログインの成否は関係ない。終わったので自分のログインを始める。
             awaitIgnoringResult(other);
         }
@@ -189,7 +233,7 @@ final class SessionCoordinator<S> {
         }
     }
 
-    private S runLogin(FutureTask<S> task, Object method) throws Exception {
+    private S runLogin(FutureTask<S> task, Object method, Unattended unattended, boolean background) throws Exception {
         task.run();
         try {
             S session = task.get();
@@ -197,9 +241,11 @@ final class SessionCoordinator<S> {
                 setLive(session, method);
                 if (inFlight == task) inFlight = null;
             }
+            unattended.succeeded();
             return session;
         } catch (ExecutionException e) {
             Exception cause = unwrap(e);
+            if (background) unattended.failed(cause);
             synchronized (lock) {
                 if (inFlight == task) inFlight = null;
                 // ID/PW 誤りは呼び出し側が同期を止めるので、ここで抑える対象は障害系だけ。

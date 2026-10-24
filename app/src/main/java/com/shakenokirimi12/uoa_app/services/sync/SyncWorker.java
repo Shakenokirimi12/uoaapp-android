@@ -100,8 +100,10 @@ public class SyncWorker extends Worker {
         String pass = prefs.getPassword();
         DataCache cache = DataCache.getInstance(ctx);
         boolean anyFailure = false;
-        // 保存済みセッションが切れていて、OTP 付きの新規ログインが要る。失敗とは数えない
-        // (バックグラウンドからはログインしない決まりなので、待つのが正常)。
+        // 保存済みセッションが切れていて、OTP 付きの新規ログインが要るが、ここでは始められなかった。失敗とは数えない。
+        // 認証アプリ方式でこのアプリが鍵を持っていれば、サービスがこの場でログインし直してデータを取るので、ここには
+        // 来ない。来るのは、メール方式 (裏ではログインしない)・鍵が無い・前回のバックグラウンドのログインの失敗で
+        // 止めている・間隔の制限 (BackgroundLoginPolicy) のとき。
         boolean loginRequired = false;
 
         // 1. Moodle
