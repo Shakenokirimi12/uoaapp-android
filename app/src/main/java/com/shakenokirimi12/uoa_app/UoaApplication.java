@@ -62,7 +62,11 @@ public class UoaApplication extends Application {
                 // 起動時と前面復帰のたびに、どの画面から入ってもリモート設定 (強制更新・メンテナンス・
                 // killswitch) を取り直す。以前は MainActivity.onResume だけで、初期設定や通知から開いた
                 // 画面では取り直していなかった。
-                if (startedActivities++ == 0) AppConfigService.getInstance().refresh(activity);
+                if (startedActivities++ == 0) {
+                    AppConfigService.getInstance().refresh(activity);
+                    // 前日までの利用状況があれば送る (1 日 1 回。送る分が無ければ通信しない)。
+                    com.shakenokirimi12.uoa_app.services.usage.UsageStats.sendIfDueAsync(activity);
+                }
             }
 
             @Override public void onActivityStopped(@NonNull Activity activity) {

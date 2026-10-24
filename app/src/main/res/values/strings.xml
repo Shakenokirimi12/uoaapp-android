@@ -208,6 +208,8 @@
     <string name="settings_support_id_summary">問い合わせるときは、この ID を書き添えてください。この端末の記録を探すのに使います。</string>
     <string name="settings_support_id_copy">問い合わせ ID をコピー</string>
     <string name="settings_support_id_copied">問い合わせ ID をコピーしました</string>
+    <string name="settings_usage_stats">利用状況を送る</string>
+    <string name="settings_usage_stats_summary">開いた画面の回数と学籍番号の期 (27期など) を1日1回送ります。学籍番号そのものや時間割は送りません。</string>
     <string name="settings_tabs">タブの並び替え</string>
     <string name="settings_backup">設定をバックアップ</string>
     <string name="settings_restore">バックアップから戻す</string>

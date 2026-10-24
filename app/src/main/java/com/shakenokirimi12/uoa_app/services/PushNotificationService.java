@@ -20,7 +20,8 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class PushNotificationService {
-    private static final String BASE_URL = "https://uoa-app.shakenokiri.me/push";
+    /** push の API の根 (uoa-app の /push)。利用状況 (services/usage/UsageStats) も同じ口に送る。 */
+    public static final String BASE_URL = "https://uoa-app.shakenokiri.me/push";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();

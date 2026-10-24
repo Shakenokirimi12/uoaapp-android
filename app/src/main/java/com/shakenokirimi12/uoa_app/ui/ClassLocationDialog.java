@@ -21,6 +21,8 @@ public class ClassLocationDialog {
     private static final double CAMPUS_LNG = 139.9388;
 
     public static void show(Context context, GroupedClass cls) {
+        com.shakenokirimi12.uoa_app.services.usage.UsageStats.record(context,
+                com.shakenokirimi12.uoa_app.services.usage.UsageFeature.CLASS_LOCATION);
         View dialogView = LayoutInflater.from(context)
                 .inflate(R.layout.dialog_class_location, null);
 

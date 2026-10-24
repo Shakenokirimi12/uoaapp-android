@@ -31,6 +31,8 @@ public class PreferenceManager {
     /** 問い合わせ ID (SupportId)。device_id と同じく、この端末 (このインストール) だけのもの。 */
     private static final String KEY_SUPPORT_ID = "support_id";
     private static final String KEY_AUTO_ATTENDANCE = "auto_attendance_enabled";
+    /** 「利用状況を送る」。BackupService.SETTINGS_KEYS と同じ文字列 (設定として持ち運ぶ)。 */
+    public static final String KEY_USAGE_STATS_ENABLED = "usage_stats_enabled";
     private static final String KEY_SELECTED_NOTIFY_TIMES = "selected_notify_times";
     private static final String KEY_CUSTOM_NOTIFY_TIMES = "custom_notify_times";
     private static final String KEY_LUNCH_NOTIFY_TIME = "lunch_notify_time";
@@ -359,6 +361,10 @@ public class PreferenceManager {
         return id;
     }
 
+    // 利用状況 (services/usage/UsageStats)。既定は ON。回数と ID は別のファイル (usage_stats) に置き、ここは設定だけ。
+    public boolean isUsageStatsEnabled() { return prefs.getBoolean(KEY_USAGE_STATS_ENABLED, true); }
+    public void setUsageStatsEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_USAGE_STATS_ENABLED, enabled).apply(); }
+
     // Auto attendance
     public boolean isAutoAttendanceEnabled() { return prefs.getBoolean(KEY_AUTO_ATTENDANCE, false); }
     public void setAutoAttendanceEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_AUTO_ATTENDANCE, enabled).apply(); }
@@ -539,7 +545,11 @@ public class PreferenceManager {
 
     // Reset
     public void clearAll() {
-        prefs.edit().clear().apply();
+        // 「利用状況を送らない」はログアウトしても戻さない。消すと既定の ON に戻り、断った人から黙って送り始める。
+        boolean usageStatsEnabled = isUsageStatsEnabled();
+        SharedPreferences.Editor plain = prefs.edit().clear();
+        if (!usageStatsEnabled) plain.putBoolean(KEY_USAGE_STATS_ENABLED, false);
+        plain.apply();
         if (encryptedPrefs == null) return;
         // 解除待ちの連携だけは残す。消すと、中継サーバに残った連携を二度と解除できなくなる。
         String pendingUnpairs = encryptedPrefs.getString(KEY_OTP_RELAY_PENDING_UNPAIRS, "");

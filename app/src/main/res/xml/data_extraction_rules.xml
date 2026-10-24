@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Android 12 以降のバックアップと端末間転送。
      暗号化 prefs (資格情報・セッション cookie) は端末の Keystore の鍵でしか開けないので含めない。
-     WebView のデータ (cookie、Basic 認証の保存先 http_auth.db) も含めない (backup_rules.xml と同じ)。 -->
+     WebView のデータ (cookie、Basic 認証の保存先 http_auth.db) と利用状況 (usage_stats.xml) も含めない (backup_rules.xml と同じ)。 -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="uoa_app_secure_prefs.xml" />
+        <exclude domain="sharedpref" path="usage_stats.xml" />
         <exclude domain="root" path="app_webview/" />
         <exclude domain="database" path="http_auth.db" />
         <exclude domain="database" path="http_auth.db-journal" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="uoa_app_secure_prefs.xml" />
+        <exclude domain="sharedpref" path="usage_stats.xml" />
         <exclude domain="root" path="app_webview/" />
         <exclude domain="database" path="http_auth.db" />
         <exclude domain="database" path="http_auth.db-journal" />

@@ -190,6 +190,8 @@ public class LocationGeofenceService {
             }
 
             attendance.addHistory(courseId, AttendanceManager.Status.PRESENT, new Date(), "auto");
+            com.shakenokirimi12.uoa_app.services.usage.UsageStats.record(ctx,
+                    com.shakenokirimi12.uoa_app.services.usage.UsageFeature.AUTO_ATTENDANCE);
             sp.edit().putLong("last_geofence_time", now).apply();
             notifyRegistered(ctx, matched);
             return;
