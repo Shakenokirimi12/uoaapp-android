@@ -309,14 +309,30 @@ public class PreferenceManager {
     public void setLastSync(long timestamp) { prefs.edit().putLong(KEY_LAST_SYNC, timestamp).apply(); }
 
     // Device ID for push notifications
-    public String getDeviceId() {
-        String id = prefs.getString(KEY_DEVICE_ID, "");
-        if (id.isEmpty()) {
-            id = java.util.UUID.randomUUID().toString();
-            prefs.edit().putString(KEY_DEVICE_ID, id).apply();
+    public String getDeviceId() { return deviceIdIn(prefs); }
+
+    /**
+     * 通知サーバーの端末 ID。無ければ作って保存する。
+     *
+     * 平文の prefs に置く (暗号化側は Keystore の不調で作り直すことがあり、そのたびに ID が変わるため)。
+     * ロックを取るのは、初回起動で 2 つのスレッド (登録と app-config) が同時に呼ぶと別々の ID を作り、
+     * 片方の ID でサーバーに行ができたあとで、もう片方が保存されて残るため。
+     * 作った ID は commit で書き切る。apply のままプロセスが落ちると、その ID で登録した後に保存されず、
+     * 次の起動で別の ID になる。
+     */
+    static String deviceIdIn(@NonNull SharedPreferences prefs) {
+        synchronized (DEVICE_ID_LOCK) {
+            String id = prefs.getString(KEY_DEVICE_ID, "");
+            if (id == null || id.isEmpty()) {
+                id = java.util.UUID.randomUUID().toString();
+                if (!prefs.edit().putString(KEY_DEVICE_ID, id).commit()) Log.w(TAG, "could not save device_id");
+            }
+            return id;
         }
-        return id;
     }
+
+    /** getInstance と同じクラスのロックを使わない (書き込みの間、他のスレッドの getInstance を待たせない)。 */
+    private static final Object DEVICE_ID_LOCK = new Object();
 
     /**
      * 問い合わせ ID (SupportId)。無ければ (形が合わなければ) 作って保存する。設定の画面に出し、

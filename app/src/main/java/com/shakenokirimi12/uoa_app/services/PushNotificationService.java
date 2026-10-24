@@ -9,9 +9,9 @@ import com.google.gson.JsonObject;
 import com.shakenokirimi12.uoa_app.BuildConfig;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -24,11 +24,15 @@ public class PushNotificationService {
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Gson gson = new Gson();
-    private String deviceId;
-    /** 端末の id と問い合わせ ID を読むため (shared() で入れる)。どちらもログアウトで作り直されるので、送るたびに読む。 */
-    private com.shakenokirimi12.uoa_app.data.PreferenceManager prefs;
+    /**
+     * 端末 ID は呼ぶたびに PreferenceManager から読む。以前は最初に読んだ値をフィールドに持っていたので、
+     * 「ログアウト」(prefs.clearAll) で ID が作り直されても、このプロセスの間は古い ID で登録・同期し、
+     * app-config (PreferenceManager から直接読む) とは別の ID を使っていた。
+     */
+    private final Supplier<String> deviceIds;
+    /** 問い合わせ ID (SupportId)。端末 ID と同じくログアウトで作り直されるので、送るたびに読む。null なら送らない。 */
+    private final Supplier<String> supportIds;
 
     private static PushNotificationService shared;
 
@@ -39,32 +43,23 @@ public class PushNotificationService {
      */
     public static synchronized PushNotificationService shared(android.content.Context context) {
         if (shared == null) {
-            shared = new PushNotificationService();
-            shared.prefs = com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(context.getApplicationContext());
-            shared.init(shared.prefs.getDeviceId());
+            com.shakenokirimi12.uoa_app.data.PreferenceManager prefs =
+                    com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(context.getApplicationContext());
+            shared = new PushNotificationService(prefs::getDeviceId, prefs::getSupportId);
         }
         return shared;
     }
 
-    public void init(String storedDeviceId) {
-        if (storedDeviceId != null && !storedDeviceId.isEmpty()) {
-            this.deviceId = storedDeviceId;
-        } else {
-            this.deviceId = UUID.randomUUID().toString();
-        }
+    PushNotificationService(Supplier<String> deviceIds) {
+        this(deviceIds, () -> null);
     }
 
-    public String getDeviceId() { return currentDeviceId(); }
-
-    /**
-     * 今の端末の id。ログアウト (PreferenceManager.clearAll) で作り直されるので、プロセスの最初に読んだ値ではなく
-     * 毎回 prefs から読む。以前は最初の値を持ち続け、ログアウトのあとも前の利用者の端末の行へ登録していた。
-     * 送る処理は executor に積む前 (呼んだ時点) に読む: ログアウトは「予約を空にする」を積んでから clearAll するので、
-     * 積んだ後に読むと新しい id の予約を空にしてしまう。
-     */
-    private String currentDeviceId() {
-        return prefs != null ? prefs.getDeviceId() : deviceId;
+    PushNotificationService(Supplier<String> deviceIds, Supplier<String> supportIds) {
+        this.deviceIds = deviceIds;
+        this.supportIds = supportIds;
     }
+
+    public String getDeviceId() { return deviceIds.get(); }
 
     public void registerDevice() { registerDevice(null); }
 
@@ -73,12 +68,13 @@ public class PushNotificationService {
      *                 を一切送れない。iOS の APNs deviceToken に相当する。
      */
     public void registerDevice(String fcmToken) {
-        final String id = currentDeviceId();
-        final String supportId = prefs != null ? prefs.getSupportId() : null;
+        // 端末 ID も問い合わせ ID も積む前に読む (新しい問い合わせ ID が前の端末の行に付かないように)。
+        final String deviceId = getDeviceId();
+        final String supportId = supportIds.get();
         executor.execute(() -> {
             try {
                 JsonObject body = new JsonObject();
-                body.addProperty("deviceId", id);
+                body.addProperty("deviceId", deviceId);
                 body.addProperty("os", "Android");
                 body.addProperty("appVersion", BuildConfig.VERSION_NAME);
                 // 管理画面で問い合わせ ID から端末を引くため (SupportId)。
@@ -131,12 +127,14 @@ public class PushNotificationService {
      *                 消すと cron が拾う前の再同期で黙って消える)。止めるときだけは全部消す。
      */
     public void syncAssignmentReminders(List<AssignmentReminder> reminders, boolean clearAll, SyncCallback callback) {
-        final String id = currentDeviceId();
+        // 呼んだ時点の ID で送る。ログアウトは予約を消す同期をここへ積んでから prefs.clearAll() で ID を
+        // 作り直すので、executor の中で読むと新しい ID の (空の) 予約を消すことになる。
+        final String deviceId = getDeviceId();
         executor.execute(() -> {
             boolean ok = false;
             try {
                 JsonObject body = new JsonObject();
-                body.addProperty("deviceId", id);
+                body.addProperty("deviceId", deviceId);
                 body.addProperty("clearAll", clearAll);
                 JsonArray arr = new JsonArray();
                 for (AssignmentReminder r : reminders) {
@@ -168,18 +166,45 @@ public class PushNotificationService {
             }
             if (callback != null) {
                 final boolean result = ok;
-                mainHandler.post(() -> callback.onDone(result));
+                // 使う所で作る (フィールドで作ると、Looper の無い JVM のテストで生成できない)。
+                new Handler(Looper.getMainLooper()).post(() -> callback.onDone(result));
+            }
+        });
+    }
+
+    /**
+     * サーバーからこの端末の行と、それに紐付く予約・エラーレポートを消す (DELETE /api/devices/:deviceId)。
+     * ログアウトは prefs.clearAll() で ID を作り直すので、その前に呼ぶ (呼んだ時点の ID を消す)。
+     * 消さないと古い ID の行が FCM トークンを持ったまま残り、再ログインするまで一斉配信がそちらにも届く。
+     * 失敗しても止めない。残った行のトークンは、新しい ID で登録したときにサーバーが外す。
+     */
+    public void deleteDevice() {
+        final String deviceId = getDeviceId();
+        executor.execute(() -> {
+            try {
+                Request req = new Request.Builder()
+                        .url(BASE_URL + "/api/devices/" + java.net.URLEncoder.encode(deviceId, "UTF-8"))
+                        .delete()
+                        .build();
+                OkHttpClient client = NetworkClient.getNoCookieClient().newBuilder()
+                        .callTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                        .build();
+                try (Response resp = client.newCall(req).execute()) {
+                    if (!resp.isSuccessful()) android.util.Log.w("PushNotificationService", "devices delete: HTTP " + resp.code());
+                }
+            } catch (Exception e) {
+                android.util.Log.w("PushNotificationService", "devices delete failed: " + e.getMessage());
             }
         });
     }
 
     public void reportError(String title, String message) {
-        final String id = currentDeviceId();
-        final String supportId = prefs != null ? prefs.getSupportId() : null;
+        final String deviceId = getDeviceId();
+        final String supportId = supportIds.get();
         executor.execute(() -> {
             try {
                 JsonObject body = new JsonObject();
-                body.addProperty("deviceId", id);
+                body.addProperty("deviceId", deviceId);
                 body.addProperty("title", title);
                 body.addProperty("message", message);
                 body.addProperty("os", "Android");
