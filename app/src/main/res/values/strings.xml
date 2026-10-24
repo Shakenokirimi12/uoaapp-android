@@ -130,13 +130,13 @@
     <string name="lunch_channel_name">学食メニュー</string>
     <string name="otp_relay_channel_name">PC への OTP 送信結果</string>
     <string name="otp_relay_title">PC との連携</string>
-    <string name="otp_relay_intro">PC で OTP の入力画面が出ると、この端末が大学のメールから OTP を読み取り、暗号化して自動で PC に送ります。ユーザー名とパスワードは、PC にも中継サーバにも送りません。</string>
+    <string name="otp_relay_intro">PC で OTP の入力画面が出ると、この端末が OTP を暗号化して自動で PC に送ります (メール方式なら大学のメールから読み、認証アプリ方式ならセットアップキーで作ります)。ユーザー名・パスワード・セットアップキーは、PC にも中継サーバにも送りません。</string>
     <string name="otp_relay_consent_continue">続ける</string>
     <string name="otp_relay_consent_pending">確認が済むまで OTP を送りません</string>
     <string name="otp_relay_consent_save_failed">この端末に保存できませんでした。設定の「PC との連携 (OTP)」を開いて、もう一度お試しください。</string>
     <string name="otp_relay_unreachable">中継サーバに接続できませんでした。</string>
     <string name="otp_relay_consent_title">PC との連携を続けますか？</string>
-    <string name="otp_relay_consent_message">「%1$s」で OTP の入力画面が出ると、このアプリが大学のメールを読んで OTP を取り出し、暗号化してその PC に自動で送ります。ユーザー名とパスワードは送りません。「続ける」を押すと、そのためにメールを読むことに同意したことになります。確認コードのメールは、古いものも含めて削除します。\n\n心当たりのない PC なら、「解除」を押してください。</string>
+    <string name="otp_relay_consent_message">「%1$s」で OTP の入力画面が出ると、このアプリが OTP を用意し、暗号化してその PC に自動で送ります。メール方式なら大学のメールから読み取り (確認コードのメールは、古いものも含めて削除します)、認証アプリ方式ならこのアプリにあるセットアップキーでコードを作ります。ユーザー名・パスワード・セットアップキーは送りません。「続ける」を押すと、そのためにメールを読み、コードを作って送ることに同意したことになります。\n\n心当たりのない PC なら、「解除」を押してください。</string>
     <string name="otp_relay_ext_title">PC に拡張を入れる</string>
     <string name="otp_relay_ext_lead">PC のブラウザでこの URL を開くと、UoA 非公式拡張を入れられます。</string>
     <string name="otp_relay_ext_url_display" translatable="false">uoa-app.shakenokiri.me/ext</string>
@@ -158,8 +158,8 @@
     <string name="otp_relay_paired_on">%1$s に連携</string>
     <string name="otp_relay_section_last_result">直近の結果</string>
     <string name="otp_relay_section_howto">連携のしかた</string>
-    <string name="otp_relay_howto">1. PC の拡張の設定で「OTP 自動入力」の「メール方式」を、このアプリに依頼する方式にする
-2. 拡張で連携用の QR を出し、この端末の標準のカメラ (または Google レンズ) で読む。カメラから開けないときは、QR の中身のリンクをコピーして「リンクを貼り付けて連携」に貼る
+    <string name="otp_relay_howto">1. PC の拡張の設定で「OTP の自動入力」の「スマホと連携」を押し、連携用の QR を出す
+2. その QR を、この端末の標準のカメラ (または Google レンズ) で読む。カメラから開けないときは、QR の中身のリンクをコピーして「リンクを貼り付けて連携」に貼る
 3. このアプリが開いたら「同意して連携する」を押す</string>
     <string name="otp_relay_unpair_confirm">「%1$s」との連携を解除しますか？</string>
     <string name="otp_relay_unpair_failed_title">中継サーバで解除できませんでした</string>
