@@ -59,8 +59,16 @@
         <action android:id="@+id/action_settings_to_notify_times" app:destination="@id/navigation_notify_times" />
         <action android:id="@+id/action_settings_to_nav_settings" app:destination="@id/navigation_nav_settings" />
         <action android:id="@+id/action_settings_to_idp_tutorial" app:destination="@id/navigation_idp_tutorial" />
-        <action android:id="@+id/action_settings_to_idp_otp_registration" app:destination="@id/navigation_idp_otp_registration" />
-        <action android:id="@+id/action_settings_to_otp_relay" app:destination="@id/navigation_otp_relay" />
+        <action android:id="@+id/action_settings_to_login_settings" app:destination="@id/navigation_login_settings" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_login_settings"
+        android:name="com.shakenokirimi12.uoa_app.ui.settings.LoginSettingsFragment"
+        android:label="@string/login_settings_title"
+        tools:layout="@layout/fragment_login_settings">
+        <action android:id="@+id/action_login_settings_to_idp_otp_registration" app:destination="@id/navigation_idp_otp_registration" />
+        <action android:id="@+id/action_login_settings_to_otp_relay" app:destination="@id/navigation_otp_relay" />
     </fragment>
 
     <fragment

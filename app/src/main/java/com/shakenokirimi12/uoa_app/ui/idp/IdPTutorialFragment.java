@@ -63,9 +63,9 @@ public class IdPTutorialFragment extends Fragment {
         // ホームの対話的な取得 (引っ張って更新と同じ) でログインさせる。
         if (!prefs.hasCredentials() || prefs.isCredentialsInvalid()) {
             // ID/パスワードが無い、または誤りと分かっている (ホームはこの状態ではログインを試みない)。
-            // 入力し直せる設定画面へ。
+            // 入力し直せるログインの画面へ。
             nav.popBackStack();
-            nav.navigate(R.id.navigation_settings);
+            nav.navigate(R.id.navigation_login_settings);
             return;
         }
         nav.getBackStackEntry(R.id.navigation_home).getSavedStateHandle()

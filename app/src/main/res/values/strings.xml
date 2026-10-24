@@ -212,6 +212,26 @@
     <string name="otp_code_mail_prompt">メールに届いたコードを入力してください</string>
     <string name="otp_no_otpauth_app">開けるアプリがありません。Authy などは下のキーを手で追加してください</string>
     <string name="otp_secret_copied">キーをコピーしました</string>
+    <string name="otp_reregister">認証アプリに登録し直す</string>
+    <string name="otp_reregister_summary">キーを失くしたときや、コードが通らないとき</string>
     <string name="otp_reregister_notice">新しいキーを登録します。外部の認証アプリに入れていたら、新しいキーで入れ直してください。</string>
     <string name="otp_reregister_done">登録し直しました。ログインのコードはこのアプリが入力します。</string>
+    <string name="login_settings_title">ログインとワンタイムパスワード</string>
+    <string name="login_account_summary">大学のユーザー名とパスワード</string>
+    <string name="login_otp_section">ワンタイムパスワード</string>
+    <string name="login_otp_method">受け取り方</string>
+    <string name="login_show_secret">キーを表示</string>
+    <string name="login_show_secret_summary">Authy などに追加するとき。画面ロックの確認があります</string>
+    <string name="login_relay_section">PC での入力</string>
+    <string name="login_relay_summary">PC のブラウザでログインするとき、コードをこの端末から送ります</string>
+    <string name="login_secret_title">認証アプリのキー</string>
+    <string name="login_secret_message">%1$s\n\nAuthy などの「手動で入力」に、このキーを入れてください。QR はこの画面には出せません。</string>
+    <string name="login_secret_needs_lock">画面ロック (PIN やパターン) を設定すると表示できます。</string>
+    <string name="login_secret_confirm_title">キーを表示</string>
+    <string name="login_secret_confirm_description">本人か確かめます</string>
+    <string name="close">閉じる</string>
+    <string name="login_not_logged_in">未ログイン</string>
+    <string name="login_authenticator_with_secret">コードはこのアプリが作って入力します。</string>
+    <string name="login_authenticator_without_secret">このアプリはキーを持っていないので、ログインのたびに認証アプリのコードを入力します。登録し直すと、このアプリが入力するようになります。</string>
+    <string name="settings_login_row">ログインとワンタイムパスワード</string>
 </resources>

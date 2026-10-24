@@ -32,8 +32,9 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
+                <!-- アカウントとワンタイムパスワードは別の画面 (LoginSettingsFragment) にまとめた -->
                 <LinearLayout
-                    android:id="@+id/row_account"
+                    android:id="@+id/row_login"
                     style="@style/Widget.Uoa.ListRow.Container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -43,7 +44,7 @@
 
                     <ImageView
                         style="@style/Widget.Uoa.IconContainer"
-                        android:contentDescription="@string/settings_account"
+                        android:contentDescription="@null"
                         android:src="@drawable/ic_user" />
 
                     <LinearLayout
@@ -54,86 +55,27 @@
                         android:orientation="vertical">
 
                         <TextView
-                            android:id="@+id/text_username"
                             style="@style/Widget.Uoa.ListRow.Title"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            tools:text="s1234567" />
+                            android:text="@string/settings_login_row" />
 
                         <TextView
+                            android:id="@+id/text_login_summary"
                             style="@style/Widget.Uoa.ListRow.Supporting"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="@string/settings_username" />
+                            tools:text="s1300000 ・ メールで受け取る" />
                     </LinearLayout>
 
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_marginStart="12dp"
-                        android:contentDescription="アカウント情報の変更"
-                        android:src="@drawable/ic_edit"
-                        app:tint="?attr/colorOnSurfaceVariant" />
-                </LinearLayout>
-                <com.google.android.material.divider.MaterialDivider
-                    style="@style/Widget.Uoa.Divider"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-                <!-- ワンタイムパスワードの受け取り方。大学側の設定と揃っていないとログインできない。 -->
-                <LinearLayout
-                    android:id="@+id/row_otp_method"
-                    style="@style/Widget.Uoa.ListRow.Container"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            style="@style/Widget.Uoa.ListRow.Title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/settings_otp_method" />
-
-                        <TextView
-                            android:id="@+id/text_otp_method"
-                            style="@style/Widget.Uoa.ListRow.Supporting"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            tools:text="メールで受け取る" />
-                    </LinearLayout>
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_marginStart="12dp"
-                        android:contentDescription="@string/settings_otp_method"
+                        android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
                         app:tint="?attr/colorOnSurfaceVariant" />
                 </LinearLayout>
-
-                <!-- PC との連携 (OTP)。メール方式のときだけ出す (iOS と同じ)。 -->
-                <com.google.android.material.divider.MaterialDivider
-                    android:id="@+id/divider_otp_relay"
-                    style="@style/Widget.Uoa.Divider"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-                <TextView
-                    android:id="@+id/row_otp_relay"
-                    style="@style/Widget.Uoa.ListRow"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="@string/otp_relay_title" />
 
                 <com.google.android.material.divider.MaterialDivider
                     android:id="@+id/divider_logout"
