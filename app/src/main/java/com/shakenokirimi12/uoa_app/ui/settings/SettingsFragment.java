@@ -274,6 +274,8 @@ public class SettingsFragment extends Fragment {
                             // 「サーバーが予約を持っている」記録の両方を消すので、後から呼ぶと
                             // 取り消しは早期 return し、古い deviceId の予約が二度と触れなくなる。
                             com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.clear(requireContext());
+                            // サーバーの端末の行も消す (iOS の「全データを削除」と同じ)。これも今の ID で、clearAll の前に積む。
+                            com.shakenokirimi12.uoa_app.services.PushNotificationService.shared(requireContext()).deleteDevice();
                             // PC 中継の連携も中継サーバから消す。解除が済むまで鍵は「解除待ち」に残し、
                             // 失敗しても送り直す (clearAll でも消えない)。
                             com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairingService.unpairAllOnLogout(requireContext());
