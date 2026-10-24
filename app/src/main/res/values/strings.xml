@@ -47,7 +47,7 @@
     <string name="settings_otp_method_mail">メールで受け取る</string>
     <string name="settings_otp_method_authenticator">認証アプリを使う</string>
     <string name="idp_tutorial_otp_mail">メールで届くワンタイムパスワードは、このアプリが大学のメールから読み取って入力します。読み取れないときは、届いたコードを入力してください。認証アプリを使う場合は、設定の「ワンタイムパスワード」で切り替えます。</string>
-    <string name="settings_otp_method_mail_description">大学のメールに届くワンタイムパスワードを、このアプリが読み取って入力します。</string>
+    <string name="settings_otp_method_mail_description">大学のメールに届くコードを自動で読み取って入力します。</string>
     <string name="otp_method_name_mail">メール</string>
     <string name="otp_method_name_authenticator">認証アプリ</string>
     <string name="otp_switch_to_mail">メールに切り替える</string>
@@ -188,20 +188,20 @@
     <string name="widget_last_updated">最終更新 %1$s</string>
     <string name="widget_classes_finished">今日の授業は終わりました</string>
     <string name="widget_more">他 %1$d 件</string>
-    <string name="settings_assignment_notify_summary">締切前の通知と、締切 2 時間前からの残り時間</string>
+    <string name="settings_assignment_notify_summary">締切前のお知らせと、2 時間前からの残り時間の表示</string>
     <string name="settings_notify_times">通知するタイミング</string>
     <string name="settings_class_notification">授業の常駐通知</string>
-    <string name="settings_class_notification_summary">授業中と次の授業を通知欄に出し続けます</string>
+    <string name="settings_class_notification_summary">授業中と次の授業を通知欄に常に表示します</string>
     <string name="settings_lunch_notify_summary">毎日決まった時刻に、その日のメニューを通知します</string>
     <string name="settings_lunch_time">時刻</string>
     <string name="settings_attendance">出席</string>
     <string name="settings_auto_attendance">自動出席</string>
-    <string name="settings_auto_attendance_summary">キャンパスに着いたら、その時間の授業を出席として記録します。大学には送りません</string>
+    <string name="settings_auto_attendance_summary">キャンパスに着くと、その時間の授業を出席としてこの端末に記録します。大学の出席登録にはなりません</string>
     <string name="settings_location_warning">位置情報が「常に許可」でないため、アプリを閉じている間は動きません。タップして変更</string>
     <string name="settings_other">その他</string>
-    <string name="settings_tabs">タブの並び</string>
-    <string name="settings_backup">設定を書き出す</string>
-    <string name="settings_restore">設定を読み込む</string>
+    <string name="settings_tabs">タブの並び替え</string>
+    <string name="settings_backup">設定をバックアップ</string>
+    <string name="settings_restore">バックアップから戻す</string>
     <string name="otp_add_to_authenticator">Google Authenticator に追加</string>
     <string name="otp_manual_secret_hint">Authy などはコードを手で追加します。下のキーを入力してください。QR はこの画面には出せません。</string>
     <string name="otp_copy_secret">キーをコピー</string>
@@ -212,7 +212,7 @@
     <string name="otp_no_otpauth_app">開けるアプリがありません。Authy などは下のキーを手で追加してください</string>
     <string name="otp_secret_copied">キーをコピーしました</string>
     <string name="otp_reregister">認証アプリに登録し直す</string>
-    <string name="otp_reregister_summary">キーを失くしたときや、コードが通らないとき</string>
+    <string name="otp_reregister_summary">自動入力にするときや、コードが通らないとき</string>
     <string name="otp_reregister_notice">新しいキーを登録します。外部の認証アプリに入れていたら、新しいキーで入れ直してください。</string>
     <string name="otp_reregister_done">登録し直しました。ログインのコードはこのアプリが入力します。</string>
     <string name="login_settings_title">ログインとワンタイムパスワード</string>
@@ -230,7 +230,7 @@
     <string name="login_secret_confirm_description">本人か確かめます</string>
     <string name="close">閉じる</string>
     <string name="login_not_logged_in">未ログイン</string>
-    <string name="login_authenticator_with_secret">コードはこのアプリが作って入力します。</string>
-    <string name="login_authenticator_without_secret">このアプリはキーを持っていないので、ログインのたびに認証アプリのコードを入力します。登録し直すと、このアプリが入力するようになります。</string>
+    <string name="login_authenticator_with_secret">コードは自動で入力されます。</string>
+    <string name="login_authenticator_without_secret">コードは毎回手で入力します。登録し直すと、自動で入力されるようになります。</string>
     <string name="settings_login_row">ログインとワンタイムパスワード</string>
 </resources>

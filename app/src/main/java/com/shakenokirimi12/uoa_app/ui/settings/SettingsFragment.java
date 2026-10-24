@@ -127,9 +127,9 @@ public class SettingsFragment extends Fragment {
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     try {
                         BackupService.exportTo(requireContext(), result.getData().getData());
-                        Toast.makeText(requireContext(), "設定を書き出しました", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "バックアップしました", Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
-                        Toast.makeText(requireContext(), "書き出せませんでした: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "バックアップできませんでした: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -140,9 +140,9 @@ public class SettingsFragment extends Fragment {
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     try {
                         BackupService.importFrom(requireContext(), result.getData().getData());
-                        Toast.makeText(requireContext(), "設定を読み込みました。アプリを開き直すと反映されます", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "バックアップから戻しました。アプリを開き直すと反映されます", Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
-                        Toast.makeText(requireContext(), "読み込めませんでした: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "戻せませんでした: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
