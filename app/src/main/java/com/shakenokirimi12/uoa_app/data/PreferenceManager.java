@@ -28,6 +28,8 @@ public class PreferenceManager {
     private static final String KEY_CLASS_NOTIFICATION = "class_notification_enabled";
     private static final String KEY_LAST_SYNC = "last_sync";
     private static final String KEY_DEVICE_ID = "device_id";
+    /** 問い合わせ ID (SupportId)。device_id と同じく、この端末 (このインストール) だけのもの。 */
+    private static final String KEY_SUPPORT_ID = "support_id";
     private static final String KEY_AUTO_ATTENDANCE = "auto_attendance_enabled";
     private static final String KEY_SELECTED_NOTIFY_TIMES = "selected_notify_times";
     private static final String KEY_CUSTOM_NOTIFY_TIMES = "custom_notify_times";
@@ -61,9 +63,10 @@ public class PreferenceManager {
      * (applyRegisteredOtpMethod)。
      * SAF のバックアップ (BackupService) は書き出さず、OS の自動バックアップ・端末間転送は
      * UoaBackupAgent が復元直後に消す。消えた端末は getDeviceId() が新しい id を作る。
+     * support_id (問い合わせ ID) も持ち込むと 2 台が同じ ID になり、管理画面の検索で見分けられない。
      */
     public static final String[] DEVICE_LOCAL_KEYS = {
-            KEY_DEVICE_ID, KEY_FCM_TOKEN, KEY_SERVER_HOLDS_REMINDERS, KEY_OTP_METHOD,
+            KEY_DEVICE_ID, KEY_FCM_TOKEN, KEY_SERVER_HOLDS_REMINDERS, KEY_OTP_METHOD, KEY_SUPPORT_ID,
     };
 
     /**
@@ -311,6 +314,19 @@ public class PreferenceManager {
         if (id.isEmpty()) {
             id = java.util.UUID.randomUUID().toString();
             prefs.edit().putString(KEY_DEVICE_ID, id).apply();
+        }
+        return id;
+    }
+
+    /**
+     * 問い合わせ ID (SupportId)。無ければ (形が合わなければ) 作って保存する。設定の画面に出し、
+     * 通知の登録・エラー報告・OTP 中継の連携で送る。起動直後は複数のスレッドから呼ばれるので、2 つ作らないように同期する。
+     */
+    public synchronized String getSupportId() {
+        String id = prefs.getString(KEY_SUPPORT_ID, "");
+        if (!SupportId.isValid(id)) {
+            id = SupportId.generate();
+            prefs.edit().putString(KEY_SUPPORT_ID, id).apply();
         }
         return id;
     }

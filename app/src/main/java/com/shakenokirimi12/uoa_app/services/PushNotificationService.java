@@ -27,6 +27,8 @@ public class PushNotificationService {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Gson gson = new Gson();
     private String deviceId;
+    /** 問い合わせ ID を読むため (shared() で入れる)。ログアウトで作り直されるので、送るたびに読む。 */
+    private com.shakenokirimi12.uoa_app.data.PreferenceManager prefs;
 
     private static PushNotificationService shared;
 
@@ -38,8 +40,8 @@ public class PushNotificationService {
     public static synchronized PushNotificationService shared(android.content.Context context) {
         if (shared == null) {
             shared = new PushNotificationService();
-            shared.init(com.shakenokirimi12.uoa_app.data.PreferenceManager
-                    .getInstance(context.getApplicationContext()).getDeviceId());
+            shared.prefs = com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(context.getApplicationContext());
+            shared.init(shared.prefs.getDeviceId());
         }
         return shared;
     }
@@ -67,6 +69,8 @@ public class PushNotificationService {
                 body.addProperty("deviceId", deviceId);
                 body.addProperty("os", "Android");
                 body.addProperty("appVersion", BuildConfig.VERSION_NAME);
+                // 管理画面で問い合わせ ID から端末を引くため (SupportId)。
+                if (prefs != null) body.addProperty("supportId", prefs.getSupportId());
                 if (fcmToken != null && !fcmToken.isEmpty()) {
                     body.addProperty("fcmToken", fcmToken);
                 }
@@ -165,6 +169,7 @@ public class PushNotificationService {
                 body.addProperty("message", message);
                 body.addProperty("os", "Android");
                 body.addProperty("appVersion", BuildConfig.VERSION_NAME);
+                if (prefs != null) body.addProperty("supportId", prefs.getSupportId());
 
                 OkHttpClient client = NetworkClient.getNoCookieClient();
                 Request req = new Request.Builder()

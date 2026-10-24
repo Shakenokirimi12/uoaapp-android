@@ -52,7 +52,8 @@ public final class OtpRelayPairingService {
         OtpRelayApi api = new OtpRelayApi();
         OtpRelayApi.Reply reply;
         try {
-            reply = api.register(pending.pairingId, keys, token, deviceName(), pending.browserName, false);
+            reply = api.register(pending.pairingId, keys, token, deviceName(), pending.browserName, false,
+                    PreferenceManager.getInstance(ctx).getSupportId());
         } catch (IOException e) {
             throw new PairingException("中継サーバに接続できませんでした。");
         }
@@ -112,11 +113,12 @@ public final class OtpRelayPairingService {
      */
     public static void reregisterAll(@NonNull String token) {
         OtpRelayApi api = new OtpRelayApi();
+        String supportId = PreferenceManager.getInstance().getSupportId();
         for (OtpRelayPairing p : OtpRelayStore.all()) {
             OtpRelayCrypto.Keys keys = OtpRelayCrypto.keys(p.key);
             if (keys == null) continue;
             try {
-                OtpRelayApi.Reply reply = api.register(p.pairingId, keys, token, deviceName(), p.browserName, true);
+                OtpRelayApi.Reply reply = api.register(p.pairingId, keys, token, deviceName(), p.browserName, true, supportId);
                 if (reply.status == 404) OtpRelayStore.remove(p.pairingId);
                 else if (reply.status != 200 && reply.status != 201) {
                     Log.w(TAG, "re-register " + reply.status + " " + reply.error);
