@@ -264,6 +264,21 @@ public class SettingsFragment extends Fragment {
         TextView textVersion = view.findViewById(R.id.text_version);
         textVersion.setText(getString(R.string.settings_version) + " " + BuildConfig.VERSION_NAME);
 
+        // 問い合わせ ID。秘密ではないので、OTP のシークレットと違ってクリップボードのプレビューは止めない。
+        TextView textSupportId = view.findViewById(R.id.text_support_id);
+        String supportId = prefs.getSupportId();
+        textSupportId.setText(supportId);
+        view.findViewById(R.id.button_copy_support_id).setOnClickListener(v -> {
+            android.content.ClipboardManager clipboard =
+                    (android.content.ClipboardManager) requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+            if (clipboard == null) return;
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText(getString(R.string.settings_support_id), supportId));
+            // Android 13 以降はシステムがコピーしたことを出すので、重ねて出さない。
+            if (Build.VERSION.SDK_INT < 33) {
+                Toast.makeText(requireContext(), R.string.settings_support_id_copied, Toast.LENGTH_SHORT).show();
+            }
+        });
+
         // Logout
         view.findViewById(R.id.button_logout).setOnClickListener(v ->
                 new MaterialAlertDialogBuilder(requireContext())

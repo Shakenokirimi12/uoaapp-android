@@ -199,6 +199,11 @@
     <string name="settings_auto_attendance_summary">キャンパスに着くと、その時間の授業を出席としてこの端末に記録します。大学の出席登録にはなりません</string>
     <string name="settings_location_warning">位置情報が「常に許可」でないため、アプリを閉じている間は動きません。タップして変更</string>
     <string name="settings_other">その他</string>
+    <string name="settings_support">問い合わせ</string>
+    <string name="settings_support_id">問い合わせ ID</string>
+    <string name="settings_support_id_summary">問い合わせるときは、この ID を書き添えてください。この端末の記録を探すのに使います。</string>
+    <string name="settings_support_id_copy">問い合わせ ID をコピー</string>
+    <string name="settings_support_id_copied">問い合わせ ID をコピーしました</string>
     <string name="settings_tabs">タブの並び替え</string>
     <string name="settings_backup">設定をバックアップ</string>
     <string name="settings_restore">バックアップから戻す</string>

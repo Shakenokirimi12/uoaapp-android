@@ -44,6 +44,7 @@ public class BackupServiceTest {
     public void export_neverContainsDeviceLocalValues_evenWhenPrefsHoldThem() {
         Map<String, Object> prefs = new HashMap<>();
         prefs.put("device_id", "11111111-aaaa");
+        prefs.put("support_id", "7K3M-9QXA");
         prefs.put("fcm_token", "token-of-this-phone");
         prefs.put("server_holds_assignment_reminders", true);
         prefs.put("notify_lunch", true);
@@ -78,12 +79,13 @@ public class BackupServiceTest {
     @Test
     public void osRestore_dropsDeviceLocalValues_andKeepsSettings() {
         Set<String> restored = new HashSet<>(Arrays.asList(
-                "device_id", "fcm_token", "server_holds_assignment_reminders", "otp_method", "notify_lunch", "main_tabs"));
+                "device_id", "fcm_token", "server_holds_assignment_reminders", "otp_method", "support_id",
+                "notify_lunch", "main_tabs"));
         RecordingEditor editor = new RecordingEditor();
 
         int removed = UoaBackupAgent.removeDeviceLocal(restored, editor);
 
-        assertEquals(4, removed);
+        assertEquals(5, removed);
         assertEquals(new HashSet<>(Arrays.asList(PreferenceManager.DEVICE_LOCAL_KEYS)), editor.removed);
         assertTrue(editor.written.isEmpty());
     }

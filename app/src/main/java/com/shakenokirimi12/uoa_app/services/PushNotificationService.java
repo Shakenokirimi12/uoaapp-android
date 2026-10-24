@@ -27,6 +27,8 @@ public class PushNotificationService {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Gson gson = new Gson();
     private String deviceId;
+    /** 端末の id と問い合わせ ID を読むため (shared() で入れる)。どちらもログアウトで作り直されるので、送るたびに読む。 */
+    private com.shakenokirimi12.uoa_app.data.PreferenceManager prefs;
 
     private static PushNotificationService shared;
 
@@ -38,8 +40,8 @@ public class PushNotificationService {
     public static synchronized PushNotificationService shared(android.content.Context context) {
         if (shared == null) {
             shared = new PushNotificationService();
-            shared.init(com.shakenokirimi12.uoa_app.data.PreferenceManager
-                    .getInstance(context.getApplicationContext()).getDeviceId());
+            shared.prefs = com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(context.getApplicationContext());
+            shared.init(shared.prefs.getDeviceId());
         }
         return shared;
     }
@@ -52,7 +54,17 @@ public class PushNotificationService {
         }
     }
 
-    public String getDeviceId() { return deviceId; }
+    public String getDeviceId() { return currentDeviceId(); }
+
+    /**
+     * 今の端末の id。ログアウト (PreferenceManager.clearAll) で作り直されるので、プロセスの最初に読んだ値ではなく
+     * 毎回 prefs から読む。以前は最初の値を持ち続け、ログアウトのあとも前の利用者の端末の行へ登録していた。
+     * 送る処理は executor に積む前 (呼んだ時点) に読む: ログアウトは「予約を空にする」を積んでから clearAll するので、
+     * 積んだ後に読むと新しい id の予約を空にしてしまう。
+     */
+    private String currentDeviceId() {
+        return prefs != null ? prefs.getDeviceId() : deviceId;
+    }
 
     public void registerDevice() { registerDevice(null); }
 
@@ -61,12 +73,16 @@ public class PushNotificationService {
      *                 を一切送れない。iOS の APNs deviceToken に相当する。
      */
     public void registerDevice(String fcmToken) {
+        final String id = currentDeviceId();
+        final String supportId = prefs != null ? prefs.getSupportId() : null;
         executor.execute(() -> {
             try {
                 JsonObject body = new JsonObject();
-                body.addProperty("deviceId", deviceId);
+                body.addProperty("deviceId", id);
                 body.addProperty("os", "Android");
                 body.addProperty("appVersion", BuildConfig.VERSION_NAME);
+                // 管理画面で問い合わせ ID から端末を引くため (SupportId)。
+                if (supportId != null) body.addProperty("supportId", supportId);
                 if (fcmToken != null && !fcmToken.isEmpty()) {
                     body.addProperty("fcmToken", fcmToken);
                 }
@@ -115,11 +131,12 @@ public class PushNotificationService {
      *                 消すと cron が拾う前の再同期で黙って消える)。止めるときだけは全部消す。
      */
     public void syncAssignmentReminders(List<AssignmentReminder> reminders, boolean clearAll, SyncCallback callback) {
+        final String id = currentDeviceId();
         executor.execute(() -> {
             boolean ok = false;
             try {
                 JsonObject body = new JsonObject();
-                body.addProperty("deviceId", deviceId);
+                body.addProperty("deviceId", id);
                 body.addProperty("clearAll", clearAll);
                 JsonArray arr = new JsonArray();
                 for (AssignmentReminder r : reminders) {
@@ -157,14 +174,17 @@ public class PushNotificationService {
     }
 
     public void reportError(String title, String message) {
+        final String id = currentDeviceId();
+        final String supportId = prefs != null ? prefs.getSupportId() : null;
         executor.execute(() -> {
             try {
                 JsonObject body = new JsonObject();
-                body.addProperty("deviceId", deviceId);
+                body.addProperty("deviceId", id);
                 body.addProperty("title", title);
                 body.addProperty("message", message);
                 body.addProperty("os", "Android");
                 body.addProperty("appVersion", BuildConfig.VERSION_NAME);
+                if (supportId != null) body.addProperty("supportId", supportId);
 
                 OkHttpClient client = NetworkClient.getNoCookieClient();
                 Request req = new Request.Builder()

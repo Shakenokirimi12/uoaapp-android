@@ -48,10 +48,14 @@ public final class OtpRelayApi {
         this.client = client;
     }
 
-    /** POST /v1/pairings。FCM の data メッセージで依頼を受ける (platform "fcm")。 */
+    /**
+     * POST /v1/pairings。FCM の data メッセージで依頼を受ける (platform "fcm")。
+     * supportId は問い合わせ ID (SupportId)。管理画面で連携を引くためだけのもので、鍵ではない。null なら送らない。
+     */
     @NonNull
     public Reply register(@NonNull String pairingId, @NonNull OtpRelayCrypto.Keys keys, @NonNull String fcmToken,
-                          @NonNull String deviceName, @NonNull String browserLabel, boolean updateOnly)
+                          @NonNull String deviceName, @NonNull String browserLabel, boolean updateOnly,
+                          @androidx.annotation.Nullable String supportId)
             throws IOException {
         JsonObject body = new JsonObject();
         body.addProperty("pairingId", pairingId);
@@ -62,6 +66,7 @@ public final class OtpRelayApi {
         body.addProperty("deviceName", deviceName);
         body.addProperty("browserLabel", browserLabel);
         body.addProperty("updateOnly", updateOnly);
+        if (supportId != null) body.addProperty("supportId", supportId);
         return send("POST", "/v1/pairings", null, body, DEFAULT_TIMEOUT_MS);
     }
 

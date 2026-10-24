@@ -266,7 +266,7 @@ public class OtpRelayResponderTest {
 
     @Test
     public void register_sendsFcmPlatform_withoutAuthorization() throws Exception {
-        api.register(pairing.pairingId, OtpRelayCrypto.keys(K), "fcm-token", "Pixel 9", "Mac の Chrome", true);
+        api.register(pairing.pairingId, OtpRelayCrypto.keys(K), "fcm-token", "Pixel 9", "Mac の Chrome", true, "7K3M-9QXA");
         LoopbackHttpServer.Recorded r = server.first("/v1/pairings");
         assertNull(r.header("Authorization"));
         JsonObject body = JsonParser.parseString(r.body).getAsJsonObject();
@@ -275,6 +275,7 @@ public class OtpRelayResponderTest {
         assertEquals("Pixel 9", body.get("deviceName").getAsString());
         assertEquals("Mac の Chrome", body.get("browserLabel").getAsString());
         assertTrue(body.get("updateOnly").getAsBoolean());
+        assertEquals("7K3M-9QXA", body.get("supportId").getAsString());
         assertEquals("bbEmF7m--IEXYyof_ClXmkIOUhaVcBup4ZYLotntVWo", body.get("requestToken").getAsString());
         assertEquals(RESPOND_TOKEN, body.get("respondToken").getAsString());
     }
