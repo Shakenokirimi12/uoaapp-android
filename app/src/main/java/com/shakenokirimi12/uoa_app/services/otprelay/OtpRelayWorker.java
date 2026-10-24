@@ -29,8 +29,9 @@ import java.util.concurrent.TimeoutException;
 /**
  * PC からの依頼の処理。FCM の受信から、すぐ動く (expedited) 仕事として積む。
  *
- * 依頼ごとの承認は無い (2026-10-21 に廃止。iOS と同じ)。その連携でメールを読むことに同意している
- * (OtpRelayPairing.hasMailConsent) なら、メールを読んで自動で返す。同意は連携の確認ダイアログで
+ * 依頼ごとの承認は無い (2026-10-21 に廃止。iOS と同じ)。その連携で同意している
+ * (OtpRelayPairing.hasMailConsent) なら、メールから読むか、PC の画面が認証アプリ方式ならセットアップキーで
+ * コードを作って、自動で返す (OtpRelayResponder.route)。同意は連携の確認ダイアログで
  * 連携ごとに得る。同意を記録する前に作った連携はメールを読まずに断り、アプリでの確認を求める
  * (OtpRelayConsentPrompt)。アプリ自身のログインのメール方式とは別。
  *
@@ -269,6 +270,20 @@ public class OtpRelayWorker extends Worker {
                     @NonNull @Override public String password() { return prefs.getPassword(); }
                 },
                 OtpRelayStore::setLastResult,
-                System::currentTimeMillis);
+                System::currentTimeMillis,
+                new OtpRelayResponder.TotpSource() {
+                    @Override
+                    public boolean authenticatorMethod() {
+                        return com.shakenokirimi12.uoa_app.services.idp.OtpMethod.AUTHENTICATOR.value.equals(prefs.getOtpMethod());
+                    }
+
+                    @androidx.annotation.Nullable
+                    @Override
+                    public com.shakenokirimi12.uoa_app.services.idp.Totp.Params keyFor(@NonNull String uid) {
+                        // 今の ID の鍵だけ (別の ID の鍵は totpOtpauthFor が返さない)。
+                        return com.shakenokirimi12.uoa_app.services.idp.Totp.parse(prefs.totpOtpauthFor(uid));
+                    }
+                },
+                Thread::sleep);
     }
 }
