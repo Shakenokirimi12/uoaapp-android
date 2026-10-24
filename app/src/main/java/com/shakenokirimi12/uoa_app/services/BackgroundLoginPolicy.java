@@ -5,8 +5,8 @@ import androidx.annotation.Nullable;
 
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.services.idp.OtpProviders;
+import com.shakenokirimi12.uoa_app.services.idp.SeciossError;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -18,7 +18,8 @@ import java.security.NoSuchAlgorithmException;
  * - OTP をバックグラウンドの文脈で用意できる (OtpProvider.canRunUnattended)。メール方式は常に不可
  *   (ログイン 1 回 = OTP メール 1 通、2026-09-25 の大量発生)。認証アプリ方式はこのアプリが鍵を持つときだけ可。
  * - ID / パスワードが、最後にログインに成功したときと同じ (変えたばかりのパスワードを裏で試さない)。
- * - 前のバックグラウンドのログインが失敗していない。失敗したら、前面でログインに成功するまで止める (保存する)。
+ * - 前のバックグラウンドのログインで、ID / パスワードの誤り・作ったコードを弾かれた・想定外の IdP の画面が
+ *   起きていない。起きたら、前面でログインに成功するまで止める (保存する)。それ以外の失敗は間隔の 1 回として数えるだけ。
  * - 同じサービスで直前の試行から MIN_INTERVAL_MS 以上たっている (保存する)。
  */
 public final class BackgroundLoginPolicy {
@@ -116,18 +117,35 @@ public final class BackgroundLoginPolicy {
     }
 
     /**
-     * バックグラウンドのログインが失敗した。通信の失敗と割り込み (WorkManager の停止) は大学側が答えていないので
-     * 止めずに間隔の制限に任せる。それ以外 (ID / パスワード誤り、作ったコードを弾かれた、想定外の画面) は
-     * 前面のログインが通るまで止める。
+     * バックグラウンドのログインが失敗した。前面のログインが通るまで止めるのは、アカウントのロックにつながるか、
+     * キーやパスワードが悪いと分かる失敗だけ (stopsUnattendedLogins)。メンテナンス・サーバーの 5xx・途中での
+     * セッション切れ・通信の失敗は、30 分の間隔の 1 回として数えるだけにする (夜間のメンテナンスで止まったまま、
+     * 利用者が開くまで戻らない、を避ける)。
      */
     synchronized void unattendedFailed(@NonNull Exception e) {
-        if (isTransport(e)) return;
-        store.setBlocked(true);
+        if (stopsUnattendedLogins(e)) store.setBlocked(true);
     }
 
-    private static boolean isTransport(@NonNull Throwable e) {
+    /**
+     * ID / パスワードの誤り、作ったコードを IdP に弾かれた、想定外の IdP の画面 (読めない・項目が無い・4xx)。
+     * サービスは SeciossError を原因に包んで投げる (asLoginException) ので、原因までたどる。
+     */
+    static boolean stopsUnattendedLogins(@NonNull Throwable e) {
         for (Throwable t = e; t != null; t = t.getCause()) {
-            if (t instanceof IOException || t instanceof InterruptedException) return true;
+            if (AuthErrors.isInvalidCredentials(t.getMessage())) return true;
+            if (!(t instanceof SeciossError)) continue;
+            SeciossError s = (SeciossError) t;
+            switch (s.kind) {
+                case INVALID_CREDENTIALS:
+                case INVALID_OTP:
+                case UNRECOGNIZED_STATE:
+                case MISSING_FIELD:
+                    return true;
+                case UNEXPECTED_STATUS:
+                    return s.status >= 400 && s.status < 500;
+                default:
+                    return false;
+            }
         }
         return false;
     }

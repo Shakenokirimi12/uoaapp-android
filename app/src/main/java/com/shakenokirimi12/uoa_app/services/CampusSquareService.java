@@ -272,23 +272,23 @@ public class CampusSquareService {
         String finalHost = finalUrl != null ? finalUrl.host().toLowerCase() : "";
         String csHost = csUrl != null ? csUrl.host().toLowerCase() : "csweb.u-aizu.ac.jp";
         if (!finalHost.equals(csHost)) {
-            throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
-                    "CampusSquareへ戻れていない(final=" + session.finalUrl + ")").loginMessage());
+            throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+                    "CampusSquareへ戻れていない(final=" + session.finalUrl + ")").asLoginException();
         }
         // メンテナンスページにも「ログアウト」が含まれるため、成功マーカーより先に見る (Moodle で 2026-09-15 実測)。
         if (SeciossIdPClient.isMaintenancePage(session.finalStatus, session.finalHtml)) {
-            throw new Exception(new SeciossError(SeciossError.Kind.MAINTENANCE,
-                    SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).loginMessage());
+            throw new SeciossError(SeciossError.Kind.MAINTENANCE,
+                    SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).asLoginException();
         }
         // 2026-09-14 実測: SP まで戻れても CampusSquare 本体が
         // "[SSO-Error] あなたは現在このシステムを利用することができません" を返す段階がある
         // (SP 側のユーザー紐付けが未開放)。一般エラーではなく明示する。
         if (session.finalHtml.contains("[SSO-Error]") || session.finalHtml.contains("このシステムを利用することができません")) {
-            throw new Exception(new SeciossError(SeciossError.Kind.ACCESS_DENIED, "campussquare_sso_error").loginMessage());
+            throw new SeciossError(SeciossError.Kind.ACCESS_DENIED, "campussquare_sso_error").asLoginException();
         }
         if (!containsAnySuccessMarker(session.finalHtml)) {
-            throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
-                    "CampusSquareへの復帰後、成功マーカーが見つからない").loginMessage());
+            throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+                    "CampusSquareへの復帰後、成功マーカーが見つからない").asLoginException();
         }
         // 属性込みで保存する (次回起動で storedSessionHeader が読む)。返すのは今回のチェーンの最終ホップに
         // 送られたのと同じヘッダ。

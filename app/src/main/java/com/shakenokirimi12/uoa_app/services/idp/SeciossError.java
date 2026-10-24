@@ -75,6 +75,15 @@ public final class SeciossError extends Exception {
         this.detail = detail;
     }
 
+    /**
+     * 呼び出し元へ返す形 (文言はログイン画面向け)。原因としてこの SeciossError を残す。種類で判断するところ
+     * (BackgroundLoginPolicy の停止の判定) が、文言ではなく種類を読めるように。
+     */
+    @NonNull
+    public Exception asLoginException() {
+        return new Exception(loginMessage(), this);
+    }
+
     /** ログイン画面向けの文言 (iOS の IdPLoginFlow.describe と同じ)。 */
     @NonNull
     public String loginMessage() {

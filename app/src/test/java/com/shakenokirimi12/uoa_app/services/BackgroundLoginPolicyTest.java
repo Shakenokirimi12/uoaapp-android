@@ -132,15 +132,64 @@ public class BackgroundLoginPolicyTest {
         assertFalse(restarted.isBlocked());
     }
 
-    /** 通信の失敗では止めない (大学側は答えていない)。間隔の制限だけが効く。 */
+    /**
+     * 止めるのはロックにつながるか、キー・パスワードが悪いと分かる失敗だけ。メンテナンス・5xx・途中でのセッション切れ・
+     * 通信の失敗は止めない (夜間のメンテナンスで、利用者が開くまで止まったままにしない)。
+     */
     @Test
-    public void transportFailure_doesNotBlock() {
+    public void onlyLockRiskFailures_block() {
         BackgroundLoginPolicy policy = policy(true);
-        policy.unattendedFailed(new IOException("timeout"));
-        policy.unattendedFailed(new Exception("接続エラー", new java.net.SocketTimeoutException()));
+        Exception[] passing = {
+                new IOException("timeout"),
+                new Exception("接続エラー", new java.net.SocketTimeoutException()),
+                new SeciossError(SeciossError.Kind.MAINTENANCE, "maintenance").asLoginException(),
+                new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, 503, "allotplogin.cgi"),
+                new SeciossError(SeciossError.Kind.SESSION_TIMED_OUT),
+                new Exception("何かの失敗"),
+        };
+        for (Exception e : passing) {
+            policy.unattendedFailed(e);
+            assertFalse(e.toString(), store.blocked);
+        }
+
+        Exception[] blocking = {
+                new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE),
+                new SeciossError(SeciossError.Kind.INVALID_OTP),
+                new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE, "unexpected page").asLoginException(),
+                new SeciossError(SeciossError.Kind.MISSING_FIELD, "sessid"),
+                new SeciossError(SeciossError.Kind.UNEXPECTED_STATUS, 403, "allotplogin.cgi"),
+        };
+        for (Exception e : blocking) {
+            store.blocked = false;
+            policy.unattendedFailed(e);
+            assertTrue(e.toString(), store.blocked);
+        }
+    }
+
+    /** メンテナンスで失敗しても止まらず、30 分たてば次の更新でログインし直す。 */
+    @Test
+    public void maintenanceFailure_countsAsAttemptOnly() throws Exception {
+        BackgroundLoginPolicy policy = policy(true);
+        policy.succeeded(UID, PASS);
+        AtomicInteger logins = new AtomicInteger();
+        try {
+            backgroundSession(new SessionCoordinator<>(), policy, logins,
+                    new SeciossError(SeciossError.Kind.MAINTENANCE, "maintenance").asLoginException());
+            fail();
+        } catch (Exception expected) {
+            // メンテナンスの失敗がそのまま返る
+        }
         assertFalse(store.blocked);
-        policy.unattendedFailed(new Exception("unexpected page"));
-        assertTrue(store.blocked);
+
+        clock.addAndGet(10 * 60 * 1000L);
+        try {
+            backgroundSession(new SessionCoordinator<>(), policy, logins, null);
+            fail("30 分たっていない");
+        } catch (Exception e) {
+            assertLoginRequired(e);
+        }
+        clock.addAndGet(21 * 60 * 1000L);
+        assertEquals("new-2", backgroundSession(new SessionCoordinator<>(), policy, logins, null));
     }
 
     /** 同じサービスのバックグラウンドの新規ログインは 30 分に 1 回まで。サービスごとに別の枠。 */

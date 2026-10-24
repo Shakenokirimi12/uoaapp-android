@@ -176,24 +176,24 @@ public class MoodleService {
         // (2) IdP 側のページで止まっても復帰先ホストで弾く、(3) login/index.php へ戻された = SP 側で
         // このユーザーが未開放。
         if (SeciossIdPClient.isMaintenancePage(session.finalStatus, session.finalHtml)) {
-            throw new Exception(new SeciossError(SeciossError.Kind.MAINTENANCE,
-                    SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).loginMessage());
+            throw new SeciossError(SeciossError.Kind.MAINTENANCE,
+                    SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).asLoginException();
         }
         okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl());
         String host = base != null ? base.host() : "elms.u-aizu.ac.jp";
         okhttp3.HttpUrl finalUrl = okhttp3.HttpUrl.parse(session.finalUrl);
         String finalHost = finalUrl != null ? finalUrl.host().toLowerCase() : "";
         if (!finalHost.equals(host.toLowerCase())) {
-            throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
-                    "Moodle へ戻れていない(final=" + session.finalUrl + ")").loginMessage());
+            throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+                    "Moodle へ戻れていない(final=" + session.finalUrl + ")").asLoginException();
         }
         if (session.finalUrl.contains("login/index.php")) {
-            throw new Exception(new SeciossError(SeciossError.Kind.ACCESS_DENIED, "moodle_login_page").loginMessage());
+            throw new SeciossError(SeciossError.Kind.ACCESS_DENIED, "moodle_login_page").asLoginException();
         }
         if (!containsAnySuccessMarker(session.finalHtml)) {
-            throw new Exception(new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+            throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
                     "Moodle への復帰後、成功マーカーが見つからない(url=" + session.finalUrl + ") "
-                            + SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).loginMessage());
+                            + SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).asLoginException();
         }
         NetworkClient.addCookies(session.spCookies);
     }
