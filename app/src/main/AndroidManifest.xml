@@ -73,6 +73,20 @@
             </intent-filter>
         </activity>
 
+        <!-- 時間割共有: 友達の QR (uoa-app://timetable?id=...) を標準のカメラで読む・案内ページの「アプリで開く」・
+             一覧の「リンクを貼り付けて開く」でここが開く。友達の時間割を見せ、保存と送り返しは利用者が選ぶ。 -->
+        <activity
+            android:name=".ui.timetable.TimetableIncomingActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="uoa-app" android:host="timetable" />
+            </intent-filter>
+        </activity>
+
         <!-- 同意を記録する前に作った連携の確認 (断った依頼の通知から開く)。外部から開かせないので非公開。 -->
         <activity
             android:name=".ui.otprelay.OtpRelayConsentActivity"

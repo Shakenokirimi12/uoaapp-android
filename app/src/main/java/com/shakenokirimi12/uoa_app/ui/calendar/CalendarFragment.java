@@ -73,6 +73,8 @@ public class CalendarFragment extends Fragment {
         textEmpty = view.findViewById(R.id.text_empty);
         fetchNotice = view.findViewById(R.id.fetch_notice);
         recyclerEvents.setLayoutManager(new LinearLayoutManager(requireContext()));
+        view.findViewById(R.id.button_friends_timetable).setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.navigation_timetable_friends));
 
         classAdapter.setOnClassClickListener(cls ->
                 ClassDetailDialog.show(requireContext(), cls));

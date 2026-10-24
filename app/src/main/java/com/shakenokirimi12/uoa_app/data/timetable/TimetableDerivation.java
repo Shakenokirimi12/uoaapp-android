@@ -1,0 +1,145 @@
+package com.shakenokirimi12.uoa_app.data.timetable;
+
+import androidx.annotation.NonNull;
+
+import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
+import com.shakenokirimi12.uoa_app.data.models.GroupedClass;
+
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
+
+/** CampusSquare のカレンダーから、毎週の時間割を作る。iOS の TimetableDerivation と同じ規則。 */
+public final class TimetableDerivation {
+    /** 時限は大学の時刻で決まるので、端末のタイムゾーンによらず日本時間で読む。 */
+    public static final ZoneId TOKYO = ZoneId.of("Asia/Tokyo");
+
+    private TimetableDerivation() {}
+
+    private static final class Key {
+        final int day, start, end;
+        final String title;
+
+        Key(int day, int start, int end, String title) {
+            this.day = day; this.start = start; this.end = end; this.title = title;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof Key)) return false;
+            Key k = (Key) o;
+            return day == k.day && start == k.start && end == k.end && title.equals(k.title);
+        }
+
+        @Override
+        public int hashCode() { return Objects.hash(day, start, end, title); }
+    }
+
+    /**
+     * 今週の月曜の 1 週前から 5 週後までを見て、同じ曜日・時限・授業名が 2 週以上にあるものを毎週の授業とする
+     * (1 回だけの補講や試験を入れない)。授業のある週が 1 週しか無い (学期の始めや終わり) ときは 1 回でも入れる。
+     * 教室は一番多く出てきたもの (同数なら文字列の順)。
+     */
+    @NonNull
+    public static List<SharedClass> weeklyClasses(@NonNull List<CalendarEvent> events, long nowMs) {
+        LocalDate thisWeek = Instant.ofEpochMilli(nowMs).atZone(TOKYO).toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate windowStart = thisWeek.minusDays(7);
+        long fromMs = windowStart.atStartOfDay(TOKYO).toInstant().toEpochMilli();
+        long toMs = thisWeek.plusDays(35).atStartOfDay(TOKYO).toInstant().toEpochMilli();
+
+        // 日付と授業名ごとに、時限 → 教室 (最初に出てきたもの)。
+        Map<String, LocalDate> dates = new LinkedHashMap<>();
+        Map<String, String> titles = new HashMap<>();
+        Map<String, TreeMap<Integer, String>> periods = new HashMap<>();
+        for (CalendarEvent e : events) {
+            if (e == null || e.getDtstart() == null || e.getSummary() == null) continue;
+            long t = e.getDtstart().getTime();
+            if (t < fromMs || t >= toMs) continue;
+            ZonedDateTime start = Instant.ofEpochMilli(t).atZone(TOKYO);
+            int period = periodNumber(start.getHour() * 60 + start.getMinute());
+            if (period == 0) continue;
+            String title = SharedTimetable.sanitize(e.getSummary(), SharedTimetable.MAX_TITLE);
+            if (title.isEmpty()) continue;
+            String room = SharedTimetable.sanitize(e.getLocation(), SharedTimetable.MAX_ROOM);
+            LocalDate date = start.toLocalDate();
+            String key = date + "|" + title;
+            dates.put(key, date);
+            titles.put(key, title);
+            periods.computeIfAbsent(key, k -> new TreeMap<>()).putIfAbsent(period, room);
+        }
+
+        List<Key> occurrenceKeys = new ArrayList<>();
+        List<Integer> occurrenceWeeks = new ArrayList<>();
+        List<String> occurrenceRooms = new ArrayList<>();
+        for (Map.Entry<String, LocalDate> entry : dates.entrySet()) {
+            LocalDate date = entry.getValue();
+            int day = date.getDayOfWeek().getValue();  // 1 = 月 … 7 = 日
+            int week = (int) (ChronoUnit.DAYS.between(windowStart, date) / 7);
+            TreeMap<Integer, String> byPeriod = periods.get(entry.getKey());
+            List<Integer> sorted = new ArrayList<>(byPeriod.keySet());
+            int runStart = sorted.get(0), previous = sorted.get(0);
+            for (int i = 1; i <= sorted.size(); i++) {
+                int p = i < sorted.size() ? sorted.get(i) : Integer.MAX_VALUE;
+                if (p == previous + 1) { previous = p; continue; }
+                occurrenceKeys.add(new Key(day, runStart, previous, titles.get(entry.getKey())));
+                occurrenceWeeks.add(week);
+                occurrenceRooms.add(byPeriod.get(runStart));
+                runStart = p;
+                previous = p;
+            }
+        }
+
+        int needed = Math.min(2, new HashSet<>(occurrenceWeeks).size());
+        Map<Key, Set<Integer>> weeks = new HashMap<>();
+        Map<Key, Map<String, Integer>> rooms = new HashMap<>();
+        for (int i = 0; i < occurrenceKeys.size(); i++) {
+            Key k = occurrenceKeys.get(i);
+            weeks.computeIfAbsent(k, x -> new HashSet<>()).add(occurrenceWeeks.get(i));
+            Map<String, Integer> counts = rooms.computeIfAbsent(k, x -> new HashMap<>());
+            counts.merge(occurrenceRooms.get(i), 1, Integer::sum);
+        }
+        List<SharedClass> result = new ArrayList<>();
+        for (Map.Entry<Key, Set<Integer>> entry : weeks.entrySet()) {
+            if (entry.getValue().size() < needed) continue;
+            String room = "";
+            int best = -1;
+            for (Map.Entry<String, Integer> r : rooms.get(entry.getKey()).entrySet()) {
+                if (r.getValue() > best || (r.getValue() == best && r.getKey().compareTo(room) < 0)) {
+                    best = r.getValue();
+                    room = r.getKey();
+                }
+            }
+            Key k = entry.getKey();
+            result.add(new SharedClass(k.day, k.start, k.end, k.title, room));
+        }
+        result.sort((a, b) -> {
+            if (a.day != b.day) return Integer.compare(a.day, b.day);
+            if (a.start != b.start) return Integer.compare(a.start, b.start);
+            if (a.end != b.end) return Integer.compare(a.end, b.end);
+            return a.title.compareTo(b.title);
+        });
+        return result.size() > SharedTimetable.MAX_CLASSES ? new ArrayList<>(result.subList(0, SharedTimetable.MAX_CLASSES)) : result;
+    }
+
+    /** 開始時刻 (0 時からの分) がどの時限の始まりか (前後 5 分まで)。どれでもなければ 0。 */
+    public static int periodNumber(int minutesOfDay) {
+        for (int[] p : GroupedClass.CLASS_PERIODS) {
+            if (Math.abs(minutesOfDay - (p[1] * 60 + p[2])) <= 5) return p[0];
+        }
+        return 0;
+    }
+}

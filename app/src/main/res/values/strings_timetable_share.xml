@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 時間割共有 (ui/timetable)。文面は iOS (Views/TimetableShare) と同じ。ほかの機能と衝突しないようファイルを分けている。 -->
+<resources>
+    <string name="timetable_share_title">時間割共有</string>
+    <string name="timetable_friends_entry">友達の時間割</string>
+    <string name="timetable_exchange_title">時間割を交換</string>
+    <string name="timetable_friend_title">友達の時間割</string>
+    <string name="timetable_exchange_button">時間割を交換する</string>
+    <string name="timetable_paste_link">リンクを貼り付けて開く</string>
+    <string name="timetable_exchange_footer">「時間割を交換する」で出る QR コードを友達に読み取ってもらうと、おたがいの時間割が届きます。離れているときはリンクを送れます。</string>
+    <string name="timetable_camera_hint">友達の QR コードは、標準のカメラアプリで読み取ると開きます。</string>
+    <string name="timetable_friends_header">友達の時間割</string>
+    <string name="timetable_friends_empty">まだ友達の時間割はありません</string>
+    <string name="timetable_privacy_footer">送るのは、授業名・曜日・時限・教室と、あなたが付けた名前だけです。成績や課題は送りません。共有は 24 時間で切れます。受け取った時間割はこの端末の中だけに保存されます。</string>
+    <string name="timetable_mode_friend">友達の時間割</string>
+    <string name="timetable_mode_compare">自分と比べる</string>
+    <string name="timetable_compare_unavailable">自分の時間割をまだ取得していないので、比べられません。</string>
+    <string name="timetable_legend_same">同じ授業</string>
+    <string name="timetable_legend_free">どちらも空き</string>
+    <string name="timetable_rename">名前を変更</string>
+    <string name="timetable_delete">削除</string>
+    <string name="timetable_name_label">相手に表示する名前</string>
+    <string name="timetable_name_hint">例: しゃけ</string>
+    <string name="timetable_name_help">友達の画面で、あなたの時間割にこの名前が付きます。空のままでも送れます (相手が名前を付けます)。</string>
+    <string name="timetable_show_qr">QR コードを表示</string>
+    <string name="timetable_qr_lead">友達のアプリで読み取ってもらうと、おたがいの時間割が届きます</string>
+    <string name="timetable_send_link">離れている友達にリンクを送る</string>
+    <string name="timetable_share_message">UoA 非公式アプリで時間割を交換しよう</string>
+    <string name="timetable_waiting">友達が読み取るのを待っています…</string>
+    <string name="timetable_received_more">一覧から開けます。ほかの友達も、続けて読み取れます。</string>
+    <string name="timetable_stop_sharing">共有を止める</string>
+    <string name="timetable_change">変更</string>
+    <string name="timetable_creating">QR コードを作っています…</string>
+    <string name="timetable_retry">もう一度試す</string>
+    <string name="timetable_unavailable_title">共有できる時間割がありません</string>
+    <string name="timetable_unavailable_body">カレンダーで時間割を取得してから、もう一度開いてください。受け取るだけなら、友達の QR コードを読み取れます。</string>
+    <string name="timetable_loading">時間割を受け取っています…</string>
+    <string name="timetable_saving">保存しています…</string>
+    <string name="timetable_save_and_send">保存して、自分の時間割も送る</string>
+    <string name="timetable_save_only">保存だけする</string>
+    <string name="timetable_save">保存する</string>
+    <string name="timetable_send_note">送るのは、授業名・曜日・時限・教室と名前だけです。</string>
+    <string name="timetable_cannot_send_back">自分の時間割をまだ取得していないので、送り返せません。カレンダーで取得すると送れるようになります。</string>
+    <string name="timetable_my_name_label">相手に表示する自分の名前</string>
+    <string name="timetable_open_from_list">カレンダーの「友達の時間割」から開けます。</string>
+    <string name="timetable_close">閉じる</string>
+    <string name="timetable_cancel">キャンセル</string>
+</resources>

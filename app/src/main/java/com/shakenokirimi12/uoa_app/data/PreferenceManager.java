@@ -19,6 +19,8 @@ public class PreferenceManager {
 
     private static final String KEY_USERNAME = "username";
     private static final String KEY_PASSWORD = "password";
+    /** 時間割共有で、自分が出している共有の返事を読むトークン (data/timetable/TimetableShareStore)。 */
+    private static final String KEY_TIMETABLE_SHARE_OWNER_TOKEN = "timetable_share_owner_token";
     private static final String KEY_ONBOARDING_DONE = "onboarding_done";
     private static final String KEY_CREDENTIALS_INVALID = "credentials_invalid";
     private static final String KEY_FCM_TOKEN = "fcm_token";
@@ -256,6 +258,10 @@ public class PreferenceManager {
         com.shakenokirimi12.uoa_app.services.idp.SeciossSsoStore.getInstance().clear();
         setMoodleSessionCookies(null);
     }
+
+    /** 時間割共有の返事を読むトークン。暗号化 prefs にだけ置く (使えない端末では保存されず、空)。 */
+    public String getTimetableShareOwnerToken() { return getSecret(KEY_TIMETABLE_SHARE_OWNER_TOKEN); }
+    public void setTimetableShareOwnerToken(String token) { putSecret(KEY_TIMETABLE_SHARE_OWNER_TOKEN, token); }
 
     public String getPassword() { return getSecret(KEY_PASSWORD); }
     public void setPassword(String password) {
