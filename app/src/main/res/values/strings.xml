@@ -48,7 +48,6 @@
     <string name="settings_otp_method_authenticator">認証アプリを使う</string>
     <string name="idp_tutorial_otp_mail">メールで届くワンタイムパスワードは、このアプリが大学のメールから読み取って入力します。読み取れないときは、届いたコードを入力してください。認証アプリを使う場合は、設定の「ワンタイムパスワード」で切り替えます。</string>
     <string name="settings_otp_method_mail_description">大学のメールに届くワンタイムパスワードを、このアプリが読み取って入力します。</string>
-    <string name="settings_otp_method_authenticator_description">認証アプリに表示されるコードを毎回入力します。バックグラウンド更新では再ログインできません。</string>
     <string name="otp_method_name_mail">メール</string>
     <string name="otp_method_name_authenticator">認証アプリ</string>
     <string name="otp_switch_to_mail">メールに切り替える</string>

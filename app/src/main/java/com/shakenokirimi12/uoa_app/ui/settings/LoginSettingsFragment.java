@@ -87,7 +87,17 @@ public class LoginSettingsFragment extends Fragment {
         dividerReregister = view.findViewById(R.id.divider_reregister);
         // 認証アプリ → 認証アプリ。方式の切り替えと同じ登録の流れを使う (学内ゲートウェイ経由でパスワードだけで
         // 登録画面に入るので、手元に通るコードが無くても登録し直せる)。
-        rowReregister.setOnClickListener(v -> openRegistration(OtpMethod.AUTHENTICATOR));
+        rowReregister.setOnClickListener(v -> {
+            // 登録はパスワードでのログインから始まる。無い・誤りと分かっているときは始めない (誤ったパスワードで
+            // 試し続けると大学側でロックされうる)。
+            if (!prefs.hasCredentials() || prefs.isCredentialsInvalid()) {
+                Toast.makeText(requireContext(), prefs.hasCredentials()
+                        ? R.string.otp_switch_blocked_credentials : R.string.otp_switch_blocked_no_account,
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            openRegistration(OtpMethod.AUTHENTICATOR);
+        });
 
         groupRelay = view.findViewById(R.id.group_relay);
         view.findViewById(R.id.row_otp_relay).setOnClickListener(v ->
@@ -122,7 +132,7 @@ public class LoginSettingsFragment extends Fragment {
         }
         boolean authenticator = known && method == OtpMethod.AUTHENTICATOR;
         setVisible(authenticator && hasSecret(), rowShowSecret, dividerShowSecret);
-        setVisible(authenticator && prefs.hasCredentials() && !prefs.isCredentialsInvalid(), rowReregister, dividerReregister);
+        setVisible(authenticator, rowReregister, dividerReregister);
         // PC 連携はメールに届くコードを読む機能なので、メール方式のときだけ出す (iOS と同じ)。
         groupRelay.setVisibility(known && method == OtpMethod.MAIL ? View.VISIBLE : View.GONE);
     }
@@ -202,7 +212,7 @@ public class LoginSettingsFragment extends Fragment {
         boolean unknown = !prefs.isOtpMethodKnown();
         boolean blocked = noAccount || unknown || prefs.isCredentialsInvalid();
         String message = (unknown ? "" : getString(current == OtpMethod.AUTHENTICATOR
-                ? R.string.settings_otp_method_authenticator_description
+                ? (hasSecret() ? R.string.login_authenticator_with_secret : R.string.login_authenticator_without_secret)
                 : R.string.settings_otp_method_mail_description) + "\n\n")
                 + getString(noAccount ? R.string.otp_switch_blocked_no_account
                 : unknown ? R.string.otp_switch_blocked_unknown
