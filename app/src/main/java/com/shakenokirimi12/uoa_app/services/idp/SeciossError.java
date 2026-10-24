@@ -78,8 +78,9 @@ public final class SeciossError extends Exception {
     public String loginMessage() {
         switch (kind) {
             case MISSING_FIELD:
-                // CampusSquare がまだ IdP に繋がっていない場合、ここに来る想定。
-                return "IdPのログイン画面が見つかりませんでした(" + detail + ")。まだCampusSquareがIdP化されていない可能性があります。";
+                // 大学のログイン画面の形が想定と違った。CampusSquare は 2026-09-15 から IdP 経由なので、
+                // 以前の「まだ IdP 化されていない可能性」は当たらない。
+                return "大学のログイン画面を読み取れませんでした(" + detail + ")。少し待ってからもう一度ログインしてください。続くときはお知らせください。";
             case UNEXPECTED_STATUS:
                 return detail + "で想定外の応答(HTTP " + status + ")でした。";
             case OTP_REQUEST_FAILED:
