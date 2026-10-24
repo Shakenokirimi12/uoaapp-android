@@ -386,7 +386,6 @@ public final class OtpRelayResponder {
         body.addProperty("box", box);
         int status = post(request, keys, body, OtpRelayApi.DEFAULT_TIMEOUT_MS);
         if (status == 409) return Outcome.failed(ALREADY_ANSWERED);
-        Log.i(TAG, "refused: " + reason + " -> " + status);
         lastResult.save(false, failureText(reason), reason);
         return Outcome.failed(reason);
     }

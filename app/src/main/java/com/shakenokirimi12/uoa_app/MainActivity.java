@@ -149,6 +149,7 @@ public class MainActivity extends AppCompatActivity {
         if (destinationId == R.id.navigation_syllabus) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.SYLLABUS;
         if (destinationId == R.id.navigation_settings) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.SETTINGS;
         if (destinationId == R.id.navigation_otp_relay) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.OTP_RELAY;
+        if (destinationId == R.id.navigation_timetable_friends) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.TIMETABLE_SHARE;
         return null;
     }
 
