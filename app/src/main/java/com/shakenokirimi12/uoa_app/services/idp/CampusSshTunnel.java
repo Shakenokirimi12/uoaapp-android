@@ -5,7 +5,6 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import com.jcraft.jsch.ChannelDirectTCPIP;
-import com.jcraft.jsch.HostKey;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
@@ -16,7 +15,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ConnectException;
 import java.net.Proxy;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,15 +33,14 @@ import okhttp3.Protocol;
  * 他のアプリもそこから利用者の SSH セッションで学内へ入れた (CLAUDE-SECURITY F12)。今は
  * OkHttp の SocketFactory がチャネルを直接開くので、このプロセスの外からは使えない。
  *
- * ホスト鍵は固定 (2026-09-15 に ssh-keyscan で取得した ecdsa-sha2-nistp256。ed25519 は Android の JCA に署名実装が無く JSch が使えない)。known_hosts をユーザーに確認させる
- * UI は無いので、鍵が変わったら接続を拒否して失敗にする (パスワードを中間者へ渡さない)。
+ * ホスト鍵は確かめない。sshgate の鍵は大学が年に 2 回作り直すため、固定するとそのたびに登録が
+ * 失敗する (2026-10-24 に利用者が判断)。代わりに、なりすました sshgate には AINS のパスワードが
+ * 渡りうる。トンネルの中の slink.secioss.com とは TLS で証明書を確かめて話すので、登録の中身は守られる。
  */
 public final class CampusSshTunnel implements Closeable {
     private static final String TAG = "CampusSshTunnel";
     public static final String GATEWAY_HOST = "sshgate.u-aizu.ac.jp";
     private static final int GATEWAY_PORT = 22;
-    private static final String GATEWAY_HOST_KEY_ECDSA =
-            "AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJ5iYotAQpmFeyl38gWkTZdDQm6sZjLIzTH91qrXkMFRTrbIfOOkvm2D0KTksfbsQqGwkqTcilh3A/Hx8pRWm94=";
     private static final int CONNECT_TIMEOUT_MS = 15_000;
 
     private final Session session;
@@ -56,13 +53,11 @@ public final class CampusSshTunnel implements Closeable {
     @NonNull
     public static CampusSshTunnel open(@NonNull String uid, @NonNull String pass) throws JSchException {
         JSch jsch = new JSch();
-        jsch.getHostKeyRepository().add(new HostKey(GATEWAY_HOST, HostKey.ECDSA256,
-                Base64.getDecoder().decode(GATEWAY_HOST_KEY_ECDSA)), null);
         Session session = jsch.getSession(uid, GATEWAY_HOST, GATEWAY_PORT);
         session.setPassword(pass);
-        // 固定鍵と一致しないときは接続しない。ピン留めしているのは ecdsa だけなので、サーバーが
-        // 別種 (rsa/ed25519) の鍵を出してきて不一致になるのを避けるため、鍵種もそれに固定する。
-        session.setConfig("StrictHostKeyChecking", "yes");
+        // ホスト鍵は確かめない (上の説明)。ed25519 は Android の JCA に署名実装が無く JSch で検証
+        // できないので、鍵種は ecdsa に寄せておく (サーバーは ecdsa の鍵も出している)。
+        session.setConfig("StrictHostKeyChecking", "no");
         session.setConfig("server_host_key", "ecdsa-sha2-nistp256");
         session.setConfig("PreferredAuthentications", "password,keyboard-interactive");
         session.setTimeout(CONNECT_TIMEOUT_MS);
