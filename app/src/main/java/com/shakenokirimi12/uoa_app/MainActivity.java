@@ -83,6 +83,17 @@ public class MainActivity extends AppCompatActivity {
             toolbar.setNavigationIcon(arrow);
             toolbar.setNavigationContentDescription(androidx.navigation.ui.R.string.nav_app_bar_navigate_up_description);
         });
+        // 利用状況: 画面を開いた回数を数える。登録した時点の画面 (起動時の最初の画面) にも呼ばれる。
+        // 回転などで作り直したときは、同じ画面をもう一度数えないよう最初の 1 回を飛ばす。
+        final boolean[] skipRestoredDestination = {savedInstanceState != null};
+        navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+            if (skipRestoredDestination[0]) {
+                skipRestoredDestination[0] = false;
+                return;
+            }
+            String feature = usageFeatureFor(destination.getId());
+            if (feature != null) com.shakenokirimi12.uoa_app.services.usage.UsageStats.record(this, feature);
+        });
         EdgeToEdge.apply(this, findViewById(R.id.container), bottomNav);
 
         // CampusSquare は 2026-09-15 以降 IdP 経由しか無い (旧フォーム消滅)。ワンタイムパスワードの
@@ -118,6 +129,23 @@ public class MainActivity extends AppCompatActivity {
         setupRemoteConfig();
         SyncScheduler.schedule(this);
         com.shakenokirimi12.uoa_app.services.notification.LunchMenuWorker.ensureScheduled(this);
+    }
+
+    /** 画面 (nav_graph の行き先) と、利用状況で数える機能の名前。数えない画面は null。 */
+    @androidx.annotation.Nullable
+    private static String usageFeatureFor(int destinationId) {
+        if (destinationId == R.id.navigation_home) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.HOME;
+        if (destinationId == R.id.navigation_calendar) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.CALENDAR;
+        if (destinationId == R.id.navigation_courses) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.COURSES;
+        if (destinationId == R.id.navigation_course_detail) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.COURSE_DETAIL;
+        if (destinationId == R.id.navigation_assignment_detail) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.ASSIGNMENT_DETAIL;
+        if (destinationId == R.id.navigation_grades) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.GRADES;
+        if (destinationId == R.id.navigation_gakushoku) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.GAKUSHOKU;
+        if (destinationId == R.id.navigation_facilities) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.FACILITY_USAGE;
+        if (destinationId == R.id.navigation_syllabus) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.SYLLABUS;
+        if (destinationId == R.id.navigation_settings) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.SETTINGS;
+        if (destinationId == R.id.navigation_otp_relay) return com.shakenokirimi12.uoa_app.services.usage.UsageFeature.OTP_RELAY;
+        return null;
     }
 
     @Override

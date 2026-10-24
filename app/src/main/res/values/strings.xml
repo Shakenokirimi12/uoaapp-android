@@ -199,6 +199,8 @@
     <string name="settings_auto_attendance_summary">キャンパスに着くと、その時間の授業を出席としてこの端末に記録します。大学の出席登録にはなりません</string>
     <string name="settings_location_warning">位置情報が「常に許可」でないため、アプリを閉じている間は動きません。タップして変更</string>
     <string name="settings_other">その他</string>
+    <string name="settings_usage_stats">利用状況を送る</string>
+    <string name="settings_usage_stats_summary">開いた画面の回数と学籍番号の期 (27期など) を1日1回送ります。学籍番号そのものや時間割は送りません。</string>
     <string name="settings_tabs">タブの並び替え</string>
     <string name="settings_backup">設定をバックアップ</string>
     <string name="settings_restore">バックアップから戻す</string>

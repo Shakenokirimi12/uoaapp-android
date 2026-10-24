@@ -240,6 +240,12 @@ public class SettingsFragment extends Fragment {
         textLocationWarning.setOnClickListener(v -> requestBackgroundLocation());
         updateLocationWarning();
 
+        // 利用状況を送る (既定 ON)。OFF にすると、まだ送っていない回数と利用状況の ID を消す。
+        MaterialSwitch switchUsageStats = view.findViewById(R.id.switch_usage_stats);
+        switchUsageStats.setChecked(prefs.isUsageStatsEnabled());
+        switchUsageStats.setOnCheckedChangeListener((v, checked) ->
+                com.shakenokirimi12.uoa_app.services.usage.UsageStats.setEnabled(requireContext(), checked));
+
         // Navigation customization
         view.findViewById(R.id.button_nav_settings).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_settings_to_nav_settings));
@@ -282,6 +288,8 @@ public class SettingsFragment extends Fragment {
                             // キャッシュを捨てたら、それを映しているウィジェットと通知も片付ける。
                             // 放置すると次の定期更新まで前のユーザーの時間割が出続ける。
                             com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(requireContext());
+                            // 利用状況のまだ送っていない回数と ID も消す (次のユーザーの分と混ぜない)。
+                            com.shakenokirimi12.uoa_app.services.usage.UsageStats.clearLocal(requireContext());
                             com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier.clearAll(requireContext());
                             com.shakenokirimi12.uoa_app.services.notification.ClassNotificationService.stop(requireContext());
                             // OkHttp の cookie と WebView の cookie は別の入れ物。片方だけ消しても、

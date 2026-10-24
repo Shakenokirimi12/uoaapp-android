@@ -3,9 +3,11 @@
      暗号化 prefs は端末の Keystore の鍵で暗号化されていて、別端末では開けない。復元すると
      PreferenceManager が開けずに作り直すことになるので、最初からバックアップに含めない。
      WebView のデータ (cookie = ログイン中のセッション、Basic 認証の保存先 http_auth.db) も含めない。
-     以前の版は http_auth.db に大学のパスワードを平文で書いていた。 -->
+     以前の版は http_auth.db に大学のパスワードを平文で書いていた。
+     利用状況の回数と ID (usage_stats.xml) も含めない。別の端末に同じ ID を持ち込まない (UsageStats)。 -->
 <full-backup-content>
     <exclude domain="sharedpref" path="uoa_app_secure_prefs.xml" />
+    <exclude domain="sharedpref" path="usage_stats.xml" />
     <exclude domain="root" path="app_webview/" />
     <exclude domain="database" path="http_auth.db" />
     <exclude domain="database" path="http_auth.db-journal" />

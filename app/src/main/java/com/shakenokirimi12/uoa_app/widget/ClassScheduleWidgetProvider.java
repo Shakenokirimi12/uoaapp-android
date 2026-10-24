@@ -44,11 +44,17 @@ public class ClassScheduleWidgetProvider extends AppWidgetProvider {
         int[] ids = mgr.getAppWidgetIds(new ComponentName(context, ClassScheduleWidgetProvider.class));
         if (ids.length == 0) return;
         for (int id : ids) mgr.updateAppWidget(id, build(context));
+        com.shakenokirimi12.uoa_app.services.usage.UsageStats.record(context,
+                com.shakenokirimi12.uoa_app.services.usage.UsageFeature.WIDGET_REFRESH);
     }
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         for (int id : appWidgetIds) appWidgetManager.updateAppWidget(id, build(context));
+        if (appWidgetIds.length > 0) {
+            com.shakenokirimi12.uoa_app.services.usage.UsageStats.record(context,
+                    com.shakenokirimi12.uoa_app.services.usage.UsageFeature.WIDGET_REFRESH);
+        }
     }
 
     static RemoteViews build(Context ctx) {

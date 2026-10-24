@@ -68,6 +68,8 @@ public class SyncWorker extends Worker {
             return Result.success();
         }
         try {
+            // アプリを開かない日が続いても、前日までの利用状況を送る。失敗しても同期は続ける (例外は投げない)。
+            com.shakenokirimi12.uoa_app.services.usage.UsageStats.sendIfDue(getApplicationContext());
             return doWorkSerialized();
         } finally {
             running.set(false);

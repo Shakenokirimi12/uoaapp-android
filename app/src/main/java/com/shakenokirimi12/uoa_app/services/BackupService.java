@@ -47,6 +47,7 @@ public class BackupService {
             "auto_attendance_enabled",
             "main_tabs", "other_tabs",
             "has_seen_idp_tutorial",
+            PreferenceManager.KEY_USAGE_STATS_ENABLED,
     };
 
     public static void exportTo(Context ctx, Uri uri) throws Exception {
