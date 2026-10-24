@@ -306,7 +306,8 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
     }
 
     public void submitCode(@NonNull String input) {
-        String code = input.trim();
+        // 認証アプリの表示 ("123 456") をそのまま打っても通るよう、空白を除く。
+        String code = input.replace(" ", "").trim();
         if (code.isEmpty()) return;
         executor.execute(() -> {
             if (method == Method.EMAIL) completeEmail(code);

@@ -114,7 +114,8 @@ public final class Totp {
 
     /** code が timeMillis の窓か、その前後 1 つの窓のコードと一致するか (時計のずれを 1 窓まで許す)。 */
     public static boolean matches(@NonNull Params p, @NonNull String code, long timeMillis) {
-        String c = code.trim();
+        // 認証アプリは "123 456" のように区切って表示するので、空白は無視する。
+        String c = code.replace(" ", "").trim();
         long step = Math.floorDiv(timeMillis / 1000L, p.periodSeconds);
         for (long d = -1; d <= 1; d++) {
             if (code(p.key, p.algorithm, p.digits, step + d).equals(c)) return true;
