@@ -1,6 +1,8 @@
 package com.shakenokirimi12.uoa_app.ui.calendar;
 
 import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
+import com.shakenokirimi12.uoa_app.services.AppConfigService;
+import com.shakenokirimi12.uoa_app.data.timetable.TimetableShareFeature;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -73,6 +75,21 @@ public class CalendarFragment extends Fragment {
         textEmpty = view.findViewById(R.id.text_empty);
         fetchNotice = view.findViewById(R.id.fetch_notice);
         recyclerEvents.setLayoutManager(new LinearLayoutManager(requireContext()));
+        // 時間割共有の入口は、フラグ timetable_share_qr_enabled が true のときだけ出す (TimetableShareFeature)。
+        // 画面を開いたときに取り直し、届いたら出し直す。押したときにも、その時点の値を確かめる。
+        View friendsButton = view.findViewById(R.id.button_friends_timetable);
+        AppConfigService appConfig = AppConfigService.getInstance();
+        friendsButton.setVisibility(timetableShareEnabled(appConfig) ? View.VISIBLE : View.GONE);
+        appConfig.config().observe(getViewLifecycleOwner(), c ->
+                friendsButton.setVisibility(timetableShareEnabled(appConfig) ? View.VISIBLE : View.GONE));
+        appConfig.refresh(requireContext());
+        friendsButton.setOnClickListener(v -> {
+            if (!timetableShareEnabled(appConfig)) {
+                v.setVisibility(View.GONE);
+                return;
+            }
+            Navigation.findNavController(v).navigate(R.id.navigation_timetable_friends);
+        });
 
         classAdapter.setOnClassClickListener(cls ->
                 ClassDetailDialog.show(requireContext(), cls));
@@ -269,5 +286,9 @@ public class CalendarFragment extends Fragment {
         }
         textEmpty.setVisibility(empty && kind != FetchStatus.Empty.LOADING ? View.VISIBLE : View.GONE);
         recyclerEvents.setVisibility(empty ? View.GONE : View.VISIBLE);
+    }
+
+    private static boolean timetableShareEnabled(@NonNull AppConfigService appConfig) {
+        return TimetableShareFeature.isEnabled(appConfig.flagValue(TimetableShareFeature.FLAG_KEY));
     }
 }

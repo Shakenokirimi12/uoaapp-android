@@ -10,7 +10,8 @@ import java.util.Map;
 
 public class GroupedClass {
 
-    private static final int[][] CLASS_PERIODS = {
+    /** {時限, 開始の時, 分, 終了の時, 分}。時間割共有 (data/timetable/TimetableDerivation) も読む。 */
+    public static final int[][] CLASS_PERIODS = {
             {1,  9, 0,  9, 50},
             {2,  9, 50, 10, 40},
             {3,  10, 50, 11, 40},

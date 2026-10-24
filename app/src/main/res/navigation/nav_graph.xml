@@ -152,5 +152,23 @@
         android:name="com.shakenokirimi12.uoa_app.ui.settings.NavSettingsFragment"
         android:label="@string/settings_tabs" />
 
+    <!-- ── 時間割共有 (カレンダーの「友達の時間割」から) ── -->
+
+    <fragment
+        android:id="@+id/navigation_timetable_friends"
+        android:name="com.shakenokirimi12.uoa_app.ui.timetable.FriendsTimetableFragment"
+        android:label="@string/timetable_share_title" />
+
+    <fragment
+        android:id="@+id/navigation_timetable_friend"
+        android:name="com.shakenokirimi12.uoa_app.ui.timetable.FriendTimetableFragment"
+        android:label="@string/timetable_friend_title">
+        <argument android:name="friend_id" app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_timetable_exchange"
+        android:name="com.shakenokirimi12.uoa_app.ui.timetable.TimetableExchangeFragment"
+        android:label="@string/timetable_exchange_title" />
 
 </navigation>

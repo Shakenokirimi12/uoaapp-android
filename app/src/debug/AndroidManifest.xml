@@ -4,7 +4,9 @@
      release には反映されない (この節は debug ソースセットにしか無い)。 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <application>
+    <!-- 時間割共有を手元の wrangler dev (http) で試すため、エミュレータからホストへの平文だけを許す
+         (-PtimetableShareBaseUrl=http://10.0.2.2:8787)。release には入らない。 -->
+    <application android:networkSecurityConfig="@xml/network_security_config_debug">
         <activity
             android:name=".ui.browser.InAppBrowserActivity"
             android:exported="true"

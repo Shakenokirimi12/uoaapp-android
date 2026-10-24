@@ -38,7 +38,14 @@ android {
     }
 
     buildTypes {
+        // 時間割共有のサーバー。debug だけ、手元の wrangler dev (uoa-app-push) に向けて試せる:
+        // ./gradlew :app:assembleDebug -PtimetableShareBaseUrl=http://10.0.2.2:8788 。空なら本番。
+        debug {
+            val shareBase = providers.gradleProperty("timetableShareBaseUrl").getOrElse("")
+            buildConfigField("String", "TIMETABLE_SHARE_BASE_URL", "\"$shareBase\"")
+        }
         release {
+            buildConfigField("String", "TIMETABLE_SHARE_BASE_URL", "\"\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -97,6 +104,9 @@ dependencies {
     // Push (FCM)。app/google-services.json が必要 (Firebase コンソールから取得、gitignore 済み)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+
+    // 時間割共有の QR コードを作る (エンコードだけ)
+    implementation(libs.zxing.core)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

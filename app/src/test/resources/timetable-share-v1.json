@@ -1,0 +1,706 @@
+{
+  "description": "時間割共有 (format uoa-timetable, version 1) の共通フィクスチャ。サーバー (uoa-app-push/tests/fixtures)、iOS (uoa-app/uoa-appTests/Fixtures)、Android (uoaapp-android/app/src/test/resources) に同じ内容で置く。変えるときは 3 つとも同じ変更で直す。",
+  "payload": {
+    "format": "uoa-timetable",
+    "version": 1,
+    "name": "テスト 太郎",
+    "createdAt": "2026-10-24T03:00:00Z",
+    "classes": [
+      {
+        "day": 1,
+        "start": 1,
+        "end": 2,
+        "title": "アルゴリズムとデータ構造",
+        "room": "M5",
+        "credits": 2
+      },
+      {
+        "day": 1,
+        "start": 5,
+        "end": 6,
+        "title": "線形代数 II",
+        "room": "S8",
+        "credits": 2
+      },
+      {
+        "day": 3,
+        "start": 3,
+        "end": 4,
+        "title": "Computer Networks",
+        "room": "M1",
+        "credits": 2
+      },
+      {
+        "day": 5,
+        "start": 7,
+        "end": 10,
+        "title": "ソフトウェア工学演習",
+        "room": "std5",
+        "credits": 2
+      }
+    ],
+    "grades": [
+      {
+        "course": "アルゴリズムとデータ構造",
+        "grade": "A"
+      }
+    ]
+  },
+  "normalized": {
+    "format": "uoa-timetable",
+    "version": 1,
+    "name": "テスト 太郎",
+    "createdAt": "2026-10-24T03:00:00Z",
+    "classes": [
+      {
+        "day": 1,
+        "start": 1,
+        "end": 2,
+        "title": "アルゴリズムとデータ構造",
+        "room": "M5"
+      },
+      {
+        "day": 1,
+        "start": 5,
+        "end": 6,
+        "title": "線形代数 II",
+        "room": "S8"
+      },
+      {
+        "day": 3,
+        "start": 3,
+        "end": 4,
+        "title": "Computer Networks",
+        "room": "M1"
+      },
+      {
+        "day": 5,
+        "start": 7,
+        "end": 10,
+        "title": "ソフトウェア工学演習",
+        "room": "std5"
+      }
+    ]
+  },
+  "sanitize": {
+    "payload": {
+      "format": "uoa-timetable",
+      "version": 1,
+      "name": "  A\u0007B‮  ",
+      "createdAt": "2026-10-24T03:00:00Z",
+      "classes": [
+        {
+          "day": 2,
+          "start": 3,
+          "end": 4,
+          "title": "ああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ",
+          "room": " M​1 "
+        }
+      ]
+    },
+    "normalized": {
+      "format": "uoa-timetable",
+      "version": 1,
+      "name": "AB",
+      "createdAt": "2026-10-24T03:00:00Z",
+      "classes": [
+        {
+          "day": 2,
+          "start": 3,
+          "end": 4,
+          "title": "ああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ",
+          "room": "M1"
+        }
+      ]
+    }
+  },
+  "invalid": [
+    {
+      "why": "format が違う",
+      "payload": {
+        "format": "uoa-schedule",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": [
+          {
+            "day": 1,
+            "start": 1,
+            "end": 2,
+            "title": "アルゴリズムとデータ構造",
+            "room": "M5"
+          },
+          {
+            "day": 1,
+            "start": 5,
+            "end": 6,
+            "title": "線形代数 II",
+            "room": "S8"
+          },
+          {
+            "day": 3,
+            "start": 3,
+            "end": 4,
+            "title": "Computer Networks",
+            "room": "M1"
+          },
+          {
+            "day": 5,
+            "start": 7,
+            "end": 10,
+            "title": "ソフトウェア工学演習",
+            "room": "std5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "version が新しい",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 2,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": [
+          {
+            "day": 1,
+            "start": 1,
+            "end": 2,
+            "title": "アルゴリズムとデータ構造",
+            "room": "M5"
+          },
+          {
+            "day": 1,
+            "start": 5,
+            "end": 6,
+            "title": "線形代数 II",
+            "room": "S8"
+          },
+          {
+            "day": 3,
+            "start": 3,
+            "end": 4,
+            "title": "Computer Networks",
+            "room": "M1"
+          },
+          {
+            "day": 5,
+            "start": 7,
+            "end": 10,
+            "title": "ソフトウェア工学演習",
+            "room": "std5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "classes が空",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": []
+      }
+    },
+    {
+      "why": "classes が配列でない",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": {
+          "day": 1
+        }
+      }
+    },
+    {
+      "why": "day が 0",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": [
+          {
+            "day": 0,
+            "start": 1,
+            "end": 2,
+            "title": "アルゴリズムとデータ構造",
+            "room": "M5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "day が 8",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": [
+          {
+            "day": 8,
+            "start": 1,
+            "end": 2,
+            "title": "アルゴリズムとデータ構造",
+            "room": "M5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "start が 0",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": [
+          {
+            "day": 1,
+            "start": 0,
+            "end": 2,
+            "title": "アルゴリズムとデータ構造",
+            "room": "M5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "end が start より前",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": [
+          {
+            "day": 1,
+            "start": 3,
+            "end": 2,
+            "title": "アルゴリズムとデータ構造",
+            "room": "M5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "end が 12",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": [
+          {
+            "day": 1,
+            "start": 1,
+            "end": 12,
+            "title": "アルゴリズムとデータ構造",
+            "room": "M5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "start が整数でない",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": [
+          {
+            "day": 1,
+            "start": 1.5,
+            "end": 2,
+            "title": "アルゴリズムとデータ構造",
+            "room": "M5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "title が空",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": [
+          {
+            "day": 1,
+            "start": 1,
+            "end": 2,
+            "title": "  ",
+            "room": "M5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "title が文字列でない",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2026-10-24T03:00:00Z",
+        "classes": [
+          {
+            "day": 1,
+            "start": 1,
+            "end": 2,
+            "title": 1,
+            "room": "M5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "createdAt が読めない",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "yesterday",
+        "classes": [
+          {
+            "day": 1,
+            "start": 1,
+            "end": 2,
+            "title": "アルゴリズムとデータ構造",
+            "room": "M5"
+          },
+          {
+            "day": 1,
+            "start": 5,
+            "end": 6,
+            "title": "線形代数 II",
+            "room": "S8"
+          },
+          {
+            "day": 3,
+            "start": 3,
+            "end": 4,
+            "title": "Computer Networks",
+            "room": "M1"
+          },
+          {
+            "day": 5,
+            "start": 7,
+            "end": 10,
+            "title": "ソフトウェア工学演習",
+            "room": "std5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "createdAt の年が範囲外 (2000〜2099 年だけ)",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "2100-01-01T00:00:00Z",
+        "classes": [
+          {
+            "day": 1,
+            "start": 1,
+            "end": 2,
+            "title": "アルゴリズムとデータ構造",
+            "room": "M5"
+          },
+          {
+            "day": 1,
+            "start": 5,
+            "end": 6,
+            "title": "線形代数 II",
+            "room": "S8"
+          },
+          {
+            "day": 3,
+            "start": 3,
+            "end": 4,
+            "title": "Computer Networks",
+            "room": "M1"
+          },
+          {
+            "day": 5,
+            "start": 7,
+            "end": 10,
+            "title": "ソフトウェア工学演習",
+            "room": "std5"
+          }
+        ]
+      }
+    },
+    {
+      "why": "createdAt の年が 5 桁",
+      "payload": {
+        "format": "uoa-timetable",
+        "version": 1,
+        "name": "テスト 太郎",
+        "createdAt": "+275760-09-13T00:00:00Z",
+        "classes": [
+          {
+            "day": 1,
+            "start": 1,
+            "end": 2,
+            "title": "アルゴリズムとデータ構造",
+            "room": "M5"
+          },
+          {
+            "day": 1,
+            "start": 5,
+            "end": 6,
+            "title": "線形代数 II",
+            "room": "S8"
+          },
+          {
+            "day": 3,
+            "start": 3,
+            "end": 4,
+            "title": "Computer Networks",
+            "room": "M1"
+          },
+          {
+            "day": 5,
+            "start": 7,
+            "end": 10,
+            "title": "ソフトウェア工学演習",
+            "room": "std5"
+          }
+        ]
+      }
+    }
+  ],
+  "overlap": {
+    "mine": [
+      {
+        "day": 1,
+        "start": 1,
+        "end": 2,
+        "title": "アルゴリズムとデータ構造",
+        "room": "M5"
+      },
+      {
+        "day": 1,
+        "start": 3,
+        "end": 4,
+        "title": "英語",
+        "room": "M2"
+      },
+      {
+        "day": 1,
+        "start": 5,
+        "end": 6,
+        "title": "微分積分",
+        "room": "M7"
+      },
+      {
+        "day": 3,
+        "start": 3,
+        "end": 4,
+        "title": "computer  networks",
+        "room": "M1"
+      },
+      {
+        "day": 5,
+        "start": 9,
+        "end": 10,
+        "title": "ソフトウェア工学演習",
+        "room": "std5"
+      }
+    ],
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "rows": [
+      1,
+      3,
+      5,
+      7,
+      9
+    ],
+    "cells": {
+      "1:1": "same",
+      "1:3": "mineOnly",
+      "1:5": "bothBusy",
+      "3:3": "same",
+      "5:7": "friendOnly",
+      "5:9": "same"
+    },
+    "otherCells": "bothFree"
+  },
+  "derive": {
+    "description": "カレンダー (1 時限ずつの予定、日本時間) から毎週の時間割を作る。今週の月曜の 1 週前から 5 週後までを見て、2 週以上ある授業だけを入れる。教室は一番多いもの。 教室の数が同じなら、空でない教室を優先し、その中では文字列の順で決める。",
+    "now": "2026-10-21T12:00:00+09:00",
+    "events": [
+      {
+        "summary": "アルゴリズム",
+        "location": "M5",
+        "start": "2026-10-19T09:00:00+09:00",
+        "end": "2026-10-19T09:50:00+09:00"
+      },
+      {
+        "summary": "アルゴリズム",
+        "location": "M5",
+        "start": "2026-10-19T09:50:00+09:00",
+        "end": "2026-10-19T10:40:00+09:00"
+      },
+      {
+        "summary": "アルゴリズム",
+        "location": "M5",
+        "start": "2026-10-26T09:00:00+09:00",
+        "end": "2026-10-26T09:50:00+09:00"
+      },
+      {
+        "summary": "アルゴリズム",
+        "location": "M5",
+        "start": "2026-10-26T09:50:00+09:00",
+        "end": "2026-10-26T10:40:00+09:00"
+      },
+      {
+        "summary": "アルゴリズム",
+        "location": "M5",
+        "start": "2026-10-24T09:00:00+09:00",
+        "end": "2026-10-24T09:50:00+09:00"
+      },
+      {
+        "summary": "アルゴリズム",
+        "location": "M5",
+        "start": "2026-10-24T09:50:00+09:00",
+        "end": "2026-10-24T10:40:00+09:00"
+      },
+      {
+        "summary": "線形代数",
+        "location": "S8",
+        "start": "2026-10-21T13:20:00+09:00",
+        "end": "2026-10-21T14:10:00+09:00"
+      },
+      {
+        "summary": "線形代数",
+        "location": "S8",
+        "start": "2026-10-21T14:10:00+09:00",
+        "end": "2026-10-21T15:00:00+09:00"
+      },
+      {
+        "summary": "線形代数",
+        "location": "S9",
+        "start": "2026-10-28T13:20:00+09:00",
+        "end": "2026-10-28T14:10:00+09:00"
+      },
+      {
+        "summary": "線形代数",
+        "location": "S9",
+        "start": "2026-10-28T14:10:00+09:00",
+        "end": "2026-10-28T15:00:00+09:00"
+      },
+      {
+        "summary": "線形代数",
+        "location": "S8",
+        "start": "2026-11-04T13:20:00+09:00",
+        "end": "2026-11-04T14:10:00+09:00"
+      },
+      {
+        "summary": "線形代数",
+        "location": "S8",
+        "start": "2026-11-04T14:10:00+09:00",
+        "end": "2026-11-04T15:00:00+09:00"
+      },
+      {
+        "summary": "未来の授業",
+        "location": "M1",
+        "start": "2026-12-07T09:00:00+09:00",
+        "end": "2026-12-07T09:50:00+09:00"
+      },
+      {
+        "summary": "未来の授業",
+        "location": "M1",
+        "start": "2026-12-14T09:00:00+09:00",
+        "end": "2026-12-14T09:50:00+09:00"
+      },
+      {
+        "summary": "朝の集会",
+        "location": "",
+        "start": "2026-10-20T08:00:00+09:00",
+        "end": "2026-10-20T08:30:00+09:00"
+      },
+      {
+        "summary": "朝の集会",
+        "location": "",
+        "start": "2026-10-27T08:00:00+09:00",
+        "end": "2026-10-27T08:30:00+09:00"
+      },
+      {
+        "summary": "英語",
+        "location": "",
+        "start": "2026-10-23T10:50:00+09:00",
+        "end": "2026-10-23T11:40:00+09:00"
+      },
+      {
+        "summary": "英語",
+        "location": "",
+        "start": "2026-10-23T11:40:00+09:00",
+        "end": "2026-10-23T12:30:00+09:00"
+      },
+      {
+        "summary": "英語",
+        "location": "M2",
+        "start": "2026-10-30T10:50:00+09:00",
+        "end": "2026-10-30T11:40:00+09:00"
+      },
+      {
+        "summary": "英語",
+        "location": "M2",
+        "start": "2026-10-30T11:40:00+09:00",
+        "end": "2026-10-30T12:30:00+09:00"
+      }
+    ],
+    "expected": [
+      {
+        "day": 1,
+        "start": 1,
+        "end": 2,
+        "title": "アルゴリズム",
+        "room": "M5"
+      },
+      {
+        "day": 3,
+        "start": 5,
+        "end": 6,
+        "title": "線形代数",
+        "room": "S8"
+      },
+      {
+        "day": 5,
+        "start": 3,
+        "end": 4,
+        "title": "英語",
+        "room": "M2"
+      }
+    ]
+  },
+  "links": {
+    "valid": {
+      "uoa-app://timetable?id=0123456789abcdef0123456789abcdef": "0123456789abcdef0123456789abcdef",
+      "https://uoa-app.shakenokiri.me/push/t/0123456789abcdef0123456789abcdef": "0123456789abcdef0123456789abcdef",
+      " 0123456789abcdef0123456789abcdef\n": "0123456789abcdef0123456789abcdef"
+    },
+    "invalid": [
+      "uoa-app://timetable?id=0123456789ABCDEF0123456789ABCDEF",
+      "uoa-app://otp-pair?id=0123456789abcdef0123456789abcdef",
+      "https://evil.example/push/t/0123456789abcdef0123456789abcdef",
+      "http://uoa-app.shakenokiri.me/push/t/0123456789abcdef0123456789abcdef",
+      "https://uoa-app.shakenokiri.me/push/t/0123",
+      ""
+    ]
+  }
+}

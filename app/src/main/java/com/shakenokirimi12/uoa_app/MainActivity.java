@@ -26,6 +26,8 @@ import com.shakenokirimi12.uoa_app.ui.onboarding.OnboardingActivity;
 import com.shakenokirimi12.uoa_app.ui.util.EdgeToEdge;
 
 public class MainActivity extends AppCompatActivity {
+    /** 時間割共有の受け取り画面 (TimetableIncomingActivity) の「保存した時間割を見る」。値は友達の ID。 */
+    public static final String EXTRA_OPEN_TIMETABLE_FRIEND = "open_timetable_friend";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,6 +125,8 @@ public class MainActivity extends AppCompatActivity {
             openOtpRegistration();
         }
 
+        if (savedInstanceState == null) openTimetableFriend(getIntent());
+
         // Start geofencing if enabled
         LocationGeofenceService.startIfEnabled(this);
 
@@ -208,6 +212,29 @@ public class MainActivity extends AppCompatActivity {
             }
             lockedNavigationIcon = null;
         }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        openTimetableFriend(intent);
+    }
+
+    /** 受け取った友達の時間割を開く。戻ると友達の一覧 (時間割共有) に戻る。手元に無い ID なら何もしない。 */
+    private void openTimetableFriend(@androidx.annotation.Nullable Intent intent) {
+        String id = intent != null ? intent.getStringExtra(EXTRA_OPEN_TIMETABLE_FRIEND) : null;
+        if (id == null || navigationLocked || isFinishing() || isDestroyed()) return;
+        intent.removeExtra(EXTRA_OPEN_TIMETABLE_FRIEND);
+        if (com.shakenokirimi12.uoa_app.data.timetable.TimetableShareStore.getInstance(this).friend(id) == null) return;
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.nav_host_fragment);
+        if (navHostFragment == null) return;
+        NavController navController = navHostFragment.getNavController();
+        navController.navigate(R.id.navigation_timetable_friends);
+        Bundle args = new Bundle();
+        args.putString(com.shakenokirimi12.uoa_app.ui.timetable.FriendTimetableFragment.ARG_FRIEND_ID, id);
+        navController.navigate(R.id.navigation_timetable_friend, args);
     }
 
     /** ログイン中に OTP 未設定と分かったときに呼ばれる (OtpRegistrationLauncher)。既に開いていれば何もしない。 */

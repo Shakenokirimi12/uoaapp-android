@@ -19,6 +19,8 @@ public class PreferenceManager {
 
     private static final String KEY_USERNAME = "username";
     private static final String KEY_PASSWORD = "password";
+    /** 時間割共有で、自分が出している共有の返事を読むトークン (data/timetable/TimetableShareStore)。 */
+    private static final String KEY_TIMETABLE_SHARE_OWNER_TOKEN = "timetable_share_owner_token";
     private static final String KEY_ONBOARDING_DONE = "onboarding_done";
     private static final String KEY_CREDENTIALS_INVALID = "credentials_invalid";
     private static final String KEY_FCM_TOKEN = "fcm_token";
@@ -272,6 +274,17 @@ public class PreferenceManager {
         // メモリ上のセッション cookie も含めて消す (ストアはプロセス内に写しを持つ)。
         com.shakenokirimi12.uoa_app.services.idp.SeciossSsoStore.getInstance().clear();
         setMoodleSessionCookies(null);
+    }
+
+    /** 時間割共有の返事を読むトークン。暗号化 prefs にだけ置く (使えない端末では保存されず、空)。 */
+    public String getTimetableShareOwnerToken() { return getSecret(KEY_TIMETABLE_SHARE_OWNER_TOKEN); }
+    /** 保存できたか (暗号化 prefs が使えない端末・書き込みの失敗では false)。null / 空文字は削除。 */
+    public boolean setTimetableShareOwnerToken(String token) {
+        if (encryptedPrefs == null) return token == null || token.isEmpty();
+        SharedPreferences.Editor e = encryptedPrefs.edit();
+        if (token == null || token.isEmpty()) e.remove(KEY_TIMETABLE_SHARE_OWNER_TOKEN);
+        else e.putString(KEY_TIMETABLE_SHARE_OWNER_TOKEN, token);
+        return e.commit();
     }
 
     public String getPassword() { return getSecret(KEY_PASSWORD); }
