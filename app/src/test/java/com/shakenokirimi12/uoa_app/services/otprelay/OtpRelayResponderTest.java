@@ -433,6 +433,8 @@ public class OtpRelayResponderTest {
         assertEquals("imap-error", OtpRelayResponder.expiredReason(ImapOtpFetcher.Progress.Stage.FETCH));
         assertEquals("imap-error", OtpRelayResponder.expiredReason(ImapOtpFetcher.Progress.Stage.SELECT));
         assertEquals("expired:select:r2", OtpRelayResponder.expiredDetail(ImapOtpFetcher.Progress.Stage.SELECT, 2));
+        assertEquals("expired:recheck:t0.4-l0.9-s1.2-f22.6", OtpRelayResponder.expiredDetail(
+                ImapOtpFetcher.Progress.Stage.RECHECK, 0, ImapOtpFetcher.Progress.timing(400, 900, 1_200, 22_600)));
     }
 
     @Test

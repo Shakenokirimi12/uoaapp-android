@@ -7,6 +7,7 @@ import androidx.annotation.Nullable;
 
 import com.google.gson.JsonObject;
 import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
+import com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics;
 import com.shakenokirimi12.uoa_app.services.idp.Totp;
 
 import java.io.IOException;
@@ -75,8 +76,61 @@ public final class OtpRelayResponder {
      */
     public static final class Attempt {
         @NonNull public final ImapOtpFetcher.Progress imap = new ImapOtpFetcher.Progress();
+        /** 中継の手順の記録 (Logcat の Log.i、タグ OTPRelay と、Wana の breadcrumbs)。 */
+        @NonNull public final OtpDiagnostics.Trail trail = new OtpDiagnostics.Trail("OTPRelay");
         private final AtomicBoolean responded = new AtomicBoolean();
         private final AtomicBoolean withoutMail = new AtomicBoolean();
+        /** メールの取得の結果 (診断の記録用)。fetched が false なら読みに行っていない。 */
+        private boolean fetched;
+        @Nullable private Exception fetchError;
+        @Nullable private String fetchReason;
+        @Nullable private String expiryReason;
+        @Nullable private String expiryDetail;
+
+        synchronized void recordFetch(@Nullable Exception error, @Nullable String reason) {
+            fetched = true;
+            fetchError = error;
+            fetchReason = reason;
+        }
+
+        synchronized void recordExpiry(@NonNull String reason, @NonNull String detail) {
+            expiryReason = reason;
+            expiryDetail = detail;
+        }
+
+        /**
+         * 1 回の中継の記録 (中継 1 件と、メールを読んだならその取得 1 件)。outcome は "sent" か失敗の理由。
+         * iOS の OTPRelayShared.Attempt.diagnosticEvents と同じ。
+         */
+        @NonNull
+        public synchronized java.util.List<JsonObject> diagnosticEvents(@Nullable String supportId, @NonNull String outcome,
+                                                                        @NonNull OtpDiagnostics.Build build, long now) {
+            java.util.List<JsonObject> events = new java.util.ArrayList<>();
+            java.util.Map<String, String> tags = trail.values();
+            String label = "sent".equals(outcome) ? null : outcome;
+            if (expiryReason != null && expiryDetail != null) {
+                tags.put("reason", expiryReason);
+                tags.put("detail", expiryDetail);
+                label = "expired";
+                events.add(fetchEvent(imap, OtpDiagnostics.CONTEXT_RELAY, supportId, expiryReason, expiryDetail, build, now));
+            } else if (fetched) {
+                String detail = fetchError != null ? imap.detail(fetchError) : null;
+                tags.put("reason", fetchReason != null ? fetchReason : "ok");
+                if (detail != null) tags.put("detail", detail);
+                events.add(fetchEvent(imap, OtpDiagnostics.CONTEXT_RELAY, supportId, fetchReason, detail, build, now));
+            } else if (label != null) {
+                tags.put("reason", label);
+            }
+            JsonObject extra = new JsonObject();
+            extra.add("timings_ms", OtpDiagnostics.millis(trail.marks()));
+            extra.add("imap_timings_ms", OtpDiagnostics.millis(imap.phaseTimingsMs()));
+            String method = trail.value("method");
+            events.add(OtpDiagnostics.event("otp-relay request", label, OtpDiagnostics.CONTEXT_RELAY,
+                    method != null ? method : "mail", supportId, tags, extra,
+                    java.util.Arrays.asList(new OtpDiagnostics.Crumbs("relay", trail.steps()),
+                            new OtpDiagnostics.Crumbs("imap", imap.trail.steps())), build, now));
+            return events;
+        }
 
         /**
          * メールを読まずに答える (セットアップキーでコードを作る・断る)。時間切れの見張りはメールの段階から理由
@@ -91,6 +145,34 @@ public final class OtpRelayResponder {
 
         /** 中継サーバに答え始めたか (届いたかは問わない)。 */
         public boolean responded() { return responded.get(); }
+    }
+
+    /**
+     * メールの取得 1 回の記録。detail が null なら成功。reason は中継サーバの理由 (failureCode)。
+     * アプリのログインの経路 (OtpPromptCoordinator など) からも使う。
+     */
+    @NonNull
+    public static JsonObject fetchEvent(@NonNull ImapOtpFetcher.Progress progress, @NonNull String context,
+                                        @Nullable String supportId, @Nullable String reason, @Nullable String detail,
+                                        @NonNull OtpDiagnostics.Build build, long now) {
+        java.util.Map<String, String> tags = new java.util.TreeMap<>();
+        tags.put("reason", reason != null ? reason : (detail == null ? "ok" : "imap-error"));
+        if (detail != null) tags.put("detail", detail);
+        JsonObject extra = new JsonObject();
+        extra.add("timings_ms", OtpDiagnostics.millis(progress.phaseTimingsMs()));
+        java.util.List<OtpDiagnostics.Step> steps = progress.trail.steps();
+        extra.addProperty("steps", steps.size());
+        return OtpDiagnostics.event("otp-mail-fetch", detail != null ? OtpDiagnostics.label(detail) : null, context,
+                "mail", supportId, tags, extra,
+                java.util.Collections.singletonList(new OtpDiagnostics.Crumbs("imap", steps)), build, now);
+    }
+
+    /** アプリのログインの経路で、取得 1 回の記録を送る (待たない)。error が null なら成功。 */
+    public static void reportLoginFetch(@NonNull ImapOtpFetcher.Progress progress, @Nullable Exception error) {
+        String detail = error != null ? progress.detail(error) : null;
+        OtpDiagnostics.sendAsync(java.util.Collections.singletonList(fetchEvent(progress, OtpDiagnostics.CONTEXT_LOGIN,
+                OtpDiagnostics.supportId(), error != null ? failureCode(error) : null, detail,
+                OtpDiagnostics.Build.current(), System.currentTimeMillis())));
     }
 
     /** IMAP の差し替え口 (テスト用)。 */
@@ -232,6 +314,10 @@ public final class OtpRelayResponder {
     public Outcome fetchAndRespond(@NonNull OtpRelayPairing pairing, @NonNull OtpRelayRequest request,
                                    long deliveredAt, long mailWaitMs, @NonNull Attempt attempt) {
         long startedAt = clock.now();
+        attempt.trail.mark("delivered", deliveredAt);
+        attempt.trail.mark("started", startedAt);
+        attempt.trail.note("依頼を受けた: 届いてから " + (startedAt - deliveredAt) + "ms、依頼の時刻から "
+                + (startedAt - request.requestedAt) + "ms、期限まで " + (request.expiresAt - startedAt) + "ms");
         OtpRelayCrypto.Keys keys = OtpRelayCrypto.keys(pairing.key);
         // 鍵が読めないと応答のトークンも作れない (中継サーバには答えられない)。
         if (keys == null) return Outcome.failed("bad-key");
@@ -241,7 +327,7 @@ public final class OtpRelayResponder {
             JsonObject body = new JsonObject();
             body.addProperty("pairingId", pairing.pairingId);
             body.addProperty("result", "rejected");
-            post(request, keys, body, OtpRelayApi.DEFAULT_TIMEOUT_MS);
+            post(attempt, request, keys, body, OtpRelayApi.DEFAULT_TIMEOUT_MS);
             lastResult.save(false, failureText(CONSENT_REQUIRED), null);
             return Outcome.failed(CONSENT_REQUIRED);
         }
@@ -252,6 +338,9 @@ public final class OtpRelayResponder {
         Route route = route(OtpRelayCrypto.page(request.requestId, keys), totp.authenticatorMethod(),
                 uid.isEmpty() ? null : totp.keyFor(uid));
         if (route.kind != Route.Kind.MAIL) attempt.markAnsweringWithoutMail();
+        attempt.trail.set("method", route.kind == Route.Kind.MAIL ? "mail" : route.kind == Route.Kind.TOTP ? "totp" : "refuse");
+        if (route.reason != null) attempt.trail.set("refusal", route.reason);
+        attempt.trail.note("方式: " + attempt.trail.value("method"));
         if (route.kind == Route.Kind.TOTP && !pairing.hasTotpConsent()) {
             // 以前の文面 (メールだけ) で作った連携。アプリで「送る」を押すまでコードは作らない。
             return refuse(TOTP_CONSENT_REQUIRED, OtpRelayCrypto.PAGE_TOTP, pairing, request, keys, attempt);
@@ -269,11 +358,18 @@ public final class OtpRelayResponder {
         long since = OtpRelayTiming.effectiveRequestedAt(request.requestedAt, deliveredAt);
         long timeout = OtpRelayTiming.mailTimeoutSeconds(clock.now(), startedAt + mailWaitMs, request.expiresAt);
         ImapOtpFetcher.OtpMail found;
+        attempt.trail.note("メールの取得を始める (期限 " + timeout + "s)");
         try {
             found = mail.fetch(uid, pass, timeout, since, attempt.imap);
+            attempt.recordFetch(null, null);
+            attempt.trail.mark("fetched");
+            attempt.trail.note("コードを見つけた");
         } catch (Exception e) {
             String reason = failureCode(e);
             String detail = attempt.imap.detail(e);
+            attempt.recordFetch(e, reason);
+            attempt.trail.mark("fetched");
+            attempt.trail.note("メールの取得に失敗: " + reason + " " + detail);
             // 画面に出す切り分け用の記録には例外の中身も残す (端末の中だけ。LOGIN の引数は例外に入らない)。
             return fail(pairing, request, keys, attempt, reason, detail, detail + "\n" + e);
         }
@@ -292,6 +388,8 @@ public final class OtpRelayResponder {
         String box;
         try {
             box = OtpRelayCrypto.seal(found.code, OtpRelayCrypto.PAGE_MAIL, request.requestId, keys);
+            attempt.trail.mark("sealed");
+            attempt.trail.note("暗号化した");
         } catch (java.security.GeneralSecurityException e) {
             Log.e(TAG, "sealing failed", e);
             return fail(pairing, request, keys, attempt, "imap-error", "seal-error", null);
@@ -303,7 +401,7 @@ public final class OtpRelayResponder {
         body.addProperty("pairingId", pairing.pairingId);
         body.addProperty("result", "approved");
         body.addProperty("box", box);
-        int status = post(request, keys, body, OtpRelayTiming.POST_TIMEOUT_MS);
+        int status = post(attempt, request, keys, body, OtpRelayTiming.POST_TIMEOUT_MS);
         // 前の実行が既に答えている。それが失敗だったなら PC は手入力に戻っているので、メールは消さない。
         if (status == 409) return Outcome.failed(ALREADY_ANSWERED);
 
@@ -315,6 +413,8 @@ public final class OtpRelayResponder {
             // 通信失敗は PC に届いていないので、消さずに残す (PC で手入力に使う。残ったものは次に成功したときに消える)。
             try {
                 mail.deleteUsed(found);
+                attempt.trail.mark("mail_deleted");
+                attempt.trail.note("使ったメールを消した");
             } catch (Exception e) {
                 Log.w(TAG, "could not delete used OTP mails: " + e);
             }
@@ -356,7 +456,7 @@ public final class OtpRelayResponder {
         body.addProperty("pairingId", pairing.pairingId);
         body.addProperty("result", "approved");
         body.addProperty("box", box);
-        int status = post(request, keys, body, OtpRelayTiming.POST_TIMEOUT_MS);
+        int status = post(attempt, request, keys, body, OtpRelayTiming.POST_TIMEOUT_MS);
         if (status == 409) return Outcome.failed(ALREADY_ANSWERED);
         lastResult.save(status == 204, status == 204 ? "PC に OTP を送りました"
                 : status == 0 ? failureText("relay-unreachable") : "中継サーバの応答: " + status, null);
@@ -384,7 +484,7 @@ public final class OtpRelayResponder {
         body.addProperty("pairingId", pairing.pairingId);
         body.addProperty("result", "approved");
         body.addProperty("box", box);
-        int status = post(request, keys, body, OtpRelayApi.DEFAULT_TIMEOUT_MS);
+        int status = post(attempt, request, keys, body, OtpRelayApi.DEFAULT_TIMEOUT_MS);
         if (status == 409) return Outcome.failed(ALREADY_ANSWERED);
         lastResult.save(false, failureText(reason), reason);
         return Outcome.failed(reason);
@@ -411,9 +511,11 @@ public final class OtpRelayResponder {
         // 取得の本体は接続が切れて失敗し、答える権利が無いので DEADLINE_PASSED で終わる。
         attempt.imap.abort();
         String reason = expiredReason(stage);
-        String detail = expiredDetail(stage, attempt.imap.reconnects());
+        String detail = expiredDetail(stage, attempt.imap.reconnects(), attempt.imap.timing());
+        attempt.recordExpiry(reason, detail);
+        attempt.trail.note("見張りの期限: 失敗を返す " + reason + " " + detail);
         JsonObject body = failureBody(pairing, reason, detail);
-        int status = post(request, keys, body, timeoutMs);
+        int status = post(attempt, request, keys, body, timeoutMs);
         if (status == 409) return ExpiryResult.ALREADY_ANSWERED;
         lastResult.save(false, failureText(reason), detail);
         return status == 204 ? ExpiryResult.ACCEPTED : ExpiryResult.UNDELIVERED;
@@ -437,7 +539,14 @@ public final class OtpRelayResponder {
 
     @NonNull
     static String expiredDetail(@NonNull ImapOtpFetcher.Progress.Stage stage, int reconnects) {
-        return "expired:" + stage.code() + (reconnects > 0 ? ":r" + reconnects : "");
+        return expiredDetail(stage, reconnects, "");
+    }
+
+    /** timing はどこで時間を使ったか (例 ":t2.1-l3.4-s9.0-f22.6")。中継サーバの形 (80 文字まで) に収める。 */
+    @NonNull
+    static String expiredDetail(@NonNull ImapOtpFetcher.Progress.Stage stage, int reconnects, @NonNull String timing) {
+        String detail = "expired:" + stage.code() + (reconnects > 0 ? ":r" + reconnects : "") + timing;
+        return detail.length() > 80 ? detail.substring(0, 80) : detail;
     }
 
     /** 失敗を中継サーバに返す。見張りが先に答えていたら何もしない (DEADLINE_PASSED)。 */
@@ -445,7 +554,7 @@ public final class OtpRelayResponder {
     private Outcome fail(OtpRelayPairing pairing, OtpRelayRequest request, OtpRelayCrypto.Keys keys, Attempt attempt,
                          String reason, @Nullable String detail, @Nullable String localDetail) {
         if (!attempt.claimResponse()) return Outcome.failed(DEADLINE_PASSED);
-        int status = post(request, keys, failureBody(pairing, reason, detail), OtpRelayApi.DEFAULT_TIMEOUT_MS);
+        int status = post(attempt, request, keys, failureBody(pairing, reason, detail), OtpRelayApi.DEFAULT_TIMEOUT_MS);
         if (status == 409) return Outcome.failed(ALREADY_ANSWERED);
         lastResult.save(false, failureText(reason), localDetail != null ? localDetail : detail);
         return Outcome.failed(reason);
@@ -462,13 +571,23 @@ public final class OtpRelayResponder {
     }
 
     /** 中継サーバへ送る。通信できなければ 0。 */
-    private int post(OtpRelayRequest request, OtpRelayCrypto.Keys keys, JsonObject body, long timeoutMs) {
+    private int post(Attempt attempt, OtpRelayRequest request, OtpRelayCrypto.Keys keys, JsonObject body, long timeoutMs) {
+        // 返送を時間と結果つきで残す (box は残さない)。
+        String result = body.has("result") ? body.get("result").getAsString() : "?";
+        String error = body.has("error") ? " error=" + body.get("error").getAsString() : "";
+        attempt.trail.note("POST /response result=" + result + error);
+        long posted = clock.now();
+        int status;
         try {
-            return api.respond(request.requestId, keys, body, timeoutMs).status;
+            status = api.respond(request.requestId, keys, body, timeoutMs).status;
         } catch (IOException e) {
             Log.w(TAG, "response not delivered: " + e);
-            return 0;
+            status = 0;
         }
+        attempt.trail.note("POST /response -> " + status + " (" + (clock.now() - posted) + "ms)");
+        attempt.trail.mark("response_posted");
+        attempt.trail.set("response_status", String.valueOf(status));
+        return status;
     }
 
     /**

@@ -278,11 +278,14 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
         if (method != Method.EMAIL || !codeSentToOwnMailbox) return;
         autoFetchingEmailCode.setValue(true);
         executor.execute(() -> {
+            ImapOtpFetcher fetcher = new ImapOtpFetcher();
             try {
-                String code = new ImapOtpFetcher().fetchOtpCode(uid, pass, 30, emailRequestedAt);
+                String code = fetcher.fetchOtpCode(uid, pass, 30, emailRequestedAt);
+                com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayResponder.reportLoginFetch(fetcher.progress(), null);
                 autoFetchingEmailCode.postValue(false);
                 completeEmail(code);
             } catch (Exception e) {
+                com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayResponder.reportLoginFetch(fetcher.progress(), e);
                 // 自動取得できなくてもメール自体は届いているはずなので、手入力に切り替える。
                 autoFetchingEmailCode.postValue(false);
             }

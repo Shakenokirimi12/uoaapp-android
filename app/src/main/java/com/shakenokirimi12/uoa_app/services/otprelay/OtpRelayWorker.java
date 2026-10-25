@@ -178,6 +178,7 @@ public class OtpRelayWorker extends Worker {
             if (OtpRelayResponder.CONSENT_REQUIRED.equals(outcome.reason)) {
                 OtpRelayNotifications.consentRequired(ctx, pairing, request);
             }
+            sendDiagnostics(attempt, outcome);
             return;
         }
 
@@ -205,10 +206,27 @@ public class OtpRelayWorker extends Worker {
                 expiry.cancel(false);
                 report(ctx, pairing, request, outcome);
             }
+            sendDiagnostics(attempt, outcome);
         } finally {
             watchdog.shutdown();
         }
     }
+
+    /**
+     * 診断の記録 (OtpDiagnostics、Wana) を送る。中継サーバに答えたあと (見張りが答えたならその後) に、この仕事の
+     * スレッドで送る。上限は短く、失敗しても何もしない。見張りが答えた (DEADLINE_PASSED) ときは記録に見張りの理由が入る。
+     */
+    private static void sendDiagnostics(@NonNull OtpRelayResponder.Attempt attempt, @NonNull OtpRelayResponder.Outcome outcome) {
+        String label = outcome.kind == OtpRelayResponder.Kind.SENT ? "sent" : outcome.reason != null ? outcome.reason : "failed";
+        com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.sendBlocking(
+                attempt.diagnosticEvents(com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.supportId(), label,
+                        com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.Build.current(),
+                        System.currentTimeMillis()),
+                DIAGNOSTICS_TIMEOUT_MS);
+    }
+
+    /** 診断の記録を送る上限 (1 件あたり)。 */
+    private static final long DIAGNOSTICS_TIMEOUT_MS = 5_000;
 
     /** 見張りが失敗を送り終わるのを待つ。POST の上限 + 余裕で打ち切る。 */
     private static void awaitQuietly(ScheduledFuture<?> future) {

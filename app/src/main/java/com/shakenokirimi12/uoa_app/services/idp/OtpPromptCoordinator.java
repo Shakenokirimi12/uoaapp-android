@@ -51,9 +51,14 @@ public final class OtpPromptCoordinator {
         }
         // SeciossIdPClient は motp.cgi を叩いた直後にここへ来る。メール送信の時刻として使う。
         long requestedAt = System.currentTimeMillis();
+        ImapOtpFetcher fetcher = new ImapOtpFetcher();
         try {
-            return new ImapOtpFetcher().fetchOtpCode(uid, pass, 30, requestedAt);
+            String code = fetcher.fetchOtpCode(uid, pass, 30, requestedAt);
+            // 取得 1 回ごとに診断の記録 (Wana) を送る (待たない)。
+            com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayResponder.reportLoginFetch(fetcher.progress(), null);
+            return code;
         } catch (Exception e) {
+            com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayResponder.reportLoginFetch(fetcher.progress(), e);
             // メールが届かない・メールサーバーに繋がらない。手入力に落とす。
             android.util.Log.w("OtpPromptCoordinator", "メールからの自動取得に失敗: " + e);
         }

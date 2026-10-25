@@ -89,4 +89,41 @@ public class ImapOtpProgressTest {
         String s = ImapOtpFetcher.Progress.sanitize("-Weird Code!" + "x".repeat(100));
         assertTrue(s.matches("^[a-z0-9][a-z0-9._:-]{0,79}$"));
     }
+
+    /** detail の後ろに、接続・LOGIN・SELECT が終わった時点と失敗した時点 (最初の接続からの秒数) を付ける。 */
+    @Test
+    public void detail_carriesPhaseTimings() {
+        String timing = ImapOtpFetcher.Progress.timing(2_060, 3_400, 9_000, 17_040);
+        assertEquals(":t2.1-l3.4-s9.0-f17.0", timing);
+        assertEquals("scan-stall:t2.1-l3.4-s9.0-f17.0",
+                ImapOtpFetcher.Progress.detail(new SocketTimeoutException("Read timed out"), Stage.SCAN, 0, timing));
+        // 繋がらなかった: 終わった段階が無ければ、失敗した時点だけ。
+        assertEquals("connect-timeout:f4.0", ImapOtpFetcher.Progress.detail(
+                new SocketTimeoutException("connect timed out"), Stage.CONNECT, 0, ImapOtpFetcher.Progress.timing(-1, -1, -1, 4_000)));
+        // 長くなっても中継サーバの形 (80 文字まで) に収まる。
+        String longer = ImapOtpFetcher.Progress.detail(new ImapOtpFetcher.ImapException(
+                "commandFailed(a1): a1 NO [ABCDEFGHIJKLMNOPQRSTUVWX] x"), Stage.LOGIN, 123456789,
+                ImapOtpFetcher.Progress.timing(1_000, 2_000, 3_000, 123_456_789));
+        assertTrue(longer, longer.matches("^[a-z0-9][a-z0-9._:-]{0,79}$"));
+        // 実際の取得: 接続を始めてから段階に入ると、その時点が残る。
+        ImapOtpFetcher.Progress p = new ImapOtpFetcher.Progress();
+        p.beginConnection();
+        p.enter(Stage.GREETING);
+        p.enter(Stage.LOGIN);
+        p.enter(Stage.SELECT);
+        p.enter(Stage.SCAN);
+        IOException e = new IOException("connectionFailed");
+        p.recordFailure(e);
+        assertTrue(p.detail(e), p.detail(e).matches("^scan-closed:t[0-9.]+-l[0-9.]+-s[0-9.]+-f[0-9.]+$"));
+    }
+
+    /** 手順の記録に書くエラーの名前。サーバの応答の本文 (アドレスなど) と例外の文面 (ホスト名・IP) は書かない。 */
+    @Test
+    public void describe_keepsOnlyStatusAndCodes() {
+        assertEquals("a2 NO [NONEXISTENT]", ImapOtpFetcher.Progress.describe(new ImapOtpFetcher.ImapException(
+                "commandFailed(a2): a2 NO [NONEXISTENT] Mailbox doesn't", "a2 NO [NONEXISTENT] Mailbox doesn't exist: s1300000@u-aizu.ac.jp")));
+        assertEquals("ConnectException ECONNREFUSED", ImapOtpFetcher.Progress.describe(
+                new ConnectException("failed to connect to stdmsv1.u-aizu.ac.jp/10.0.0.1 (port 993): ECONNREFUSED")));
+        assertEquals("mailNotFound", ImapOtpFetcher.Progress.describe(new ImapOtpFetcher.ImapException("mailNotFound")));
+    }
 }

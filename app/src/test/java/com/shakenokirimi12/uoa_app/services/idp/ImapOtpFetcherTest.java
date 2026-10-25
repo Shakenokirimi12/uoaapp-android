@@ -197,7 +197,9 @@ public class ImapOtpFetcherTest {
             long elapsed = System.currentTimeMillis() - started;
             org.junit.Assert.assertTrue("elapsed " + elapsed, elapsed < ImapOtpFetcher.SETUP_STALL_LIMIT_MS);
             assertEquals(1, accepted.get());
-            assertEquals("cancelled", progress.detail(new ImapOtpFetcher.ImapException("aborted")));
+            // 後ろに時間 (:f<取りやめた時点>) が付く。中身は実行の速さ次第なので形だけ確かめる。
+            String detail = progress.detail(new ImapOtpFetcher.ImapException("aborted"));
+            org.junit.Assert.assertTrue(detail, detail.matches("^cancelled(:f[0-9]+\\.[0-9])?$"));
             for (java.net.Socket s : held) s.close();
         }
     }
