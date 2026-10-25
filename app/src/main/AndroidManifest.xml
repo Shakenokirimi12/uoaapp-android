@@ -12,6 +12,20 @@
     <!-- 再起動で消えたジオフェンス (自動出席) を登録し直す -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- otpauth:// を受ける認証アプリが入っているか (AuthenticatorKeyActions.canOpen)。Android 11 以降は
+         宣言しないと見えない。host を絞って受けるアプリ (Bitwarden は otpauth://totp だけ) も見えるよう、
+         host 付きも並べる。 -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="otpauth" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="otpauth" android:host="totp" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:backupAgent=".services.UoaBackupAgent"

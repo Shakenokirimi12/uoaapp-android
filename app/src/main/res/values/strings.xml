@@ -213,8 +213,12 @@
     <string name="settings_tabs">タブの並び替え</string>
     <string name="settings_backup">設定をバックアップ</string>
     <string name="settings_restore">バックアップから戻す</string>
-    <string name="otp_add_to_authenticator">Google Authenticator に追加</string>
-    <string name="otp_manual_secret_hint">Authy などはコードを手で追加します。下のキーを入力してください。QR はこの画面には出せません。</string>
+    <string name="otp_add_to_authenticator">認証アプリで開く</string>
+    <string name="otp_choose_authenticator">開く認証アプリを選ぶ</string>
+    <string name="otp_manual_secret_hint">Authy など、リンクから追加できないアプリでは、下のキーを手で入力するか、別の端末で QR コードを読み取ってください。</string>
+    <string name="otp_show_qr">QR コードを表示</string>
+    <string name="otp_qr_description">認証アプリ用の QR コード</string>
+    <string name="otp_key_dialog_hint">Authy など、リンクから追加できないアプリでは、このキーを手で入力するか、別の端末でこの QR コードを読み取ってください。</string>
     <string name="otp_copy_secret">キーをコピー</string>
     <string name="otp_method_authenticator_summary">このアプリがコードを作って入力します。Google Authenticator や Authy にも追加できます。</string>
     <string name="otp_code_from_app">認証アプリにキーを追加して、表示されたコードを入力してください。このアプリにも同じキーを保存し、ログインのコードを自動で入力します。</string>
@@ -222,7 +226,7 @@
     <string name="otp_secret_unreadable">大学のシステムが発行したキーを読み取れなかったため、登録していません。</string>
     <string name="otp_secret_not_saved">このアプリにキーを保存できなかったため、登録していません。</string>
     <string name="otp_code_mail_prompt">メールに届いたコードを入力してください</string>
-    <string name="otp_no_otpauth_app">開けるアプリがありません。Authy などは下のキーを手で追加してください</string>
+    <string name="otp_no_otpauth_app">開けるアプリがありません。キーをコピーして、認証アプリに手で追加してください</string>
     <string name="otp_secret_copied">キーをコピーしました</string>
     <string name="otp_reregister">認証アプリに登録し直す</string>
     <string name="otp_reregister_summary">新しいキーを発行して、このアプリと認証アプリに入れ直します</string>
@@ -232,12 +236,11 @@
     <string name="login_account_summary">大学のユーザー名とパスワード</string>
     <string name="login_otp_section">ワンタイムパスワード</string>
     <string name="login_otp_method">受け取り方</string>
-    <string name="login_show_secret">キーを表示</string>
+    <string name="login_show_secret">キーと QR コードを表示</string>
     <string name="login_show_secret_summary">Authy などに追加するとき。画面ロックの確認があります</string>
     <string name="login_relay_section">PC での入力</string>
     <string name="login_relay_summary">PC のブラウザでログインするとき、コードをこの端末から送ります</string>
     <string name="login_secret_title">認証アプリのキー</string>
-    <string name="login_secret_message">%1$s\n\nAuthy などの「手動で入力」に、このキーを入れてください。QR はこの画面には出せません。</string>
     <string name="login_secret_needs_lock">画面ロック (PIN やパターン) を設定すると表示できます。</string>
     <string name="login_secret_confirm_title">キーを表示</string>
     <string name="login_secret_confirm_description">本人か確かめます</string>
