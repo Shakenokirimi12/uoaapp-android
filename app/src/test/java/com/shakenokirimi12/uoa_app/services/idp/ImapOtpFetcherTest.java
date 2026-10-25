@@ -92,40 +92,34 @@ public class ImapOtpFetcherTest {
                 "* 12873 EXISTS", "* OK [UIDVALIDITY 1600000000] UIDs valid")));
     }
 
-    /** 新着を探す SEARCH は、受信箱全体ではなく直近の UID の範囲だけを見る (大きな受信箱で止まらないように)。 */
+    /** 新着は SEARCH ではなく、直近の UID の範囲のヘッダを 1 回の FETCH で取って手元で探す (2026-10-25)。 */
     @Test
-    public void otpSearch_isBoundedByUidRange() {
-        int from = ImapOtpFetcher.searchLowerBound(13045);
+    public void headerScan_isBoundedByUidRange() {
+        int from = ImapOtpFetcher.scanLowerBound(13045);
         assertEquals(13045 - ImapOtpFetcher.RECENT_UID_WINDOW, from);
-        assertEquals("a5 UID SEARCH UID " + from + ":* FROM \"idp-apply@u-aizu.ac.jp\"",
-                ImapOtpFetcher.otpSearchCommand("a5", from, null));
+        assertEquals("a5 UID FETCH " + from + ":* (UID INTERNALDATE BODY.PEEK[HEADER.FIELDS (FROM)])",
+                ImapOtpFetcher.headerFetchCommand("a5", from, null));
         // 削除は両端を決める。
-        assertEquals("a9 UID SEARCH UID 12546:13045 FROM \"idp-apply@u-aizu.ac.jp\"",
-                ImapOtpFetcher.otpSearchCommand("a9", 12546, 13045));
+        assertEquals("a9 UID FETCH 12946:13024 (UID INTERNALDATE BODY.PEEK[HEADER.FIELDS (FROM)])",
+                ImapOtpFetcher.headerFetchCommand("a9", 12946, 13024));
         // 小さな受信箱・UIDNEXT が無いときは 1 から。
-        assertEquals(1, ImapOtpFetcher.searchLowerBound(30));
-        assertEquals(1, ImapOtpFetcher.searchLowerBound(null));
-        assertEquals("a5 UID SEARCH UID 1:* FROM \"idp-apply@u-aizu.ac.jp\"",
-                ImapOtpFetcher.otpSearchCommand("a5", 0, null));
-        // n:* は n が最大の UID より大きいと最大の UID のメールに当たる。範囲より古いものは使わない。
-        assertEquals(java.util.Collections.emptyList(),
-                ImapOtpFetcher.allUids(java.util.Arrays.asList("* SEARCH 12001", "a5 OK"), 12845));
-        assertEquals(java.util.Arrays.asList(12845, 13050),
-                ImapOtpFetcher.allUids(java.util.Arrays.asList("* SEARCH 12845 13050", "a5 OK"), 12845));
+        assertEquals(1, ImapOtpFetcher.scanLowerBound(10));
+        assertEquals(1, ImapOtpFetcher.scanLowerBound(null));
     }
 
     /** ログインしたあとに止まったら繋ぎ直さない。繋ぎ直しは通信断か一時的な NO のときだけで、1 回まで。 */
     @Test
     public void reconnectPolicy() {
         java.net.SocketTimeoutException stall = new java.net.SocketTimeoutException("Read timed out");
-        assertEquals(ImapOtpFetcher.ConnectionFailure.STALLED_AFTER_LOGIN, ImapOtpFetcher.classify(stall, Stage.SEARCH));
+        assertEquals(ImapOtpFetcher.ConnectionFailure.STALLED_AFTER_LOGIN, ImapOtpFetcher.classify(stall, Stage.SCAN));
+        assertEquals(ImapOtpFetcher.ConnectionFailure.STALLED_AFTER_LOGIN, ImapOtpFetcher.classify(stall, Stage.RECHECK));
         assertEquals(ImapOtpFetcher.ConnectionFailure.STALLED_AFTER_LOGIN, ImapOtpFetcher.classify(stall, Stage.SELECT));
         assertEquals(ImapOtpFetcher.ConnectionFailure.STALLED_AFTER_LOGIN, ImapOtpFetcher.classify(stall, Stage.FETCH));
         assertEquals(ImapOtpFetcher.ConnectionFailure.TRANSPORT, ImapOtpFetcher.classify(stall, Stage.GREETING));
         assertEquals(ImapOtpFetcher.ConnectionFailure.TRANSPORT, ImapOtpFetcher.classify(stall, Stage.LOGIN));
         assertEquals(ImapOtpFetcher.ConnectionFailure.TRANSPORT, ImapOtpFetcher.classify(stall, Stage.CONNECT));
         assertEquals(ImapOtpFetcher.ConnectionFailure.TRANSPORT,
-                ImapOtpFetcher.classify(new java.net.SocketException("Connection reset"), Stage.SEARCH));
+                ImapOtpFetcher.classify(new java.net.SocketException("Connection reset"), Stage.SCAN));
         assertEquals(ImapOtpFetcher.ConnectionFailure.TRANSPORT,
                 ImapOtpFetcher.classify(new java.io.IOException("connectionFailed"), Stage.FETCH));
         assertEquals(ImapOtpFetcher.ConnectionFailure.AUTHENTICATION_REJECTED, ImapOtpFetcher.classify(

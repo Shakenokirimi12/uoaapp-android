@@ -427,7 +427,10 @@ public class OtpRelayResponderTest {
     @Test
     public void expiryWhileWaitingForMail_isMailTimeout() {
         assertEquals("mail-timeout", OtpRelayResponder.expiredReason(ImapOtpFetcher.Progress.Stage.IDLE));
-        assertEquals("mail-timeout", OtpRelayResponder.expiredReason(ImapOtpFetcher.Progress.Stage.SEARCH));
+        assertEquals("mail-timeout", OtpRelayResponder.expiredReason(ImapOtpFetcher.Progress.Stage.RECHECK));
+        // メールを読む途中で止まったのはサーバが答えなかった。
+        assertEquals("imap-error", OtpRelayResponder.expiredReason(ImapOtpFetcher.Progress.Stage.SCAN));
+        assertEquals("imap-error", OtpRelayResponder.expiredReason(ImapOtpFetcher.Progress.Stage.FETCH));
         assertEquals("imap-error", OtpRelayResponder.expiredReason(ImapOtpFetcher.Progress.Stage.SELECT));
         assertEquals("expired:select:r2", OtpRelayResponder.expiredDetail(ImapOtpFetcher.Progress.Stage.SELECT, 2));
     }
