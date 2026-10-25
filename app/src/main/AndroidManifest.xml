@@ -121,6 +121,11 @@
             android:name=".services.LocationGeofenceService$GeofenceReceiver"
             android:exported="false" />
 
+        <!-- 「欠席？（要確認）」の通知のボタン -->
+        <receiver
+            android:name=".services.attendance.AttendanceConfirmation$Receiver"
+            android:exported="false" />
+
         <receiver
             android:name=".services.LocationGeofenceService$RestoreReceiver"
             android:exported="false">

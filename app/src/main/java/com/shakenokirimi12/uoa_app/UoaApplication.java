@@ -66,6 +66,13 @@ public class UoaApplication extends Application {
                     AppConfigService.getInstance().refresh(activity);
                     // 前日までの利用状況があれば送る (1 日 1 回。送る分が無ければ通信しない)。
                     com.shakenokirimi12.uoa_app.services.usage.UsageStats.sendIfDueAsync(activity);
+                    // 登録し直すと今の状態 (中か外か) が届き、そこで「欠席？（要確認）」の判定をし直す
+                    // (GeofenceReceiver)。判定は時間割を取った後にも走る (授業の後に取った時間割だけを使う)。
+                    try {
+                        com.shakenokirimi12.uoa_app.services.LocationGeofenceService.startIfEnabled(activity);
+                    } catch (RuntimeException e) {
+                        android.util.Log.e("UoaApplication", "Could not re-register the geofence", e);
+                    }
                 }
             }
 
@@ -86,6 +93,8 @@ public class UoaApplication extends Application {
         });
         // Context を持たないサービス層が PreferenceManager.getInstance() で取れるよう、ここで初期化する。
         PreferenceManager.getInstance(this);
+        // 自動の欠席の根拠。前の終了 (強制停止など) と再起動で監視が止まっていた区間を残す。
+        com.shakenokirimi12.uoa_app.services.attendance.PresenceEvidenceLog.onProcessStart(this);
         // 以前の版がアプリ内ブラウザの Basic 認証で WebView の http_auth.db (平文) に書いたパスワードを消す。
         com.shakenokirimi12.uoa_app.ui.browser.InAppBrowserActivity.clearLegacyHttpAuthOnce(this);
         // The UI is Japanese only. Without a Japanese locale on the context, Android picks

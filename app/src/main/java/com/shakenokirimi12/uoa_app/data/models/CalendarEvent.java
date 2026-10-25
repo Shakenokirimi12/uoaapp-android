@@ -8,6 +8,9 @@ public class CalendarEvent {
     private Date dtstart;
     private Date dtend;
     private String uid;
+    /** ICS の DESCRIPTION / STATUS。休講の見分けに使う。前の版が保存した予定には無い (null)。 */
+    private String description;
+    private String status;
 
     public CalendarEvent(String summary, String location, Date dtstart, Date dtend) {
         this.summary = summary;
@@ -30,6 +33,12 @@ public class CalendarEvent {
 
     public String getUid() { return uid; }
     public void setUid(String uid) { this.uid = uid; }
+
+    public String getDescription() { return description != null ? description : ""; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
     public long getDurationMinutes() {
         if (dtstart == null || dtend == null) return 0;

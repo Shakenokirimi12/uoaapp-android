@@ -194,9 +194,16 @@ public class CourseDetailFragment extends Fragment {
         }
         recyclerHistory.setVisibility(View.VISIBLE);
         textNoHistory.setVisibility(View.GONE);
-        recyclerHistory.setAdapter(new HistoryAdapter(history, historyId -> {
-            attendanceManager.removeHistory(String.valueOf(courseId), historyId);
-            loadAttendance();
+        recyclerHistory.setAdapter(new HistoryAdapter(history, new HistoryAdapter.Listener() {
+            @Override public void onDelete(String historyId) {
+                attendanceManager.removeHistory(String.valueOf(courseId), historyId);
+                loadAttendance();
+            }
+
+            @Override public void onChangeStatus(String historyId, AttendanceManager.Status status) {
+                attendanceManager.updateStatus(String.valueOf(courseId), historyId, status);
+                loadAttendance();
+            }
         }));
     }
 
@@ -429,11 +436,15 @@ public class CourseDetailFragment extends Fragment {
 
     static class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.VH> {
         private final List<AttendanceManager.HistoryItem> items;
-        private final OnDeleteListener listener;
+        private final Listener listener;
 
-        interface OnDeleteListener { void onDelete(String id); }
+        interface Listener {
+            void onDelete(String id);
+            /** 記録の状態を手で変える (自動の欠席を出席に直す、など)。 */
+            void onChangeStatus(String id, AttendanceManager.Status status);
+        }
 
-        HistoryAdapter(List<AttendanceManager.HistoryItem> items, OnDeleteListener listener) {
+        HistoryAdapter(List<AttendanceManager.HistoryItem> items, Listener listener) {
             this.items = items;
             this.listener = listener;
         }
@@ -453,9 +464,11 @@ public class CourseDetailFragment extends Fragment {
                 case "PRESENT": label = "出席"; break;
                 case "ABSENT": label = "欠席"; break;
                 case "LATE": label = "遅刻"; break;
+                case "ABSENT_UNCONFIRMED": label = h.itemView.getContext().getString(R.string.attendance_unconfirmed); break;
                 default: label = item.status;
             }
-            if ("auto".equals(item.source)) label += " (自動)";
+            // 要確認はそれだけで自動と分かる。
+            if ("auto".equals(item.source) && !"ABSENT_UNCONFIRMED".equals(item.status)) label += " (自動)";
             h.status.setText(label);
             int fg, bg;
             switch (item.status) {
@@ -468,6 +481,7 @@ public class CourseDetailFragment extends Fragment {
                     bg = MaterialColors.getColor(h.itemView, com.google.android.material.R.attr.colorErrorContainer);
                     break;
                 case "LATE":
+                case "ABSENT_UNCONFIRMED":
                     fg = h.itemView.getContext().getColor(R.color.warning);
                     bg = h.itemView.getContext().getColor(R.color.warning_container);
                     break;
@@ -478,6 +492,27 @@ public class CourseDetailFragment extends Fragment {
             h.status.setTextColor(fg);
             h.status.setChipBackgroundColor(ColorStateList.valueOf(bg));
             h.delete.setOnClickListener(v -> listener.onDelete(item.id));
+            // 自動の記録も手で直せる。直したものは手動の記録になる。
+            h.status.setClickable(true);
+            h.status.setFocusable(true);
+            h.status.setContentDescription(label + "。タップして変更");
+            View.OnClickListener openMenu = v -> {
+                android.widget.PopupMenu menu = new android.widget.PopupMenu(v.getContext(), h.status);
+                AttendanceManager.Status[] options = {
+                        AttendanceManager.Status.PRESENT, AttendanceManager.Status.LATE, AttendanceManager.Status.ABSENT};
+                String[] labels = {"出席", "遅刻", "欠席"};
+                for (int i = 0; i < options.length; i++) menu.getMenu().add(0, i, i, labels[i]);
+                menu.setOnMenuItemClickListener(mi -> {
+                    listener.onChangeStatus(item.id, options[mi.getItemId()]);
+                    return true;
+                });
+                menu.show();
+            };
+            h.status.setOnClickListener(openMenu);
+            h.status.setCloseIconResource(R.drawable.ic_chevron_down);
+            h.status.setCloseIconTint(ColorStateList.valueOf(fg));
+            h.status.setCloseIconVisible(true);
+            h.status.setOnCloseIconClickListener(openMenu);
         }
 
         @Override public int getItemCount() { return items.size(); }

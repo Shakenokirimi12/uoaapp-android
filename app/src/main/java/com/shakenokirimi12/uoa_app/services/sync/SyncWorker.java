@@ -70,7 +70,17 @@ public class SyncWorker extends Worker {
         try {
             // アプリを開かない日が続いても、前日までの利用状況を送る。失敗しても同期は続ける (例外は投げない)。
             com.shakenokirimi12.uoa_app.services.usage.UsageStats.sendIfDue(getApplicationContext());
-            return doWorkSerialized();
+            Result result = doWorkSerialized();
+            // 取り直した時間割で (取れなくても手元の分で)、終わった授業の欠席を見る。
+            com.shakenokirimi12.uoa_app.services.attendance.AutoAbsenceRunner.evaluate(getApplicationContext());
+            // 登録し直して今の状態を受け取る。届いたところで判定し直す (GeofenceReceiver)。
+            // 失敗しても同期の結果は変えない。
+            try {
+                com.shakenokirimi12.uoa_app.services.LocationGeofenceService.startIfEnabled(getApplicationContext());
+            } catch (RuntimeException e) {
+                Log.e(TAG, "Could not re-register the geofence", e);
+            }
+            return result;
         } finally {
             running.set(false);
         }
