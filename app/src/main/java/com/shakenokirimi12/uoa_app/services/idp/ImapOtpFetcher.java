@@ -92,6 +92,11 @@ public final class ImapOtpFetcher {
      */
     static final int RECENT_UID_WINDOW = 20;
     /**
+     * 直近の範囲のメールが全部、依頼の時刻以降に届いていたら、その手前を何 UID 見るか (1 回だけ)。
+     * RECENT_UID_WINDOW と合わせて、以前の SEARCH の範囲 (200 UID) と同じにする。iOS の olderUIDWindow と同じ。
+     */
+    static final int OLDER_UID_WINDOW = 180;
+    /**
      * 使ったあとに消す過去の OTP メールを、使ったメールの UID から何 UID 遡って探すか。以前は 500 UID を SEARCH FROM で
      * 探していたが、自動取得と同じく SEARCH を使わず、ヘッダの FETCH で確かめる。これより古く残ったものは消さない。
      * iOS の cleanupUIDWindow と同じ。
@@ -261,6 +266,8 @@ public final class ImapOtpFetcher {
         java.util.Map<Integer, FetchedMail> otpMails = new java.util.HashMap<>();
         // 本文からコードが読めなかったメール。次からは使わない (消さずに残す)。
         java.util.Set<Integer> unreadable = new java.util.HashSet<>();
+        // 直近の範囲より前も 1 回だけ見たか (needsOlderScan)。
+        boolean scannedOlder = false;
         int connections = 0;
         // 繋ぎ直す前に待つ時間。前の接続を閉じてから (LOGOUT を送ってから) 待つ。
         long pause = 0;
@@ -298,6 +305,18 @@ public final class ImapOtpFetcher {
                             if (isOtpSender(m.fromHeader)) otpMails.put(m.uid, m);
                         }
                         nextUid = nextUnseenUid(fetched, nextUid, stream.uidNext);
+                        // 範囲のメールが全部依頼のあとに届いていたら (「既に送信しました」の 10 分前など)、手前にも今回の
+                        // メールがありうる。1 回だけ OLDER_UID_WINDOW 件遡って見る (以前の SEARCH と同じ 200 UID まで)。
+                        if (stage == Progress.Stage.SCAN && !scannedOlder && scanFrom > 1
+                                && pickOtpMail(otpMails.values(), requestedAt, arrivedFrom, unreadable) == null
+                                && needsOlderScan(fetched, requestedAt)) {
+                            scannedOlder = true;
+                            int olderFrom = Math.max(1, scanFrom - OLDER_UID_WINDOW);
+                            for (FetchedMail m : fetchHeaders(stream, olderFrom, scanFrom - 1)) {
+                                if (isOtpSender(m.fromHeader)) otpMails.put(m.uid, m);
+                            }
+                            scanFrom = olderFrom;
+                        }
                         FetchedMail target = pickOtpMail(otpMails.values(), requestedAt, arrivedFrom, unreadable);
                         if (target != null) {
                             progress.enter(Progress.Stage.FETCH);
@@ -324,7 +343,8 @@ public final class ImapOtpFetcher {
                                 lastError = new ImapException("codeNotFound");
                             }
                         } else {
-                            lastError = new ImapException("mailNotFound");
+                            // 読めなかったメールがあれば、期限まで新しいものが来なかったときはそれを理由にする。
+                            lastError = new ImapException(unreadable.isEmpty() ? "mailNotFound" : "codeNotFound");
                         }
                         progress.recordFailure(lastError);
                     } catch (ImapException e) {
@@ -335,6 +355,8 @@ public final class ImapOtpFetcher {
                     } catch (IOException e) {
                         // 通信断、または期限まで答えが無かった。ログインしたあとの無応答は繋ぎ直さない。
                         if (progress.isAborted()) throw aborted();
+                        // 新着の確認 (RECHECK) で期限が来て、読み取りが切られただけなら、メールが来なかった。
+                        if (endedByDeadline(e, progress.stage(), deadline, System.currentTimeMillis())) throw lastError;
                         progress.recordFailure(e);
                         pause = reconnectPause(e, connections, deadline);
                         // 繋ぎ直しを待つ間は connect にする。切れた段階 (scan など) のままだと、中継の見張りが
@@ -366,6 +388,17 @@ public final class ImapOtpFetcher {
         } catch (Exception e) {
             android.util.Log.w("ImapOtpFetcher", "OTPメールの削除に失敗: " + e);
         }
+    }
+
+    /**
+     * 新着を確かめる段階 (RECHECK) で、期限が来たために読み取りが時間切れになったか。期限の近くでは読み取りを待つ上限が
+     * 0.5 秒まで縮む (readWaitMs) ので、最後の確認の答えが間に合わないと「止まった」ように見える。以前はこれが
+     * imap-error (search-stall) として返り、本当は「メールが期限までに見つからなかった」(mail-timeout) のを隠していた。
+     * iOS の endedByDeadline と同じ (Android の IDLE は通信しない待ちなので、ここでは止まらない)。
+     */
+    static boolean endedByDeadline(@NonNull Exception error, @NonNull Progress.Stage stage, long deadline, long now) {
+        return error instanceof java.net.SocketTimeoutException && now >= deadline
+                && (stage == Progress.Stage.RECHECK || stage == Progress.Stage.IDLE);
     }
 
     /** 繋ぎ直すなら待つ時間を返し、繋ぎ直さないなら error をそのまま投げる。 */
@@ -817,6 +850,19 @@ public final class ImapOtpFetcher {
         return out;
     }
 
+    /**
+     * 直近の範囲の一番古いメールも依頼の時刻以降に届いていて、範囲の手前にも今回のメールがありうるか。
+     * 範囲が空 (直近のメールが全部消されている) か、到着時刻が読めないときも、手前を見る。iOS の needsOlderScan と同じ。
+     */
+    static boolean needsOlderScan(@NonNull List<FetchedMail> window, long requestedAt) {
+        FetchedMail oldest = null;
+        for (FetchedMail m : window) {
+            if (oldest == null || m.uid < oldest.uid) oldest = m;
+        }
+        if (oldest == null || oldest.arrivedAt == null) return true;
+        return oldest.arrivedAt >= requestedAt / 1000L * 1000L;
+    }
+
     /** 次の確認で見る UID の下限。見たものの次か、SELECT の UIDNEXT (これ以降が新着) の大きい方。 */
     static int nextUnseenUid(@NonNull List<FetchedMail> fetched, int fromUid, @Nullable Integer uidNext) {
         int next = fromUid;
@@ -844,14 +890,18 @@ public final class ImapOtpFetcher {
      * requestedAt に入れてある (PC の拡張は 5 秒 / 再送信は 2 秒前、中継は OtpRelayTiming.effectiveRequestedAt)。
      * ここで更に広げると、送り直す直前に届いた前のメール (使えなくなったコード) を拾う。
      * INTERNALDATE が読めないメールは、開いたあとに届いたものでなければ使わない (古いコードを使うより手入力に落ちる方が安全)。
+     * unreadable (本文からコードが読めなかったメール) より古いメールにも戻らない (新しい方が読めないのに古い方のコードを
+     * 入れると、使えなくなったコードで IdP の失敗が 1 回増える)。これより新しいものだけを待つ。
      */
     @Nullable
     static FetchedMail pickOtpMail(@NonNull java.util.Collection<FetchedMail> mails, long requestedAt, int arrivedFromUid,
-                                   @NonNull java.util.Set<Integer> excluding) {
+                                   @NonNull java.util.Set<Integer> unreadable) {
         long since = requestedAt / 1000L * 1000L;
+        int newerThan = 0;
+        for (int u : unreadable) newerThan = Math.max(newerThan, u);
         FetchedMail best = null;
         for (FetchedMail m : mails) {
-            if (excluding.contains(m.uid) || !isOtpSender(m.fromHeader)) continue;
+            if (m.uid <= newerThan || !isOtpSender(m.fromHeader)) continue;
             boolean fresh = m.uid >= arrivedFromUid || (m.arrivedAt != null && m.arrivedAt >= since);
             if (fresh && (best == null || m.uid > best.uid)) best = m;
         }

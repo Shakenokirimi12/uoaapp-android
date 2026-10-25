@@ -95,9 +95,39 @@ public class ImapFetchFixtureTest {
         assertNull(ImapOtpFetcher.pickOtpMail(mails, date("25-Oct-2026 14:55:30 +0900"), 13045, none));
         // 受信箱を開いたあとに届いたものは、時計がずれていても今回のもの。
         assertEquals(13043, ImapOtpFetcher.pickOtpMail(mails, date("25-Oct-2026 14:55:30 +0900"), 13042, none).uid);
-        // コードが読めなかったメールは使わない。「既に送信しました」(10 分前) なら前回のメールを使う。
-        assertEquals(13038, ImapOtpFetcher.pickOtpMail(mails, date("25-Oct-2026 14:45:17 +0900"), 13045,
-                new HashSet<>(Collections.singletonList(13043))).uid);
+        // 「既に送信しました」(10 分前) なら前回のメールも条件に入る。一番新しいものを使う。
+        assertEquals(13043, ImapOtpFetcher.pickOtpMail(mails, date("25-Oct-2026 14:45:17 +0900"), 13045, none).uid);
+        // 一番新しいメールのコードが読めなければ、古い方 (使えなくなったコード) には戻らず、より新しいものを待つ。
+        assertNull(ImapOtpFetcher.pickOtpMail(mails, date("25-Oct-2026 14:45:17 +0900"), 13045,
+                new HashSet<>(Collections.singletonList(13043))));
+        assertEquals(13043, ImapOtpFetcher.pickOtpMail(mails, date("25-Oct-2026 14:45:17 +0900"), 13045,
+                new HashSet<>(Collections.singletonList(13038))).uid);
+    }
+
+    /** 直近の範囲のメールが全部依頼のあとに届いていたら、その手前も見る (「既に送信しました」で 20 通を超えて届いていた場合)。 */
+    @Test
+    public void needsOlderScan_onlyWhenTheWindowMayNotReachTheRequest() throws IOException {
+        List<ImapOtpFetcher.FetchedMail> mails = mails("imap-fetch-headers.txt");
+        // 一番古い 13030 は 14:40:00 着。
+        assertFalse(ImapOtpFetcher.needsOlderScan(mails, date("25-Oct-2026 14:55:17 +0900")));
+        assertFalse(ImapOtpFetcher.needsOlderScan(mails, date("25-Oct-2026 14:40:01 +0900")));
+        assertTrue(ImapOtpFetcher.needsOlderScan(mails, date("25-Oct-2026 14:40:00 +0900")));
+        assertTrue(ImapOtpFetcher.needsOlderScan(mails, date("25-Oct-2026 14:35:17 +0900")));
+        assertTrue(ImapOtpFetcher.needsOlderScan(new ArrayList<>(), date("25-Oct-2026 14:55:17 +0900")));
+        assertEquals(200, ImapOtpFetcher.RECENT_UID_WINDOW + ImapOtpFetcher.OLDER_UID_WINDOW);
+    }
+
+    /** 新着の確認で期限が来て、読み取りが切られただけなら、メールが来なかった (mail-timeout) として返す。 */
+    @Test
+    public void endedByDeadline_onlyWhileWaitingForNewMail() {
+        java.net.SocketTimeoutException stall = new java.net.SocketTimeoutException("Read timed out");
+        assertTrue(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.RECHECK, 1_000, 1_100));
+        // 期限の前の無応答、通信断、メールを読む途中 (SCAN / FETCH) の無応答は、サーバが答えなかった。
+        assertFalse(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.RECHECK, 1_000, 900));
+        assertFalse(ImapOtpFetcher.endedByDeadline(new IOException("connectionFailed"),
+                ImapOtpFetcher.Progress.Stage.RECHECK, 1_000, 1_100));
+        assertFalse(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.SCAN, 1_000, 1_100));
+        assertFalse(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.FETCH, 1_000, 1_100));
     }
 
     @Test
