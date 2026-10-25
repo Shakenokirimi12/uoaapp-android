@@ -60,7 +60,8 @@ public final class OtpPromptCoordinator {
         } catch (Exception e) {
             com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayResponder.reportLoginFetch(fetcher.progress(), e);
             // メールが届かない・メールサーバーに繋がらない。手入力に落とす。
-            android.util.Log.w("OtpPromptCoordinator", "メールからの自動取得に失敗: " + e);
+            // 例外の文面はサーバの応答行を含みうるので、決まった名前だけを残す (Progress.describe)。
+            android.util.Log.w("OtpPromptCoordinator", "メールからの自動取得に失敗: " + ImapOtpFetcher.Progress.describe(e));
         }
 
         Activity activity = UoaApplication.getForegroundActivity();

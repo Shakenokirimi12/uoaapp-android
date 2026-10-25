@@ -80,7 +80,7 @@ public class BackupService {
         SharedPreferences.Editor editor = prefs.edit();
         applySettings(backup, prefs.getAll(), editor);
         editor.apply();
-        // 読み戻した設定で「利用状況を送る」が OFF になったら、OFF にしたときと同じく回数と ID を消す
+        // 読み戻した設定で「利用状況と診断情報を送る」が OFF になったら、OFF にしたときと同じく回数と ID を消す
         // (設定の値だけ OFF にすると、それまでの回数と ID が端末に残る)。
         if (!PreferenceManager.getInstance(ctx).isUsageStatsEnabled()) {
             com.shakenokirimi12.uoa_app.services.usage.UsageStats.setEnabled(ctx, false);

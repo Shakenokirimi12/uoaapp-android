@@ -221,7 +221,8 @@ public final class ImapOtpFetcher {
                         }
                     } catch (ImapException e) {
                         // サーバは答えている。今回のメールだけ消す。
-                        android.util.Log.w("ImapOtpFetcher", "過去分の確認に失敗 (今回分だけ消す): " + e);
+                        // 例外の文面はサーバの応答行を含みうるので、決まった名前だけを残す (Progress.describe)。
+                        android.util.Log.w("ImapOtpFetcher", "過去分の確認に失敗 (今回分だけ消す): " + Progress.describe(e));
                     }
                 }
                 StringBuilder set = new StringBuilder();
@@ -231,7 +232,7 @@ public final class ImapOtpFetcher {
                 }
                 deleteUids(stream, set.toString());
             } catch (Exception e) {
-                android.util.Log.w("ImapOtpFetcher", "使用済みの OTP メールを消せなかった: " + e);
+                android.util.Log.w("ImapOtpFetcher", "使用済みの OTP メールを消せなかった: " + Progress.describe(e));
             } finally {
                 stream.close();
             }
@@ -263,9 +264,11 @@ public final class ImapOtpFetcher {
                 + seconds(System.currentTimeMillis() - requestedAt) + "s 前から");
         try {
             OtpMail mail = fetchOnce(uid, pass, timeoutSeconds, requestedAt, deleteAfterRead);
+            progress.finish();
             progress.note("結果: コードを見つけた");
             return mail;
         } catch (Exception e) {
+            progress.finish();
             progress.note("結果: 失敗 " + Progress.describe(e) + " (" + progress.detail(e) + ")");
             throw e;
         }
@@ -429,7 +432,7 @@ public final class ImapOtpFetcher {
         try {
             deleteUids(stream, String.valueOf(uid));
         } catch (Exception e) {
-            android.util.Log.w("ImapOtpFetcher", "OTPメールの削除に失敗: " + e);
+            android.util.Log.w("ImapOtpFetcher", "OTPメールの削除に失敗: " + Progress.describe(e));
         }
     }
 
@@ -711,7 +714,15 @@ public final class ImapOtpFetcher {
         private long connectedAfter = -1;
         private long loggedInAfter = -1;
         private long selectedAfter = -1;
-        private String failureTiming = "";
+        /** 起点から、今の接続を始めるまでのミリ秒 (phaseTimingsMs の tcp_tls を今の接続の分だけにする)。 */
+        private long connectionStartedAfter = 0;
+        /** 取得 (fetch) が終わった時刻 (まだなら -1)。これより後 (中継への返送・メールの削除) の時間を取得の時間に数えない。 */
+        private long finishedAt = -1;
+        /** エラーを受け取った時点の、今の接続の段階の時刻 (timing の引数)。 */
+        private long failureConnected = -1;
+        private long failureLoggedIn = -1;
+        private long failureSelected = -1;
+        private long failureElapsed = -1;
         /** 手順の記録 (Logcat の Log.i、タグ IMAPOTPFetcher と、Wana の breadcrumbs)。 */
         @NonNull public final OtpDiagnostics.Trail trail = new OtpDiagnostics.Trail("IMAPOTPFetcher");
 
@@ -719,18 +730,19 @@ public final class ImapOtpFetcher {
         public void note(@NonNull String message) { trail.note(message); }
 
         /**
-         * 段階ごとの時間 (ミリ秒)。tcp_tls は接続を始めてから TLS まで、login・select はそれぞれの往復、
-         * after_select は SELECT から終わりまで (メールを探して待った時間)、total は最初の接続から。iOS の phaseTimingsMs と同じ。
+         * 段階ごとの時間 (ミリ秒)。tcp_tls は今の接続を始めてから TLS まで、login・select はそれぞれの往復、
+         * after_select は SELECT から取得の終わりまで (メールを探して待った時間)、total は最初の接続から取得の終わりまで
+         * (終わっていなければ今まで)。iOS の phaseTimingsMs と同じ。
          */
         @NonNull
         public synchronized java.util.Map<String, Long> phaseTimingsMs() {
             java.util.Map<String, Long> out = new java.util.TreeMap<>();
             out.put("reconnects", (long) reconnects);
-            if (connectedAfter >= 0) out.put("tcp_tls", connectedAfter);
+            if (connectedAfter >= 0) out.put("tcp_tls", connectedAfter - connectionStartedAfter);
             if (loggedInAfter >= 0) out.put("login", loggedInAfter - Math.max(0, connectedAfter));
             if (selectedAfter >= 0) out.put("select", selectedAfter - Math.max(0, loggedInAfter));
             if (origin >= 0) {
-                long total = System.currentTimeMillis() - origin;
+                long total = endTime() - origin;
                 out.put("total", total);
                 if (selectedAfter >= 0) out.put("after_select", total - selectedAfter);
             }
@@ -744,7 +756,9 @@ public final class ImapOtpFetcher {
         /** 接続を始める。今の接続の時間を消す (起点は最初の接続のまま)。 */
         synchronized void beginConnection() {
             stage = Stage.CONNECT;
-            if (origin < 0) origin = System.currentTimeMillis();
+            long now = System.currentTimeMillis();
+            if (origin < 0) origin = now;
+            connectionStartedAfter = now - origin;
             connectedAfter = -1;
             loggedInAfter = -1;
             selectedAfter = -1;
@@ -787,8 +801,17 @@ public final class ImapOtpFetcher {
         /** 今の時間 (timing の形)。中継の見張りが失敗を返すときにも使う。 */
         @NonNull
         public synchronized String timing() {
-            return timing(connectedAfter, loggedInAfter, selectedAfter,
-                    origin < 0 ? -1 : System.currentTimeMillis() - origin);
+            return timing(connectedAfter, loggedInAfter, selectedAfter, origin < 0 ? -1 : endTime() - origin);
+        }
+
+        /** 取得が終わっていれば終わった時刻、まだなら今。lock の中で呼ぶ。 */
+        private long endTime() {
+            return finishedAt >= 0 ? finishedAt : System.currentTimeMillis();
+        }
+
+        /** 取得が終わった (コードを見つけた・失敗した)。最初の 1 回だけ効く。 */
+        synchronized void finish() {
+            if (finishedAt < 0) finishedAt = System.currentTimeMillis();
         }
 
         /**
@@ -817,7 +840,10 @@ public final class ImapOtpFetcher {
             failure = e;
             failureStage = stage;
             failureReconnects = reconnects;
-            failureTiming = timing();
+            failureConnected = connectedAfter;
+            failureLoggedIn = loggedInAfter;
+            failureSelected = selectedAfter;
+            failureElapsed = origin < 0 ? -1 : System.currentTimeMillis() - origin;
         }
 
         @NonNull
@@ -870,7 +896,10 @@ public final class ImapOtpFetcher {
                 boolean same = failure == error;
                 s = same ? failureStage : stage;
                 r = same ? failureReconnects : reconnects;
-                t = same ? failureTiming : timing();
+                // 記録したあとも待ち続けてから同じエラーを投げることがある (期限まで新着を待ったなど)。
+                // 段階はエラーを受け取った時点のまま、失敗した時点 (f) は取得が終わった時点にする。
+                t = !same ? timing() : timing(failureConnected, failureLoggedIn, failureSelected,
+                        finishedAt >= 0 && origin >= 0 ? finishedAt - origin : failureElapsed);
             }
             return detail(error, s, r, t);
         }

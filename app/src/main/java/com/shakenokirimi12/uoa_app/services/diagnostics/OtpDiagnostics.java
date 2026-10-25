@@ -233,19 +233,61 @@ public final class OtpDiagnostics {
         }
     }
 
-    /** 送る。呼んだスレッドで待つ (上限 timeoutMs)。中継の仕事のスレッドから、答えを返したあとに呼ぶ。 */
-    public static void sendBlocking(@NonNull List<JsonObject> events, long timeoutMs) {
-        for (JsonObject event : events) {
-            try (Response response = client(timeoutMs).newCall(request(event)).execute()) {
-                logInfo("IMAPOTPFetcher", "diagnostics sent -> " + response.code());
-            } catch (IOException | RuntimeException e) {
-                logInfo("IMAPOTPFetcher", "diagnostics not sent: " + e.getClass().getSimpleName());
-            }
+    /**
+     * 設定の「利用状況と診断情報を送る」(PreferenceManager.isUsageStatsEnabled、既定はオン)。オフなら送らない。
+     * 読めなければ (初期化の前など) 送らない側に倒す。
+     */
+    public static boolean enabled() {
+        try {
+            return PreferenceManager.getInstance().isUsageStatsEnabled();
+        } catch (RuntimeException e) {
+            return false;
         }
     }
 
-    /** 送る (待たない)。アプリのログインの経路から呼ぶ。 */
+    /**
+     * 送る。全部を並べて送り、呼んだスレッドで全体で timeoutMs まで待つ (時間が来たら取りやめる)。
+     * 中継の仕事のスレッドから、答えを返して処理済みにしたあとに呼ぶ。設定がオフなら送らない。
+     */
+    public static void sendBlocking(@NonNull List<JsonObject> events, long timeoutMs) {
+        if (events.isEmpty() || !enabled()) return;
+        OkHttpClient c = client(timeoutMs);
+        java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(events.size());
+        List<Call> calls = new ArrayList<>();
+        for (JsonObject event : events) {
+            try {
+                Call call = c.newCall(request(event));
+                calls.add(call);
+                call.enqueue(new Callback() {
+                    @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        logInfo("IMAPOTPFetcher", "diagnostics not sent: " + e.getClass().getSimpleName());
+                        done.countDown();
+                    }
+
+                    @Override public void onResponse(@NonNull Call call, @NonNull Response response) {
+                        logInfo("IMAPOTPFetcher", "diagnostics sent -> " + response.code());
+                        response.close();
+                        done.countDown();
+                    }
+                });
+            } catch (RuntimeException e) {
+                logInfo("IMAPOTPFetcher", "diagnostics not sent: " + e.getClass().getSimpleName());
+                done.countDown();
+            }
+        }
+        try {
+            if (!done.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+                for (Call call : calls) call.cancel();
+            }
+        } catch (InterruptedException e) {
+            for (Call call : calls) call.cancel();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** 送る (待たない)。アプリのログインの経路から呼ぶ。設定がオフなら送らない。 */
     public static void sendAsync(@NonNull List<JsonObject> events) {
+        if (!enabled()) return;
         for (JsonObject event : events) {
             try {
                 client(10_000).newCall(request(event)).enqueue(new Callback() {

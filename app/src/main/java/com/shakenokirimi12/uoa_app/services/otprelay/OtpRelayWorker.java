@@ -155,8 +155,9 @@ public class OtpRelayWorker extends Worker {
         currentAttempt = attempt;
         // 登録する前に止められていたら、ここで取りやめる (onStopped が見逃した分)。
         if (isStopped()) attempt.imap.abort();
+        OtpRelayResponder.Outcome outcome = null;
         try {
-            handle(ctx, pairing, request, deliveredAt, attempt);
+            outcome = handle(ctx, pairing, request, deliveredAt, attempt);
         } finally {
             currentAttempt = null;
             // 答え始めた依頼は、途中で止められても処理済みにする (再実行で二重に答えない)。
@@ -165,10 +166,14 @@ public class OtpRelayWorker extends Worker {
             // 何も返せなかったものだけは記録しない (再実行で続きをやる)。
             if (attempt.responded() || !isStopped()) OtpRelayStore.markHandled(request.requestId);
         }
+        // 診断の記録は処理済みにしてから送る (送っている間に FCM が再配信しても、2 回目の取得を始めない)。
+        sendDiagnostics(attempt, outcome);
         return Result.success();
     }
 
-    private void handle(Context ctx, OtpRelayPairing pairing, OtpRelayRequest request, long deliveredAt,
+    /** 中継サーバに答えて通知を出す。結果を返す (診断の記録に使う)。 */
+    @NonNull
+    private OtpRelayResponder.Outcome handle(Context ctx, OtpRelayPairing pairing, OtpRelayRequest request, long deliveredAt,
                         OtpRelayResponder.Attempt attempt) {
         OtpRelayResponder responder = responder(ctx);
         if (!pairing.hasMailConsent()) {
@@ -178,8 +183,7 @@ public class OtpRelayWorker extends Worker {
             if (OtpRelayResponder.CONSENT_REQUIRED.equals(outcome.reason)) {
                 OtpRelayNotifications.consentRequired(ctx, pairing, request);
             }
-            sendDiagnostics(attempt, outcome);
-            return;
+            return outcome;
         }
 
         showProgress(ctx, pairing, request);
@@ -206,17 +210,19 @@ public class OtpRelayWorker extends Worker {
                 expiry.cancel(false);
                 report(ctx, pairing, request, outcome);
             }
-            sendDiagnostics(attempt, outcome);
+            return outcome;
         } finally {
             watchdog.shutdown();
         }
     }
 
     /**
-     * 診断の記録 (OtpDiagnostics、Wana) を送る。中継サーバに答えたあと (見張りが答えたならその後) に、この仕事の
-     * スレッドで送る。上限は短く、失敗しても何もしない。見張りが答えた (DEADLINE_PASSED) ときは記録に見張りの理由が入る。
+     * 診断の記録 (OtpDiagnostics、Wana) を送る。中継サーバに答えて処理済みにしたあと (見張りが答えたならその後) に、
+     * この仕事のスレッドで送る。上限は短く、失敗しても何もしない。見張りが答えた (DEADLINE_PASSED) ときは記録に
+     * 見張りの理由が入る。設定の「利用状況と診断情報を送る」がオフなら送らない (OtpDiagnostics.sendBlocking)。
      */
-    private static void sendDiagnostics(@NonNull OtpRelayResponder.Attempt attempt, @NonNull OtpRelayResponder.Outcome outcome) {
+    private static void sendDiagnostics(@NonNull OtpRelayResponder.Attempt attempt, @Nullable OtpRelayResponder.Outcome outcome) {
+        if (outcome == null || !com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.enabled()) return;
         String label = outcome.kind == OtpRelayResponder.Kind.SENT ? "sent" : outcome.reason != null ? outcome.reason : "failed";
         com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.sendBlocking(
                 attempt.diagnosticEvents(com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.supportId(), label,
@@ -225,7 +231,7 @@ public class OtpRelayWorker extends Worker {
                 DIAGNOSTICS_TIMEOUT_MS);
     }
 
-    /** 診断の記録を送る上限 (1 件あたり)。 */
+    /** 診断の記録を送る上限 (全体。2 件は並べて送る)。 */
     private static final long DIAGNOSTICS_TIMEOUT_MS = 5_000;
 
     /** 見張りが失敗を送り終わるのを待つ。POST の上限 + 余裕で打ち切る。 */

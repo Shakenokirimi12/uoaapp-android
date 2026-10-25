@@ -115,7 +115,8 @@ public final class OtpRelayResponder {
                 events.add(fetchEvent(imap, OtpDiagnostics.CONTEXT_RELAY, supportId, expiryReason, expiryDetail, build, now));
             } else if (fetched) {
                 String detail = fetchError != null ? imap.detail(fetchError) : null;
-                tags.put("reason", fetchReason != null ? fetchReason : "ok");
+                // 取得は成功しても、返送で失敗したならその理由 (relay-unreachable など)。
+                tags.put("reason", fetchReason != null ? fetchReason : label != null ? label : "ok");
                 if (detail != null) tags.put("detail", detail);
                 events.add(fetchEvent(imap, OtpDiagnostics.CONTEXT_RELAY, supportId, fetchReason, detail, build, now));
             } else if (label != null) {
@@ -414,9 +415,10 @@ public final class OtpRelayResponder {
             try {
                 mail.deleteUsed(found);
                 attempt.trail.mark("mail_deleted");
-                attempt.trail.note("使ったメールを消した");
+                // 削除の失敗は削除の側で握る (手順の記録の imap に残る)。ここは終わったことだけ。
+                attempt.trail.note("使ったメールの削除を終えた");
             } catch (Exception e) {
-                Log.w(TAG, "could not delete used OTP mails: " + e);
+                Log.w(TAG, "could not delete used OTP mails: " + ImapOtpFetcher.Progress.describe(e));
             }
             return Outcome.sent();
         }
