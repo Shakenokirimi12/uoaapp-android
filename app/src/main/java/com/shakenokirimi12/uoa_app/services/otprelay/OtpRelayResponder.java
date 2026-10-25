@@ -392,8 +392,8 @@ public final class OtpRelayResponder {
 
     /**
      * 時間切れの見張り。まだ答え始めていなければ失敗を返す (best effort)。返さないと、依頼が期限
-     * (120 秒) まで pending のまま残り、PC はその間待たされる。メールを待つ段階 (search / fetch / idle)
-     * まで進んでいたら mail-timeout、その手前なら imap-error。detail は "expired:<段階>[:r<回数>]"。
+     * (120 秒) まで pending のまま残り、PC はその間待たされる。新着を待つ段階 (recheck / idle) なら
+     * mail-timeout、それ以外 (メールを読む途中を含む) なら imap-error。detail は "expired:<段階>[:r<回数>]"。
      *
      * @return NOT_CLAIMED = 取得の処理が先に答え始めていた (通知はそちらが出す)。ACCEPTED = 中継サーバが
      *         204 で受け付けた。UNDELIVERED = 送ったが受け付けられたか分からない。
@@ -425,8 +425,9 @@ public final class OtpRelayResponder {
     @NonNull
     static String expiredReason(@NonNull ImapOtpFetcher.Progress.Stage stage) {
         switch (stage) {
-            case SEARCH:
-            case FETCH:
+            // 新着を待っていた。メールを読む途中 (SCAN / FETCH) で止まったのはサーバが答えなかったので imap-error。
+            // iOS の OTPRelayShared.expiredReason と同じ。
+            case RECHECK:
             case IDLE:
                 return "mail-timeout";
             default:

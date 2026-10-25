@@ -30,9 +30,12 @@ public class ImapOtpProgressTest {
         assertEquals("select-stall:r2", detail(new SocketTimeoutException("Read timed out"), Stage.SELECT, 2));
         assertEquals("connect-failed:dns", detail(new UnknownHostException("stdmsv1.u-aizu.ac.jp"), Stage.CONNECT, 0));
         assertEquals("connect-failed:tls", detail(new javax.net.ssl.SSLHandshakeException("x"), Stage.CONNECT, 0));
-        assertEquals("search-closed:r1", detail(new IOException("connectionFailed"), Stage.SEARCH, 1));
+        assertEquals("scan-closed:r1", detail(new IOException("connectionFailed"), Stage.SCAN, 1));
+        assertEquals("scan-stall", detail(new SocketTimeoutException("Read timed out"), Stage.SCAN, 0));
+        assertEquals("recheck-stall:r1", detail(new SocketTimeoutException("Read timed out"), Stage.RECHECK, 1));
+        assertEquals("fetch-stall", detail(new SocketTimeoutException("Read timed out"), Stage.FETCH, 0));
         assertEquals("cancelled", detail(new InterruptedException(), Stage.IDLE, 0));
-        assertEquals("cancelled", detail(new ImapOtpFetcher.ImapException("aborted"), Stage.SEARCH, 0));
+        assertEquals("cancelled", detail(new ImapOtpFetcher.ImapException("aborted"), Stage.SCAN, 0));
     }
 
     /**
@@ -71,12 +74,12 @@ public class ImapOtpProgressTest {
     @Test
     public void detail_usesTheStageWhereTheErrorWasRecorded() {
         ImapOtpFetcher.Progress p = new ImapOtpFetcher.Progress();
-        p.enter(Stage.SEARCH);
+        p.enter(Stage.SCAN);
         IOException e = new IOException("connectionFailed");
         p.recordFailure(e);
         p.reconnected();
         p.enter(Stage.CONNECT);
-        assertEquals("search-closed", p.detail(e));
+        assertEquals("scan-closed", p.detail(e));
         // 記録していないエラーは今の段階で作る。
         assertEquals("connect-closed:r1", p.detail(new IOException("connectionFailed")));
     }

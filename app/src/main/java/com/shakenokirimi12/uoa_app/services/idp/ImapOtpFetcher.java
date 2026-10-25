@@ -25,8 +25,9 @@ import javax.net.ssl.SSLSocketFactory;
 /**
  * stdmsv1.u-aizu.ac.jp (Dovecot, IMAP4rev1, AUTH=PLAIN、IMAPS/993) から IdP のワンタイムパスワード
  * メールを取り出す最小限の IMAP クライアント。iOS の IMAPOTPFetcher の移植。
- * RFC 3501 全体は実装せず、LOGIN -> SELECT -> (UID SEARCH を繰り返し) -> UID FETCH -> LOGOUT だけを
- * サポートする。AINS ID/パスワードは CampusSquare/IdP ログインと共通 (別のメールアカウント設定は無い)。
+ * RFC 3501 全体は実装せず、LOGIN -> SELECT -> UID FETCH (直近のヘッダ、新着は 1 秒おきに) -> UID FETCH (本文)
+ * -> LOGOUT だけをサポートする。サーバ側の検索 (SEARCH) は使わない (RECENT_UID_WINDOW の説明を参照)。
+ * AINS ID/パスワードは CampusSquare/IdP ログインと共通 (別のメールアカウント設定は無い)。
  * ID/PW/OTP コードの値はログに出さない。
  */
 public final class ImapOtpFetcher {
@@ -46,16 +47,16 @@ public final class ImapOtpFetcher {
     private static final int DEFAULT_PORT = 993;
     private static final String OTP_SENDER = "idp-apply@u-aizu.ac.jp";
     private static final String UNIVERSITY_DOMAIN = "@u-aizu.ac.jp";
-    /**
-     * 1 回の検索で From を確かめに行くメールの数の上限。同じ送信者名を名乗る偽メールを大量に送られても、
-     * ヘッダの取得で待ち続けない (そのときは見つからない扱いになり、手入力に落ちる)。
-     */
-    private static final int MAX_FROM_CHECKS = 20;
-    /** 使い終わったメールの削除で From を確かめる数の上限 (CLEANUP_UID_WINDOW の範囲が対象なので検索より多め)。 */
-    private static final int MAX_DELETE_CHECKS = 50;
     /** 自動取得以外 (削除だけ・期限なし) で読み取りの無応答を待つ上限。 */
     private static final int DEFAULT_STALL_LIMIT_MS = 15_000;
-    private static final long RETRY_INTERVAL_MS = 3_000L;
+    /**
+     * 新着を確かめる間隔。確かめるのは新しい UID のヘッダの FETCH だけで軽いので、iOS の newMailWait と同じ 1 秒にする
+     * (以前は 3 秒おきの SEARCH で、届いてから最大 3 秒を余計に待っていた)。
+     * IMAP IDLE は使わない。ここの読み取りは止まった時点の行の途中を捨てるので、IDLE の待ちを読み取りの時間切れで
+     * 区切れず、届いたことを早く知る手段 (SSLSocket の available) も、復号前のデータを数えないので当てにならない。
+     * 次の {@code UID FETCH n:*} 自体でサーバは受信箱を確かめ直す (NOOP と同じ) ので、NOOP も送らない。
+     */
+    static final long NEW_MAIL_WAIT_MS = 1_000L;
 
     /**
      * 自動取得で、接続直後 (TCP + TLS・greeting・LOGIN) の無応答をどこまで待つか。ここで答えが無いのは経路が
@@ -80,19 +81,27 @@ public final class ImapOtpFetcher {
     static final long MIN_ATTEMPT_TIME_MS = 2_000;
 
     /**
-     * 新着の OTP メールを探す範囲 (SELECT の UIDNEXT から何 UID 遡るか)。
-     * 受信箱全体を {@code UID SEARCH FROM} で探すと、Dovecot は全メールのヘッダを見る。受信箱が大きいと
-     * それだけで答えが返らず、search-stall になっていた。UID の範囲を先頭に置けば、サーバはその範囲の
-     * メールだけを見る。PC の拡張が「既に送信しました」で 10 分前の依頼として送ってくる場合もあるので、
-     * その間に他のメールが届いても外れないよう広めに取る。iOS の recentUIDWindow と同じ。
+     * 新着の OTP メールを探す範囲 (SELECT の UIDNEXT から何 UID 遡るか)。この範囲のヘッダ (From) と到着時刻を
+     * 1 回の {@code UID FETCH} で取り、差出人と時刻は手元で確かめる。iOS の recentUIDWindow と同じ。
+     *
+     * サーバ側の検索 ({@code UID SEARCH ... FROM}) は使わない。2026-10-24〜25 の中継サーバの detail は
+     * search-stall (imap-error) で、{@code UID SEARCH UID n:* FROM} に範囲を絞っても (2026-10-22) SEARCH の答えが
+     * 期限までに返らなかった。SEARCH の重さはサーバ次第で、範囲を絞っても軽くなるとは限らない (stdmsv1 の設定は
+     * 確かめられない)。UID を指定した FETCH は、指定したメールのヘッダしか読まない。
+     * 「既に送信しました」(10 分前の依頼) で前回のメールを使う場合も、その間に 20 通を超えて届くことはまず無い。
      */
-    static final int RECENT_UID_WINDOW = 200;
+    static final int RECENT_UID_WINDOW = 20;
     /**
-     * 使ったあとに消す過去の OTP メールを、使ったメールの UID から何 UID 遡って探すか。以前は 7 日分を
-     * FROM で探していたが、受信箱全体の SEARCH と同じく遅くなりうるので UID の範囲で絞る。
-     * これより古く残ったものは消さない。iOS の cleanupUIDWindow と同じ。
+     * 直近の範囲のメールが全部、依頼の時刻以降に届いていたら、その手前を何 UID 見るか (1 回だけ)。
+     * RECENT_UID_WINDOW と合わせて、以前の SEARCH の範囲 (200 UID) と同じにする。iOS の olderUIDWindow と同じ。
      */
-    static final int CLEANUP_UID_WINDOW = 500;
+    static final int OLDER_UID_WINDOW = 180;
+    /**
+     * 使ったあとに消す過去の OTP メールを、使ったメールの UID から何 UID 遡って探すか。以前は 500 UID を SEARCH FROM で
+     * 探していたが、自動取得と同じく SEARCH を使わず、ヘッダの FETCH で確かめる。これより古く残ったものは消さない。
+     * iOS の cleanupUIDWindow と同じ。
+     */
+    static final int CLEANUP_UID_WINDOW = 100;
 
     private final String host;
     private final int port;
@@ -149,11 +158,20 @@ public final class ImapOtpFetcher {
     public static final class OtpMail implements AutoCloseable {
         @NonNull public final String code;
         public final int uid;
+        /** 取得の間に差出人を確かめた OTP メールの UID と、見た範囲の下限。削除の対象を決めるのに使う。 */
+        @NonNull private final List<Integer> knownOtpUids;
+        private final int scannedFrom;
         @Nullable private ImapStream session;
 
         OtpMail(@NonNull String code, int uid) {
+            this(code, uid, new ArrayList<>(), uid);
+        }
+
+        OtpMail(@NonNull String code, int uid, @NonNull List<Integer> knownOtpUids, int scannedFrom) {
             this.code = code;
             this.uid = uid;
+            this.knownOtpUids = knownOtpUids;
+            this.scannedFrom = scannedFrom;
         }
 
         /** 見つけた接続を渡す。期限 (取得の待ち) はここで外す。削除は deleteUsedMails の打ち切りで切る。 */
@@ -172,6 +190,7 @@ public final class ImapOtpFetcher {
         /**
          * 使い終わった OTP メールを消して、LOGOUT して閉じる。1 回だけ効く。消すのは、このメールと、
          * UID がこのメール以下で CLEANUP_UID_WINDOW の範囲にあり、From が送信元と完全に一致するもの。
+         * 取得の間に見た範囲 (scannedFrom 以降) は確かめ済みのものを使い、その手前だけヘッダを取り直す (SEARCH は使わない)。
          * timeoutMs を過ぎたら打ち切る (失敗しても結果には影響させない)。iOS の IMAPOTPMail.deleteUsedMails と同じ。
          */
         public void deleteUsedMails(long timeoutMs) {
@@ -179,25 +198,25 @@ public final class ImapOtpFetcher {
             if (stream == null) return;
             try {
                 stream.setReadLimits(timeoutMs, System.currentTimeMillis() + timeoutMs);
-                List<Integer> toDelete = new ArrayList<>();
+                java.util.TreeSet<Integer> toDelete = new java.util.TreeSet<>();
                 // このメールの From は見つけたときに確かめてある。
                 toDelete.add(uid);
-                int fromUid = Math.max(1, uid - CLEANUP_UID_WINDOW + 1);
-                try {
-                    String tag = stream.nextTag();
-                    stream.send(otpSearchCommand(tag, fromUid, uid));
-                    List<Integer> older = allUids(stream.readUntilTagged(tag), fromUid);
-                    older.sort(java.util.Collections.reverseOrder());
-                    int checks = 0;
-                    for (int u : older) {
-                        if (u >= uid) continue;
-                        if (checks++ >= MAX_DELETE_CHECKS) break;
+                for (int u : knownOtpUids) {
+                    if (u <= uid) toDelete.add(u);
+                }
+                // 両端を決めるので n:* の落とし穴も無い。
+                int olderFrom = Math.max(1, uid - CLEANUP_UID_WINDOW + 1);
+                int olderTo = Math.min(uid, scannedFrom) - 1;
+                if (olderFrom <= olderTo) {
+                    try {
                         // 消すのは From が OTP の送信元と完全に一致したものだけ (送信者名で名乗っただけのメールは消さない)。
-                        if (isFromOtpSender(stream, u)) toDelete.add(u);
+                        for (FetchedMail m : fetchHeaders(stream, olderFrom, olderTo)) {
+                            if (isOtpSender(m.fromHeader)) toDelete.add(m.uid);
+                        }
+                    } catch (ImapException e) {
+                        // サーバは答えている。今回のメールだけ消す。
+                        android.util.Log.w("ImapOtpFetcher", "過去分の確認に失敗 (今回分だけ消す): " + e);
                     }
-                } catch (ImapException e) {
-                    // サーバは答えている。今回のメールだけ消す。
-                    android.util.Log.w("ImapOtpFetcher", "過去分の検索に失敗 (今回分だけ消す): " + e);
                 }
                 StringBuilder set = new StringBuilder();
                 for (int u : toDelete) {
@@ -237,16 +256,22 @@ public final class ImapOtpFetcher {
         long timeoutMs = timeoutSeconds * 1000L;
         long deadline = System.currentTimeMillis() + timeoutMs;
         Exception lastError = new ImapException("mailNotFound");
-        // 「今から届くメール」だけを受け取るための下限。motp.cgi を叩いた直後に呼ばれるので、この時点で
-        // 受信箱にある OTP メールは全部古い = 使えないコード。
-        // 既読 (\Seen) かどうかで絞らないのは、ユーザーがメールアプリで先に開くと UNSEEN 検索に掛からず、
-        // 取得も削除もできなくなっていたため (2026-09-15 実測: 受信箱に既読の OTP メールが 8 件残っていた)。
-        int floorUid = -1;
-        // 検索する UID の下限 (searchLowerBound)。最初の SELECT で決め、繋ぎ直しても変えない
-        // (下限 UID と同じ範囲で探さないと、範囲の外の古いメールを新着と見誤りうる)。
-        int searchFrom = -1;
-        // From を確かめた結果 (UID ごと)。数秒おきに探し直すたびに同じメールのヘッダを取りに行かない。
-        java.util.Map<Integer, Boolean> checked = new java.util.HashMap<>();
+        // 見る範囲の下限 (scanLowerBound) と、「受信箱を開いたあとに届いた」とみなす UID (最初の SELECT の UIDNEXT)。
+        // 最初の SELECT で決め、繋ぎ直しても変えない (繋ぎ直す間に届いたメールも「開いたあと」に入れる)。
+        int scanFrom = -1;
+        int arrivedFrom = Integer.MAX_VALUE;
+        // 差出人が送信元そのものだったメール (UID ごと)。繋ぎ直しても持ち越す (削除の対象にも使う)。
+        // 既読 (\Seen) かどうかでは絞らない。利用者がメールアプリで先に開いても使えるようにするため
+        // (2026-09-15 実測: 受信箱に既読の OTP メールが 8 件残っていた)。
+        java.util.Map<Integer, FetchedMail> otpMails = new java.util.HashMap<>();
+        // 本文からコードが読めなかった・読む前に消されていたメール。次からは使わず、これより古いメールにも戻らない。
+        java.util.Set<Integer> unreadable = new java.util.HashSet<>();
+        // そのうちコードが読めなかったものがあったか (期限で返す理由を codeNotFound にする)。
+        boolean codeUnreadable = false;
+        // 今の FETCH を始めた時刻。期限での打ち切りか、サーバが答えなくなったかを分ける (endedByDeadline)。
+        long stepStartedAt = System.currentTimeMillis();
+        // 直近の範囲より前も 1 回だけ見たか (needsOlderScan)。
+        boolean scannedOlder = false;
         int connections = 0;
         // 繋ぎ直す前に待つ時間。前の接続を閉じてから (LOGOUT を送ってから) 待つ。
         long pause = 0;
@@ -268,48 +293,130 @@ public final class ImapOtpFetcher {
             }
             boolean handedOff = false;
             try {
-                if (searchFrom < 0) searchFrom = searchLowerBound(stream.uidNext);
+                if (scanFrom < 0) {
+                    scanFrom = scanLowerBound(stream.uidNext);
+                    // UIDNEXT が無ければ (RFC 3501 では必須で、Dovecot は必ず返す)、届いた時刻だけで決める。
+                    arrivedFrom = stream.uidNext != null ? stream.uidNext : Integer.MAX_VALUE;
+                }
+                // この接続で次に見る UID。繋ぎ直したら範囲の全体を見直す (切れていた間に届いたものを取りこぼさない)。
+                int nextUid = scanFrom;
+                Progress.Stage stage = Progress.Stage.SCAN;
                 while (true) {
                     try {
-                        if (floorUid < 0) floorUid = resolveFloorUid(stream, requestedAt, searchFrom);
-                        OtpMail mail = searchAndFetch(stream, floorUid, searchFrom, deleteAfterRead, checked);
-                        if (mail != null) {
-                            if (!deleteAfterRead) {
-                                // 接続ごと渡す (中継サーバが受け取ったら、同じ接続で消す)。
-                                mail.attach(stream);
-                                handedOff = true;
-                            }
-                            return mail;
+                        progress.enter(stage);
+                        stepStartedAt = System.currentTimeMillis();
+                        List<FetchedMail> fetched = fetchHeaders(stream, nextUid, null);
+                        for (FetchedMail m : fetched) {
+                            if (isOtpSender(m.fromHeader)) otpMails.put(m.uid, m);
                         }
-                        lastError = new ImapException("mailNotFound");
+                        nextUid = nextUnseenUid(fetched, nextUid, stream.uidNext);
+                        // 範囲のメールが全部依頼のあとに届いていたら (「既に送信しました」の 10 分前など)、手前にも今回の
+                        // メールがありうる。1 回だけ OLDER_UID_WINDOW 件遡って見る (以前の SEARCH と同じ 200 UID まで)。
+                        if (stage == Progress.Stage.SCAN && !scannedOlder && scanFrom > 1
+                                && pickOtpMail(otpMails.values(), requestedAt, arrivedFrom, unreadable) == null
+                                && needsOlderScan(fetched, requestedAt)) {
+                            int olderFrom = Math.max(1, scanFrom - OLDER_UID_WINDOW);
+                            for (FetchedMail m : fetchHeaders(stream, olderFrom, scanFrom - 1)) {
+                                if (isOtpSender(m.fromHeader)) otpMails.put(m.uid, m);
+                            }
+                            // 取り終えてから立てる (途中で切れて繋ぎ直したら、もう一度見る)。
+                            scannedOlder = true;
+                            scanFrom = olderFrom;
+                        }
+                        FetchedMail target = pickOtpMail(otpMails.values(), requestedAt, arrivedFrom, unreadable);
+                        if (target != null) {
+                            progress.enter(Progress.Stage.FETCH);
+                            String text = fetchText(stream, target.uid);
+                            String code = text != null ? extractCode(text) : null;
+                            if (code != null) {
+                                OtpMail mail = new OtpMail(code, target.uid, new ArrayList<>(otpMails.keySet()), scanFrom);
+                                if (deleteAfterRead) {
+                                    deleteAfterRead(stream, target.uid);
+                                } else {
+                                    // 接続ごと渡す (中継サーバが受け取ったら、同じ接続で消す)。
+                                    mail.attach(stream);
+                                    handedOff = true;
+                                }
+                                return mail;
+                            }
+                            // 次からは使わず、より古いメールにも戻らない (新しい方を使えないのに、古い方の使えなくなった
+                            // コードを入れない)。読めなかったメールは消さずに残す (デバッグのため)。
+                            unreadable.add(target.uid);
+                            if (text == null) {
+                                // 見ている間に消された (別のメールソフトなど)。
+                                otpMails.remove(target.uid);
+                                lastError = new ImapException("mailNotFound");
+                            } else {
+                                codeUnreadable = true;
+                                lastError = new ImapException("codeNotFound");
+                            }
+                        } else {
+                            // 読めなかったメールがあれば、期限まで新しいものが来なかったときはそれを理由にする。
+                            lastError = new ImapException(codeUnreadable ? "codeNotFound" : "mailNotFound");
+                        }
                         progress.recordFailure(lastError);
                     } catch (ImapException e) {
-                        // サーバは答えている (コードが読めない・SEARCH を断られた)。同じ接続で続ける。
+                        // サーバは答えている (FETCH を断られた)。同じ接続で続ける。
                         if (progress.isAborted()) throw aborted();
                         progress.recordFailure(e);
                         lastError = e;
                     } catch (IOException e) {
                         // 通信断、または期限まで答えが無かった。ログインしたあとの無応答は繋ぎ直さない。
                         if (progress.isAborted()) throw aborted();
+                        // 新着の確認 (RECHECK) で期限が来て、読み取りが切られただけなら、メールが来なかった。
+                        if (endedByDeadline(e, progress.stage(), deadline, stepStartedAt, System.currentTimeMillis())) {
+                            throw lastError;
+                        }
                         progress.recordFailure(e);
                         pause = reconnectPause(e, connections, deadline);
-                        // 繋ぎ直しを待つ間は connect にする。切れた段階 (search など) のままだと、中継の見張りが
+                        // 繋ぎ直しを待つ間は connect にする。切れた段階 (scan など) のままだと、中継の見張りが
                         // 「メールが来ない」と取り違える。投げるときの detail は記録した段階で作る。
                         progress.enter(Progress.Stage.CONNECT);
-                        checked.clear();
                         break;
                     }
                     long remaining = deadline - System.currentTimeMillis();
                     if (remaining <= 0) throw lastError;
                     // 受信箱を開いたままメールを待つ間だけ idle にする。
                     progress.enter(Progress.Stage.IDLE);
-                    if (progress.pause(Math.min(RETRY_INTERVAL_MS, remaining))) throw aborted();
+                    if (progress.pause(Math.min(NEW_MAIL_WAIT_MS, remaining))) throw aborted();
+                    stage = Progress.Stage.RECHECK;
                 }
             } finally {
                 if (!handedOff) stream.close();
             }
         }
     }
+
+    /**
+     * 読み取り済みの OTP メールを削除する (ユーザー了承済み、2026-09-07)。アプリのログインの経路 (fetchOtpCode)。
+     * 削除に失敗してもコードは取れているので、ログインは続ける。ただし黙って捨てると「メールが消えない」ときに
+     * 原因が分からなくなるので必ずログへ残す (コードは出さない)。
+     */
+    private static void deleteAfterRead(ImapStream stream, int uid) {
+        try {
+            deleteUids(stream, String.valueOf(uid));
+        } catch (Exception e) {
+            android.util.Log.w("ImapOtpFetcher", "OTPメールの削除に失敗: " + e);
+        }
+    }
+
+    /**
+     * 新着を確かめる段階 (RECHECK) で、期限が来たために読み取りが時間切れになったか。期限の近くでは読み取りを待つ上限が
+     * 0.5 秒まで縮む (readWaitMs) ので、最後の確認の答えが間に合わないと「止まった」ように見える。以前はこれが
+     * imap-error (search-stall) として返り、本当は「メールが期限までに見つからなかった」(mail-timeout) のを隠していた。
+     * その FETCH を期限の LATE_STEP_WINDOW_MS より前に始めていたら、サーバがそれだけ答えなかったので、止まった
+     * (imap-error) のままにする (mail-timeout にすると、拡張が答えないサーバに頼み直す)。
+     * iOS の endedByDeadline と同じ (Android の IDLE は通信しない待ちなので、ここでは止まらない)。
+     */
+    static boolean endedByDeadline(@NonNull Exception error, @NonNull Progress.Stage stage, long deadline,
+                                   long stepStartedAt, long now) {
+        return error instanceof java.net.SocketTimeoutException && now >= deadline
+                && deadline - stepStartedAt <= LATE_STEP_WINDOW_MS
+                && (stage == Progress.Stage.RECHECK || stage == Progress.Stage.IDLE);
+    }
+
+    /** 期限のこれだけ前より後に始めた確認の FETCH が期限で切られたら、期限での打ち切りとみなす。iOS の lateStepWindow と同じ。 */
+    static final long LATE_STEP_WINDOW_MS = 2_000;
 
     /** 繋ぎ直すなら待つ時間を返し、繋ぎ直さないなら error をそのまま投げる。 */
     private long reconnectPause(@NonNull Exception error, int connections, long deadline) throws Exception {
@@ -349,7 +456,8 @@ public final class ImapOtpFetcher {
         if (error instanceof java.net.SocketTimeoutException) {
             switch (stage) {
                 case SELECT:
-                case SEARCH:
+                case SCAN:
+                case RECHECK:
                 case FETCH:
                 case IDLE:
                     return ConnectionFailure.STALLED_AFTER_LOGIN;
@@ -421,126 +529,26 @@ public final class ImapOtpFetcher {
     }
 
     /**
-     * 下限 UID を決める。原則は「今受信箱にある一番新しい OTP メール」だが、TLS ハンドシェイク +
-     * LOGIN + SELECT を待つ間に目当てのメールが届いてしまうと、それ自身を下限にしてしまって
-     * 「自分より新しい UID」が永久に現れず、コードが届いているのに 30 秒待って諦めることになる。
-     * 最新メールの到着時刻 (INTERNALDATE) がこの呼び出しの開始以降なら、それが今要求したメール
-     * なので 1 つ手前を下限にする。
-     * 探すのは fromUid 以降だけ (searchLowerBound)。latestGenuineUid と同じ範囲にしないと、範囲の外の
-     * 古いメールを新着と見誤る。
+     * fromUid から toUid (null なら最新まで) のメールの到着時刻と From ヘッダを 1 回の FETCH で取る。
+     * 範囲の外のもの ({@code n:*} の落とし穴、勝手に届いた FETCH) は落とす。
      */
-    private int resolveFloorUid(ImapStream stream, long startedAt, int fromUid) throws IOException, ImapException {
-        // 下限は From を確かめる前の候補 (SEARCH FROM の結果) で決める。今ある候補はどれも今回のコードより
-        // 古いので、本物かどうかに関係なく下限にしてよい。確かめた本物だけで決めると、偽メールが多くて
-        // 本物まで確かめきれなかったときに下限が 0 になり、期限切れの古い本物を新しいコードとして使ってしまう。
-        progress.enter(Progress.Stage.SEARCH);
-        String tag = stream.nextTag();
-        stream.send(otpSearchCommand(tag, fromUid, null));
-        int latestUid = -1;
-        for (int uid : allUids(stream.readUntilTagged(tag), fromUid)) latestUid = Math.max(latestUid, uid);
-        if (latestUid < 0) return 0;
-        Long arrivedAt = internalDate(stream, String.valueOf(latestUid));
-        // INTERNALDATE は秒精度なので、startedAt も秒に切り下げてから比べる。ミリ秒のまま比べると、
-        // startedAt と同じ秒の中で届いたメールが「開始より前」に見えて取りこぼす。
-        long startedSecond = startedAt / 1000L * 1000L;
-        // 取れなかった (書式が想定外) ときは従来どおり最新メールを下限にする。誤って古いコードを
-        // 使うより、手入力に落ちる方が安全。
-        if (arrivedAt != null && arrivedAt >= startedSecond) return latestUid - 1;
-        return latestUid;
-    }
-
-    /** 指定 UID のメールがサーバーに届いた時刻 (epoch ミリ秒)。取れなければ null。 */
-    @Nullable
-    private Long internalDate(ImapStream stream, String targetUid) throws IOException, ImapException {
-        String tag = stream.nextTag();
-        stream.send(tag + " UID FETCH " + targetUid + " (INTERNALDATE)");
-        return parseInternalDate(stream.readUntilTagged(tag));
-    }
-
-    /**
-     * 受信箱にある OTP メールのうち、aboveUid より新しく From が送信元と完全に一致する一番新しい UID。
-     * 無ければ null。探すのは fromUid 以降の UID だけ (受信箱全体を探すと大きな受信箱で止まる)。
-     *
-     * IMAP の SEARCH FROM は From ヘッダの部分一致 (送信者名 "idp-apply@u-aizu.ac.jp" <x@attacker> にも当たる)
-     * なので候補を絞るだけに使い、From のアドレスは 1 通ずつ取って確かめる (CLAUDE-SECURITY F20)。
-     * From は送り手が書く値なので、送信元を完全に名乗ったメールまでは区別できない
-     * (大学のメールサーバの認証結果ヘッダは、実物のメールで確かめられていないので使っていない)。
-     */
-    @Nullable
-    private Integer latestGenuineUid(ImapStream stream, int aboveUid, int fromUid,
-                                     java.util.Map<Integer, Boolean> checked)
+    @NonNull
+    private static List<FetchedMail> fetchHeaders(ImapStream stream, int fromUid, @Nullable Integer toUid)
             throws IOException, ImapException {
-        progress.enter(Progress.Stage.SEARCH);
         String tag = stream.nextTag();
-        // 日付 (SINCE) では絞らない。UID の範囲で足りるうえ、日付はサーバの時間帯で区切られるので、
-        // 日付をまたいだ直後 (PC 中継の「10 分前」を含む) に届いたメールを落としうる。
-        stream.send(otpSearchCommand(tag, fromUid, null));
-        List<Integer> uids = allUids(stream.readUntilTagged(tag), fromUid);
-        uids.sort(java.util.Collections.reverseOrder());
-        int checks = 0;
-        for (int uid : uids) {
-            if (uid <= aboveUid) break;
-            Boolean genuine = checked.get(uid);
-            if (genuine == null) {
-                if (checks++ >= MAX_FROM_CHECKS) break;
-                genuine = isFromOtpSender(stream, uid);
-                checked.put(uid, genuine);
-            }
-            if (genuine) return uid;
+        stream.send(headerFetchCommand(tag, fromUid, toUid));
+        return mailsInRange(parseFetchedMails(stream.readResponsesUntilTagged(tag)), fromUid, toUid);
+    }
+
+    /** 1 通の本文。メールが無くなっていた (FETCH の応答が無い) ら null。 */
+    @Nullable
+    private static String fetchText(ImapStream stream, int uid) throws IOException, ImapException {
+        String tag = stream.nextTag();
+        stream.send(tag + " UID FETCH " + uid + " (BODY.PEEK[TEXT])");
+        for (FetchedMail m : parseFetchedMails(stream.readResponsesUntilTagged(tag))) {
+            if (m.uid == uid) return m.text;
         }
         return null;
-    }
-
-    /** そのメールの From ヘッダのアドレスが OTP の送信元と完全に一致するか。 */
-    private static boolean isFromOtpSender(ImapStream stream, int uid) throws IOException, ImapException {
-        String tag = stream.nextTag();
-        stream.send(tag + " UID FETCH " + uid + " (BODY.PEEK[HEADER.FIELDS (FROM)])");
-        String header;
-        try {
-            header = stream.readFetchBody(tag);
-        } catch (ImapException e) {
-            if ("mailNotFound".equals(e.getMessage())) return false; // 消された等
-            throw e;
-        }
-        String address = fromAddress(header);
-        return address != null && address.equalsIgnoreCase(OTP_SENDER);
-    }
-
-    /**
-     * 選択済みの INBOX で OTP メールを 1 回探す。floorUid より新しいものが無ければ null。見つかれば
-     * コードを返し、deleteAfterRead ならそのメールを削除する。
-     */
-    @Nullable
-    private OtpMail searchAndFetch(ImapStream stream, int floorUid, int fromUid, boolean deleteAfterRead,
-                                   java.util.Map<Integer, Boolean> checked)
-            throws IOException, ImapException {
-        // 下限以下は今回要求したコードではない (期限切れの古いメール)。
-        Integer genuine = latestGenuineUid(stream, floorUid, fromUid, checked);
-        if (genuine == null) return null;
-        String targetUid = String.valueOf(genuine);
-
-        String tag;
-
-        progress.enter(Progress.Stage.FETCH);
-        tag = stream.nextTag();
-        stream.send(tag + " UID FETCH " + targetUid + " (BODY.PEEK[TEXT])");
-        String body = stream.readFetchBody(tag);
-
-        String code = extractCode(body);
-        if (code == null) throw new ImapException("codeNotFound");
-        OtpMail mail = new OtpMail(code, Integer.parseInt(targetUid));
-        if (!deleteAfterRead) return mail;
-
-        // 読み取り済みの OTP メールは削除する (ユーザー了承済み、2026-09-07)。
-        // 抽出に失敗した場合は消さずに残す (デバッグのため)。
-        try {
-            deleteUids(stream, targetUid);
-        } catch (Exception e) {
-            // 削除に失敗してもコードは取れているので、ログインは続ける。ただし黙って捨てると
-            // 「メールが消えない」ときに原因が分からなくなるので必ずログへ残す (コードは出さない)。
-            android.util.Log.w("ImapOtpFetcher", "OTPメールの削除に失敗: " + e);
-        }
-        return mail;
     }
 
     /**
@@ -605,8 +613,13 @@ public final class ImapOtpFetcher {
      * メールの中身・アドレス・コード・ID は持たない。
      */
     public static final class Progress {
+        /**
+         * detail の先頭に付く段階の名前。SCAN は最初に直近のヘッダを取る FETCH、RECHECK は新着を待ったあとに
+         * 新しい UID のヘッダを取る FETCH、FETCH は見つけたメールの本文の FETCH、IDLE は新着を待つ間。
+         * 2026-10-25 までの SEARCH は使わなくなった (RECENT_UID_WINDOW)。iOS の IMAPOTPProgress.Stage と同じ。
+         */
         public enum Stage {
-            CONNECT, GREETING, LOGIN, SELECT, SEARCH, FETCH, IDLE;
+            CONNECT, GREETING, LOGIN, SELECT, SCAN, RECHECK, FETCH, IDLE;
 
             @NonNull
             public String code() { return name().toLowerCase(Locale.ROOT); }
@@ -769,50 +782,210 @@ public final class ImapOtpFetcher {
         return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 
-    /** "* SEARCH 1 2 3" の UID を全部。該当なしなら空。 */
+    /** 直近のヘッダを取る FETCH。.PEEK なので既読にしない。iOS の headerFetchCommand と同じ。 */
     @NonNull
-    static List<Integer> allUids(@NonNull List<String> lines) {
-        List<Integer> out = new ArrayList<>();
-        for (String line : lines) {
-            if (!line.startsWith("* SEARCH")) continue;
-            for (String token : line.substring("* SEARCH".length()).trim().split("\\s+")) {
-                try {
-                    out.add(Integer.parseInt(token));
-                } catch (NumberFormatException ignored) {
-                    // 空行 (該当なし) など
-                }
-            }
-        }
-        return out;
-    }
-
-    /**
-     * allUids のうち fromUid 以降。{@code UID n:*} は n が受信箱の最大の UID より大きいと「最大の UID のメール」に
-     * 当たる (RFC 3501 の * は最大値で、n:* は *:n と同じ) ので、範囲より古いメールを手元で落とす。
-     */
-    @NonNull
-    static List<Integer> allUids(@NonNull List<String> lines, int fromUid) {
-        List<Integer> out = new ArrayList<>();
-        for (int uid : allUids(lines)) {
-            if (uid >= fromUid) out.add(uid);
-        }
-        return out;
-    }
-
-    /**
-     * 差出人で探す UID SEARCH。UID の範囲を先に置くと、Dovecot はその範囲のメールのヘッダだけを見る。
-     * toUid が null なら最新まで (n:*)。日付 (SINCE) では絞らない。iOS の otpSearchCommand と同じ。
-     */
-    @NonNull
-    static String otpSearchCommand(@NonNull String tag, int fromUid, @Nullable Integer toUid) {
+    static String headerFetchCommand(@NonNull String tag, int fromUid, @Nullable Integer toUid) {
         String upper = toUid != null ? String.valueOf(toUid) : "*";
-        return tag + " UID SEARCH UID " + Math.max(1, fromUid) + ":" + upper + " FROM \"" + OTP_SENDER + "\"";
+        return tag + " UID FETCH " + Math.max(1, fromUid) + ":" + upper
+                + " (UID INTERNALDATE BODY.PEEK[HEADER.FIELDS (FROM)])";
     }
 
-    /** 新着を探す UID の下限。UIDNEXT が分からなければ (RFC 3501 では必須で、Dovecot は必ず返す) 1 から探す。 */
-    static int searchLowerBound(@Nullable Integer uidNext) {
+    /**
+     * 直近のヘッダを見る UID の下限。UIDNEXT が分からなければ (RFC 3501 では必須で、Dovecot は必ず返す) 1 から見る
+     * (受信箱全体のヘッダになるが、UIDNEXT を返さないサーバは想定していない)。
+     */
+    static int scanLowerBound(@Nullable Integer uidNext) {
         if (uidNext == null) return 1;
         return Math.max(1, uidNext - RECENT_UID_WINDOW);
+    }
+
+    /** FETCH で受け取った 1 通分。ヘッダの FETCH なら fromHeader、本文の FETCH なら text が入る。 */
+    static final class FetchedMail {
+        final int uid;
+        /** INTERNALDATE (メールサーバに届いた時刻、epoch ミリ秒)。読めなければ null。 */
+        @Nullable Long arrivedAt;
+        /** {@code BODY[HEADER.FIELDS (FROM)]} の中身。 */
+        @Nullable String fromHeader;
+        /** {@code BODY[TEXT]} の中身。 */
+        @Nullable String text;
+
+        FetchedMail(int uid) {
+            this.uid = uid;
+        }
+    }
+
+    /**
+     * FETCH の応答から UID ごとの記録を作る (応答の順)。UID の無い応答 (勝手に届いた FLAGS の変化など) は捨てる。
+     * 同じ UID が 2 回来たら 1 つにまとめる。リテラルの中身は lines に入らないので、本文に "UID 5" と書かれていても
+     * 取り違えない。
+     */
+    @NonNull
+    static List<FetchedMail> parseFetchedMails(@NonNull List<Response> responses) {
+        java.util.LinkedHashMap<Integer, FetchedMail> byUid = new java.util.LinkedHashMap<>();
+        Pattern fetch = Pattern.compile("^\\* [0-9]+ FETCH ");
+        Pattern uidPattern = Pattern.compile("[( ]UID ([0-9]{1,10})");
+        for (Response response : responses) {
+            if (response.lines.isEmpty() || !fetch.matcher(response.lines.get(0)).find()) continue;
+            String text = String.join(" ", response.lines);
+            Matcher m = uidPattern.matcher(text);
+            if (!m.find()) continue;
+            int uid;
+            try {
+                uid = Integer.parseInt(m.group(1));
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            FetchedMail mail = byUid.get(uid);
+            if (mail == null) mail = new FetchedMail(uid);
+            Long arrivedAt = parseInternalDate(java.util.Collections.singletonList(text));
+            if (arrivedAt != null) mail.arrivedAt = arrivedAt;
+            for (int i = 0; i < response.literals.size(); i++) {
+                // リテラルの手前の行の、最後の BODY[...] がその中身の名前。
+                String line = response.lines.get(i);
+                int open = line.lastIndexOf("BODY[");
+                if (open < 0) continue;
+                String section = line.substring(open + 5).toUpperCase(Locale.ROOT);
+                byte[] literal = response.literals.get(i);
+                if (section.startsWith("HEADER")) mail.fromHeader = new String(literal, StandardCharsets.UTF_8);
+                else if (section.startsWith("TEXT")) mail.text = ImapStream.decode(literal);
+            }
+            byUid.put(uid, mail);
+        }
+        return new ArrayList<>(byUid.values());
+    }
+
+    /**
+     * fromUid 以上 toUid (null なら上限なし) 以下のもの。{@code UID n:*} は n が受信箱の最大の UID より大きいと
+     * 「最大の UID のメール」に当たる (RFC 3501 の * は最大値で、n:* は *:n と同じ) ので、範囲より古いメールを手元で落とす。
+     */
+    @NonNull
+    static List<FetchedMail> mailsInRange(@NonNull List<FetchedMail> mails, int fromUid, @Nullable Integer toUid) {
+        List<FetchedMail> out = new ArrayList<>();
+        for (FetchedMail m : mails) {
+            if (m.uid >= fromUid && (toUid == null || m.uid <= toUid)) out.add(m);
+        }
+        return out;
+    }
+
+    /**
+     * 直近の範囲の一番古いメールも依頼の時刻以降に届いていて、範囲の手前にも今回のメールがありうるか。
+     * 範囲が空 (直近のメールが全部消されている) か、到着時刻が読めないときも、手前を見る。iOS の needsOlderScan と同じ。
+     */
+    static boolean needsOlderScan(@NonNull List<FetchedMail> window, long requestedAt) {
+        FetchedMail oldest = null;
+        for (FetchedMail m : window) {
+            if (oldest == null || m.uid < oldest.uid) oldest = m;
+        }
+        if (oldest == null || oldest.arrivedAt == null) return true;
+        return oldest.arrivedAt >= requestedAt / 1000L * 1000L;
+    }
+
+    /** 次の確認で見る UID の下限。見たものの次か、SELECT の UIDNEXT (これ以降が新着) の大きい方。 */
+    static int nextUnseenUid(@NonNull List<FetchedMail> fetched, int fromUid, @Nullable Integer uidNext) {
+        int next = fromUid;
+        for (FetchedMail m : fetched) {
+            if (m.uid >= fromUid) next = Math.max(next, m.uid + 1);
+        }
+        return uidNext != null ? Math.max(next, uidNext) : next;
+    }
+
+    /** From ヘッダのアドレスが OTP の送信元と完全に一致するか。 */
+    static boolean isOtpSender(@Nullable String fromHeader) {
+        String address = fromHeader != null ? fromAddress(fromHeader) : null;
+        return address != null && address.equalsIgnoreCase(OTP_SENDER);
+    }
+
+    /**
+     * 今回のコードのメール。差出人が送信元そのもので、次のどちらかを満たすもののうち一番新しいもの。無ければ null。
+     * iOS の pickOTPMail と同じ。
+     * <ul>
+     *     <li>受信箱を開いたあとに届いた (UID が最初の SELECT の UIDNEXT 以上)。届いた時刻のずれに関係なく、依頼より後。</li>
+     *     <li>開く前に届いていて、届いた時刻 (INTERNALDATE) が依頼の時刻以降。TLS・LOGIN・SELECT を待つ間に届いた
+     *     目当てのメールを取りこぼさないため。</li>
+     * </ul>
+     * INTERNALDATE は秒精度なので、requestedAt も秒に切り下げてから比べる。時計のずれの見込みは呼び出し側が
+     * requestedAt に入れてある (PC の拡張は 5 秒 / 再送信は 2 秒前、中継は OtpRelayTiming.effectiveRequestedAt)。
+     * ここで更に広げると、送り直す直前に届いた前のメール (使えなくなったコード) を拾う。
+     * INTERNALDATE が読めないメールは、開いたあとに届いたものでなければ使わない (古いコードを使うより手入力に落ちる方が安全)。
+     * unreadable (本文からコードが読めなかったメール) より古いメールにも戻らない (新しい方が読めないのに古い方のコードを
+     * 入れると、使えなくなったコードで IdP の失敗が 1 回増える)。これより新しいものだけを待つ。
+     */
+    @Nullable
+    static FetchedMail pickOtpMail(@NonNull java.util.Collection<FetchedMail> mails, long requestedAt, int arrivedFromUid,
+                                   @NonNull java.util.Set<Integer> unreadable) {
+        long since = requestedAt / 1000L * 1000L;
+        int newerThan = 0;
+        for (int u : unreadable) newerThan = Math.max(newerThan, u);
+        FetchedMail best = null;
+        for (FetchedMail m : mails) {
+            if (m.uid <= newerThan || !isOtpSender(m.fromHeader)) continue;
+            boolean fresh = m.uid >= arrivedFromUid || (m.arrivedAt != null && m.arrivedAt >= since);
+            if (fresh && (best == null || m.uid > best.uid)) best = m;
+        }
+        return best;
+    }
+
+    /** サーバの応答 1 つ (未タグの "* ..." か、タグ付きの完了)。lines は行 (リテラルを除く)、literals[i] は lines[i] の末尾の {n}。 */
+    static final class Response {
+        @NonNull final List<String> lines = new ArrayList<>();
+        @NonNull final List<byte[]> literals = new ArrayList<>();
+    }
+
+    /**
+     * in から応答を 1 つ (リテラルを含めて) 読む。FETCH の BODY[...] は "{n}\r\n" の直後に n バイトの生データ
+     * (内部に \r\n を含みうる) が来て、その後ろに行の続きが来る。iOS の IMAPResponse.take と同じ区切り方。
+     */
+    @NonNull
+    static Response readResponse(@NonNull InputStream in) throws IOException {
+        Response response = new Response();
+        while (true) {
+            String line = readLine(in);
+            response.lines.add(line);
+            Integer length = literalLength(line);
+            if (length == null) return response;
+            response.literals.add(readBytes(in, length));
+        }
+    }
+
+    /** 行の末尾の "{123}" (リテラルの長さ)。無ければ null。 */
+    @Nullable
+    static Integer literalLength(@NonNull String line) {
+        if (!line.endsWith("}")) return null;
+        int open = line.lastIndexOf('{');
+        if (open < 0) return null;
+        try {
+            return Integer.parseInt(line.substring(open + 1, line.length() - 1));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    @NonNull
+    private static String readLine(@NonNull InputStream in) throws IOException {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        int prev = -1;
+        while (true) {
+            int b = in.read();
+            if (b < 0) throw new IOException("connectionFailed");
+            if (prev == '\r' && b == '\n') {
+                byte[] bytes = buf.toByteArray();
+                return new String(bytes, 0, bytes.length - 1, StandardCharsets.UTF_8);
+            }
+            buf.write(b);
+            prev = b;
+        }
+    }
+
+    @NonNull
+    private static byte[] readBytes(@NonNull InputStream in, int n) throws IOException {
+        byte[] result = new byte[n];
+        int off = 0;
+        while (off < n) {
+            int r = in.read(result, off, n - off);
+            if (r < 0) throw new IOException("connectionFailed");
+            off += r;
+        }
+        return result;
     }
 
     /** SELECT の応答 "* OK [UIDNEXT 13045] Predicted next UID" から UIDNEXT を取る。無ければ null。 */
@@ -1043,59 +1216,29 @@ public final class ImapOtpFetcher {
             }
         }
 
-        /** "* n FETCH (... BODY[TEXT] {123}" の直後に n バイトの生データが続く形を読む。 */
-        String readFetchBody(String tag) throws IOException, ImapException {
+        /** tag の完了 ("a5 OK ...") までの応答 (リテラルを含む) を集めて返す。"a5 NO" / "a5 BAD" ならエラー。 */
+        List<Response> readResponsesUntilTagged(String tag) throws IOException, ImapException {
+            List<Response> responses = new ArrayList<>();
             while (true) {
-                String line = readLine();
-                if (line.startsWith(tag + " OK")) throw new ImapException("mailNotFound");
+                socket.setSoTimeout(currentReadWait());
+                Response response = ImapOtpFetcher.readResponse(in);
+                String line = response.lines.get(0);
+                if (line.startsWith(tag + " OK")) return responses;
                 if (line.startsWith(tag + " NO") || line.startsWith(tag + " BAD")) {
-                    throw new ImapException("commandFailed(" + tag + ")");
+                    throw new ImapException("commandFailed(" + tag + "): " + line.substring(0, Math.min(line.length(), 40)),
+                            line);
                 }
-                int open = line.lastIndexOf('{');
-                int close = line.lastIndexOf('}');
-                if (open < 0 || close < 0 || open >= close) continue;
-                int byteCount;
-                try {
-                    byteCount = Integer.parseInt(line.substring(open + 1, close));
-                } catch (NumberFormatException e) {
-                    continue;
-                }
-                byte[] raw = readBytes(byteCount);
-                readUntilTagged(tag); // 残りの ")" と "tag OK" を読み捨てる
-                return decode(raw);
+                responses.add(response);
             }
         }
 
         private String readLine() throws IOException {
             // 1 行ごとに待ちを決め直す (期限に近づくほど短くなる)。
             socket.setSoTimeout(currentReadWait());
-            ByteArrayOutputStream buf = new ByteArrayOutputStream();
-            int prev = -1;
-            while (true) {
-                int b = in.read();
-                if (b < 0) throw new IOException("connectionFailed");
-                if (prev == '\r' && b == '\n') {
-                    byte[] bytes = buf.toByteArray();
-                    return new String(bytes, 0, bytes.length - 1, StandardCharsets.UTF_8);
-                }
-                buf.write(b);
-                prev = b;
-            }
+            return ImapOtpFetcher.readLine(in);
         }
 
-        private byte[] readBytes(int n) throws IOException {
-            socket.setSoTimeout(currentReadWait());
-            byte[] result = new byte[n];
-            int off = 0;
-            while (off < n) {
-                int r = in.read(result, off, n - off);
-                if (r < 0) throw new IOException("connectionFailed");
-                off += r;
-            }
-            return result;
-        }
-
-        private static String decode(byte[] raw) {
+        static String decode(byte[] raw) {
             try {
                 return StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(raw)).toString();
             } catch (java.nio.charset.CharacterCodingException e) {

@@ -1,0 +1,20 @@
+* 3 FETCH (FLAGS (\Seen))
+* 2 FETCH (UID 13030 INTERNALDATE "25-Oct-2026 14:40:00 +0900" BODY[HEADER.FIELDS (FROM)] {46}
+From: "Moodle" <noreply@elms.u-aizu.ac.jp>
+
+)
+* 8 FETCH (UID 13038 INTERNALDATE "25-Oct-2026 14:50:02 +0900" BODY[HEADER.FIELDS (FROM)] {32}
+From: idp-apply@u-aizu.ac.jp
+
+)
+* 10 FETCH (UID 13041 INTERNALDATE "25-Oct-2026 14:55:21 +0900" BODY[HEADER.FIELDS (FROM)] {55}
+From: "idp-apply@u-aizu.ac.jp" <x@attacker.example>
+
+)
+* 13 EXISTS
+* 11 FETCH (UID 13043 INTERNALDATE "25-Oct-2026 14:55:22 +0900" BODY[HEADER.FIELDS (FROM)] {65}
+From: =?UTF-8?B?5Lya5rSl5aSn5a2m?=
+ <idp-apply@u-aizu.ac.jp>
+
+)
+a10 OK Fetch completed (0.002 + 0.000 + 0.001 secs).
