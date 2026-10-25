@@ -121,13 +121,18 @@ public class ImapFetchFixtureTest {
     @Test
     public void endedByDeadline_onlyWhileWaitingForNewMail() {
         java.net.SocketTimeoutException stall = new java.net.SocketTimeoutException("Read timed out");
-        assertTrue(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.RECHECK, 1_000, 1_100));
+        long deadline = 100_000;
+        long late = deadline - 1_200;
+        assertTrue(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.RECHECK, deadline, late, deadline + 100));
         // 期限の前の無応答、通信断、メールを読む途中 (SCAN / FETCH) の無応答は、サーバが答えなかった。
-        assertFalse(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.RECHECK, 1_000, 900));
+        assertFalse(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.RECHECK, deadline, late, deadline - 100));
         assertFalse(ImapOtpFetcher.endedByDeadline(new IOException("connectionFailed"),
-                ImapOtpFetcher.Progress.Stage.RECHECK, 1_000, 1_100));
-        assertFalse(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.SCAN, 1_000, 1_100));
-        assertFalse(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.FETCH, 1_000, 1_100));
+                ImapOtpFetcher.Progress.Stage.RECHECK, deadline, late, deadline + 100));
+        assertFalse(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.SCAN, deadline, late, deadline + 100));
+        assertFalse(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.FETCH, deadline, late, deadline + 100));
+        // 期限よりずっと前に始めた確認に、期限まで答えが無かった: サーバが止まった (imap-error のまま)。
+        assertFalse(ImapOtpFetcher.endedByDeadline(stall, ImapOtpFetcher.Progress.Stage.RECHECK, deadline,
+                deadline - 10_000, deadline + 100));
     }
 
     @Test

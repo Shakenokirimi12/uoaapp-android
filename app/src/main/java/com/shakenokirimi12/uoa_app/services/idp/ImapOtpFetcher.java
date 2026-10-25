@@ -264,8 +264,12 @@ public final class ImapOtpFetcher {
         // 既読 (\Seen) かどうかでは絞らない。利用者がメールアプリで先に開いても使えるようにするため
         // (2026-09-15 実測: 受信箱に既読の OTP メールが 8 件残っていた)。
         java.util.Map<Integer, FetchedMail> otpMails = new java.util.HashMap<>();
-        // 本文からコードが読めなかったメール。次からは使わない (消さずに残す)。
+        // 本文からコードが読めなかった・読む前に消されていたメール。次からは使わず、これより古いメールにも戻らない。
         java.util.Set<Integer> unreadable = new java.util.HashSet<>();
+        // そのうちコードが読めなかったものがあったか (期限で返す理由を codeNotFound にする)。
+        boolean codeUnreadable = false;
+        // 今の FETCH を始めた時刻。期限での打ち切りか、サーバが答えなくなったかを分ける (endedByDeadline)。
+        long stepStartedAt = System.currentTimeMillis();
         // 直近の範囲より前も 1 回だけ見たか (needsOlderScan)。
         boolean scannedOlder = false;
         int connections = 0;
@@ -300,6 +304,7 @@ public final class ImapOtpFetcher {
                 while (true) {
                     try {
                         progress.enter(stage);
+                        stepStartedAt = System.currentTimeMillis();
                         List<FetchedMail> fetched = fetchHeaders(stream, nextUid, null);
                         for (FetchedMail m : fetched) {
                             if (isOtpSender(m.fromHeader)) otpMails.put(m.uid, m);
@@ -310,11 +315,12 @@ public final class ImapOtpFetcher {
                         if (stage == Progress.Stage.SCAN && !scannedOlder && scanFrom > 1
                                 && pickOtpMail(otpMails.values(), requestedAt, arrivedFrom, unreadable) == null
                                 && needsOlderScan(fetched, requestedAt)) {
-                            scannedOlder = true;
                             int olderFrom = Math.max(1, scanFrom - OLDER_UID_WINDOW);
                             for (FetchedMail m : fetchHeaders(stream, olderFrom, scanFrom - 1)) {
                                 if (isOtpSender(m.fromHeader)) otpMails.put(m.uid, m);
                             }
+                            // 取り終えてから立てる (途中で切れて繋ぎ直したら、もう一度見る)。
+                            scannedOlder = true;
                             scanFrom = olderFrom;
                         }
                         FetchedMail target = pickOtpMail(otpMails.values(), requestedAt, arrivedFrom, unreadable);
@@ -333,18 +339,20 @@ public final class ImapOtpFetcher {
                                 }
                                 return mail;
                             }
+                            // 次からは使わず、より古いメールにも戻らない (新しい方を使えないのに、古い方の使えなくなった
+                            // コードを入れない)。読めなかったメールは消さずに残す (デバッグのため)。
+                            unreadable.add(target.uid);
                             if (text == null) {
                                 // 見ている間に消された (別のメールソフトなど)。
                                 otpMails.remove(target.uid);
                                 lastError = new ImapException("mailNotFound");
                             } else {
-                                // 抽出に失敗したメールは消さずに残す (デバッグのため)。次からは使わない。
-                                unreadable.add(target.uid);
+                                codeUnreadable = true;
                                 lastError = new ImapException("codeNotFound");
                             }
                         } else {
                             // 読めなかったメールがあれば、期限まで新しいものが来なかったときはそれを理由にする。
-                            lastError = new ImapException(unreadable.isEmpty() ? "mailNotFound" : "codeNotFound");
+                            lastError = new ImapException(codeUnreadable ? "codeNotFound" : "mailNotFound");
                         }
                         progress.recordFailure(lastError);
                     } catch (ImapException e) {
@@ -356,7 +364,9 @@ public final class ImapOtpFetcher {
                         // 通信断、または期限まで答えが無かった。ログインしたあとの無応答は繋ぎ直さない。
                         if (progress.isAborted()) throw aborted();
                         // 新着の確認 (RECHECK) で期限が来て、読み取りが切られただけなら、メールが来なかった。
-                        if (endedByDeadline(e, progress.stage(), deadline, System.currentTimeMillis())) throw lastError;
+                        if (endedByDeadline(e, progress.stage(), deadline, stepStartedAt, System.currentTimeMillis())) {
+                            throw lastError;
+                        }
                         progress.recordFailure(e);
                         pause = reconnectPause(e, connections, deadline);
                         // 繋ぎ直しを待つ間は connect にする。切れた段階 (scan など) のままだと、中継の見張りが
@@ -394,12 +404,19 @@ public final class ImapOtpFetcher {
      * 新着を確かめる段階 (RECHECK) で、期限が来たために読み取りが時間切れになったか。期限の近くでは読み取りを待つ上限が
      * 0.5 秒まで縮む (readWaitMs) ので、最後の確認の答えが間に合わないと「止まった」ように見える。以前はこれが
      * imap-error (search-stall) として返り、本当は「メールが期限までに見つからなかった」(mail-timeout) のを隠していた。
+     * その FETCH を期限の LATE_STEP_WINDOW_MS より前に始めていたら、サーバがそれだけ答えなかったので、止まった
+     * (imap-error) のままにする (mail-timeout にすると、拡張が答えないサーバに頼み直す)。
      * iOS の endedByDeadline と同じ (Android の IDLE は通信しない待ちなので、ここでは止まらない)。
      */
-    static boolean endedByDeadline(@NonNull Exception error, @NonNull Progress.Stage stage, long deadline, long now) {
+    static boolean endedByDeadline(@NonNull Exception error, @NonNull Progress.Stage stage, long deadline,
+                                   long stepStartedAt, long now) {
         return error instanceof java.net.SocketTimeoutException && now >= deadline
+                && deadline - stepStartedAt <= LATE_STEP_WINDOW_MS
                 && (stage == Progress.Stage.RECHECK || stage == Progress.Stage.IDLE);
     }
+
+    /** 期限のこれだけ前より後に始めた確認の FETCH が期限で切られたら、期限での打ち切りとみなす。iOS の lateStepWindow と同じ。 */
+    static final long LATE_STEP_WINDOW_MS = 2_000;
 
     /** 繋ぎ直すなら待つ時間を返し、繋ぎ直さないなら error をそのまま投げる。 */
     private long reconnectPause(@NonNull Exception error, int connections, long deadline) throws Exception {
