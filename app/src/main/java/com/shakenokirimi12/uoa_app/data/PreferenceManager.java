@@ -33,7 +33,7 @@ public class PreferenceManager {
     /** 問い合わせ ID (SupportId)。device_id と同じく、この端末 (このインストール) だけのもの。 */
     private static final String KEY_SUPPORT_ID = "support_id";
     private static final String KEY_AUTO_ATTENDANCE = "auto_attendance_enabled";
-    /** 「利用状況を送る」。BackupService.SETTINGS_KEYS と同じ文字列 (設定として持ち運ぶ)。 */
+    /** 「利用状況と診断情報を送る」(OTP の診断の記録 OtpDiagnostics もこれに従う)。BackupService.SETTINGS_KEYS と同じ文字列 (設定として持ち運ぶ)。 */
     public static final String KEY_USAGE_STATS_ENABLED = "usage_stats_enabled";
     private static final String KEY_SELECTED_NOTIFY_TIMES = "selected_notify_times";
     private static final String KEY_CUSTOM_NOTIFY_TIMES = "custom_notify_times";

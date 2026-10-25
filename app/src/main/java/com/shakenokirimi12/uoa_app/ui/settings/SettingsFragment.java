@@ -240,7 +240,7 @@ public class SettingsFragment extends Fragment {
         textLocationWarning.setOnClickListener(v -> requestBackgroundLocation());
         updateLocationWarning();
 
-        // 利用状況を送る (既定 ON)。OFF にすると、まだ送っていない回数と利用状況の ID を消す。
+        // 利用状況と診断情報を送る (既定 ON)。OFF にすると、まだ送っていない回数と利用状況の ID を消し、OTP の診断の記録 (OtpDiagnostics) も送らない。
         MaterialSwitch switchUsageStats = view.findViewById(R.id.switch_usage_stats);
         switchUsageStats.setChecked(prefs.isUsageStatsEnabled());
         switchUsageStats.setOnCheckedChangeListener((v, checked) ->

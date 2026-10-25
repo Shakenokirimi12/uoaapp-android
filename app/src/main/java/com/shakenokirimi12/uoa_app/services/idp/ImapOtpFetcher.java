@@ -22,6 +22,8 @@ import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
+import com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics;
+
 /**
  * stdmsv1.u-aizu.ac.jp (Dovecot, IMAP4rev1, AUTH=PLAIN、IMAPS/993) から IdP のワンタイムパスワード
  * メールを取り出す最小限の IMAP クライアント。iOS の IMAPOTPFetcher の移植。
@@ -126,6 +128,10 @@ public final class ImapOtpFetcher {
         this.progress = progress;
     }
 
+    /** 手順の記録と、どこまで進んだか (診断の記録に使う)。 */
+    @NonNull
+    public Progress progress() { return progress; }
+
     /**
      * motp.cgi でメール送信を依頼した直後に呼ぶ想定。配信まで数秒かかることがあるので、timeout 内は
      * 数秒おきに探す (IDLE で待ち受ける方式は使わない)。
@@ -215,7 +221,8 @@ public final class ImapOtpFetcher {
                         }
                     } catch (ImapException e) {
                         // サーバは答えている。今回のメールだけ消す。
-                        android.util.Log.w("ImapOtpFetcher", "過去分の確認に失敗 (今回分だけ消す): " + e);
+                        // 例外の文面はサーバの応答行を含みうるので、決まった名前だけを残す (Progress.describe)。
+                        android.util.Log.w("ImapOtpFetcher", "過去分の確認に失敗 (今回分だけ消す): " + Progress.describe(e));
                     }
                 }
                 StringBuilder set = new StringBuilder();
@@ -225,7 +232,7 @@ public final class ImapOtpFetcher {
                 }
                 deleteUids(stream, set.toString());
             } catch (Exception e) {
-                android.util.Log.w("ImapOtpFetcher", "使用済みの OTP メールを消せなかった: " + e);
+                android.util.Log.w("ImapOtpFetcher", "使用済みの OTP メールを消せなかった: " + Progress.describe(e));
             } finally {
                 stream.close();
             }
@@ -253,6 +260,27 @@ public final class ImapOtpFetcher {
     @NonNull
     private OtpMail fetch(@NonNull String uid, @NonNull String pass, long timeoutSeconds,
                           long requestedAt, boolean deleteAfterRead) throws Exception {
+        progress.note("取得を始める: 期限 " + timeoutSeconds + "s、受け付けるメールは依頼の "
+                + seconds(System.currentTimeMillis() - requestedAt) + "s 前から");
+        try {
+            OtpMail mail = fetchOnce(uid, pass, timeoutSeconds, requestedAt, deleteAfterRead);
+            progress.finish();
+            progress.note("結果: コードを見つけた");
+            return mail;
+        } catch (Exception e) {
+            progress.finish();
+            progress.note("結果: 失敗 " + Progress.describe(e) + " (" + progress.detail(e) + ")");
+            throw e;
+        }
+    }
+
+    private static String seconds(long ms) {
+        return String.format(Locale.ROOT, "%.1f", ms / 1000.0);
+    }
+
+    @NonNull
+    private OtpMail fetchOnce(@NonNull String uid, @NonNull String pass, long timeoutSeconds,
+                              long requestedAt, boolean deleteAfterRead) throws Exception {
         long timeoutMs = timeoutSeconds * 1000L;
         long deadline = System.currentTimeMillis() + timeoutMs;
         Exception lastError = new ImapException("mailNotFound");
@@ -285,6 +313,7 @@ public final class ImapOtpFetcher {
                 stream = openAndSelect(uid, pass, SETUP_STALL_LIMIT_MS, timeoutMs, deadline);
             } catch (IOException | ImapException e) {
                 if (progress.isAborted()) throw aborted();
+                progress.note("受信箱を開けなかった: " + Progress.describe(e));
                 progress.recordFailure(e);
                 // ID / パスワードの誤りは繋ぎ直さない (繰り返すとアカウントロックのおそれ)。
                 pause = reconnectPause(e, connections, deadline);
@@ -326,8 +355,11 @@ public final class ImapOtpFetcher {
                         FetchedMail target = pickOtpMail(otpMails.values(), requestedAt, arrivedFrom, unreadable);
                         if (target != null) {
                             progress.enter(Progress.Stage.FETCH);
-                            String text = fetchText(stream, target.uid);
+                            String text = fetchText(stream, target.uid, progress);
                             String code = text != null ? extractCode(text) : null;
+                            progress.note(text == null ? "本文が無かった (消された) uid=" + target.uid
+                                    : code == null ? "本文からコードを読めなかった uid=" + target.uid
+                                    : "本文からコードを読めた uid=" + target.uid);
                             if (code != null) {
                                 OtpMail mail = new OtpMail(code, target.uid, new ArrayList<>(otpMails.keySet()), scanFrom);
                                 if (deleteAfterRead) {
@@ -358,11 +390,14 @@ public final class ImapOtpFetcher {
                     } catch (ImapException e) {
                         // サーバは答えている (FETCH を断られた)。同じ接続で続ける。
                         if (progress.isAborted()) throw aborted();
+                        progress.note("サーバが断った: " + Progress.describe(e));
                         progress.recordFailure(e);
                         lastError = e;
                     } catch (IOException e) {
                         // 通信断、または期限まで答えが無かった。ログインしたあとの無応答は繋ぎ直さない。
                         if (progress.isAborted()) throw aborted();
+                        progress.note("通信が止まった・切れた: " + Progress.describe(e) + "、残り "
+                                + seconds(deadline - System.currentTimeMillis()) + "s");
                         // 新着の確認 (RECHECK) で期限が来て、読み取りが切られただけなら、メールが来なかった。
                         if (endedByDeadline(e, progress.stage(), deadline, stepStartedAt, System.currentTimeMillis())) {
                             throw lastError;
@@ -378,6 +413,7 @@ public final class ImapOtpFetcher {
                     if (remaining <= 0) throw lastError;
                     // 受信箱を開いたままメールを待つ間だけ idle にする。
                     progress.enter(Progress.Stage.IDLE);
+                    progress.note(seconds(Math.min(NEW_MAIL_WAIT_MS, remaining)) + "s 待つ (IDLE なし)、残り " + seconds(remaining) + "s");
                     if (progress.pause(Math.min(NEW_MAIL_WAIT_MS, remaining))) throw aborted();
                     stage = Progress.Stage.RECHECK;
                 }
@@ -396,7 +432,7 @@ public final class ImapOtpFetcher {
         try {
             deleteUids(stream, String.valueOf(uid));
         } catch (Exception e) {
-            android.util.Log.w("ImapOtpFetcher", "OTPメールの削除に失敗: " + e);
+            android.util.Log.w("ImapOtpFetcher", "OTPメールの削除に失敗: " + Progress.describe(e));
         }
     }
 
@@ -423,6 +459,7 @@ public final class ImapOtpFetcher {
         ConnectionFailure failure = classify(error, progress.stage());
         Long delay = reconnectDelay(failure, connections, deadline - System.currentTimeMillis());
         if (delay == null) throw error;
+        progress.note("繋ぎ直す (" + failure + "、" + seconds(delay) + "s 後)");
         // ログは出さない (単体テストで android.util.Log が使えない)。繋ぎ直した回数は detail の :r1 に出る。
         return delay;
     }
@@ -503,24 +540,37 @@ public final class ImapOtpFetcher {
      */
     private ImapStream openAndSelect(String uid, String pass, long setupStallMs, long sessionStallMs, long deadline)
             throws IOException, ImapException {
-        progress.enter(Progress.Stage.CONNECT);
+        progress.beginConnection();
+        progress.note("接続を始める " + host + ":" + port + " (上限 " + seconds(readWaitMs(setupStallMs, deadline, System.currentTimeMillis()))
+                + "s)、残り " + seconds(deadline - System.currentTimeMillis()) + "s");
         ImapStream stream = new ImapStream(host, port, setupStallMs, deadline, progress);
         try {
             progress.enter(Progress.Stage.GREETING);
-            stream.readLine(); // "* OK ... Dovecot ready."
+            String greeting = stream.readLine(); // "* OK [CAPABILITY ...] Dovecot ready."
+            progress.note("greeting " + greetingSummary(greeting));
 
             progress.enter(Progress.Stage.LOGIN);
             String tag = stream.nextTag();
+            progress.note(tag + " LOGIN *** ***");
             stream.send(tag + " LOGIN " + quote(uid) + " " + quote(pass));
             stream.readUntilTagged(tag);
+            progress.note(tag + " OK (LOGIN)");
 
             // LOGIN に答えたなら経路は生きている。ここから先が遅いのはサーバ側 (受信箱のロック待ちなど) なので、
             // 短く切って繋ぎ直さず、同じ接続で待つ。
             stream.setReadLimits(sessionStallMs, deadline);
             progress.enter(Progress.Stage.SELECT);
             tag = stream.nextTag();
+            progress.note(tag + " SELECT INBOX");
             stream.send(tag + " SELECT INBOX");
-            stream.uidNext = parseUidNext(stream.readUntilTagged(tag));
+            List<String> selected = stream.readUntilTagged(tag);
+            stream.uidNext = parseUidNext(selected);
+            String exists = "?";
+            for (String line : selected) {
+                Matcher m = Pattern.compile("^\\* ([0-9]+) EXISTS").matcher(line);
+                if (m.find()) exists = m.group(1);
+            }
+            progress.note(tag + " OK (SELECT) uidnext=" + (stream.uidNext != null ? stream.uidNext : "なし") + " exists=" + exists);
             return stream;
         } catch (IOException | ImapException e) {
             stream.close();
@@ -536,19 +586,40 @@ public final class ImapOtpFetcher {
     private static List<FetchedMail> fetchHeaders(ImapStream stream, int fromUid, @Nullable Integer toUid)
             throws IOException, ImapException {
         String tag = stream.nextTag();
-        stream.send(headerFetchCommand(tag, fromUid, toUid));
-        return mailsInRange(parseFetchedMails(stream.readResponsesUntilTagged(tag)), fromUid, toUid);
+        String command = headerFetchCommand(tag, fromUid, toUid);
+        long before = stream.receivedBytes;
+        stream.note(command + stream.remaining());
+        stream.send(command);
+        List<FetchedMail> mails = mailsInRange(parseFetchedMails(stream.readResponsesUntilTagged(tag)), fromUid, toUid);
+        int otp = 0;
+        for (FetchedMail m : mails) if (isOtpSender(m.fromHeader)) otp++;
+        stream.note(tag + " OK " + mails.size() + " 通 (OTP メール " + otp + " 通) " + (stream.receivedBytes - before) + "B");
+        return mails;
+    }
+
+    /** greeting の要約 (状態の語と、[CAPABILITY ...] の語)。サーバの名前などの文は書かない。iOS の greetingSummary と同じ。 */
+    @NonNull
+    static String greetingSummary(@NonNull String line) {
+        String[] words = line.split(" ");
+        String status = words.length > 1 ? words[1] : "?";
+        Matcher m = Pattern.compile("\\[CAPABILITY ([A-Za-z0-9 =+.-]{1,300})\\]").matcher(line);
+        return m.find() ? status + " CAPABILITY " + m.group(1) : status;
     }
 
     /** 1 通の本文。メールが無くなっていた (FETCH の応答が無い) ら null。 */
     @Nullable
-    private static String fetchText(ImapStream stream, int uid) throws IOException, ImapException {
+    private static String fetchText(ImapStream stream, int uid, Progress progress) throws IOException, ImapException {
         String tag = stream.nextTag();
-        stream.send(tag + " UID FETCH " + uid + " (BODY.PEEK[TEXT])");
+        String command = tag + " UID FETCH " + uid + " (BODY.PEEK[TEXT])";
+        long before = stream.receivedBytes;
+        progress.note(command + stream.remaining());
+        stream.send(command);
+        String text = null;
         for (FetchedMail m : parseFetchedMails(stream.readResponsesUntilTagged(tag))) {
-            if (m.uid == uid) return m.text;
+            if (m.uid == uid) text = m.text;
         }
-        return null;
+        progress.note(tag + " OK " + (stream.receivedBytes - before) + "B");
+        return text;
     }
 
     /**
@@ -560,18 +631,25 @@ public final class ImapOtpFetcher {
      * EXPUNGE はしない (印は付いたまま残り、利用者のメールソフトが消すか戻すかを決める)。
      */
     private static void deleteUids(ImapStream stream, String uidSet) throws IOException, ImapException {
+        int count = uidSet.isEmpty() ? 0 : uidSet.split(",").length;
         String tag = stream.nextTag();
+        stream.note(tag + " UID STORE (" + count + " 通) +FLAGS (\\Deleted)");
         stream.send(tag + " UID STORE " + uidSet + " +FLAGS (\\Deleted)");
         stream.readUntilTagged(tag);
         tag = stream.nextTag();
+        stream.note(tag + " CAPABILITY");
         stream.send(tag + " CAPABILITY");
-        if (!hasCapability(stream.readUntilTagged(tag), "UIDPLUS")) {
-            android.util.Log.w("ImapOtpFetcher", "UIDPLUS が無いので EXPUNGE しない (削除の印だけ付けた)");
+        boolean uidPlus = hasCapability(stream.readUntilTagged(tag), "UIDPLUS");
+        stream.note(tag + " OK UIDPLUS=" + (uidPlus ? "あり" : "なし"));
+        if (!uidPlus) {
+            stream.note("UIDPLUS が無いので EXPUNGE しない (削除の印だけ付けた)");
             return;
         }
         tag = stream.nextTag();
+        stream.note(tag + " UID EXPUNGE (" + count + " 通)");
         stream.send(tag + " UID EXPUNGE " + uidSet);
         stream.readUntilTagged(tag);
+        stream.note(tag + " OK (EXPUNGE)");
     }
 
     /** CAPABILITY の未タグ応答 ("* CAPABILITY IMAP4rev1 UIDPLUS ...") に capability があるか。 */
@@ -630,12 +708,130 @@ public final class ImapOtpFetcher {
         @Nullable private Exception failure;
         private Stage failureStage = Stage.CONNECT;
         private int failureReconnects;
+        /** 最初の接続を始めた時刻 (epoch ミリ秒、まだなら -1)。detail の時間 (timing) の起点。 */
+        private long origin = -1;
+        /** 起点から、今の接続で TCP+TLS・LOGIN・SELECT が終わるまでのミリ秒 (まだなら -1)。 */
+        private long connectedAfter = -1;
+        private long loggedInAfter = -1;
+        private long selectedAfter = -1;
+        /** 起点から、今の接続を始めるまでのミリ秒 (phaseTimingsMs の tcp_tls を今の接続の分だけにする)。 */
+        private long connectionStartedAfter = 0;
+        /** 取得 (fetch) が終わった時刻 (まだなら -1)。これより後 (中継への返送・メールの削除) の時間を取得の時間に数えない。 */
+        private long finishedAt = -1;
+        /** エラーを受け取った時点の、今の接続の段階の時刻 (timing の引数)。 */
+        private long failureConnected = -1;
+        private long failureLoggedIn = -1;
+        private long failureSelected = -1;
+        private long failureElapsed = -1;
+        /** 手順の記録 (Logcat の Log.i、タグ IMAPOTPFetcher と、Wana の breadcrumbs)。 */
+        @NonNull public final OtpDiagnostics.Trail trail = new OtpDiagnostics.Trail("IMAPOTPFetcher");
+
+        /** 手順を 1 行残す。コマンドの名前・応答の状態・件数・バイト数・時間だけ (ID / パスワード・コード・メールの中身・差出人・件名は書かない)。 */
+        public void note(@NonNull String message) { trail.note(message); }
+
+        /**
+         * 段階ごとの時間 (ミリ秒)。tcp_tls は今の接続を始めてから TLS まで、login・select はそれぞれの往復、
+         * after_select は SELECT から取得の終わりまで (メールを探して待った時間)、total は最初の接続から取得の終わりまで
+         * (終わっていなければ今まで)。iOS の phaseTimingsMs と同じ。
+         */
+        @NonNull
+        public synchronized java.util.Map<String, Long> phaseTimingsMs() {
+            java.util.Map<String, Long> out = new java.util.TreeMap<>();
+            out.put("reconnects", (long) reconnects);
+            if (connectedAfter >= 0) out.put("tcp_tls", connectedAfter - connectionStartedAfter);
+            if (loggedInAfter >= 0) out.put("login", loggedInAfter - Math.max(0, connectedAfter));
+            if (selectedAfter >= 0) out.put("select", selectedAfter - Math.max(0, loggedInAfter));
+            if (origin >= 0) {
+                long total = endTime() - origin;
+                out.put("total", total);
+                if (selectedAfter >= 0) out.put("after_select", total - selectedAfter);
+            }
+            return out;
+        }
         /** 今の接続。abort で閉じる。 */
         @Nullable private ImapStream activeConnection;
         private boolean aborted;
         private final java.util.concurrent.CountDownLatch abortLatch = new java.util.concurrent.CountDownLatch(1);
 
-        synchronized void enter(@NonNull Stage s) { stage = s; }
+        /** 接続を始める。今の接続の時間を消す (起点は最初の接続のまま)。 */
+        synchronized void beginConnection() {
+            stage = Stage.CONNECT;
+            long now = System.currentTimeMillis();
+            if (origin < 0) origin = now;
+            connectionStartedAfter = now - origin;
+            connectedAfter = -1;
+            loggedInAfter = -1;
+            selectedAfter = -1;
+        }
+
+        /** 段階に入る。GREETING に入ったら TCP+TLS、SELECT に入ったら LOGIN、SCAN に入ったら SELECT が終わった時刻として残す。 */
+        synchronized void enter(@NonNull Stage s) {
+            stage = s;
+            if (origin < 0) return;
+            long after = System.currentTimeMillis() - origin;
+            if (s == Stage.GREETING && connectedAfter < 0) connectedAfter = after;
+            if (s == Stage.SELECT && loggedInAfter < 0) loggedInAfter = after;
+            if (s == Stage.SCAN && selectedAfter < 0) selectedAfter = after;
+        }
+
+        /**
+         * 手順の記録に書くエラーの名前。サーバの応答は、タグ・状態の語・角括弧の応答コードだけ (本文にはアドレスなどが入りうる)。
+         * 例外の文面はホスト名や IP を含みうるので、クラス名と errno の名前だけ。
+         */
+        @NonNull
+        public static String describe(@NonNull Exception error) {
+            String message = String.valueOf(error.getMessage());
+            if (error instanceof ImapException) {
+                ImapException imap = (ImapException) error;
+                if (message.startsWith("commandFailed(")) {
+                    int close = message.indexOf(')');
+                    String tag = close > 0 ? message.substring("commandFailed(".length(), close) : "?";
+                    String line = imap.response != null ? imap.response : "";
+                    String[] words = line.split(" ");
+                    String status = words.length > 1 ? words[1] : "?";
+                    Matcher m = Pattern.compile("\\[([A-Za-z-]{1,24})[\\] ]").matcher(line);
+                    return tag + " " + status + (m.find() ? " [" + m.group(1) + "]" : "");
+                }
+                return message;
+            }
+            Matcher m = Pattern.compile("\\b(E[A-Z]{2,15})\\b").matcher(message);
+            return error.getClass().getSimpleName() + (m.find() ? " " + m.group(1) : "");
+        }
+
+        /** 今の時間 (timing の形)。中継の見張りが失敗を返すときにも使う。 */
+        @NonNull
+        public synchronized String timing() {
+            return timing(connectedAfter, loggedInAfter, selectedAfter, origin < 0 ? -1 : endTime() - origin);
+        }
+
+        /** 取得が終わっていれば終わった時刻、まだなら今。lock の中で呼ぶ。 */
+        private long endTime() {
+            return finishedAt >= 0 ? finishedAt : System.currentTimeMillis();
+        }
+
+        /** 取得が終わった (コードを見つけた・失敗した)。最初の 1 回だけ効く。 */
+        synchronized void finish() {
+            if (finishedAt < 0) finishedAt = System.currentTimeMillis();
+        }
+
+        /**
+         * 最初の接続を始めてからの秒数。{@code :t<TCP+TLS>-l<LOGIN>-s<SELECT>-f<失敗した時点>} (終わった段階だけ、
+         * 引数はミリ秒で、まだなら負)。例: {@code scan-stall:t2.1-l3.4-s9.0-f17.0}。iOS の timingSuffix と同じ。
+         * サーバが遅いのが接続・LOGIN・SELECT・FETCH のどこかを、本番の detail で見分けるため。
+         */
+        @NonNull
+        public static String timing(long connected, long loggedIn, long selected, long elapsed) {
+            List<String> parts = new ArrayList<>();
+            if (connected >= 0) parts.add("t" + seconds(connected));
+            if (loggedIn >= 0) parts.add("l" + seconds(loggedIn));
+            if (selected >= 0) parts.add("s" + seconds(selected));
+            if (elapsed >= 0) parts.add("f" + seconds(elapsed));
+            return parts.isEmpty() ? "" : ":" + String.join("-", parts);
+        }
+
+        private static String seconds(long ms) {
+            return String.format(Locale.ROOT, "%.1f", ms / 1000.0);
+        }
 
         synchronized void reconnected() { reconnects++; }
 
@@ -644,6 +840,10 @@ public final class ImapOtpFetcher {
             failure = e;
             failureStage = stage;
             failureReconnects = reconnects;
+            failureConnected = connectedAfter;
+            failureLoggedIn = loggedInAfter;
+            failureSelected = selectedAfter;
+            failureElapsed = origin < 0 ? -1 : System.currentTimeMillis() - origin;
         }
 
         @NonNull
@@ -691,12 +891,17 @@ public final class ImapOtpFetcher {
         public String detail(@NonNull Exception error) {
             Stage s;
             int r;
+            String t;
             synchronized (this) {
                 boolean same = failure == error;
                 s = same ? failureStage : stage;
                 r = same ? failureReconnects : reconnects;
+                // 記録したあとも待ち続けてから同じエラーを投げることがある (期限まで新着を待ったなど)。
+                // 段階はエラーを受け取った時点のまま、失敗した時点 (f) は取得が終わった時点にする。
+                t = !same ? timing() : timing(failureConnected, failureLoggedIn, failureSelected,
+                        finishedAt >= 0 && origin >= 0 ? finishedAt - origin : failureElapsed);
             }
-            return detail(error, s, r);
+            return detail(error, s, r, t);
         }
 
         /**
@@ -707,6 +912,12 @@ public final class ImapOtpFetcher {
          */
         @NonNull
         static String detail(@NonNull Exception error, @NonNull Stage s, int reconnects) {
+            return detail(error, s, reconnects, "");
+        }
+
+        /** timing は {@link #timing(long, long, long, long)} の形。どこで時間を使ったかを後ろに付ける。 */
+        @NonNull
+        static String detail(@NonNull Exception error, @NonNull Stage s, int reconnects, @NonNull String timing) {
             String stage = s.code();
             String code;
             String message = String.valueOf(error.getMessage());
@@ -746,7 +957,7 @@ public final class ImapOtpFetcher {
                 code = stage + "-error";
             }
             if (reconnects > 0) code += ":r" + reconnects;
-            return sanitize(code);
+            return sanitize(code + timing);
         }
 
         /**
@@ -1133,6 +1344,20 @@ public final class ImapOtpFetcher {
         private volatile long deadline;
         /** SELECT INBOX が返した UIDNEXT。返らなければ null。 */
         @Nullable Integer uidNext;
+        /** この接続で受け取ったバイト数 (TLS の中身)。手順の記録で、応答の大きさを出すのに使う。 */
+        volatile long receivedBytes;
+
+        /** 手順の記録 (progress が無ければ何もしない)。 */
+        void note(@NonNull String message) {
+            if (progress != null) progress.note(message);
+        }
+
+        /** 手順の記録に添える、期限までの残り。 */
+        @NonNull
+        String remaining() {
+            long d = deadline;
+            return d > 0 ? "、残り " + seconds(d - System.currentTimeMillis()) + "s" : "";
+        }
 
         /**
          * @param stallLimitMs 接続 (TCP + TLS) と読み取りで無応答を待つ上限。
@@ -1156,14 +1381,17 @@ public final class ImapOtpFetcher {
                 // と関係なく止まっていた。解決にも同じ上限を掛ける。解決した InetAddress はホスト名を持つので、
                 // SNI とホスト名の検証は今までどおり host で行われる。
                 java.net.InetAddress address = com.shakenokirimi12.uoa_app.services.TimedDns.resolve(host, currentReadWait())[0];
+                note("名前を引いた");
                 s.connect(new InetSocketAddress(address, port), currentReadWait());
+                note("TCP で繋がった");
                 s.setSoTimeout(currentReadWait());
                 // SSLSocket は既定ではホスト名検証をしない。iOS の NWConnection(TLS) と同じ強度にするため明示する。
                 SSLParameters params = s.getSSLParameters();
                 params.setEndpointIdentificationAlgorithm("HTTPS");
                 s.setSSLParameters(params);
                 s.startHandshake();
-                in = new BufferedInputStream(s.getInputStream());
+                note("TLS の握手が済んだ");
+                in = new CountingInputStream(new BufferedInputStream(s.getInputStream()), this);
                 out = s.getOutputStream();
                 // in / out を入れてから立てる (volatile の書き込み)。取りやめ (別のスレッド) はこれを見てから
                 // out に書くので、組み立て途中の接続に書かない。
@@ -1292,6 +1520,7 @@ public final class ImapOtpFetcher {
                     HARD_CLOSER.schedule(this::closeSocket, LOGOUT_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
             try {
                 if (sendLogoutOnce()) {
+                    note("LOGOUT を送って切る");
                     long until = System.currentTimeMillis() + LOGOUT_TIMEOUT_MS;
                     setReadLimits(LOGOUT_TIMEOUT_MS, until);
                     while (System.currentTimeMillis() < until) {
@@ -1312,6 +1541,7 @@ public final class ImapOtpFetcher {
          * (Progress.isAborted を見て繋ぎ直さない)。メインスレッドから呼ばれても通信しない。
          */
         void abortFromOutside() {
+            note("取りやめた (LOGOUT を送って切る)");
             // 送れない (握手の前・既に送った・切れている) なら待たずに切る。
             LOGOUT_SENDER.execute(() -> {
                 try {
@@ -1322,6 +1552,30 @@ public final class ImapOtpFetcher {
                 }
             });
             HARD_CLOSER.schedule(this::closeSocket, LOGOUT_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+        }
+    }
+
+    /** 受け取ったバイト数を ImapStream.receivedBytes に足す。 */
+    private static final class CountingInputStream extends java.io.FilterInputStream {
+        private final ImapStream owner;
+
+        CountingInputStream(InputStream in, ImapStream owner) {
+            super(in);
+            this.owner = owner;
+        }
+
+        @Override
+        public int read() throws IOException {
+            int b = super.read();
+            if (b >= 0) owner.receivedBytes++;
+            return b;
+        }
+
+        @Override
+        public int read(byte[] buffer, int offset, int length) throws IOException {
+            int n = super.read(buffer, offset, length);
+            if (n > 0) owner.receivedBytes += n;
+            return n;
         }
     }
 }

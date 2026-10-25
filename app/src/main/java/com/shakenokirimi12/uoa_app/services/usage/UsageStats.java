@@ -71,7 +71,7 @@ public final class UsageStats {
         }
     }
 
-    /** 設定の「利用状況を送る」。OFF にしたら、まだ送っていない回数と installId を消す。 */
+    /** 設定の「利用状況と診断情報を送る」。OFF にしたら、まだ送っていない回数と installId を消す。 */
     public static void setEnabled(@NonNull Context context, boolean enabled) {
         Context app = context.getApplicationContext();
         // record と同じ lock の中で切り替えて消す (record が OFF の後に書き戻さないように)。
