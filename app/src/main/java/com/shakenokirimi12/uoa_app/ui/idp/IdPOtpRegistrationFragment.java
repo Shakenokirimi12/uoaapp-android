@@ -107,6 +107,7 @@ public class IdPOtpRegistrationFragment extends Fragment {
         editCode = view.findViewById(R.id.edit_code);
         groupManualSecret = view.findViewById(R.id.group_manual_secret);
         textManualSecret = view.findViewById(R.id.text_manual_secret);
+        AuthenticatorKeyActions.bindSecretText(textManualSecret, () -> viewModel.groupedSecret());
         view.findViewById(R.id.button_copy_secret).setOnClickListener(v -> copySecret());
         view.findViewById(R.id.button_show_qr).setOnClickListener(v -> showQr());
 
@@ -160,6 +161,7 @@ public class IdPOtpRegistrationFragment extends Fragment {
     @Override
     public void onDestroyView() {
         setLeaveLocked(false);
+        AuthenticatorKeyActions.setSecure(requireActivity().getWindow(), false);
         // 画面を離れた (戻る・下タブ)。登録の POST はこの画面が見えている間にしか送らないので、まだ送って
         // いなければ中断する。下タブで離れると戻る先として残り ViewModel も生きたままになるので、
         // 中断しないと画面の無いところで登録が進む。回転などの作り直しでは中断しない。
@@ -213,6 +215,8 @@ public class IdPOtpRegistrationFragment extends Fragment {
     }
 
     private void render(IdPOtpRegistrationViewModel.Stage stage) {
+        // キーを出すのは認証アプリのコードを待つ間だけ。そのときだけ画面を写させない (下の WAITING_FOR_CODE)。
+        AuthenticatorKeyActions.setSecure(requireActivity().getWindow(), false);
         setLeaveLocked(stage == IdPOtpRegistrationViewModel.Stage.COMPLETING);
         switch (stage) {
             case CHECKING:
@@ -253,6 +257,7 @@ public class IdPOtpRegistrationFragment extends Fragment {
                 String secret = authenticator ? viewModel.groupedSecret() : null;
                 groupManualSecret.setVisibility(secret != null ? View.VISIBLE : View.GONE);
                 textManualSecret.setText(secret != null ? secret : "");
+                AuthenticatorKeyActions.setSecure(requireActivity().getWindow(), secret != null);
                 // アプリが作ったコードは入れておかない。外部の認証アプリのコードを打ってもらい、それがアプリの計算と
                 // 合うことで、外部のアプリにも同じキーが入っていると確かめる (iOS と同じ)。
                 editCode.setText("");

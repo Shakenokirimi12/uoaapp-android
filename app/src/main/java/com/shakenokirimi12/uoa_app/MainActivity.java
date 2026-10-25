@@ -163,6 +163,14 @@ public class MainActivity extends AppCompatActivity {
         com.shakenokirimi12.uoa_app.ui.settings.AuthenticatorKeyPrompt.showAtLaunch(this, this::openLoginSettings);
     }
 
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // コピーした認証アプリのキーの期限が、裏にいる間に過ぎていたら消す。クリップボードは前面で
+        // フォーカスがあるときにしか読めないので、onResume ではなくここで確かめる。
+        if (hasFocus) com.shakenokirimi12.uoa_app.ui.idp.AuthenticatorKeyActions.clearExpiredSecret(this);
+    }
+
     /** ログインとワンタイムパスワードの設定を開く。既に開いていれば何もしない。 */
     private void openLoginSettings() {
         if (isFinishing() || isDestroyed()) return;

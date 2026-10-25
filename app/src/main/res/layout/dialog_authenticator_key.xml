@@ -34,7 +34,6 @@
         android:fontFamily="monospace"
         android:textAppearance="?attr/textAppearanceTitleMedium"
         android:textColor="?attr/colorOnSurface"
-        android:textIsSelectable="true"
         tools:text="GEZD GNBV GY3T QOJQ" />
 
     <TextView
