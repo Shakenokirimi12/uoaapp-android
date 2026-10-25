@@ -17,11 +17,11 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /** 文字列の QR コード (誤り訂正 M、iOS と同じ)。点をぼかさないよう、補間せずに sizePx まで拡大する。 */
-final class QrCodes {
+public final class QrCodes {
     private QrCodes() {}
 
     @Nullable
-    static Bitmap make(@NonNull String text, int sizePx) {
+    public static Bitmap make(@NonNull String text, int sizePx) {
         Map<EncodeHintType, Object> hints = new EnumMap<>(EncodeHintType.class);
         hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
         hints.put(EncodeHintType.MARGIN, 1);

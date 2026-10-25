@@ -1,11 +1,5 @@
 package com.shakenokirimi12.uoa_app.ui.idp;
 
-import android.content.ActivityNotFoundException;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -15,7 +9,6 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -34,7 +27,8 @@ import com.shakenokirimi12.uoa_app.services.idp.OtpMethod;
  * ワンタイムパスワード未設定のアカウントに対する新規登録画面 (iOS の IdPOTPRegistrationView 相当)。
  * 認証アプリ方式では、IdP から受け取ったシークレットを登録が済んだあとアプリが保持してコードを作る
  * (iOS と同じ。2026-10-24 の利用者の要望)。外部の認証アプリにも追加できるよう、キーを区切って出し、
- * otpauth:// を受けるアプリ (Google Authenticator) にも渡せる。Authy は otpauth:// を受けないので手で追加する。
+ * otpauth:// を受けるアプリを一覧から選んで開ける。Authy は otpauth:// を受けないので、キーのコピーか
+ * 別の端末で QR を読んで追加する (AuthenticatorKeyActions)。
  * 登録操作自体は学内ネットワークからのアクセスでないと SECIOSS 側の仕様で通らない。
  *
  * 設定画面からの方式の切り替えにも使う (引数 switching_to)。結果は閉じたときに RESULT_SWITCH で返す。
@@ -113,7 +107,9 @@ public class IdPOtpRegistrationFragment extends Fragment {
         editCode = view.findViewById(R.id.edit_code);
         groupManualSecret = view.findViewById(R.id.group_manual_secret);
         textManualSecret = view.findViewById(R.id.text_manual_secret);
+        AuthenticatorKeyActions.bindSecretText(textManualSecret, () -> viewModel.groupedSecret());
         view.findViewById(R.id.button_copy_secret).setOnClickListener(v -> copySecret());
+        view.findViewById(R.id.button_show_qr).setOnClickListener(v -> showQr());
 
         buttonCloseStatus.setOnClickListener(v -> Navigation.findNavController(v).popBackStack());
         view.findViewById(R.id.card_method_email).setOnClickListener(v -> viewModel.chooseEmail());
@@ -165,6 +161,7 @@ public class IdPOtpRegistrationFragment extends Fragment {
     @Override
     public void onDestroyView() {
         setLeaveLocked(false);
+        AuthenticatorKeyActions.setSecure(requireActivity().getWindow(), false);
         // 画面を離れた (戻る・下タブ)。登録の POST はこの画面が見えている間にしか送らないので、まだ送って
         // いなければ中断する。下タブで離れると戻る先として残り ViewModel も生きたままになるので、
         // 中断しないと画面の無いところで登録が進む。回転などの作り直しでは中断しない。
@@ -218,6 +215,8 @@ public class IdPOtpRegistrationFragment extends Fragment {
     }
 
     private void render(IdPOtpRegistrationViewModel.Stage stage) {
+        // キーを出すのは認証アプリのコードを待つ間だけ。そのときだけ画面を写させない (下の WAITING_FOR_CODE)。
+        AuthenticatorKeyActions.setSecure(requireActivity().getWindow(), false);
         setLeaveLocked(stage == IdPOtpRegistrationViewModel.Stage.COMPLETING);
         switch (stage) {
             case CHECKING:
@@ -252,10 +251,13 @@ public class IdPOtpRegistrationFragment extends Fragment {
                 hideAll();
                 boolean authenticator = viewModel.method() == IdPOtpRegistrationViewModel.Method.AUTHENTICATOR;
                 textCodePrompt.setText(authenticator ? R.string.otp_code_from_app : R.string.otp_code_mail_prompt);
-                buttonOpenAuthenticator.setVisibility(authenticator && viewModel.otpauthUrl() != null ? View.VISIBLE : View.GONE);
+                // 開けるアプリが無ければ出さない。そのときは下のキーのコピーと QR で追加してもらう。
+                buttonOpenAuthenticator.setVisibility(authenticator && viewModel.otpauthUrl() != null
+                        && AuthenticatorKeyActions.canOpen(requireContext()) ? View.VISIBLE : View.GONE);
                 String secret = authenticator ? viewModel.groupedSecret() : null;
                 groupManualSecret.setVisibility(secret != null ? View.VISIBLE : View.GONE);
                 textManualSecret.setText(secret != null ? secret : "");
+                AuthenticatorKeyActions.setSecure(requireActivity().getWindow(), secret != null);
                 // アプリが作ったコードは入れておかない。外部の認証アプリのコードを打ってもらい、それがアプリの計算と
                 // 合うことで、外部のアプリにも同じキーが入っていると確かめる (iOS と同じ)。
                 editCode.setText("");
@@ -285,25 +287,19 @@ public class IdPOtpRegistrationFragment extends Fragment {
     private void openAuthenticatorApp() {
         String url = viewModel.otpauthUrl();
         if (url == null) return;
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-        } catch (ActivityNotFoundException e) {
-            // Authy などは otpauth:// を受けない。下のキーを手で追加してもらう。
-            Toast.makeText(requireContext(), R.string.otp_no_otpauth_app, Toast.LENGTH_LONG).show();
-        }
+        AuthenticatorKeyActions.open(this, url);
     }
 
-    /** キーをクリップボードへ。Android 13 以降は機密として扱わせ、プレビューに出さない。 */
     private void copySecret() {
         String secret = viewModel.groupedSecret();
         if (secret == null) return;
-        ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
-        if (clipboard == null) return;
-        ClipData clip = ClipData.newPlainText("otp secret", secret.replace(" ", ""));
-        android.os.PersistableBundle extras = new android.os.PersistableBundle();
-        extras.putBoolean("android.content.extra.IS_SENSITIVE", true);
-        clip.getDescription().setExtras(extras);
-        clipboard.setPrimaryClip(clip);
-        Toast.makeText(requireContext(), R.string.otp_secret_copied, Toast.LENGTH_SHORT).show();
+        AuthenticatorKeyActions.copySecret(requireContext(), secret);
+    }
+
+    private void showQr() {
+        String url = viewModel.otpauthUrl();
+        String secret = viewModel.groupedSecret();
+        if (url == null || secret == null) return;
+        AuthenticatorKeyActions.showKeyDialog(this, url, secret);
     }
 }

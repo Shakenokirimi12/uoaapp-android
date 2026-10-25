@@ -2,8 +2,6 @@ package com.shakenokirimi12.uoa_app.ui.settings;
 
 import android.app.Activity;
 import android.app.KeyguardManager;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -28,6 +26,7 @@ import com.shakenokirimi12.uoa_app.services.MoodleService;
 import com.shakenokirimi12.uoa_app.services.ServiceCallback;
 import com.shakenokirimi12.uoa_app.services.idp.OtpMethod;
 import com.shakenokirimi12.uoa_app.services.idp.Totp;
+import com.shakenokirimi12.uoa_app.ui.idp.AuthenticatorKeyActions;
 import com.shakenokirimi12.uoa_app.ui.idp.IdPOtpRegistrationFragment;
 
 /**
@@ -178,27 +177,12 @@ public class LoginSettingsFragment extends Fragment {
         confirmCredential.launch(intent);
     }
 
+    /** QR・キー・コピー・認証アプリで開く、をまとめて出す。どれもキーを端末の外へ出せるので、本人確認のあとだけ。 */
     private void showSecret() {
-        String grouped = Totp.groupedSecret(prefs.totpOtpauthFor(prefs.getUsername()));
-        if (grouped == null) return;
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.login_secret_title)
-                .setMessage(getString(R.string.login_secret_message, grouped))
-                .setPositiveButton(R.string.otp_copy_secret, (d, w) -> copySecret(grouped))
-                .setNegativeButton(R.string.close, null)
-                .show();
-    }
-
-    /** Android 13 以降は機密として扱わせ、クリップボードのプレビューに出さない。 */
-    private void copySecret(@NonNull String grouped) {
-        ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
-        if (clipboard == null) return;
-        ClipData clip = ClipData.newPlainText("otp secret", grouped.replace(" ", ""));
-        android.os.PersistableBundle extras = new android.os.PersistableBundle();
-        extras.putBoolean("android.content.extra.IS_SENSITIVE", true);
-        clip.getDescription().setExtras(extras);
-        clipboard.setPrimaryClip(clip);
-        Toast.makeText(requireContext(), R.string.otp_secret_copied, Toast.LENGTH_SHORT).show();
+        String url = prefs.totpOtpauthFor(prefs.getUsername());
+        String grouped = Totp.groupedSecret(url);
+        if (url == null || grouped == null) return;
+        AuthenticatorKeyActions.showKeyDialog(this, url, grouped);
     }
 
     // ---- 受け取り方の切り替え (設定画面から移しただけで、流れは変えていない) ----
