@@ -156,6 +156,8 @@ public class CalendarFragment extends Fragment {
                 allEvents = events;
                 eventsFailed = false;
                 DataCache.getInstance(requireContext()).saveEvents(events);
+                // 取り直した時間割で、終わった授業の「欠席？（要確認）」を見る。
+                com.shakenokirimi12.uoa_app.services.attendance.AutoAbsenceRunner.evaluateAsync(requireContext());
                 updateFetchNotice();
                 updateList();
             }

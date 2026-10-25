@@ -17,12 +17,15 @@ import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingClient;
 import com.google.android.gms.location.GeofencingEvent;
 import com.google.android.gms.location.GeofencingRequest;
+import com.google.android.gms.location.GeofenceStatusCodes;
 import com.google.android.gms.location.LocationServices;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.AttendanceManager;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
 import com.shakenokirimi12.uoa_app.data.models.MoodleCourse;
+import com.shakenokirimi12.uoa_app.services.attendance.PresenceEvidence;
+import com.shakenokirimi12.uoa_app.services.attendance.PresenceEvidenceLog;
 
 import java.util.Collections;
 import java.util.Date;
@@ -35,10 +38,11 @@ public class LocationGeofenceService {
     private static final String GEOFENCE_ID = "university-campus";
     private static final long COOLDOWN_MS = 30 * 60 * 1000;
 
-    // キャンパスの中心と半径 (iOS と同じ値)。
-    private static final double CAMPUS_LAT = 37.5234;
-    private static final double CAMPUS_LNG = 139.9388;
-    private static final float CAMPUS_RADIUS_M = 200;
+    // キャンパスの中心と半径。iOS (Constants.Geofencing) と同じ値にする。以前は「同じ値」と書きながら
+    // 37.5234 / 139.9388 / 200 m で、iOS (400 m) より狭く、キャンパスの端の建物が外れていた。
+    private static final double CAMPUS_LAT = 37.5235;
+    private static final double CAMPUS_LNG = 139.9395;
+    private static final float CAMPUS_RADIUS_M = 400;
 
     /** 自動出席が ON のときだけ、キャンパスのジオフェンスを登録し直す。 */
     public static void startIfEnabled(Context ctx) {
@@ -69,23 +73,54 @@ public class LocationGeofenceService {
                 .setRequestId(GEOFENCE_ID)
                 .setCircularRegion(lat, lng, radius)
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
+                // 出た通知も受け、登録したときの状態 (中か外か) も受ける。出入りの両方が分かっていないと、
+                // 授業の間ずっと外にいたと言えない (自動の欠席)。
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
                 .build();
 
         GeofencingRequest request = new GeofencingRequest.Builder()
-                .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER | GeofencingRequest.INITIAL_TRIGGER_EXIT)
                 .addGeofence(geofence)
                 .build();
 
+        Context app = ctx.getApplicationContext();
         client.addGeofences(request, getGeofencePendingIntent(ctx))
-                .addOnSuccessListener(v -> Log.d(TAG, "Geofence added"))
-                .addOnFailureListener(e -> Log.e(TAG, "Geofence add failed", e));
+                .addOnSuccessListener(v -> {
+                    Log.d(TAG, "Geofence added");
+                    recordRegistration(app, true);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Geofence add failed", e);
+                    recordRegistration(app, false);
+                });
         return true;
+    }
+
+    /** 登録の結果を自動の欠席の根拠に残す。残せなくても登録そのものは止めない。 */
+    private static void recordRegistration(Context ctx, boolean registered) {
+        try {
+            PresenceEvidenceLog.setRegistered(ctx, registered);
+            PresenceEvidenceLog.checkpoint(ctx);
+        } catch (RuntimeException e) {
+            Log.e(TAG, "Could not record the geofence registration", e);
+        }
     }
 
     public static void stopGeofencing(Context ctx) {
         GeofencingClient client = LocationServices.getGeofencingClient(ctx);
         client.removeGeofences(getGeofencePendingIntent(ctx));
+        PresenceEvidenceLog.setRegistered(ctx, false);
+        PresenceEvidenceLog.checkpoint(ctx);
+    }
+
+    /**
+     * 登録したジオフェンスの通知の宛先がまだ生きているか。強制停止すると、プロセスが落ちていても宛先は消え、
+     * 終了の理由も残らない (落ちている間に停止されたとき)。宛先が無ければ、通知は届いていなかった。
+     */
+    public static boolean hasLivePendingIntent(Context ctx) {
+        Intent intent = new Intent(ctx, GeofenceReceiver.class);
+        return PendingIntent.getBroadcast(ctx, 0, intent,
+                PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_MUTABLE) != null;
     }
 
     private static PendingIntent getGeofencePendingIntent(Context ctx) {
@@ -113,13 +148,42 @@ public class LocationGeofenceService {
         @Override
         public void onReceive(Context context, Intent intent) {
             GeofencingEvent event = GeofencingEvent.fromIntent(intent);
-            if (event == null || event.hasError()) return;
+            if (event == null) return;
+            if (event.hasError()) {
+                // 位置情報が切られると、登録したジオフェンスは消える (登録し直すまで監視されない)。
+                if (event.getErrorCode() == GeofenceStatusCodes.GEOFENCE_NOT_AVAILABLE) {
+                    PresenceEvidenceLog.setRegistered(context, false);
+                }
+                PresenceEvidenceLog.append(context, PresenceEvidence.Kind.MONITORING_LOST, null, System.currentTimeMillis());
+                return;
+            }
 
-            if (event.getGeofenceTransition() == Geofence.GEOFENCE_TRANSITION_ENTER) {
+            int transition = event.getGeofenceTransition();
+            if (transition == Geofence.GEOFENCE_TRANSITION_ENTER || transition == Geofence.GEOFENCE_TRANSITION_EXIT) {
+                // 登録したときの状態の通知 (INITIAL_TRIGGER) と境界の通過を見分けられないので、通過とは記録しない。
+                PresenceEvidenceLog.append(context,
+                        transition == Geofence.GEOFENCE_TRANSITION_ENTER ? PresenceEvidence.Kind.INSIDE : PresenceEvidence.Kind.OUTSIDE,
+                        false, observedAt(event));
+            }
+            if (transition == Geofence.GEOFENCE_TRANSITION_ENTER) {
                 Log.d(TAG, "Entered university geofence");
                 checkAutoAttendance(context);
             }
+            // 欠席は授業の後に状態を確かめてから決める。状態が届いたここで判定し直す。
+            com.shakenokirimi12.uoa_app.services.attendance.AutoAbsenceRunner.evaluateAsync(context);
         }
+    }
+
+    /**
+     * 出入りした時刻。通知は遅れて届くことがあるので、通知のもとになった位置の時刻を使う
+     * (この 10 分以内で、今より前のときだけ。古い位置や、端末の時計がずれた位置は使わない)。
+     */
+    private static long observedAt(GeofencingEvent event) {
+        long now = System.currentTimeMillis();
+        android.location.Location loc = event.getTriggeringLocation();
+        if (loc == null) return now;
+        long t = loc.getTime();
+        return (t > 0 && t <= now && now - t <= 10 * 60_000L) ? t : now;
     }
 
     /**

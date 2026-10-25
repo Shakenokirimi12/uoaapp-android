@@ -32,6 +32,18 @@ public final class NotificationChannels {
         return CLASS_ONGOING;
     }
 
+    /** 「欠席？（要確認）」を付けた授業に、出席したかを尋ねる通知。 */
+    public static final String ATTENDANCE_CONFIRM = "attendance_confirm";
+
+    @NonNull
+    public static String ensureAttendanceConfirm(@NonNull Context ctx) {
+        NotificationChannel channel = new NotificationChannel(
+                ATTENDANCE_CONFIRM, ctx.getString(R.string.attendance_confirm_channel_name), NotificationManager.IMPORTANCE_DEFAULT);
+        channel.setDescription(ctx.getString(R.string.attendance_confirm_channel_description));
+        manager(ctx).createNotificationChannel(channel);
+        return ATTENDANCE_CONFIRM;
+    }
+
     /** 学食メニューの通知 (1 日 1 回、設定した時刻)。 */
     public static final String LUNCH_MENU = "lunch_menu";
 

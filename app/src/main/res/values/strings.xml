@@ -200,6 +200,14 @@
     <string name="settings_lunch_time">時刻</string>
     <string name="settings_attendance">出席</string>
     <string name="settings_auto_attendance">自動出席</string>
+    <string name="settings_auto_absence_note">授業のあいだずっと位置情報を確認できていて、来た記録が無かった授業は「欠席？（要確認）」として残し、通知で確かめます</string>
+    <string name="attendance_confirm_channel_name">出席の確認</string>
+    <string name="attendance_confirm_channel_description">キャンパスに来た記録が無かった授業について、出席したかを尋ねます</string>
+    <string name="attendance_confirm_title">%1$sの授業に出席しましたか？</string>
+    <string name="attendance_confirm_body">キャンパスに来た記録がありませんでした。出席か欠席を選んでください。</string>
+    <string name="attendance_present">出席</string>
+    <string name="attendance_absent">欠席</string>
+    <string name="attendance_unconfirmed">欠席？（要確認）</string>
     <string name="settings_auto_attendance_summary">キャンパスに着くと、その時間の授業を出席としてこの端末に記録します。大学の出席登録にはなりません</string>
     <string name="settings_location_warning">位置情報が「常に許可」でないため、アプリを閉じている間は動きません。タップして変更</string>
     <string name="settings_other">その他</string>

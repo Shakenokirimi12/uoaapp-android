@@ -616,7 +616,12 @@ public class CampusSquareService {
             Date dtEnd = parseIcsDate(dtEndRaw);
 
             if (dtStart != null && dtEnd != null) {
-                events.add(new CalendarEvent(summary, location, dtStart, dtEnd));
+                CalendarEvent event = new CalendarEvent(summary, location, dtStart, dtEnd);
+                String description = extractIcsField(block, "DESCRIPTION");
+                if (description != null) event.setDescription(description.replace("\\n", "\n").replace("\\,", ","));
+                String status = extractIcsField(block, "STATUS");
+                if (status != null && !status.isEmpty()) event.setStatus(status);
+                events.add(event);
             }
         }
         return events;

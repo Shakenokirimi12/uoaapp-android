@@ -29,6 +29,7 @@ public class DataCache {
     // "<dataset>_fetched_at": epoch ms of the last successful save. Lives in the same prefs so
     // clearAll() (logout) drops it together with the data.
     private static final String FETCHED_AT_SUFFIX = "_fetched_at";
+    private static final String KEY_EVENTS_WITH_STATUS_AT = "events_with_status_fetched_at";
 
     /** Datasets that carry a "fetched at" timestamp. */
     public enum Dataset {
@@ -62,10 +63,20 @@ public class DataCache {
     }
 
     public void saveEvents(List<CalendarEvent> events) {
+        long now = System.currentTimeMillis();
         prefs.edit()
                 .putString(KEY_EVENTS, gson.toJson(events))
-                .putLong(KEY_EVENTS + FETCHED_AT_SUFFIX, System.currentTimeMillis())
+                .putLong(KEY_EVENTS + FETCHED_AT_SUFFIX, now)
+                .putLong(KEY_EVENTS_WITH_STATUS_AT, now)
                 .apply();
+    }
+
+    /**
+     * 休講 (STATUS / DESCRIPTION) まで読む版で時間割を最後に保存した時刻。前の版が保存した時間割には休講の印が無く、
+     * 自動の欠席はそれを使わない。取ったことが無ければ 0。
+     */
+    public long eventsWithStatusFetchedAt() {
+        return prefs.getLong(KEY_EVENTS_WITH_STATUS_AT, 0L);
     }
 
     public List<CalendarEvent> loadEvents() {
