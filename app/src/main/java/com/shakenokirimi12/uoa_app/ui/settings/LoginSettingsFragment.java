@@ -45,6 +45,9 @@ public class LoginSettingsFragment extends Fragment {
     private View groupRelay;
     private View rowShowSecret, dividerShowSecret, rowReregister, dividerReregister;
     private View cardReregisterNeeded;
+    private TextView textReregisterNeededTitle;
+    private TextView textReregisterNeededText;
+    private View cardCredentialsInvalid;
 
     /** 画面ロックの確認 (KeyguardManager)。androidx.biometric は依存に無いので使わない。 */
     private final ActivityResultLauncher<Intent> confirmCredential =
@@ -89,6 +92,10 @@ public class LoginSettingsFragment extends Fragment {
         // 登録画面に入るので、手元に通るコードが無くても登録し直せる)。
         rowReregister.setOnClickListener(v -> reregister());
         cardReregisterNeeded = view.findViewById(R.id.card_reregister_needed);
+        textReregisterNeededTitle = view.findViewById(R.id.text_reregister_needed_title);
+        textReregisterNeededText = view.findViewById(R.id.text_reregister_needed_text);
+        cardCredentialsInvalid = view.findViewById(R.id.card_credentials_invalid);
+        view.findViewById(R.id.button_credentials_invalid).setOnClickListener(v -> showEditAccountDialog());
         view.findViewById(R.id.button_reregister_needed).setOnClickListener(v -> reregister());
 
         groupRelay = view.findViewById(R.id.group_relay);
@@ -125,10 +132,15 @@ public class LoginSettingsFragment extends Fragment {
         boolean authenticator = known && method == OtpMethod.AUTHENTICATOR;
         setVisible(authenticator && hasSecret(), rowShowSecret, dividerShowSecret);
         setVisible(authenticator, rowReregister, dividerReregister);
-        // キーが無いのは普通の状態ではない (登録し直しが要る)。上に案内を出す。
-        cardReregisterNeeded.setVisibility(authenticator && !hasSecret() ? View.VISIBLE : View.GONE);
-        // PC 連携はメールに届くコードを読む機能なので、メール方式のときだけ出す (iOS と同じ)。
-        groupRelay.setVisibility(known && method == OtpMethod.MAIL ? View.VISIBLE : View.GONE);
+        // キーが無い・止めているのは普通の状態ではない (登録し直しが要る)。上に案内を出す。入口は起動時の案内
+        // (AuthenticatorKeyPrompt) と同じ。
+        boolean suspended = authenticator && prefs.isTotpSuspended(username);
+        cardReregisterNeeded.setVisibility(authenticator && (!hasSecret() || suspended) ? View.VISIBLE : View.GONE);
+        textReregisterNeededTitle.setText(suspended ? R.string.auth_key_suspended_title : R.string.login_reregister_needed_title);
+        textReregisterNeededText.setText(suspended ? R.string.auth_key_suspended_text : R.string.login_reregister_needed_text);
+        cardCredentialsInvalid.setVisibility(prefs.isCredentialsInvalid() ? View.VISIBLE : View.GONE);
+        // PC 連携は、メール方式ならメールから読み、認証アプリ方式ならキーで作って送る。方式にかかわらず出す。
+        groupRelay.setVisibility(View.VISIBLE);
     }
 
     private void reregister() {
@@ -268,7 +280,8 @@ public class LoginSettingsFragment extends Fragment {
                         return;
                     }
                     if (newPass.isEmpty()) {
-                        prefs.setUsername(newUser);
+                        // 別のアカウントにしたら、setUsername が前のアカウントの方式の控え・キー・SSO を消す。
+                        if (prefs.setUsername(newUser)) com.shakenokirimi12.uoa_app.services.CampusSquareService.clearSession();
                         render();
                         Toast.makeText(requireContext(), "ユーザー名を更新しました", Toast.LENGTH_SHORT).show();
                         return;
@@ -279,10 +292,11 @@ public class LoginSettingsFragment extends Fragment {
                         public void onSuccess(Boolean result) {
                             if (!isAdded()) return;
                             if (result) {
-                                prefs.setUsername(newUser);
+                                boolean otherAccount = prefs.setUsername(newUser);
                                 prefs.setPassword(newPass);
-                                // 別アカウントかもしれない。前のユーザーの CampusSquare セッションを引き継がない。
-                                com.shakenokirimi12.uoa_app.services.CampusSquareService.clearSession();
+                                // 別アカウントにしたときだけ、前のユーザーの CampusSquare セッションを引き継がない。
+                                // 同じアカウントのパスワードの更新では、今の確認ログインの SSO とセッションを使い続ける (S-8)。
+                                if (otherAccount) com.shakenokirimi12.uoa_app.services.CampusSquareService.clearSession();
                                 render();
                                 Toast.makeText(requireContext(), "ログイン情報を更新しました", Toast.LENGTH_SHORT).show();
                             } else {

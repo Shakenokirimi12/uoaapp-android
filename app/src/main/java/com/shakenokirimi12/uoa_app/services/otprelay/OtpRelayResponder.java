@@ -42,12 +42,17 @@ public final class OtpRelayResponder {
     public static final String METHOD_MISMATCH = "method-mismatch";
     /** PC の画面は認証アプリ方式で、この端末も認証アプリ方式だが、今の ID のセットアップキーが無い。 */
     public static final String NO_TOTP_KEY = "no-totp-key";
+    /**
+     * 今の ID のセットアップキーはあるが、作ったコードが IdP に 2 回弾かれて止めている。すぐに断る
+     * (SPEC.md「10.6 アプリの決め方」、decisions D-11)。PC の拡張は「スマホで認証アプリの再設定が必要」と出す。
+     */
+    public static final String KEY_SUSPENDED = "key-suspended";
     /** この PC に認証アプリのコードを送る同意が無い (OtpRelayPairing.hasTotpConsent)。 */
     public static final String TOTP_CONSENT_REQUIRED = "totp-consent-required";
     /** 今の窓は使用済みで、次の窓まで待つ時間が無い。 */
     public static final String TOTP_STEP_USED = "totp-step-used";
     /** 周期の残りがこれより短いコードは、PC が入れて送るまでに切り替わりうるので次の周期まで待つ。 */
-    static final long TOTP_MIN_REMAINING_MS = 5_000;
+    static final long TOTP_MIN_REMAINING_MS = Totp.MIN_MS_LEFT_TO_SEND;
     /** 次の窓を待てる上限 (iOS の maxTOTPWait と同じ)。依頼の期限が近ければもっと短くする (maxTotpWaitMs)。 */
     static final long MAX_TOTP_WAIT_MS = 15_000;
 
@@ -202,6 +207,8 @@ public final class OtpRelayResponder {
         boolean authenticatorMethod();
         /** uid のセットアップキー。持っていない、または別の ID のものなら null。 */
         @Nullable Totp.Params keyFor(@NonNull String uid);
+        /** uid のセットアップキーを止めているか (PreferenceManager.isTotpSuspended)。止めたキーではコードを作らない。 */
+        default boolean keySuspended(@NonNull String uid) { return false; }
         /** 窓を使用済みにする。既に使っていたら false (アプリのログインと共有する TotpStepLedger)。 */
         boolean claimStep(long step);
     }
@@ -241,15 +248,24 @@ public final class OtpRelayResponder {
      *   画面でしか頼まないので、認証アプリ方式でもコードは作らない (入れても IdP の失敗が増えるだけ)。
      * - 目印と方式が食い違えば断る。メールは読まない。
      *
-     * @param page PC の画面 (OtpRelayCrypto.PAGE_TOTP / PAGE_MAIL / null)
-     * @param key  今の ID のセットアップキー (無ければ null)
+     * - 止めたキー (IdP に 2 回弾かれた) ではコードを作らず、すぐに KEY_SUSPENDED で断る。
+     *
+     * @param page      PC の画面 (OtpRelayCrypto.PAGE_TOTP / PAGE_MAIL / null)
+     * @param key       今の ID のセットアップキー (無ければ null)
+     * @param suspended 今の ID のセットアップキーを止めているか
      */
     @NonNull
     static Route route(@Nullable String page, boolean authenticatorMethod, @Nullable Totp.Params key) {
+        return route(page, authenticatorMethod, key, false);
+    }
+
+    @NonNull
+    static Route route(@Nullable String page, boolean authenticatorMethod, @Nullable Totp.Params key, boolean suspended) {
         if (page == null) return Route.mail();
         if (OtpRelayCrypto.PAGE_TOTP.equals(page)) {
             if (!authenticatorMethod) return Route.refuse(METHOD_MISMATCH, OtpRelayCrypto.PAGE_MAIL);
-            return key != null ? Route.totp(key) : Route.refuse(NO_TOTP_KEY, OtpRelayCrypto.PAGE_TOTP);
+            if (key == null) return Route.refuse(NO_TOTP_KEY, OtpRelayCrypto.PAGE_TOTP);
+            return suspended ? Route.refuse(KEY_SUSPENDED, OtpRelayCrypto.PAGE_TOTP) : Route.totp(key);
         }
         return authenticatorMethod ? Route.refuse(METHOD_MISMATCH, OtpRelayCrypto.PAGE_TOTP) : Route.mail();
     }
@@ -337,7 +353,7 @@ public final class OtpRelayResponder {
         String pass = credentials.password().trim();
         // セットアップキーは今の AINS の ID のものだけを使う。依頼の側から ID は指定できない。
         Route route = route(OtpRelayCrypto.page(request.requestId, keys), totp.authenticatorMethod(),
-                uid.isEmpty() ? null : totp.keyFor(uid));
+                uid.isEmpty() ? null : totp.keyFor(uid), !uid.isEmpty() && totp.keySuspended(uid));
         if (route.kind != Route.Kind.MAIL) attempt.markAnsweringWithoutMail();
         attempt.trail.set("method", route.kind == Route.Kind.MAIL ? "mail" : route.kind == Route.Kind.TOTP ? "totp" : "refuse");
         if (route.reason != null) attempt.trail.set("refusal", route.reason);
@@ -620,6 +636,7 @@ public final class OtpRelayResponder {
             case TOTP_CONSENT_REQUIRED: return "この PC に認証アプリのコードを送るかの確認が済んでいません。アプリを開いて確認してください。";
             case TOTP_STEP_USED: return "同じコードを使ったばかりのため、送れませんでした。PC で少し待ってから、もう一度ログインしてください。";
             case NO_TOTP_KEY: return "このアプリに認証アプリのセットアップキーがありません。設定で認証アプリを登録し直してください。";
+            case KEY_SUSPENDED: return "認証が通らず、再設定が必要です。アプリの設定で認証アプリを登録し直してください。";
             case "no-credentials": return "アプリにユーザー名とパスワードが入っていません。設定で入力してください。";
             case "login-failed": return "ユーザー名かパスワードが違うため、大学のメールを読めませんでした。設定で入力し直してください。";
             case "code-not-found": return "OTP メールからコードを読み取れませんでした。";

@@ -14,10 +14,10 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- 認証アプリ方式なのに、このアプリにキーが無い (この決まりより前に登録した・作ったコードを弾かれて捨てた)。
-             普通の状態ではないので、登録し直しを案内する。LoginSettingsFragment.render が出し分ける。 -->
+        <!-- 保存している ID / パスワードが誤りと分かっている。入力し直すまでログインしない (SPEC.md「7.1」)。
+             LoginSettingsFragment.render が出し分ける。 -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_reregister_needed"
+            android:id="@+id/card_credentials_invalid"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
@@ -36,11 +36,57 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:text="@string/auth_credentials_invalid_title"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    android:textColor="?attr/colorOnErrorContainer" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/auth_credentials_invalid_text"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnErrorContainer" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_credentials_invalid"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/auth_credentials_invalid_action" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 認証アプリ方式なのに、このアプリのキーが使えない (この決まりより前に登録してキーが無い・作ったコードを
+             2 回弾かれて止めた)。普通の状態ではないので、登録し直しを案内する。文面は LoginSettingsFragment.render が
+             どちらかに出し分ける。 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_reregister_needed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="?attr/colorErrorContainer"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/text_reregister_needed_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:text="@string/login_reregister_needed_title"
                     android:textAppearance="?attr/textAppearanceTitleSmall"
                     android:textColor="?attr/colorOnErrorContainer" />
 
                 <TextView
+                    android:id="@+id/text_reregister_needed_text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"

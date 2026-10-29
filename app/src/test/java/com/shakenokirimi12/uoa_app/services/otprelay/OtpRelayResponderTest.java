@@ -141,6 +141,20 @@ public class OtpRelayResponderTest {
         assertEquals(OtpRelayResponder.Route.Kind.MAIL, OtpRelayResponder.route(null, true, key).kind);
     }
 
+    /** 鍵を止めている間は、認証アプリの画面からの依頼をすぐ key-suspended で断る (黙らない。D-11)。 */
+    @Test
+    public void suspendedKey_refusesTotpPagesWithKeySuspended() {
+        com.shakenokirimi12.uoa_app.services.idp.Totp.Params key = com.shakenokirimi12.uoa_app.services.idp.Totp.parse(RFC_OTPAUTH);
+        OtpRelayResponder.Route suspended = OtpRelayResponder.route("totp", true, key, true);
+        assertEquals(OtpRelayResponder.Route.Kind.REFUSE, suspended.kind);
+        assertEquals(OtpRelayResponder.KEY_SUSPENDED, suspended.reason);
+        assertEquals("totp", suspended.method);
+        // 方式の食い違いは止めているかより先に伝える。
+        assertEquals(OtpRelayResponder.METHOD_MISMATCH, OtpRelayResponder.route("totp", false, null, true).reason);
+        // メールの画面は止めた鍵と関係ない。
+        assertEquals(OtpRelayResponder.Route.Kind.MAIL, OtpRelayResponder.route("mail", false, null, true).kind);
+    }
+
     /** 認証アプリ方式の画面: 今の ID の鍵でコードを作って返す。メールは読まない。 */
     @Test
     public void totpPage_sendsTheCodeFromTheHeldKey_withoutReadingMail() throws Exception {

@@ -286,6 +286,7 @@ public class OtpRelayWorker extends Worker {
 
                     @Override
                     public void deleteUsed(@NonNull ImapOtpFetcher.OtpMail mail) {
+                        // 使ったメールと、それより古い OTP メールすべて (アプリのログインと同じ。最大 3 秒)。
                         mail.deleteUsedMails(3_000);
                     }
                 },
@@ -306,6 +307,11 @@ public class OtpRelayWorker extends Worker {
                     public com.shakenokirimi12.uoa_app.services.idp.Totp.Params keyFor(@NonNull String uid) {
                         // 今の ID の鍵だけ (別の ID の鍵は totpOtpauthFor が返さない)。
                         return com.shakenokirimi12.uoa_app.services.idp.Totp.parse(prefs.totpOtpauthFor(uid));
+                    }
+
+                    @Override
+                    public boolean keySuspended(@NonNull String uid) {
+                        return prefs.isTotpSuspended(uid);
                     }
 
                     @Override
