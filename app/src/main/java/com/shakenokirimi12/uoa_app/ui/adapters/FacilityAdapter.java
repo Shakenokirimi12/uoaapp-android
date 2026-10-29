@@ -44,11 +44,11 @@ public class FacilityAdapter extends RecyclerView.Adapter<FacilityAdapter.ViewHo
         FacilityUsage facility = items.get(position);
         Context ctx = holder.itemView.getContext();
         holder.textName.setText(facility.getName());
-        holder.textStatusMessage.setText(facility.getStatusMessage());
+        holder.textStatusMessage.setText(facility.getStatusMessage(ctx));
 
         FacilityUsage.Status status = facility.getCurrentStatus();
         int statusColor = statusColor(ctx, holder.itemView, status);
-        holder.textStatusBadge.setText(statusLabel(status));
+        holder.textStatusBadge.setText(statusLabel(ctx, status));
         holder.textStatusBadge.setTextColor(statusColor);
         holder.textStatusBadge.setCompoundDrawablesRelativeWithIntrinsicBounds(statusIcon(status), 0, 0, 0);
         TextViewCompat.setCompoundDrawableTintList(holder.textStatusBadge, ColorStateList.valueOf(statusColor));
@@ -61,11 +61,11 @@ public class FacilityAdapter extends RecyclerView.Adapter<FacilityAdapter.ViewHo
             int start = sb.length();
             sb.append(item.getTimeRange());
             if (item.isAvailable()) {
-                sb.append("  空き");
+                sb.append("  ").append(ctx.getString(R.string.facilities_schedule_free));
                 sb.setSpan(new ForegroundColorSpan(availableColor),
                         start, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             } else {
-                sb.append("  ").append(item.getEventName() != null ? item.getEventName() : "使用中");
+                sb.append("  ").append(item.getEventName() != null ? item.getEventName() : ctx.getString(R.string.facilities_schedule_in_use));
                 sb.setSpan(new ForegroundColorSpan(busyColor),
                         start, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
@@ -73,11 +73,11 @@ public class FacilityAdapter extends RecyclerView.Adapter<FacilityAdapter.ViewHo
         holder.textSchedule.setText(sb);
     }
 
-    private String statusLabel(FacilityUsage.Status s) {
+    private String statusLabel(Context ctx, FacilityUsage.Status s) {
         switch (s) {
-            case BUSY: return "利用中";
-            case OUTSIDE_HOURS: return "時間外";
-            default: return "利用可能";
+            case BUSY: return ctx.getString(R.string.facilities_badge_busy);
+            case OUTSIDE_HOURS: return ctx.getString(R.string.facilities_badge_outside_hours);
+            default: return ctx.getString(R.string.facilities_status_available);
         }
     }
 

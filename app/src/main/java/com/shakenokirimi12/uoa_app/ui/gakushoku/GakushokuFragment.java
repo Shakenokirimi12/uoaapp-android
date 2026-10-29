@@ -109,14 +109,14 @@ public class GakushokuFragment extends Fragment {
         // 学食はログイン不要。一度も取れていなければ「メニューがありません」とは言わない。
         FetchStatus.Empty kind = FetchStatus.emptyKind(true, failed,
                 DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.MENU));
-        if (kind == FetchStatus.Empty.UNAVAILABLE) textEmpty.setText("メニューを取得できませんでした");
-        else if (kind == FetchStatus.Empty.NONE) textEmpty.setText("メニューがありません");
+        if (kind == FetchStatus.Empty.UNAVAILABLE) textEmpty.setText(R.string.gakushoku_unavailable);
+        else if (kind == FetchStatus.Empty.NONE) textEmpty.setText(R.string.gakushoku_no_menu);
         boolean empty = menuAdapter.getItemCount() == 0;
         textEmpty.setVisibility(empty && kind != FetchStatus.Empty.LOADING ? View.VISIBLE : View.GONE);
         if (buttonShowPast != null) {
             int hidden = menuAdapter.hiddenPastCount();
             buttonShowPast.setVisibility(hidden > 0 ? View.VISIBLE : View.GONE);
-            buttonShowPast.setText("過ぎた " + hidden + " 日分を表示");
+            buttonShowPast.setText(getString(R.string.gakushoku_show_past_format, hidden));
         }
     }
 }

@@ -358,4 +358,115 @@
     <string name="syllabus_dashboard_title">シラバス・ダッシュボード</string>
     <string name="syllabus_title">シラバス</string>
     <string name="assignment_detail_title">課題詳細</string>
+
+    <!-- Facilities -->
+    <string name="facilities_status_available">利用可能</string>
+    <string name="facilities_status_outside_hours_message">時間外 (06:00から利用可能)</string>
+    <string name="facilities_status_busy_until_message">利用中 (〜%1$sまで)</string>
+    <string name="facilities_status_available_from_message">利用可能 (%1$sから利用予定)</string>
+    <string name="facilities_badge_busy">利用中</string>
+    <string name="facilities_badge_outside_hours">時間外</string>
+    <string name="facilities_schedule_free">空き</string>
+    <string name="facilities_schedule_in_use">使用中</string>
+
+    <!-- Class periods -->
+    <string name="class_period_single">%1$d限</string>
+    <string name="class_period_range">%1$d-%2$d限</string>
+
+    <!-- Class dialogs -->
+    <string name="class_detail_dialog_location_unset">未設定</string>
+    <string name="class_detail_dialog_duration_minutes">%1$d分</string>
+    <string name="class_detail_dialog_duration_with_count">%1$d分 (%2$dコマ)</string>
+    <string name="class_detail_dialog_status_in_progress">授業中 — 残り %1$d分</string>
+    <string name="class_detail_dialog_status_starts_in">%1$d分後に開始</string>
+    <string name="class_location_dialog_no_room">教室情報なし</string>
+    <string name="class_location_dialog_university_name">会津大学</string>
+    <string name="class_location_dialog_no_map_app">地図を開けるアプリがありません</string>
+
+    <!-- Class notification -->
+    <string name="class_notification_remaining">"%1$s  残り %2$d分"</string>
+    <string name="class_notification_next_title">次の授業: %1$s</string>
+    <string name="class_notification_starts_in">"%1$s  %2$d分後"</string>
+    <string name="class_notification_finished">今日の授業は終わりました</string>
+
+    <!-- Assignments -->
+    <string name="assignment_due_format">締切: %1$s</string>
+
+    <!-- Grades -->
+    <string name="grades_credits_format">%1$s単位</string>
+    <string name="grades_score_format">点数: %1$s</string>
+
+    <!-- Gakushoku -->
+    <string name="gakushoku_day_today_format">"%1$s  今日"</string>
+    <string name="gakushoku_category_side">副菜</string>
+    <string name="gakushoku_category_noodles">麺類</string>
+    <string name="gakushoku_category_fish">魚</string>
+    <string name="gakushoku_category_dinner">夕食</string>
+    <string name="gakushoku_list_separator">、</string>
+
+    <!-- Common -->
+    <string name="common_format_date_month_day_weekday">M月d日 (E)</string>
+
+    <!-- Home -->
+    <string name="home_last_synced_just_now">たった今</string>
+    <string name="home_last_synced_minutes_ago">%1$d分前</string>
+    <string name="home_last_synced_hours_ago">%1$d時間前</string>
+    <string name="home_last_synced_days_ago">%1$d日前</string>
+    <string name="home_menu_failed">メニュー取得失敗</string>
+    <string name="home_menu_none_today">本日の掲載はありません</string>
+
+    <!-- Gakushoku -->
+    <string name="gakushoku_unavailable">メニューを取得できませんでした</string>
+    <string name="gakushoku_show_past_format">過ぎた %1$d 日分を表示</string>
+
+    <!-- Grades -->
+    <string name="grades_unavailable">成績を取得できませんでした</string>
+
+    <!-- Courses -->
+    <string name="courses_unavailable">コースを取得できませんでした</string>
+    <string name="courses_no_search_match">検索に一致するコースがありません</string>
+    <string name="courses_empty_message">コースがありません</string>
+
+    <!-- Facilities -->
+    <string name="facilities_load_failed_format">施設利用状況を取得できませんでした\n\n%1$s</string>
+
+    <!-- Assignment detail -->
+    <string name="assignment_detail_due_expired">期限切れ</string>
+    <string name="assignment_detail_remaining_minutes">残り%1$d分</string>
+    <string name="assignment_detail_remaining_hours">残り%1$d時間</string>
+    <string name="assignment_detail_remaining_days">残り%1$d日</string>
+
+    <!-- Course detail -->
+    <string name="course_detail_today_has_class_format">授業あり: %1$s ~</string>
+    <string name="course_detail_today_no_class">本日は授業予定がありません</string>
+    <string name="course_detail_contents_empty">コンテンツはありません</string>
+    <string name="course_detail_modules_empty">モジュールはありません</string>
+    <string name="course_detail_assignment_due_format">期限: %1$s</string>
+    <string name="course_detail_history_auto_format">%1$s (自動)</string>
+    <string name="course_detail_history_change_description">%1$s。タップして変更</string>
+
+    <!-- Weekdays -->
+    <string name="weekday_short_sun">日</string>
+    <string name="weekday_short_mon">月</string>
+    <string name="weekday_short_tue">火</string>
+    <string name="weekday_short_wed">水</string>
+    <string name="weekday_short_thu">木</string>
+    <string name="weekday_short_fri">金</string>
+    <string name="weekday_short_sat">土</string>
+
+    <!-- Calendar -->
+    <string name="calendar_month_title_format">%1$d年%2$d月</string>
+
+    <!-- Syllabus -->
+    <string name="syllabus_field_name">科目名</string>
+    <string name="syllabus_field_category">カテゴリ</string>
+    <string name="syllabus_field_subcategory">サブカテゴリ</string>
+    <string name="syllabus_field_semester">学期</string>
+    <string name="syllabus_field_target">対象</string>
+    <string name="syllabus_field_credits">単位数</string>
+    <string name="syllabus_field_coordinator">コーディネーター</string>
+    <string name="syllabus_field_instructor">担当教員</string>
+    <string name="syllabus_field_recommended_track">推奨トラック</string>
+    <string name="syllabus_field_essential_courses">必修科目</string>
+    <string name="syllabus_references_heading">"\n\n参考書:\n"</string>
 </resources>

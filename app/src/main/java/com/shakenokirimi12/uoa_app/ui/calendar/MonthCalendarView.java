@@ -34,7 +34,10 @@ public final class MonthCalendarView extends LinearLayout {
         void onDateSelected(int year, int month, int dayOfMonth);
     }
 
-    private static final String[] WEEKDAYS = {"日", "月", "火", "水", "木", "金", "土"};
+    private static final int[] WEEKDAYS = {
+            R.string.weekday_short_sun, R.string.weekday_short_mon, R.string.weekday_short_tue,
+            R.string.weekday_short_wed, R.string.weekday_short_thu, R.string.weekday_short_fri,
+            R.string.weekday_short_sat};
 
     private final TextView textMonth;
     private final LinearLayout rowWeekdays;
@@ -60,9 +63,9 @@ public final class MonthCalendarView extends LinearLayout {
         findViewById(R.id.button_prev_month).setOnClickListener(v -> shiftMonth(-1));
         findViewById(R.id.button_next_month).setOnClickListener(v -> shiftMonth(1));
 
-        for (String name : WEEKDAYS) {
+        for (int name : WEEKDAYS) {
             TextView tv = new TextView(context);
-            tv.setText(name);
+            tv.setText(context.getString(name));
             tv.setGravity(android.view.Gravity.CENTER);
             tv.setTextAppearance(R.style.TextAppearance_Uoa_CalendarWeekDay);
             tv.setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant));
@@ -105,7 +108,8 @@ public final class MonthCalendarView extends LinearLayout {
     }
 
     private void render() {
-        textMonth.setText(String.format(Locale.JAPAN, "%d年%d月", shown.get(Calendar.YEAR), shown.get(Calendar.MONTH) + 1));
+        textMonth.setText(getContext().getString(R.string.calendar_month_title_format,
+                shown.get(Calendar.YEAR), shown.get(Calendar.MONTH) + 1));
         gridDays.removeAllViews();
 
         Calendar today = Calendar.getInstance();

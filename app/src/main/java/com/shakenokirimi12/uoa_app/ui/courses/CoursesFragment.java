@@ -106,9 +106,10 @@ public class CoursesFragment extends Fragment {
                 !PreferenceManager.getInstance(requireContext()).getUsername().isEmpty(), failed,
                 DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.COURSES));
         if (kind == FetchStatus.Empty.NOT_LOGGED_IN) textEmpty.setText(R.string.not_logged_in_empty);
-        else if (kind == FetchStatus.Empty.UNAVAILABLE) textEmpty.setText("コースを取得できませんでした");
+        else if (kind == FetchStatus.Empty.UNAVAILABLE) textEmpty.setText(R.string.courses_unavailable);
         else if (kind == FetchStatus.Empty.NONE) {
-            textEmpty.setText(courseAdapter.isFilteredOut() ? "検索に一致するコースがありません" : "コースがありません");
+            textEmpty.setText(courseAdapter.isFilteredOut()
+                    ? R.string.courses_no_search_match : R.string.courses_empty_message);
         }
         boolean empty = courseAdapter.getItemCount() == 0;
         textEmpty.setVisibility(empty && kind != FetchStatus.Empty.LOADING ? View.VISIBLE : View.GONE);

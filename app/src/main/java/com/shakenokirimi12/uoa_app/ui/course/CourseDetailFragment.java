@@ -1,6 +1,7 @@
 package com.shakenokirimi12.uoa_app.ui.course;
 
 import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.util.TypedValue;
@@ -227,10 +228,11 @@ public class CourseDetailFragment extends Fragment {
         }
 
         if (todayEvent != null) {
-            textTodayClassInfo.setText("授業あり: " + timeFmt.format(todayEvent.getDtstart()) + " ~");
+            textTodayClassInfo.setText(getString(R.string.course_detail_today_has_class_format,
+                    timeFmt.format(todayEvent.getDtstart())));
             textTodayClassInfo.setTextColor(MaterialColors.getColor(textTodayClassInfo, androidx.appcompat.R.attr.colorPrimary));
         } else {
-            textTodayClassInfo.setText("本日は授業予定がありません");
+            textTodayClassInfo.setText(R.string.course_detail_today_no_class);
             textTodayClassInfo.setTextColor(MaterialColors.getColor(textTodayClassInfo, com.google.android.material.R.attr.colorOnSurfaceVariant));
         }
 
@@ -251,7 +253,7 @@ public class CourseDetailFragment extends Fragment {
                 if (!isAdded()) return;
                 progressContents.setVisibility(View.GONE);
                 if (sections.isEmpty()) {
-                    showContentsMessage("コンテンツはありません");
+                    showContentsMessage(getString(R.string.course_detail_contents_empty));
                 } else {
                     buildContentsUI(sections);
                 }
@@ -340,7 +342,7 @@ public class CourseDetailFragment extends Fragment {
 
             if (section.getModules().isEmpty()) {
                 TextView empty = new TextView(requireContext());
-                empty.setText("モジュールはありません");
+                empty.setText(R.string.course_detail_modules_empty);
                 empty.setTextAppearance(textAppearance(com.google.android.material.R.attr.textAppearanceBodySmall));
                 empty.setTextColor(onSurfaceVariant);
                 empty.setPadding(h, dp(4), h, dp(8));
@@ -418,7 +420,8 @@ public class CourseDetailFragment extends Fragment {
             Assignment a = items.get(pos);
             h.name.setText(a.getName());
             if (a.getDueDate() > 0) {
-                h.dueDate.setText("期限: " + fmt.format(new Date(a.getDueDate() * 1000)));
+                h.dueDate.setText(h.itemView.getContext().getString(R.string.course_detail_assignment_due_format,
+                        fmt.format(new Date(a.getDueDate() * 1000))));
             }
         }
 
@@ -459,16 +462,17 @@ public class CourseDetailFragment extends Fragment {
         public void onBindViewHolder(@NonNull VH h, int pos) {
             AttendanceManager.HistoryItem item = items.get(pos);
             h.date.setText(item.date);
+            Context ctx = h.itemView.getContext();
             String label;
             switch (item.status) {
-                case "PRESENT": label = "出席"; break;
-                case "ABSENT": label = "欠席"; break;
-                case "LATE": label = "遅刻"; break;
-                case "ABSENT_UNCONFIRMED": label = h.itemView.getContext().getString(R.string.attendance_unconfirmed); break;
+                case "PRESENT": label = ctx.getString(R.string.attendance_present); break;
+                case "ABSENT": label = ctx.getString(R.string.attendance_absent); break;
+                case "LATE": label = ctx.getString(R.string.attendance_late); break;
+                case "ABSENT_UNCONFIRMED": label = ctx.getString(R.string.attendance_unconfirmed); break;
                 default: label = item.status;
             }
             // 要確認はそれだけで自動と分かる。
-            if ("auto".equals(item.source) && !"ABSENT_UNCONFIRMED".equals(item.status)) label += " (自動)";
+            if ("auto".equals(item.source) && !"ABSENT_UNCONFIRMED".equals(item.status)) label = ctx.getString(R.string.course_detail_history_auto_format, label);
             h.status.setText(label);
             int fg, bg;
             switch (item.status) {
@@ -495,12 +499,13 @@ public class CourseDetailFragment extends Fragment {
             // 自動の記録も手で直せる。直したものは手動の記録になる。
             h.status.setClickable(true);
             h.status.setFocusable(true);
-            h.status.setContentDescription(label + "。タップして変更");
+            h.status.setContentDescription(ctx.getString(R.string.course_detail_history_change_description, label));
             View.OnClickListener openMenu = v -> {
                 android.widget.PopupMenu menu = new android.widget.PopupMenu(v.getContext(), h.status);
                 AttendanceManager.Status[] options = {
                         AttendanceManager.Status.PRESENT, AttendanceManager.Status.LATE, AttendanceManager.Status.ABSENT};
-                String[] labels = {"出席", "遅刻", "欠席"};
+                String[] labels = {ctx.getString(R.string.attendance_present),
+                        ctx.getString(R.string.attendance_late), ctx.getString(R.string.attendance_absent)};
                 for (int i = 0; i < options.length; i++) menu.getMenu().add(0, i, i, labels[i]);
                 menu.setOnMenuItemClickListener(mi -> {
                     listener.onChangeStatus(item.id, options[mi.getItemId()]);

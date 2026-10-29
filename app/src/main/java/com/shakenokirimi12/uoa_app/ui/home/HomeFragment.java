@@ -88,7 +88,6 @@ public class HomeFragment extends Fragment {
     private final Calendar selectedDate = Calendar.getInstance();
     private List<CalendarEvent> allEvents = new ArrayList<>();
     private List<Assignment> allAssignments = new ArrayList<>();
-    private final SimpleDateFormat dateFmt = new SimpleDateFormat("M月d日 (E)", Locale.JAPANESE);
 
     @Nullable
     @Override
@@ -201,7 +200,8 @@ public class HomeFragment extends Fragment {
     }
 
     private void updateDateDisplay() {
-        textDate.setText(dateFmt.format(selectedDate.getTime()));
+        textDate.setText(new SimpleDateFormat(getString(R.string.common_format_date_month_day_weekday), Locale.JAPANESE)
+                .format(selectedDate.getTime()));
 
         Calendar today = Calendar.getInstance();
         boolean isToday = selectedDate.get(Calendar.YEAR) == today.get(Calendar.YEAR)
@@ -216,10 +216,10 @@ public class HomeFragment extends Fragment {
             long diffMs = System.currentTimeMillis() - lastSync;
             long diffMin = diffMs / 60000;
             String timeAgo;
-            if (diffMin < 1) timeAgo = "たった今";
-            else if (diffMin < 60) timeAgo = diffMin + "分前";
-            else if (diffMin < 1440) timeAgo = (diffMin / 60) + "時間前";
-            else timeAgo = (diffMin / 1440) + "日前";
+            if (diffMin < 1) timeAgo = getString(R.string.home_last_synced_just_now);
+            else if (diffMin < 60) timeAgo = getString(R.string.home_last_synced_minutes_ago, diffMin);
+            else if (diffMin < 1440) timeAgo = getString(R.string.home_last_synced_hours_ago, diffMin / 60);
+            else timeAgo = getString(R.string.home_last_synced_days_ago, diffMin / 1440);
 
             textLastSync.setText(getString(R.string.home_last_synced, timeAgo));
             textLastSync.setVisibility(View.VISIBLE);
@@ -458,7 +458,7 @@ public class HomeFragment extends Fragment {
             @Override
             public void onError(String message) {
                 if (!isAdded()) return;
-                textMenuLoading.setText("メニュー取得失敗");
+                textMenuLoading.setText(R.string.home_menu_failed);
             }
         });
     }
@@ -466,7 +466,7 @@ public class HomeFragment extends Fragment {
     private void showTodayMenu(GakushokuMenu menu) {
         GakushokuMenu.Day today = menu.today();
         if (today == null || !today.hasContent()) {
-            textMenuLoading.setText("本日の掲載はありません");
+            textMenuLoading.setText(R.string.home_menu_none_today);
             return;
         }
         textMenuLoading.setVisibility(View.GONE);
