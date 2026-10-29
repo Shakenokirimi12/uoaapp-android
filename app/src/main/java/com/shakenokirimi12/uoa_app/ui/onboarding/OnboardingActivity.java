@@ -30,7 +30,9 @@ public class OnboardingActivity extends AppCompatActivity {
 
     private static final int PAGE_WELCOME = 0;
     private static final int PAGE_LOGIN = 1;
-    private static final int TOTAL_PAGES = 2;
+    /** PC との連携 (任意)。ログインが済んでから出す。方式にかかわらず出す (decisions D-13、iOS と同じ並び)。 */
+    private static final int PAGE_PC_RELAY = 2;
+    private static final int TOTAL_PAGES = 3;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +54,8 @@ public class OnboardingActivity extends AppCompatActivity {
             public void onPageSelected(int position) {
                 if (position == PAGE_LOGIN) {
                     buttonNext.setText(R.string.onboarding_login_button);
+                } else if (position == PAGE_PC_RELAY) {
+                    buttonNext.setText(R.string.onboarding_pc_relay_later);
                 } else {
                     buttonNext.setText(R.string.onboarding_agree);
                 }
@@ -60,10 +64,12 @@ public class OnboardingActivity extends AppCompatActivity {
 
         buttonNext.setOnClickListener(v -> {
             int current = viewPager.getCurrentItem();
-            if (current < TOTAL_PAGES - 1) {
-                viewPager.setCurrentItem(current + 1);
-            } else {
+            if (current == PAGE_WELCOME) {
+                viewPager.setCurrentItem(PAGE_LOGIN);
+            } else if (current == PAGE_LOGIN) {
                 attemptLogin();
+            } else {
+                finishOnboarding(false);
             }
         });
     }
@@ -103,10 +109,10 @@ public class OnboardingActivity extends AppCompatActivity {
             public void onSuccess(Boolean result) {
                 prefs.setUsername(username);
                 prefs.setPassword(password);
+                // ログインは済んだ。連携の段で閉じられても、次の起動でログインからやり直させない。
                 prefs.setOnboardingDone(true);
-
-                startActivity(new Intent(OnboardingActivity.this, MainActivity.class));
-                finish();
+                buttonNext.setEnabled(true);
+                viewPager.setCurrentItem(PAGE_PC_RELAY);
             }
 
             @Override
@@ -117,6 +123,15 @@ public class OnboardingActivity extends AppCompatActivity {
                         Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    /** 初期設定を終えてアプリへ。openPcRelay なら「PC との連携」の画面を開く。 */
+    private void finishOnboarding(boolean openPcRelay) {
+        prefs.setOnboardingDone(true);
+        Intent intent = new Intent(this, MainActivity.class);
+        if (openPcRelay) intent.putExtra(MainActivity.EXTRA_OPEN_OTP_RELAY, true);
+        startActivity(intent);
+        finish();
     }
 
     private class OnboardingPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
@@ -131,6 +146,10 @@ public class OnboardingActivity extends AppCompatActivity {
             LayoutInflater inflater = LayoutInflater.from(parent.getContext());
             if (viewType == PAGE_WELCOME) {
                 View view = inflater.inflate(R.layout.page_onboarding_welcome, parent, false);
+                return new RecyclerView.ViewHolder(view) {};
+            } else if (viewType == PAGE_PC_RELAY) {
+                View view = inflater.inflate(R.layout.page_onboarding_pc_relay, parent, false);
+                view.findViewById(R.id.button_onboarding_pc_relay).setOnClickListener(v -> finishOnboarding(true));
                 return new RecyclerView.ViewHolder(view) {};
             } else {
                 View view = inflater.inflate(R.layout.page_onboarding_login, parent, false);

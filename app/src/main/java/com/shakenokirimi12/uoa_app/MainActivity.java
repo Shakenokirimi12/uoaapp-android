@@ -28,6 +28,8 @@ import com.shakenokirimi12.uoa_app.ui.util.EdgeToEdge;
 public class MainActivity extends AppCompatActivity {
     /** 時間割共有の受け取り画面 (TimetableIncomingActivity) の「保存した時間割を見る」。値は友達の ID。 */
     public static final String EXTRA_OPEN_TIMETABLE_FRIEND = "open_timetable_friend";
+    /** 初期設定の「PC との連携」の段で「PC と連携する」を選んだ。連携の画面を開く。 */
+    public static final String EXTRA_OPEN_OTP_RELAY = "open_otp_relay";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,6 +105,12 @@ public class MainActivity extends AppCompatActivity {
         // (iOS の idPTutorialPresented と同じ)。回転などの再生成では出し直さない。
         if (savedInstanceState == null && !prefs.hasSeenIdPTutorial()) {
             navController.navigate(R.id.navigation_idp_tutorial);
+        }
+        // 初期設定の「PC との連携」の段から来た。チュートリアルの上に開き、戻るとチュートリアルに戻る。
+        if (savedInstanceState == null && getIntent() != null
+                && getIntent().getBooleanExtra(EXTRA_OPEN_OTP_RELAY, false)) {
+            getIntent().removeExtra(EXTRA_OPEN_OTP_RELAY);
+            navController.navigate(R.id.navigation_otp_relay);
         }
 
         // Register device for push notifications
