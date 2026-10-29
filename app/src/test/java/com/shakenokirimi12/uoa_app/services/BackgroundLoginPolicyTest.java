@@ -8,6 +8,7 @@ import static org.junit.Assert.fail;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.shakenokirimi12.uoa_app.services.idp.LoginEvidence;
 import com.shakenokirimi12.uoa_app.services.idp.OtpMethod;
 import com.shakenokirimi12.uoa_app.services.idp.SeciossError;
 
@@ -42,6 +43,8 @@ public class BackgroundLoginPolicyTest {
         final Map<String, Long> attempts = new HashMap<>();
         String invalid = "";
         final Set<String> notified = new HashSet<>();
+        String savedUid = UID;
+        String savedPass = PASS;
         @NonNull @Override public String verifiedFingerprint() { return fingerprint; }
         @Override public void setVerifiedFingerprint(@NonNull String f) { fingerprint = f; }
         @Override public boolean isBlocked() { return blocked; }
@@ -60,6 +63,17 @@ public class BackgroundLoginPolicyTest {
         @Override public void markCredentialsInvalidNotified(@NonNull String uid, @NonNull String pass) {
             notified.add(BackgroundLoginPolicy.fingerprint(uid, pass));
         }
+        @Override public boolean isSaved(@NonNull String uid, @NonNull String pass) {
+            return uid.equals(savedUid) && pass.equals(savedPass);
+        }
+    }
+
+    /** IdP にパスワードを送って通ったログイン (SSO だけで通ったものと区別する)。 */
+    private static SessionCoordinator.Login<String> passwordLogin(String result) {
+        return () -> {
+            LoginEvidence.notePasswordAccepted();
+            return result;
+        };
     }
 
     private final MemoryStore store = new MemoryStore();
@@ -109,7 +123,7 @@ public class BackgroundLoginPolicyTest {
         BackgroundLoginPolicy policy = policy();
         AtomicInteger logins = new AtomicInteger();
         // 前面のログインが成功して、このパスワードが通ると分かる。
-        new SessionCoordinator<String>().forceLogin(METHOD, () -> "foreground", policy.forAccount("moodle", UID, PASS));
+        new SessionCoordinator<String>().forceLogin(METHOD, passwordLogin("foreground"), policy.forAccount("moodle", UID, PASS));
 
         assertEquals("new-1", backgroundSession(new SessionCoordinator<>(), policy, logins, null));
         assertEquals(1, logins.get());
@@ -132,7 +146,7 @@ public class BackgroundLoginPolicyTest {
     @Test
     public void noUsableKey_doesNotLogInInBackground() {
         BackgroundLoginPolicy policy = policy();
-        policy.succeeded(UID, PASS);
+        policy.succeeded(UID, PASS, true);
         unattendedMethod = null;
         AtomicInteger logins = new AtomicInteger();
         try {
@@ -148,7 +162,7 @@ public class BackgroundLoginPolicyTest {
     @Test
     public void authenticator_backgroundLogins_areRateLimitedPerService() throws Exception {
         BackgroundLoginPolicy policy = policy();
-        policy.succeeded(UID, PASS);
+        policy.succeeded(UID, PASS, true);
         AtomicInteger logins = new AtomicInteger();
         backgroundSession(new SessionCoordinator<>(), policy, logins, null);
         assertEquals(1, logins.get());
@@ -254,7 +268,7 @@ public class BackgroundLoginPolicyTest {
     @Test
     public void anyBackgroundFailure_blocksUntilForegroundSuccess() throws Exception {
         BackgroundLoginPolicy policy = policy();
-        policy.succeeded(UID, PASS);
+        policy.succeeded(UID, PASS, true);
         Exception[] failures = {
                 new IOException("timeout"),
                 new SeciossError(SeciossError.Kind.MAINTENANCE, "maintenance").asLoginException(),
@@ -308,7 +322,7 @@ public class BackgroundLoginPolicyTest {
     @Test
     public void backgroundFailure_doesNotDelayForegroundLogin() throws Exception {
         BackgroundLoginPolicy policy = policy();
-        policy.succeeded(UID, PASS);
+        policy.succeeded(UID, PASS, true);
         SessionCoordinator<String> c = new SessionCoordinator<>();
         AtomicInteger logins = new AtomicInteger();
         try {
@@ -327,7 +341,7 @@ public class BackgroundLoginPolicyTest {
     @Test
     public void invalidCredentials_blockAllLogins_untilTheFingerprintChanges() throws Exception {
         BackgroundLoginPolicy policy = policy();
-        policy.succeeded(UID, PASS);
+        policy.succeeded(UID, PASS, true);
         AtomicInteger logins = new AtomicInteger();
         try {
             backgroundSession(new SessionCoordinator<>(), policy, logins, new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE));
@@ -358,13 +372,96 @@ public class BackgroundLoginPolicyTest {
                 policy.forAccount("moodle", UID, "new-pw")));
     }
 
-    /** 前面で誤りと分かったときは画面に出ているので通知しない (同じ指紋で後から通知もしない)。 */
+    /** 前面で誤りと分かったときも、同じ指紋で 1 回だけ通知する (D-8)。 */
     @Test
-    public void invalidCredentialsInForeground_areMarkedWithoutANotice() {
+    public void invalidCredentialsInForeground_areNotifiedOnce() {
         BackgroundLoginPolicy policy = policy();
         policy.failed(UID, PASS, new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE), false);
         assertTrue(policy.credentialsInvalid(UID, PASS));
         policy.failed(UID, PASS, new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE), true);
-        assertEquals(0, invalidNotices.get());
+        policy.markInvalid(UID, PASS);
+        assertEquals(1, invalidNotices.get());
+    }
+
+    /**
+     * 保存前の確認 (設定でのアカウントの入れ直し) で打ち間違えた値には印を付けない。付けると、保存している誤った値の
+     * 印が外れて、バックグラウンドがそれを送り直す。
+     */
+    @Test
+    public void invalidMark_staysOnTheSavedCredentials_whenAnUnsavedValueFails() {
+        BackgroundLoginPolicy policy = policy();
+        policy.failed(UID, PASS, new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE), true);
+        policy.failed(UID, "typo", new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE), false);
+        policy.markInvalid(UID, "typo");
+        assertTrue(policy.credentialsInvalid(UID, PASS));
+        assertFalse(policy.credentialsInvalid(UID, "typo"));
+        assertEquals(1, invalidNotices.get());
+    }
+
+    /** SSO だけで通ったログインはパスワードを確かめていないので、最後に成功したパスワードとして記録しない。 */
+    @Test
+    public void ssoOnlySuccess_doesNotVerifyThePassword() throws Exception {
+        BackgroundLoginPolicy policy = policy();
+        new SessionCoordinator<String>().forceLogin(METHOD, () -> "sso", policy.forAccount("moodle", UID, PASS));
+        assertFalse(policy.permits(UID, PASS));
+        new SessionCoordinator<String>().forceLogin(METHOD, passwordLogin("password"), policy.forAccount("moodle", UID, PASS));
+        assertTrue(policy.permits(UID, PASS));
+    }
+
+    /** 時計が戻ったら、今試したものとして今から間隔を数え直す (6 時間と 30 分の枠を開け直さない)。 */
+    @Test
+    public void clockGoingBack_restartsTheWindowsFromNow() throws Exception {
+        unattendedMethod = OtpMethod.MAIL;
+        BackgroundLoginPolicy policy = policy();
+        long start = clock.get();
+        assertTrue(policy.claimSlot("moodle", UID));
+        policy.claimMailDispatch();
+
+        clock.set(start - 7 * 60 * 60 * 1000L);
+        try {
+            policy.claimMailDispatch();
+            fail("時計が戻っても 6 時間の枠を開け直さない");
+        } catch (SeciossError e) {
+            assertEquals(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED, e.kind);
+        }
+        assertFalse(policy.claimSlot("moodle", UID));
+        assertEquals(clock.get(), store.lastMailDispatch);
+        assertEquals(clock.get(), (long) store.attempts.get("moodle"));
+
+        clock.addAndGet(5 * 60 * 60 * 1000L);
+        try {
+            policy.claimMailDispatch();
+            fail("戻った時刻から 6 時間たっていない");
+        } catch (SeciossError expected) {
+            // 待つ
+        }
+        clock.addAndGet(60 * 60 * 1000L);
+        policy.claimMailDispatch();
+        assertEquals(2, mailNotices.get());
+    }
+
+    /** IdpLoginGate を待つ間に先のログインが誤りを見つけた・鍵を止めたなら、パスワードを送らない。 */
+    @Test
+    public void checkBeforeIdpLogin_refusesAfterTheStateChangedWhileWaiting() throws Exception {
+        BackgroundLoginPolicy policy = policy();
+        policy.succeeded(UID, PASS, true);
+        policy.checkBeforeIdpLogin(UID, PASS, true);
+
+        unattendedMethod = null; // 鍵を止めた
+        try {
+            policy.checkBeforeIdpLogin(UID, PASS, true);
+            fail();
+        } catch (SeciossError e) {
+            assertEquals(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED, e.kind);
+        }
+        policy.checkBeforeIdpLogin(UID, PASS, false); // 前面は手入力で続けられる
+
+        policy.failed(UID, PASS, new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE), false);
+        try {
+            policy.checkBeforeIdpLogin(UID, PASS, false);
+            fail("誤りと分かった資格情報は前面でも送らない");
+        } catch (SeciossError e) {
+            assertEquals(SeciossError.Kind.INVALID_CREDENTIALS, e.kind);
+        }
     }
 }

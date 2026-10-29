@@ -551,10 +551,13 @@ public final class SeciossIdPClient {
     private static final class PostPasswordState {
         @NonNull final HttpResult result;
         @Nullable final String functionId;
+        /** パスワードを送って、IdP が受け付けた (SSO だけで通ったときは false)。 */
+        final boolean passwordAccepted;
 
-        PostPasswordState(@NonNull HttpResult result, @Nullable String functionId) {
+        PostPasswordState(@NonNull HttpResult result, @Nullable String functionId, boolean passwordAccepted) {
             this.result = result;
             this.functionId = functionId;
+            this.passwordAccepted = passwordAccepted;
         }
     }
 
@@ -609,7 +612,7 @@ public final class SeciossIdPClient {
             // ログインフォームが無い = 既存の SSO セッションで通った可能性が高い。中継を追って SP まで
             // 戻す。想定と違う画面なら、呼び出し側 (成功マーカー / ホスト検証) が弾く。
             HttpResult passthrough = followAutoSubmitRelays(entry);
-            return new PostPasswordState(passthrough, extractField("FunctionID", passthrough.html));
+            return new PostPasswordState(passthrough, extractField("FunctionID", passthrough.html), false);
         }
         if (page != EntryPage.LOGIN_FORM) {
             throw new SeciossError(SeciossError.Kind.MISSING_FIELD,
@@ -642,7 +645,7 @@ public final class SeciossIdPClient {
         if (relayed.html.contains(SESSION_TIMED_OUT_MARKER)) {
             throw new SeciossError(SeciossError.Kind.SESSION_TIMED_OUT);
         }
-        return new PostPasswordState(relayed, extractField("FunctionID", relayed.html));
+        return new PostPasswordState(relayed, extractField("FunctionID", relayed.html), true);
     }
 
     /**
@@ -660,7 +663,11 @@ public final class SeciossIdPClient {
     @NonNull
     private Session loginExclusively(@NonNull String entryUrl, @NonNull String uid, @NonNull String pass,
                                      @NonNull OtpProvider otp) throws Exception {
+        // IdpLoginGate で待っている間に、先のログインが ID / パスワードの誤りを見つけた・鍵を止めた等なら、
+        // パスワードを送らずに終える (OtpProvider.beforeLogin)。
+        otp.beforeLogin();
         PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass, true);
+        if (state.passwordAccepted) LoginEvidence.notePasswordAccepted();
         HttpResult current = state.result;
 
         if (current.html.contains(OTP_NOT_CONFIGURED_MARKER)) {
@@ -748,15 +755,18 @@ public final class SeciossIdPClient {
                 String sessid = extractField("sessid", relayed.html);
                 String back = extractField("back", relayed.html);
                 String user = extractField("username", relayed.html);
-                if (sessid != null && back != null && user != null) {
-                    android.util.Log.i("SeciossIdPClient", "stored-key OTP rejected; retrying once with the next step");
-                    otpSessid = sessid;
-                    otpBack = back;
-                    otpUsername = user;
-                    form = relayed;
-                    referer = relayed.url;
-                    continue;
+                if (sessid == null || back == null || user == null) {
+                    // やり直せない。1 回弾かれただけでは鍵を止めない (onRejected は呼ばない)。
+                    throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
+                            "OTP form after a rejected stored-key code lacks sessid/back/username");
                 }
+                android.util.Log.i("SeciossIdPClient", "stored-key OTP rejected; retrying once with the next step");
+                otpSessid = sessid;
+                otpBack = back;
+                otpUsername = user;
+                form = relayed;
+                referer = relayed.url;
+                continue;
             }
             provider.onRejected();
             throw new SeciossError(SeciossError.Kind.INVALID_OTP);

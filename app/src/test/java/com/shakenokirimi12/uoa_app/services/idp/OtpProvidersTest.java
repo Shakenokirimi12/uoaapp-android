@@ -105,6 +105,36 @@ public class OtpProvidersTest {
         assertEquals(java.util.Collections.singletonList("s1300000"), suspended);
     }
 
+    /**
+     * 時計が戻って台帳の窓が今より先にあると、使える窓は来ない。前面は待たずに手入力に回し (作ったコードではないので
+     * 弾かれても鍵を止めない)、バックグラウンドは止めた印を立てない TOTP_STEP_UNAVAILABLE で諦める。
+     */
+    @Test
+    public void ledgerAheadOfTheClock_fallsBackToManualInForeground_andSkipsInBackground() throws Exception {
+        long ahead = Totp.step(Totp.parse(OTPAUTH), System.currentTimeMillis()) + 10;
+        java.util.List<String> suspended = new java.util.ArrayList<>();
+
+        TotpStepLedger ledger = TotpStepLedger.inMemory();
+        ledger.claim(ahead);
+        OtpProvider foreground = new OtpProviders.AuthenticatorOtpProvider("s1300000", AuthorizationContext.INTERACTIVE,
+                () -> OTPAUTH, ledger, suspended::add, ctx -> "123456");
+        long started = System.currentTimeMillis();
+        assertEquals("123456", foreground.code());
+        assertTrue("待たない", System.currentTimeMillis() - started < 2_000);
+        assertFalse(foreground.retriesRejectedCode());
+        foreground.onRejected();
+        assertTrue(suspended.isEmpty());
+
+        OtpProvider background = new OtpProviders.AuthenticatorOtpProvider("s1300000", AuthorizationContext.BACKGROUND,
+                () -> OTPAUTH, ledger, suspended::add, ctx -> { throw new AssertionError("background must not prompt"); });
+        try {
+            background.code();
+            fail();
+        } catch (SeciossError e) {
+            assertEquals(SeciossError.Kind.TOTP_STEP_UNAVAILABLE, e.kind);
+        }
+    }
+
     /** 鍵が無ければ (登録し直しが要る)、バックグラウンドではコードを用意できない。 */
     @Test
     public void authenticatorWithoutKey_refusesInBackground() {

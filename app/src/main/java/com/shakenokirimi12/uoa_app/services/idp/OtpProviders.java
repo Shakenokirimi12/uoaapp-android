@@ -101,6 +101,11 @@ public final class OtpProviders {
 
         @Override public boolean canRunUnattended() { return ownsSettings && unattendedMethod(uid) != null; }
 
+        @Override public void beforeLogin() throws SeciossError {
+            com.shakenokirimi12.uoa_app.services.BackgroundLoginPolicy.getInstance()
+                    .checkBeforeIdpLogin(uid, pass, !context.allowsNewLogin());
+        }
+
         @NonNull
         @Override public OtpProvider forOtpPage(@Nullable String otpType) {
             OtpMethod read = OtpMethod.fromOtpType(otpType);
@@ -252,6 +257,10 @@ public final class OtpProviders {
         /** 鍵を止める (PreferenceManager.suspendTotp)。テストで差し替える。 */
         private final java.util.function.Consumer<String> suspend;
 
+        /** 手入力のコード (OtpPromptCoordinator.codeFromAuthenticator)。テストで差し替える。 */
+        interface ManualCode { @NonNull String code(@NonNull AuthorizationContext context) throws Exception; }
+        private final ManualCode manual;
+
         AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth) {
             this(uid, context, otpauth, TotpStepLedger.shared(), AuthenticatorOtpProvider::suspendStoredKey);
         }
@@ -263,6 +272,12 @@ public final class OtpProviders {
 
         AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth,
                                  TotpStepLedger ledger, java.util.function.Consumer<String> suspend) {
+            this(uid, context, otpauth, ledger, suspend, ctx -> OtpPromptCoordinator.getInstance().codeFromAuthenticator(ctx));
+        }
+
+        AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth,
+                                 TotpStepLedger ledger, java.util.function.Consumer<String> suspend, ManualCode manual) {
+            this.manual = manual;
             this.uid = uid;
             this.context = context;
             this.otpauth = otpauth;
@@ -280,8 +295,16 @@ public final class OtpProviders {
         @Override public String code() throws Exception {
             Totp.Params params = Totp.parse(otpauth.get());
             generated = params != null;
-            if (params == null) return OtpPromptCoordinator.getInstance().codeFromAuthenticator(context);
-            return unusedCode(params, ledger);
+            if (params == null) return manual.code(context);
+            try {
+                return unusedCode(params, ledger);
+            } catch (SeciossError e) {
+                // 使える窓が来なかった (時計が戻って、台帳の窓が今より先にある等)。前面では手入力に回す。
+                // バックグラウンドは止めた印を立てずに諦める (TOTP_STEP_UNAVAILABLE はアプリ内の事情)。
+                if (e.kind != SeciossError.Kind.TOTP_STEP_UNAVAILABLE || !context.allowsNewLogin()) throw e;
+                generated = false;
+                return manual.code(context);
+            }
         }
 
         /** 登録の確認で送った窓を使用済みにする。このあとのログインで同じコードを送り直さない (弾かれうる)。 */
@@ -297,6 +320,8 @@ public final class OtpProviders {
                 long now = System.currentTimeMillis();
                 long left = Totp.millisLeftInWindow(params, now);
                 long step = Totp.step(params, now);
+                // 台帳の窓が 2 窓以上先 (時計が戻った) なら、待っても使える窓は来ない。待たずに諦める。
+                if (ledger.lastUsed() >= step + 2) break;
                 // 窓の終わり間際に作ると、送る間に切れて弾かれうる。中継と同じ下限 (Totp.MIN_MS_LEFT_TO_SEND)。
                 if (left >= Totp.MIN_MS_LEFT_TO_SEND && ledger.claim(step)) return Totp.code(params, now);
                 Thread.sleep(left + 100);

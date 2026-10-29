@@ -17,6 +17,12 @@ public interface OtpProvider {
      */
     boolean requiresMailDispatch();
 
+    /**
+     * IdpLoginGate を通ったあと、パスワードを送る前に呼ぶ。待っている間に状況が変わって (先のログインが ID /
+     * パスワードの誤りを見つけた、鍵を止めた等) 始めてはいけなくなったら SeciossError を投げる。
+     */
+    default void beforeLogin() throws SeciossError {}
+
     /** コードを取得する。取れない場合は SeciossError を投げる。 */
     @NonNull String code() throws Exception;
 

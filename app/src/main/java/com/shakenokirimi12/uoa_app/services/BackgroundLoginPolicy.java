@@ -13,6 +13,7 @@ import com.shakenokirimi12.uoa_app.services.notification.AuthNotices;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.function.LongConsumer;
 
 /**
  * ログインの規則のうち、資格情報とバックグラウンド (SyncWorker) の再ログインに関わるもの
@@ -63,6 +64,8 @@ public final class BackgroundLoginPolicy {
         /** 誤りの印を付ける。この指紋をまだ知らせていなければ true。 */
         boolean markCredentialsInvalid(@NonNull String uid, @NonNull String pass);
         void markCredentialsInvalidNotified(@NonNull String uid, @NonNull String pass);
+        /** uid / pass が保存している資格情報そのものか (前後の空白は落として比べる)。 */
+        boolean isSaved(@NonNull String uid, @NonNull String pass);
     }
 
     /** アカウントの今の状態。テストで差し替える。 */
@@ -135,7 +138,9 @@ public final class BackgroundLoginPolicy {
             @Override public boolean credentialsInvalid() { return BackgroundLoginPolicy.this.credentialsInvalid(u, p); }
             @Override public boolean permits() { return BackgroundLoginPolicy.this.permits(u, p); }
             @Override public boolean claimSlot() { return BackgroundLoginPolicy.this.claimSlot(scope, u); }
-            @Override public void succeeded() { BackgroundLoginPolicy.this.succeeded(u, p); }
+            @Override public void succeeded(boolean passwordAccepted) {
+                BackgroundLoginPolicy.this.succeeded(u, p, passwordAccepted);
+            }
             @Override public void failed(@NonNull Exception e, boolean background) {
                 BackgroundLoginPolicy.this.failed(u, p, e, background);
             }
@@ -167,15 +172,32 @@ public final class BackgroundLoginPolicy {
     synchronized boolean claimSlot(@NonNull String scope, @NonNull String uid) {
         if (store.isBlocked()) return false;
         long now = clock.now();
-        if (!elapsed(store.lastAttempt(scope), now, MIN_INTERVAL_MS)) return false;
+        if (!windowOpen(store.lastAttempt(scope), now, MIN_INTERVAL_MS, at -> store.setLastAttempt(scope, at))) {
+            return false;
+        }
         if (accounts.unattendedMethod(uid) == OtpMethod.MAIL
-                && !elapsed(store.lastMailDispatch(), now, MAIL_DISPATCH_INTERVAL_MS)
+                && !windowOpen(store.lastMailDispatch(), now, MAIL_DISPATCH_INTERVAL_MS, store::setLastMailDispatch)
                 && !accounts.holdsIdpSso(uid)) {
             // OTP メールを送れない間は、IdP にパスワードを送ることもしない。
             return false;
         }
         store.setLastAttempt(scope, now);
         return true;
+    }
+
+    /**
+     * IdpLoginGate を待ったあと、パスワードを送る直前にもう一度確かめる (OtpProvider.beforeLogin)。待っている間に
+     * 先のログインが ID / パスワードの誤りを見つけた、鍵を止めた、止めた印を立てた、なら送らない。
+     */
+    public void checkBeforeIdpLogin(@Nullable String uid, @Nullable String pass, boolean background) throws SeciossError {
+        String u = uid != null ? uid.trim() : "";
+        String p = pass != null ? pass.trim() : "";
+        if (credentialsInvalid(u, p)) {
+            throw new SeciossError(SeciossError.Kind.INVALID_CREDENTIALS, "marked invalid while waiting for the IdP");
+        }
+        if (background && !permits(u, p)) {
+            throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED, "background login no longer permitted");
+        }
     }
 
     /**
@@ -189,7 +211,7 @@ public final class BackgroundLoginPolicy {
                 throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED, "background login blocked");
             }
             long now = clock.now();
-            if (!elapsed(store.lastMailDispatch(), now, MAIL_DISPATCH_INTERVAL_MS)) {
+            if (!windowOpen(store.lastMailDispatch(), now, MAIL_DISPATCH_INTERVAL_MS, store::setLastMailDispatch)) {
                 throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED, "mail dispatch window in use");
             }
             store.setLastMailDispatch(now);
@@ -197,15 +219,26 @@ public final class BackgroundLoginPolicy {
         notices.mailDispatch();
     }
 
-    /** last から interval たったか。時計が戻ったとき (差が負) も、記録した時刻から interval たつまでは待つ。 */
-    private static boolean elapsed(long last, long now, long interval) {
-        long d = now - last;
-        return last <= 0 || d >= interval || d <= -interval;
+    /**
+     * 記録した時刻 last から interval たったか。時計が戻っていたら (now < last)、今試したものとして時刻を now に
+     * 書き直し、今から interval 待つ (送るメールが減る側に倒す)。
+     */
+    private static boolean windowOpen(long last, long now, long interval, @NonNull LongConsumer rewrite) {
+        if (last <= 0) return true;
+        if (now < last) {
+            rewrite.accept(now);
+            return false;
+        }
+        return now - last >= interval;
     }
 
-    /** ログインが成功した (文脈を問わない)。前面の成功で、止めていたバックグラウンドの再ログインを戻す。 */
-    synchronized void succeeded(@NonNull String uid, @NonNull String pass) {
-        if (!uid.isEmpty() && !pass.isEmpty()) store.setVerifiedFingerprint(fingerprint(uid, pass));
+    /**
+     * ログインが成功した (文脈を問わない)。止めていたバックグラウンドの再ログインを戻す。
+     * passwordAccepted: このログインで IdP にパスワードを送って通った。SSO だけで通ったときはパスワードを
+     * 確かめていないので、「最後に成功したパスワード」には記録しない。
+     */
+    synchronized void succeeded(@NonNull String uid, @NonNull String pass, boolean passwordAccepted) {
+        if (passwordAccepted && !uid.isEmpty() && !pass.isEmpty()) store.setVerifiedFingerprint(fingerprint(uid, pass));
         store.setBlocked(false);
     }
 
@@ -215,35 +248,37 @@ public final class BackgroundLoginPolicy {
     }
 
     /**
-     * ログインが失敗した。ID / パスワードの誤りなら、どの文脈でも誤りの印を付ける。通知はバックグラウンドで分かった
-     * ときだけ、同じ指紋で 1 回 (前面では画面に出ているので、知らせたものとして数える)。
-     * バックグラウンドなら、アプリ内の事情を除いて止めた印を立てる。
+     * ログインが失敗した。ID / パスワードの誤りなら、どの文脈でも誤りの印を付けて、同じ指紋で 1 回だけ通知する
+     * (前面で分かったときも。D-8)。バックグラウンドなら、アプリ内の事情を除いて止めた印を立てる。
      */
     void failed(@NonNull String uid, @NonNull String pass, @NonNull Exception e, boolean background) {
         boolean notify = false;
         synchronized (this) {
-            if (isInvalidCredentials(e) && !uid.isEmpty() && !pass.isEmpty()) {
-                if (store.markCredentialsInvalid(uid, pass)) {
-                    store.markCredentialsInvalidNotified(uid, pass);
-                    notify = background;
-                }
-            }
+            if (isInvalidCredentials(e)) notify = markIfSaved(uid, pass);
             if (background && !isAppInternal(e)) store.setBlocked(true);
         }
         if (notify) notices.credentialsInvalid();
     }
 
-    /**
-     * 画面 (onError) で ID / パスワードの誤りを受け取ったときの印 (前面なので通知は出さない)。
-     * 普通は SessionCoordinator が先に付けている。
-     */
+    /** 画面 (onError) で ID / パスワードの誤りを受け取ったときの印。普通は SessionCoordinator が先に付けている。 */
     public void markInvalid(@NonNull String uid, @NonNull String pass) {
-        String u = uid.trim();
-        String p = pass.trim();
-        if (u.isEmpty() || p.isEmpty()) return;
+        boolean notify;
         synchronized (this) {
-            if (store.markCredentialsInvalid(u, p)) store.markCredentialsInvalidNotified(u, p);
+            notify = markIfSaved(uid.trim(), pass.trim());
         }
+        if (notify) notices.credentialsInvalid();
+    }
+
+    /**
+     * 誤りの印は保存している資格情報にだけ付ける。保存前の確認 (設定の入れ直し・初期設定) で打ち間違えた値に
+     * 印を移すと、保存している誤った値の印が外れ、バックグラウンドがそれを送り直す。確認の失敗は画面が伝える。
+     * 新しく付けて、まだ知らせていなければ true (知らせたものとして記録する)。
+     */
+    private boolean markIfSaved(@NonNull String uid, @NonNull String pass) {
+        if (uid.isEmpty() || pass.isEmpty() || !store.isSaved(uid, pass)) return false;
+        if (!store.markCredentialsInvalid(uid, pass)) return false;
+        store.markCredentialsInvalidNotified(uid, pass);
+        return true;
     }
 
     static boolean isInvalidCredentials(@NonNull Throwable e) {
@@ -300,6 +335,9 @@ public final class BackgroundLoginPolicy {
         }
         @Override public void markCredentialsInvalidNotified(@NonNull String uid, @NonNull String pass) {
             prefs().markCredentialsInvalidNotified(uid, pass);
+        }
+        @Override public boolean isSaved(@NonNull String uid, @NonNull String pass) {
+            return uid.equals(prefs().getUsername().trim()) && pass.equals(prefs().getPassword().trim());
         }
     }
 }

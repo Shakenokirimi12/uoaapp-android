@@ -177,4 +177,68 @@ public class SessionCoordinatorTest {
         }
         assertEquals(1, logins.get());
     }
+
+    /** バックグラウンドを許す Unattended。failed で投げるかを選べる。 */
+    private static SessionCoordinator.Unattended allowAll(boolean failedThrows) {
+        return new SessionCoordinator.Unattended() {
+            @Override public boolean credentialsInvalid() { return false; }
+            @Override public boolean permits() { return true; }
+            @Override public boolean claimSlot() { return true; }
+            @Override public void succeeded(boolean passwordAccepted) {}
+            @Override public void failed(Exception e, boolean background) {
+                if (failedThrows) throw new IllegalStateException("prefs unreadable");
+            }
+        };
+    }
+
+    /**
+     * 前面の呼び出しがバックグラウンドのログインの飛行中に来ても、その失敗 (メールの枠が空いていない等) を
+     * 受け取らない。終わるのを待ってから自分のログイン (OTP の入力ができる) を始める。
+     */
+    @Test
+    public void interactive_doesNotInheritABackgroundLoginFailure() throws Exception {
+        SessionCoordinator<String> coordinator = new SessionCoordinator<>();
+        CountDownLatch backgroundInside = new CountDownLatch(1);
+        CountDownLatch releaseBackground = new CountDownLatch(1);
+        AtomicInteger interactiveLogins = new AtomicInteger();
+        Thread background = new Thread(() -> {
+            try {
+                coordinator.session(METHOD, AuthorizationContext.BACKGROUND, null, s -> null, () -> {
+                    backgroundInside.countDown();
+                    releaseBackground.await();
+                    throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED, "mail dispatch window in use");
+                }, allowAll(false));
+            } catch (Exception expected) {
+                // バックグラウンドは失敗する
+            }
+        });
+        background.start();
+        backgroundInside.await();
+        java.util.concurrent.FutureTask<String> interactive = new java.util.concurrent.FutureTask<>(() ->
+                coordinator.session(METHOD, AuthorizationContext.INTERACTIVE, null, s -> null, () -> {
+                    interactiveLogins.incrementAndGet();
+                    return "typed";
+                }, allowAll(false)));
+        new Thread(interactive).start();
+        Thread.sleep(100);
+        releaseBackground.countDown();
+        assertEquals("typed", interactive.get(5, java.util.concurrent.TimeUnit.SECONDS));
+        assertEquals(1, interactiveLogins.get());
+        background.join(5000);
+    }
+
+    /** 失敗の記録 (failed) が投げても、飛行中のログインを残さない (以後のログインが終わったものに合流し続けない)。 */
+    @Test
+    public void failingToRecordAFailure_stillClearsTheInFlightLogin() throws Exception {
+        SessionCoordinator<String> coordinator = new SessionCoordinator<>();
+        try {
+            coordinator.session(METHOD, AuthorizationContext.INTERACTIVE, null, s -> null, () -> {
+                throw new java.io.IOException("timeout");
+            }, allowAll(true));
+            fail();
+        } catch (java.io.IOException expected) {
+            assertEquals(1, expected.getSuppressed().length);
+        }
+        assertEquals("again", coordinator.forceLogin(METHOD, () -> "again"));
+    }
 }
