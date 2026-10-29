@@ -73,12 +73,18 @@ public final class AssignmentReminderSync {
 
     /** 通知を止めるとき (設定 OFF・ログアウト) に呼ぶ。 */
     public static void clear(@NonNull Context context) {
+        clear(context, null);
+    }
+
+    /** onFailure: サーバーの予約を消せなかったときに呼ぶ (ログアウトで知らせる)。 */
+    public static void clear(@NonNull Context context, @androidx.annotation.Nullable Runnable onFailure) {
         Context ctx = context.getApplicationContext();
         PreferenceManager prefs = PreferenceManager.getInstance(ctx);
         // サーバーが何も持っていないと分かっているなら送る必要がない。
         if (!prefs.isServerHoldingReminders()) return;
         push(ctx).syncAssignmentReminders(new ArrayList<>(), true, ok -> {
             if (ok) prefs.setServerHoldingReminders(false);
+            else if (onFailure != null) onFailure.run();
         });
     }
 

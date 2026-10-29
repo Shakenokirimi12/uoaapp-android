@@ -180,8 +180,14 @@ public class PushNotificationService {
      * 失敗しても止めない。残った行のトークンは、新しい ID で登録したときにサーバーが外す。
      */
     public void deleteDevice() {
+        deleteDevice(null);
+    }
+
+    /** onFailure: サーバーの行を消せなかったとき (HTTP の失敗・通信の失敗) に、executor のスレッドで呼ぶ。 */
+    public void deleteDevice(@androidx.annotation.Nullable Runnable onFailure) {
         final String deviceId = getDeviceId();
         executor.execute(() -> {
+            boolean ok = false;
             try {
                 Request req = new Request.Builder()
                         .url(BASE_URL + "/api/devices/" + java.net.URLEncoder.encode(deviceId, "UTF-8"))
@@ -191,11 +197,14 @@ public class PushNotificationService {
                         .callTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
                         .build();
                 try (Response resp = client.newCall(req).execute()) {
+                    // 無い (404) なら、消したいものは既に無い。
+                    ok = resp.isSuccessful() || resp.code() == 404;
                     if (!resp.isSuccessful()) android.util.Log.w("PushNotificationService", "devices delete: HTTP " + resp.code());
                 }
             } catch (Exception e) {
                 android.util.Log.w("PushNotificationService", "devices delete failed: " + e.getMessage());
             }
+            if (!ok && onFailure != null) onFailure.run();
         });
     }
 

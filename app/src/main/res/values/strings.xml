@@ -74,6 +74,7 @@
     <string name="settings_reset">データをリセット</string>
     <string name="settings_version">バージョン</string>
     <string name="settings_logout">ログアウト</string>
+    <string name="settings_logout_server_failed">サーバーのデータの一部を消せませんでした。この端末のデータは消しました。</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome">UoA非公式アプリへようこそ</string>
