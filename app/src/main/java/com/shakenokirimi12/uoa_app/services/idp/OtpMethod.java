@@ -28,9 +28,10 @@ public enum OtpMethod {
     @androidx.annotation.Nullable
     public static OtpMethod fromOtpType(@androidx.annotation.Nullable String otpType) {
         if (otpType == null) return null;
-        String v = otpType.trim();
-        if (v.isEmpty() || "none".equalsIgnoreCase(v)) return null;
-        return "mail".equalsIgnoreCase(v) ? MAIL : AUTHENTICATOR;
+        // 大文字小文字と前後の空白の違いでは方式を変えない (生の値は OTP 診断が別に持つ)。
+        String v = otpType.trim().toLowerCase(java.util.Locale.ROOT);
+        if (v.isEmpty() || "none".equals(v)) return null;
+        return "mail".equals(v) ? MAIL : AUTHENTICATOR;
     }
 
     public static OtpMethod from(String raw) {

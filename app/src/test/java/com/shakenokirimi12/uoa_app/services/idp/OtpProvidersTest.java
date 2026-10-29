@@ -18,6 +18,7 @@ public class OtpProvidersTest {
     public void fromOtpType_mapsMailAndOtherValues() {
         assertEquals(OtpMethod.MAIL, OtpMethod.fromOtpType("mail"));
         assertEquals(OtpMethod.MAIL, OtpMethod.fromOtpType(" MAIL "));
+        assertEquals(OtpMethod.MAIL, OtpMethod.fromOtpType("Mail\t"));
         assertEquals(OtpMethod.AUTHENTICATOR, OtpMethod.fromOtpType("totp"));
     }
 
@@ -28,6 +29,7 @@ public class OtpProvidersTest {
         assertNull(OtpMethod.fromOtpType(""));
         assertNull(OtpMethod.fromOtpType("none"));
         assertNull(OtpMethod.fromOtpType(" none "));
+        assertNull(OtpMethod.fromOtpType("NONE"));
     }
 
     /** 診断に載せるのは otp_type の値だけ。無い・空を区別し、記号は伏せて 32 文字まで。 */
