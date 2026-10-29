@@ -96,9 +96,13 @@ public class TimetableShareTest {
     @Test
     public void freeSlotsAreMerged() {
         List<int[]> shown = java.util.Arrays.asList(new int[]{1, 2}, new int[]{3, 4}, new int[]{5, 6}, new int[]{7, 8});
-        assertEquals("1〜4限、7〜8限", TimetableGrid.freeSummary(
-                java.util.Arrays.asList(new int[]{1, 2}, new int[]{3, 4}, new int[]{7, 8}), shown));
-        assertEquals("終日", TimetableGrid.freeSummary(shown, shown));
+        List<int[]> merged = TimetableGrid.freeRanges(
+                java.util.Arrays.asList(new int[]{1, 2}, new int[]{3, 4}, new int[]{7, 8}), shown);
+        assertEquals(2, merged.size());
+        assertEquals(java.util.Arrays.asList(1, 4), java.util.Arrays.asList(merged.get(0)[0], merged.get(0)[1]));
+        assertEquals(java.util.Arrays.asList(7, 8), java.util.Arrays.asList(merged.get(1)[0], merged.get(1)[1]));
+        // 表の全部の行が空いているときは範囲ではなく null (画面では「終日」)。
+        assertNull(TimetableGrid.freeRanges(shown, shown));
     }
 
     @Test

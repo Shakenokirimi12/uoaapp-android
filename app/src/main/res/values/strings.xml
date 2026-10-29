@@ -509,4 +509,52 @@
     <string name="settings_logout_message">この端末に保存したログイン情報とデータを消します。</string>
     <string name="settings_lunch_time_picker_title">通知する時刻</string>
     <string name="settings_login_summary_format">%1$s ・ %2$s</string>
+
+    <!-- Timetable sharing -->
+    <string name="timetable_failure_share_expired">この共有は期限切れか、止められています。相手に、もう一度 QR コードを出してもらってください。</string>
+    <string name="timetable_failure_too_many_requests">短い時間に何度も送られました。少し待ってから、もう一度お試しください。</string>
+    <string name="timetable_failure_full">この QR コードは、受け取れる人数の上限に達しました。相手に、新しい QR コードを出してもらってください。</string>
+    <string name="timetable_failure_no_network">通信できませんでした。通信状況を確認して、もう一度お試しください。</string>
+    <string name="timetable_failure_unreadable">受け取った時間割を読めませんでした。アプリを最新にしてください。</string>
+    <string name="timetable_failure_server_error">サーバーで問題が起きました。少し待ってから、もう一度お試しください。</string>
+    <string name="timetable_failure_cannot_store">この端末では共有を始められませんでした。</string>
+    <string name="timetable_date_format_month_day">M月d日</string>
+    <string name="timetable_date_format_full">yyyy年M月d日</string>
+    <string name="timetable_date_format_until">M月d日 H:mm</string>
+    <string name="timetable_received_on_format">%1$s に受け取り</string>
+    <string name="timetable_valid_until_format">%1$s まで有効</string>
+    <string name="timetable_received_line_format">%1$s ・ 週 %2$d コマ</string>
+    <string name="timetable_exchange_sending_unnamed">名前なしで送ります</string>
+    <string name="timetable_exchange_sending_as_format">「%1$s」として送ります</string>
+    <string name="timetable_exchange_expired">共有の期限が切れました。もう一度 QR コードを作ってください。</string>
+    <string name="timetable_exchange_received_format">%1$s さんの時間割を受け取りました</string>
+    <string name="timetable_incoming_open_failed_title">時間割の共有を開けませんでした</string>
+    <string name="timetable_incoming_invalid_link_message">QR コードかリンクが正しくありません。相手に、もう一度 QR コードを出してもらってください。</string>
+    <string name="timetable_incoming_receive_failed_title">受け取れませんでした</string>
+    <string name="timetable_incoming_name_format">%1$s さん</string>
+    <string name="timetable_incoming_count_format">週 %1$d コマ</string>
+    <string name="timetable_incoming_sent_back_message">自分の時間割も送りました。相手の画面にも届きます。</string>
+    <string name="timetable_incoming_send_back_failed_format">自分の時間割は送れませんでした。%1$s</string>
+    <string name="timetable_incoming_saved_title_format">%1$s さんの時間割を保存しました</string>
+    <string name="timetable_friend_missing">この友達の時間割はありません</string>
+    <string name="timetable_friend_counts_format">同じ授業 %1$d コマ ・ どちらも空き %2$d コマ</string>
+    <string name="timetable_friend_no_free_slots">どちらも空いているコマはありません</string>
+    <string name="timetable_friend_no_same_classes">同じ時間に受けている授業はありません</string>
+    <string name="timetable_friend_day_row_format">%1$s %2$s</string>
+    <string name="timetable_friend_delete_title_format">%1$s さんの時間割を削除しますか？</string>
+    <string name="timetable_paste_open_button">開く</string>
+    <string name="timetable_paste_invalid_title">読み取れませんでした</string>
+    <string name="timetable_paste_invalid_message">貼り付けた文字に、時間割の共有リンクが見つかりませんでした。</string>
+
+    <!-- Timetable grid -->
+    <string name="timetable_grid_period_range_format">%1$d〜%2$d限</string>
+    <string name="timetable_grid_all_day">終日</string>
+    <string name="timetable_grid_list_separator">、</string>
+    <string name="timetable_grid_day_spoken_format">%1$s曜 %2$s</string>
+    <string name="timetable_grid_more_format">ほか %1$d 件</string>
+    <string name="timetable_grid_no_class_spoken">授業なし</string>
+    <string name="timetable_grid_same_badge">同じ</string>
+    <string name="timetable_grid_same_class_spoken">自分と同じ授業</string>
+    <string name="timetable_grid_mine_busy">自分も授業</string>
+    <string name="timetable_grid_mine_class_spoken_format">自分は %1$s</string>
 </resources>

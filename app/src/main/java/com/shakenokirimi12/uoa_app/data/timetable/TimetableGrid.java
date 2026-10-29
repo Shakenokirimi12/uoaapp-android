@@ -1,7 +1,11 @@
 package com.shakenokirimi12.uoa_app.data.timetable;
 
-import androidx.annotation.NonNull;
+import android.content.Context;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.models.GroupedClass;
 
 import java.util.ArrayList;
@@ -32,7 +36,10 @@ public final class TimetableGrid {
         }
     }
 
-    private static final String[] DAY_LABELS = {"月", "火", "水", "木", "金", "土", "日"};
+    private static final int[] DAY_LABELS = {
+            R.string.weekday_short_mon, R.string.weekday_short_tue, R.string.weekday_short_wed,
+            R.string.weekday_short_thu, R.string.weekday_short_fri, R.string.weekday_short_sat,
+            R.string.weekday_short_sun};
 
     /** 出す行。1〜8 限はいつも出し、9 限以降は誰かの授業があるときだけ出す。 */
     @SafeVarargs
@@ -103,23 +110,30 @@ public final class TimetableGrid {
     }
 
     @NonNull
-    public static String dayLabel(int day) { return day >= 1 && day <= 7 ? DAY_LABELS[day - 1] : ""; }
+    public static String dayLabel(@NonNull Context ctx, int day) {
+        return day >= 1 && day <= 7 ? ctx.getString(DAY_LABELS[day - 1]) : "";
+    }
 
     /** 「1〜2限」「11限」。 */
     @NonNull
-    public static String rowLabel(@NonNull int[] row) {
-        return row[0] == row[1] ? row[0] + "限" : row[0] + "〜" + row[1] + "限";
+    public static String rowLabel(@NonNull Context ctx, @NonNull int[] row) {
+        return row[0] == row[1]
+                ? ctx.getString(R.string.class_period_single, row[0])
+                : ctx.getString(R.string.timetable_grid_period_range_format, row[0], row[1]);
     }
 
-    /** 空いているコマをまとめた文。続いているコマは「1〜6限」にまとめ、表の全部の行なら「終日」。iOS と同じ。 */
-    @NonNull
-    public static String freeSummary(@NonNull List<int[]> free, @NonNull List<int[]> shownRows) {
+    /**
+     * 空いているコマの範囲。続いているコマは 1 つ (「1〜6」) にまとめる。
+     * 表の全部の行が空いているときは null (文にするときは「終日」)。
+     */
+    @Nullable
+    public static List<int[]> freeRanges(@NonNull List<int[]> free, @NonNull List<int[]> shownRows) {
         if (!free.isEmpty() && free.size() == shownRows.size()) {
             boolean all = true;
             for (int i = 0; i < free.size(); i++) {
                 if (!Arrays.equals(free.get(i), shownRows.get(i))) { all = false; break; }
             }
-            if (all) return "終日";
+            if (all) return null;
         }
         List<int[]> sorted = new ArrayList<>(free);
         sorted.sort((a, b) -> Integer.compare(a[0], b[0]));
@@ -132,9 +146,17 @@ public final class TimetableGrid {
                 merged.add(row);
             }
         }
+        return merged;
+    }
+
+    /** 空いているコマをまとめた文。続いているコマは「1〜6限」にまとめ、表の全部の行なら「終日」。iOS と同じ。 */
+    @NonNull
+    public static String freeSummary(@NonNull Context ctx, @NonNull List<int[]> free, @NonNull List<int[]> shownRows) {
+        List<int[]> merged = freeRanges(free, shownRows);
+        if (merged == null) return ctx.getString(R.string.timetable_grid_all_day);
         List<String> labels = new ArrayList<>();
-        for (int[] r : merged) labels.add(rowLabel(r));
-        return String.join("、", labels);
+        for (int[] r : merged) labels.add(rowLabel(ctx, r));
+        return String.join(ctx.getString(R.string.timetable_grid_list_separator), labels);
     }
 
     /** 行の見出し。狭いので「1-2」。 */

@@ -79,7 +79,8 @@ public class TimetableIncomingActivity extends AppCompatActivity {
         shareId = TimetableShareLink.shareId(data != null ? data.toString() : "");
         incoming = null;
         if (shareId == null) {
-            result(false, "時間割の共有を開けませんでした", "QR コードかリンクが正しくありません。相手に、もう一度 QR コードを出してもらってください。", false);
+            result(false, getString(R.string.timetable_incoming_open_failed_title),
+                    getString(R.string.timetable_incoming_invalid_link_message), false);
             return;
         }
         progress(R.string.timetable_loading);
@@ -90,14 +91,14 @@ public class TimetableIncomingActivity extends AppCompatActivity {
             try {
                 t = store.api().fetch(id);
             } catch (TimetableShareApi.Failure e) {
-                error = e.getMessage();
+                error = e.message(this);
             }
             SharedTimetable ft = t;
             String err = error;
             main.post(() -> {
                 if (isFinishing() || isDestroyed() || !id.equals(shareId)) return;
                 if (ft != null) loaded(ft);
-                else result(false, "受け取れませんでした", err, false);
+                else result(false, getString(R.string.timetable_incoming_receive_failed_title), err, false);
             });
         });
     }
@@ -120,8 +121,9 @@ public class TimetableIncomingActivity extends AppCompatActivity {
         binding.groupProgress.setVisibility(View.GONE);
         binding.groupResult.setVisibility(View.GONE);
         binding.groupLoaded.setVisibility(View.VISIBLE);
-        binding.textName.setText(t.name.isEmpty() ? TimetableShareStore.UNNAMED : t.name + " さん");
-        binding.textCount.setText("週 " + t.classes.size() + " コマ");
+        binding.textName.setText(t.name.isEmpty()
+                ? TimetableShareStore.UNNAMED : getString(R.string.timetable_incoming_name_format, t.name));
+        binding.textCount.setText(getString(R.string.timetable_incoming_count_format, t.classes.size()));
         binding.grid.setData(t.classes, null);
         boolean canSendBack = myTimetable() != null;
         binding.groupSendBack.setVisibility(canSendBack ? View.VISIBLE : View.GONE);
@@ -146,7 +148,7 @@ public class TimetableIncomingActivity extends AppCompatActivity {
                         store.api().reply(id, mine);
                         sent = true;
                     } catch (TimetableShareApi.Failure e) {
-                        sendError = e.getMessage();
+                        sendError = e.message(this);
                     }
                 }
             }
@@ -154,9 +156,9 @@ public class TimetableIncomingActivity extends AppCompatActivity {
             String err = sendError;
             main.post(() -> {
                 if (isFinishing() || isDestroyed()) return;
-                String body = s ? "自分の時間割も送りました。相手の画面にも届きます。"
-                        : err != null ? "自分の時間割は送れませんでした。" + err : null;
-                result(true, friend.name + " さんの時間割を保存しました", body, err != null);
+                String body = s ? getString(R.string.timetable_incoming_sent_back_message)
+                        : err != null ? getString(R.string.timetable_incoming_send_back_failed_format, err) : null;
+                result(true, getString(R.string.timetable_incoming_saved_title_format, friend.name), body, err != null);
                 binding.buttonOpenSaved.setVisibility(View.VISIBLE);
                 binding.buttonOpenSaved.setOnClickListener(v -> {
                     // アプリの画面 (MainActivity) で、保存した友達の時間割を開く。カメラから開いたときは

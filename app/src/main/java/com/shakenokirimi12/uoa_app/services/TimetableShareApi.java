@@ -1,12 +1,16 @@
 package com.shakenokirimi12.uoa_app.services;
 
+import android.content.Context;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.shakenokirimi12.uoa_app.BuildConfig;
+import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.timetable.SharedTimetable;
 import com.shakenokirimi12.uoa_app.data.timetable.TimetableShareLink;
 
@@ -34,19 +38,26 @@ public final class TimetableShareApi {
         /** HTTP ステータス。通信できなかったときは 0、読めない応答は -1。 */
         public final int status;
 
-        Failure(int status, String message) {
-            super(message);
+        @StringRes private final int messageRes;
+
+        Failure(int status, @StringRes int messageRes) {
+            super("timetable share failure: " + status);
             this.status = status;
+            this.messageRes = messageRes;
         }
+
+        /** 画面に出す文面。 */
+        @NonNull
+        public String message(@NonNull Context ctx) { return ctx.getString(messageRes); }
 
         static Failure of(int status) {
             switch (status) {
-                case 404: return new Failure(404, "この共有は期限切れか、止められています。相手に、もう一度 QR コードを出してもらってください。");
-                case 429: return new Failure(429, "短い時間に何度も送られました。少し待ってから、もう一度お試しください。");
-                case 409: return new Failure(409, "この QR コードは、受け取れる人数の上限に達しました。相手に、新しい QR コードを出してもらってください。");
-                case 0: return new Failure(0, "通信できませんでした。通信状況を確認して、もう一度お試しください。");
-                case -1: return new Failure(-1, "受け取った時間割を読めませんでした。アプリを最新にしてください。");
-                default: return new Failure(status, "サーバーで問題が起きました。少し待ってから、もう一度お試しください。");
+                case 404: return new Failure(404, R.string.timetable_failure_share_expired);
+                case 429: return new Failure(429, R.string.timetable_failure_too_many_requests);
+                case 409: return new Failure(409, R.string.timetable_failure_full);
+                case 0: return new Failure(0, R.string.timetable_failure_no_network);
+                case -1: return new Failure(-1, R.string.timetable_failure_unreadable);
+                default: return new Failure(status, R.string.timetable_failure_server_error);
             }
         }
 
@@ -55,7 +66,7 @@ public final class TimetableShareApi {
         /** 返事を読むトークンを端末に置けなかった (暗号化 prefs が使えないなど)。通信の失敗ではない。 */
         @NonNull
         public static Failure cannotStoreOnDevice() {
-            return new Failure(-2, "この端末では共有を始められませんでした。");
+            return new Failure(-2, R.string.timetable_failure_cannot_store);
         }
     }
 
