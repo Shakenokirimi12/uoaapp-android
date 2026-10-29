@@ -469,4 +469,44 @@
     <string name="syllabus_field_recommended_track">推奨トラック</string>
     <string name="syllabus_field_essential_courses">必修科目</string>
     <string name="syllabus_references_heading">"\n\n参考書:\n"</string>
+
+    <!-- Assignment reminders -->
+    <string name="assignment_reminder_title">課題提出期限</string>
+    <string name="notify_before_weeks_format">%1$d週間前</string>
+    <string name="notify_before_days_format">%1$d日前</string>
+    <string name="notify_before_hours_format">%1$d時間前</string>
+    <string name="notify_before_minutes_format">%1$d分前</string>
+
+    <!-- Common -->
+    <string name="common_button_delete">削除</string>
+    <string name="common_button_add">追加</string>
+    <string name="common_button_later">あとで</string>
+
+    <!-- Notification timing settings -->
+    <string name="notify_times_delete_message_format">%1$s を削除しますか？</string>
+    <string name="notify_times_unit_days">日</string>
+    <string name="notify_times_unit_hours">時間</string>
+    <string name="notify_times_unit_minutes">分</string>
+    <string name="notify_times_before_suffix">前</string>
+
+    <!-- Tab order settings -->
+    <string name="nav_settings_move_to_more_description">「その他」へ移動</string>
+    <string name="nav_settings_move_to_bottom_description">下のタブへ移動</string>
+
+    <!-- Backup -->
+    <string name="backup_file_open_failed">ファイルを開けませんでした</string>
+
+    <!-- Settings -->
+    <string name="settings_location_permission_required">位置情報の許可が無いと自動出席は使えません</string>
+    <string name="settings_location_option_always">常に許可</string>
+    <string name="settings_location_dialog_title_format">位置情報を「%1$s」にしてください</string>
+    <string name="settings_location_dialog_message_format">自動出席はアプリを閉じている間にキャンパスへの到着を検知します。次の画面で位置情報を「%1$s」に変更してください。</string>
+    <string name="settings_location_dialog_open_settings">設定へ</string>
+    <string name="settings_backup_done">バックアップしました</string>
+    <string name="settings_backup_failed_format">バックアップできませんでした: %1$s</string>
+    <string name="settings_restore_done">バックアップから戻しました。アプリを開き直すと反映されます</string>
+    <string name="settings_restore_failed_format">戻せませんでした: %1$s</string>
+    <string name="settings_logout_message">この端末に保存したログイン情報とデータを消します。</string>
+    <string name="settings_lunch_time_picker_title">通知する時刻</string>
+    <string name="settings_login_summary_format">%1$s ・ %2$s</string>
 </resources>

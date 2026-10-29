@@ -9,6 +9,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.shakenokirimi12.uoa_app.R;
 
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 
@@ -56,7 +57,7 @@ public class BackupService {
         JsonObject backup = buildBackup(prefs.getAll(), attendancePrefs.getString("data", null));
 
         try (OutputStream os = ctx.getContentResolver().openOutputStream(uri, "wt")) {
-            if (os == null) throw new Exception("ファイルを開けませんでした");
+            if (os == null) throw new Exception(ctx.getString(R.string.backup_file_open_failed));
             os.write(new Gson().toJson(backup).getBytes(StandardCharsets.UTF_8));
             os.flush();
         }
@@ -66,7 +67,7 @@ public class BackupService {
     public static void importFrom(Context ctx, Uri uri) throws Exception {
         String json;
         try (InputStream is = ctx.getContentResolver().openInputStream(uri)) {
-            if (is == null) throw new Exception("ファイルを開けませんでした");
+            if (is == null) throw new Exception(ctx.getString(R.string.backup_file_open_failed));
             // available() はストリーム全長を保証しない (SAF 経由だと 0 のことがある)。最後まで読む。
             ByteArrayOutputStream buf = new ByteArrayOutputStream();
             byte[] chunk = new byte[8192];
