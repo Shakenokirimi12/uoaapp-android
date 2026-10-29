@@ -40,7 +40,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:text="時間割・課題・成績・学食を\nひとつのアプリでまとめて確認"
+            android:text="@string/onboarding_welcome_tagline"
             android:lineSpacingMultiplier="1.15"
             android:textAppearance="?attr/textAppearanceBodyLarge"
             android:textColor="?attr/colorOnSurfaceVariant" />
@@ -80,7 +80,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="今日の授業と教室"
+                        android:text="@string/onboarding_feature_classes_title"
                         android:textAppearance="?attr/textAppearanceTitleSmall"
                         android:textColor="?attr/colorOnSurface" />
 
@@ -88,7 +88,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="時間割から今日の予定と教室をすぐ確認"
+                        android:text="@string/onboarding_feature_classes_body"
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="?attr/colorOnSurfaceVariant" />
                 </LinearLayout>
@@ -123,7 +123,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="締切と休講の通知"
+                        android:text="@string/onboarding_feature_notify_title"
                         android:textAppearance="?attr/textAppearanceTitleSmall"
                         android:textColor="?attr/colorOnSurface" />
 
@@ -131,7 +131,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="課題の締切や休講を通知で受け取る"
+                        android:text="@string/onboarding_feature_notify_body"
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="?attr/colorOnSurfaceVariant" />
                 </LinearLayout>
@@ -166,7 +166,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="成績と取得単位"
+                        android:text="@string/onboarding_feature_grades_title"
                         android:textAppearance="?attr/textAppearanceTitleSmall"
                         android:textColor="?attr/colorOnSurface" />
 
@@ -174,7 +174,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="成績と取得単位をまとめて見る"
+                        android:text="@string/onboarding_feature_grades_body"
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="?attr/colorOnSurfaceVariant" />
                 </LinearLayout>

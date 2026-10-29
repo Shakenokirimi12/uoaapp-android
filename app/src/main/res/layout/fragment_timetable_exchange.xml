@@ -149,7 +149,7 @@
                     android:layout_width="240dp"
                     android:layout_height="240dp"
                     android:layout_margin="16dp"
-                    android:contentDescription="時間割の共有の QR コード"
+                    android:contentDescription="@string/timetable_exchange_qr_description"
                     android:scaleType="fitCenter" />
             </com.google.android.material.card.MaterialCardView>
 

@@ -35,7 +35,7 @@
             android:id="@+id/text_menu_lunch_label"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="昼食"
+            android:text="@string/gakushoku_day_lunch_label"
             android:textAppearance="?attr/textAppearanceLabelMedium"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:visibility="gone"
@@ -60,7 +60,7 @@
             android:id="@+id/text_menu_none"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="掲載なし"
+            android:text="@string/gakushoku_day_empty"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:visibility="gone" />

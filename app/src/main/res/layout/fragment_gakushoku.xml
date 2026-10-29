@@ -55,7 +55,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="メニューがありません"
+        android:text="@string/gakushoku_no_menu"
         android:visibility="gone"
         tools:visibility="visible" />
 </FrameLayout>

@@ -20,14 +20,14 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:text="本アプリは学生が個人で提供する非公式アプリであり、会津大学とは一切関係ありません。" />
+            android:text="@string/more_disclaimer" />
 
         <!-- Features -->
         <TextView
             style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="機能" />
+            android:text="@string/more_features_header" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -50,7 +50,7 @@
             style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="設定" />
+            android:text="@string/settings_title" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -70,7 +70,7 @@
                     android:layout_height="wrap_content"
                     android:drawableStart="@drawable/ic_settings"
                     android:drawableEnd="@drawable/ic_chevron_right"
-                    android:text="設定" />
+                    android:text="@string/settings_title" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

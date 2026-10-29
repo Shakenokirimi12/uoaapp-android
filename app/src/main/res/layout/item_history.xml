@@ -40,7 +40,7 @@
         style="@style/Widget.Material3.Button.IconButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:contentDescription="削除"
+        android:contentDescription="@string/course_detail_history_delete_description"
         app:icon="@drawable/ic_delete"
         app:iconTint="?attr/colorOnSurfaceVariant" />
 </LinearLayout>

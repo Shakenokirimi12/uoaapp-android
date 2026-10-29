@@ -261,4 +261,101 @@
     <string name="login_reregister_prompt_open">登録し直す</string>
     <string name="login_reregister_prompt_later">あとで</string>
     <string name="settings_login_row">ログインとワンタイムパスワード</string>
+
+    <!-- Class dialogs -->
+    <string name="class_location_dialog_location_description">場所</string>
+    <string name="class_location_dialog_directions_button">Google Mapsで道案内</string>
+    <string name="class_detail_dialog_time_description">時間</string>
+    <string name="class_detail_dialog_location_description">場所</string>
+    <string name="class_detail_dialog_duration_description">長さ</string>
+
+    <!-- Common -->
+    <string name="common_button_open_moodle">Moodleで開く</string>
+    <string name="common_description_previous_day">前の日</string>
+    <string name="common_description_next_day">次の日</string>
+
+    <!-- Assignment detail -->
+    <string name="assignment_detail_due_label">締切日時</string>
+
+    <!-- Facilities -->
+    <string name="facilities_empty_message">施設データがありません</string>
+
+    <!-- Grades -->
+    <string name="grades_empty_message">成績データがありません</string>
+
+    <!-- Home -->
+    <string name="home_button_back_to_today">今日に戻る</string>
+    <string name="home_legend_class">授業</string>
+    <string name="home_legend_assignment_deadline">課題〆切</string>
+    <string name="home_menu_icon_description">学食</string>
+    <string name="home_menu_detail_description">詳細</string>
+    <string name="home_menu_loading">メニュー取得中…</string>
+
+    <!-- Gakushoku -->
+    <string name="gakushoku_day_lunch_label">昼食</string>
+    <string name="gakushoku_day_empty">掲載なし</string>
+
+    <!-- Course detail -->
+    <string name="course_detail_syllabus_title">シラバス</string>
+    <string name="course_detail_credits_label">単位数</string>
+    <string name="course_detail_info_title">詳細</string>
+    <string name="course_detail_attendance_simulator_title">出席状況（シミュレーター）</string>
+    <string name="course_detail_attendance_today_title">本日の出席登録</string>
+    <string name="course_detail_attendance_history_title">履歴</string>
+    <string name="course_detail_attendance_history_empty">履歴なし</string>
+    <string name="course_detail_assignments_title">課題・小テスト</string>
+    <string name="course_detail_assignments_empty">未完了の課題はありません。</string>
+    <string name="course_detail_contents_title">コースコンテンツ</string>
+    <string name="course_detail_links_title">リンク</string>
+    <string name="attendance_late">遅刻</string>
+    <string name="course_detail_history_delete_description">削除</string>
+
+    <!-- More -->
+    <string name="more_disclaimer">本アプリは学生が個人で提供する非公式アプリであり、会津大学とは一切関係ありません。</string>
+    <string name="more_features_header">機能</string>
+
+    <!-- Notification timing settings -->
+    <string name="notify_times_description">締切の何分前に通知するかを選びます。いくつでも選べます。</string>
+    <string name="notify_times_presets_header">よく使うもの</string>
+    <string name="notify_times_custom_header">自分で追加</string>
+    <string name="notify_times_remove_hint">× で消せます</string>
+    <string name="notify_times_add_timing">タイミングを追加</string>
+
+    <!-- Tab order settings -->
+    <string name="nav_settings_description">タップで入れ替えます。下のタブに無い画面は「その他」から開けます。</string>
+    <string name="nav_settings_bottom_tabs_header">下のタブ (4 つまで)</string>
+    <string name="nav_settings_more_header">「その他」</string>
+    <string name="nav_settings_reset_button">最初の並びに戻す</string>
+
+    <!-- Timetable sharing -->
+    <string name="timetable_exchange_qr_description">時間割の共有の QR コード</string>
+
+    <!-- Syllabus -->
+    <string name="syllabus_section_basic">基本情報</string>
+    <string name="syllabus_section_overview">講義概要</string>
+    <string name="syllabus_section_goals">到達目標</string>
+    <string name="syllabus_section_evaluation">評価方法</string>
+    <string name="syllabus_section_schedule">授業計画</string>
+    <string name="syllabus_section_textbooks">教科書・参考書</string>
+    <string name="syllabus_open_web_button">WEBシラバスで見る</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_tagline">時間割・課題・成績・学食を\nひとつのアプリでまとめて確認</string>
+    <string name="onboarding_feature_classes_title">今日の授業と教室</string>
+    <string name="onboarding_feature_classes_body">時間割から今日の予定と教室をすぐ確認</string>
+    <string name="onboarding_feature_notify_title">締切と休講の通知</string>
+    <string name="onboarding_feature_notify_body">課題の締切や休講を通知で受け取る</string>
+    <string name="onboarding_feature_grades_title">成績と取得単位</string>
+    <string name="onboarding_feature_grades_body">成績と取得単位をまとめて見る</string>
+
+    <!-- Calendar -->
+    <string name="calendar_month_previous_description">前の月</string>
+    <string name="calendar_month_next_description">次の月</string>
+
+    <!-- Screen titles -->
+    <string name="grades_title">成績</string>
+    <string name="facilities_title">施設利用状況</string>
+    <string name="syllabus_dashboard_title">シラバス・ダッシュボード</string>
+    <string name="syllabus_title">シラバス</string>
+    <string name="assignment_detail_title">課題詳細</string>
 </resources>

@@ -110,19 +110,19 @@
     <fragment
         android:id="@+id/navigation_grades"
         android:name="com.shakenokirimi12.uoa_app.ui.grades.GradesFragment"
-        android:label="成績"
+        android:label="@string/grades_title"
         tools:layout="@layout/fragment_grades" />
 
     <fragment
         android:id="@+id/navigation_facilities"
         android:name="com.shakenokirimi12.uoa_app.ui.facilities.FacilitiesFragment"
-        android:label="施設利用状況"
+        android:label="@string/facilities_title"
         tools:layout="@layout/fragment_facilities" />
 
     <fragment
         android:id="@+id/navigation_course_detail"
         android:name="com.shakenokirimi12.uoa_app.ui.course.CourseDetailFragment"
-        android:label="シラバス・ダッシュボード"
+        android:label="@string/syllabus_dashboard_title"
         tools:layout="@layout/fragment_course_detail">
         <action android:id="@+id/action_detail_to_syllabus" app:destination="@id/navigation_syllabus" />
     </fragment>
@@ -130,13 +130,13 @@
     <fragment
         android:id="@+id/navigation_syllabus"
         android:name="com.shakenokirimi12.uoa_app.ui.syllabus.SyllabusFragment"
-        android:label="シラバス" />
+        android:label="@string/syllabus_title" />
 
 
     <fragment
         android:id="@+id/navigation_assignment_detail"
         android:name="com.shakenokirimi12.uoa_app.ui.assignment.AssignmentDetailFragment"
-        android:label="課題詳細">
+        android:label="@string/assignment_detail_title">
         <argument android:name="assignment_id" app:argType="integer" android:defaultValue="0" />
     </fragment>
 
