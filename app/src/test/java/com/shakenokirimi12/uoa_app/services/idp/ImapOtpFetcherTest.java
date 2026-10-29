@@ -203,4 +203,22 @@ public class ImapOtpFetcherTest {
             for (java.net.Socket s : held) s.close();
         }
     }
+
+    /** 使ったメールの削除は、古い方へ CLEANUP_UID_CHUNK ずつ、UID 1 まで隙間も重なりもなく覆う (上限なし)。 */
+    @Test
+    public void cleanupChunks_coverEveryOlderUidDownToOne() {
+        int below = 1_000;
+        int expected = below - 1;
+        int chunks = 0;
+        for (int[] r = ImapOtpFetcher.cleanupChunkBelow(below); r != null; r = ImapOtpFetcher.cleanupChunkBelow(r[0])) {
+            assertEquals(expected, r[1]);
+            assertEquals(true, r[1] - r[0] + 1 <= ImapOtpFetcher.CLEANUP_UID_CHUNK);
+            expected = r[0] - 1;
+            chunks++;
+        }
+        assertEquals(0, expected);
+        assertEquals(5, chunks);
+        assertNull(ImapOtpFetcher.cleanupChunkBelow(1));
+        assertEquals(Arrays.asList(1, 1), Arrays.asList(ImapOtpFetcher.cleanupChunkBelow(2)[0], ImapOtpFetcher.cleanupChunkBelow(2)[1]));
+    }
 }

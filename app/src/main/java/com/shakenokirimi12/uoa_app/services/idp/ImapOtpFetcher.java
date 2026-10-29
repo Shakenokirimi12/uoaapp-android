@@ -99,11 +99,22 @@ public final class ImapOtpFetcher {
      */
     static final int OLDER_UID_WINDOW = 180;
     /**
-     * 使ったあとに消す過去の OTP メールを、使ったメールの UID から何 UID 遡って探すか。以前は 500 UID を SEARCH FROM で
-     * 探していたが、自動取得と同じく SEARCH を使わず、ヘッダの FETCH で確かめる。これより古く残ったものは消さない。
-     * iOS の cleanupUIDWindow と同じ。
+     * 使ったあとに消す過去の OTP メールを探すとき、1 回のヘッダの FETCH で見る UID の幅。SEARCH は使わない。
+     * 範囲に上限は無く (以前は 100 UID まで)、古い方へこの幅ずつ、削除の時間の枠が尽きるまで遡る
+     * (SPEC.md「8. OTP メールの削除」)。
      */
-    static final int CLEANUP_UID_WINDOW = 100;
+    static final int CLEANUP_UID_CHUNK = 200;
+
+    /**
+     * below (含まない) より下で、次にヘッダを確かめる UID の範囲 {from, to}。もう無ければ null。
+     * 上から下へ CLEANUP_UID_CHUNK ずつ、UID 1 まで隙間なく覆う。
+     */
+    @Nullable
+    static int[] cleanupChunkBelow(int below) {
+        int to = below - 1;
+        if (to < 1) return null;
+        return new int[] {Math.max(1, to - CLEANUP_UID_CHUNK + 1), to};
+    }
 
     private final String host;
     private final int port;
@@ -195,15 +206,19 @@ public final class ImapOtpFetcher {
 
         /**
          * 使い終わった OTP メールを消して、LOGOUT して閉じる。1 回だけ効く。消すのは、このメールと、
-         * UID がこのメール以下で CLEANUP_UID_WINDOW の範囲にあり、From が送信元と完全に一致するもの。
-         * 取得の間に見た範囲 (scannedFrom 以降) は確かめ済みのものを使い、その手前だけヘッダを取り直す (SEARCH は使わない)。
-         * timeoutMs を過ぎたら打ち切る (失敗しても結果には影響させない)。iOS の IMAPOTPMail.deleteUsedMails と同じ。
+         * UID がこのメールより小さく、From が送信元と完全に一致するものすべて (範囲の上限は無い)。
+         * 取得の間に見た範囲 (scannedFrom 以降) は確かめ済みのものを使い、その手前は CLEANUP_UID_CHUNK ずつ古い方へ
+         * ヘッダを取り直す (SEARCH は使わない)。遡るのは timeoutMs の 3 分の 2 までで、残りは削除に使う。
+         * 遡りきれなかった分は、次に成功したときの削除で消える。失敗しても結果には影響させない。
+         * 呼ぶのはログイン (または中継) が成功したときだけ (SPEC.md「8. OTP メールの削除」)。
          */
         public void deleteUsedMails(long timeoutMs) {
             ImapStream stream = take();
             if (stream == null) return;
             try {
-                stream.setReadLimits(timeoutMs, System.currentTimeMillis() + timeoutMs);
+                long startedAt = System.currentTimeMillis();
+                long scanUntil = startedAt + timeoutMs * 2 / 3;
+                stream.setReadLimits(timeoutMs, startedAt + timeoutMs);
                 java.util.TreeSet<Integer> toDelete = new java.util.TreeSet<>();
                 // このメールの From は見つけたときに確かめてある。
                 toDelete.add(uid);
@@ -211,19 +226,19 @@ public final class ImapOtpFetcher {
                     if (u <= uid) toDelete.add(u);
                 }
                 // 両端を決めるので n:* の落とし穴も無い。
-                int olderFrom = Math.max(1, uid - CLEANUP_UID_WINDOW + 1);
-                int olderTo = Math.min(uid, scannedFrom) - 1;
-                if (olderFrom <= olderTo) {
-                    try {
+                int[] range = cleanupChunkBelow(Math.min(uid, scannedFrom));
+                try {
+                    while (range != null && System.currentTimeMillis() < scanUntil) {
                         // 消すのは From が OTP の送信元と完全に一致したものだけ (送信者名で名乗っただけのメールは消さない)。
-                        for (FetchedMail m : fetchHeaders(stream, olderFrom, olderTo)) {
+                        for (FetchedMail m : fetchHeaders(stream, range[0], range[1])) {
                             if (isOtpSender(m.fromHeader)) toDelete.add(m.uid);
                         }
-                    } catch (ImapException e) {
-                        // サーバは答えている。今回のメールだけ消す。
-                        // 例外の文面はサーバの応答行を含みうるので、決まった名前だけを残す (Progress.describe)。
-                        android.util.Log.w("ImapOtpFetcher", "過去分の確認に失敗 (今回分だけ消す): " + Progress.describe(e));
+                        range = cleanupChunkBelow(range[0]);
                     }
+                } catch (ImapException e) {
+                    // サーバは答えている。ここまでに確かめた分だけ消す。
+                    // 例外の文面はサーバの応答行を含みうるので、決まった名前だけを残す (Progress.describe)。
+                    android.util.Log.w("ImapOtpFetcher", "過去分の確認に失敗 (確かめた分だけ消す): " + Progress.describe(e));
                 }
                 StringBuilder set = new StringBuilder();
                 for (int u : toDelete) {
@@ -247,9 +262,9 @@ public final class ImapOtpFetcher {
     }
 
     /**
-     * PC 中継用。fetchOtpCode と同じ探し方だが、メールは消さない。中継サーバがコードを受け取った
-     * (204) と分かってから {@link OtpMail#deleteUsedMails} で消す (送れなかったときに手で使えるように)。
-     * 返した OtpMail は接続を持っているので、使い終わったら必ず閉じる。
+     * fetchOtpCode と同じ探し方だが、メールは消さない。PC 中継は中継サーバがコードを受け取った (204) と、
+     * アプリのログインは IdP がコードを受け付けたと分かってから {@link OtpMail#deleteUsedMails} で消す
+     * (失敗したときに手で使えるように)。返した OtpMail は接続を持っているので、使い終わったら必ず閉じる。
      */
     @NonNull
     public OtpMail fetchOtpMail(@NonNull String uid, @NonNull String pass, long timeoutSeconds,
