@@ -362,38 +362,27 @@ public class HomeFragment extends Fragment {
         // += so a pull-to-refresh during an in-flight sync does not hide the spinner early.
         pendingFetches += (fetchEvents ? 1 : 0) + (fetchAssignments ? 1 : 0);
 
-        if (fetchEvents) csService.fetchCalendarEvents(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<List<CalendarEvent>>() {
-            @Override
-            public void onSuccess(List<CalendarEvent> events) {
-                if (!isAdded()) return;
-                allEvents = events;
-                eventsFailed = false;
-                DataCache.getInstance(requireContext()).saveEvents(events);
-                // 取り直した時間割で、終わった授業の「欠席？（要確認）」を見る。
-                com.shakenokirimi12.uoa_app.services.attendance.AutoAbsenceRunner.evaluateAsync(requireContext());
-                updateFetchNotice();
-                filterAndDisplay();
-                startClassNotification(events);
-                com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(requireContext());
-                fetchFinished();
-            }
-
-            @Override
-            public void onError(String message) {
-                if (!isAdded()) return;
-                // 以前はここで「今日の授業はありません」を出していた。取れなかっただけなので、
-                // キャッシュ (あれば) を出したまま、いつの情報かを帯で示す。
+        // Moodle → CampusSquare の順に直列にする (バックグラウンドの同期と同じ)。2 本目は 1 本目が保存した IdP の SSO で
+        // 入るので、OTP は多くて 1 回で済む。1 本目で OTP の入力を取り消したら、2 本目ではログインを始めない
+        // (取り消した直後に、もう一度入力を求めない。SPEC.md「5. 前面ログイン」)。
+        long syncStartedAt = System.currentTimeMillis();
+        Runnable fetchCalendar = !fetchEvents ? null : () -> {
+            if (!isAdded()) return;
+            if (com.shakenokirimi12.uoa_app.services.idp.IdpLoginGate.shared().cancelledSince(syncStartedAt)) {
                 eventsFailed = true;
                 updateFetchNotice();
                 filterAndDisplay();
                 fetchFinished();
+                return;
             }
-        });
+            fetchCalendarEvents(user, pass);
+        };
 
         if (fetchAssignments) moodleService.ensureLoggedIn(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 if (!isAdded()) return;
+                if (fetchCalendar != null) fetchCalendar.run();
                 moodleService.fetchAssignments(AuthorizationContext.INTERACTIVE, new ServiceCallback<List<Assignment>>() {
                     @Override
                     public void onSuccess(List<Assignment> assignments) {
@@ -431,6 +420,38 @@ public class HomeFragment extends Fragment {
                 assignmentsFailed = true;
                 updateFetchNotice();
                 filterAndDisplay();
+                if (fetchCalendar != null) fetchCalendar.run();
+            }
+        });
+        else if (fetchCalendar != null) fetchCalendar.run();
+    }
+
+    private void fetchCalendarEvents(String user, String pass) {
+        csService.fetchCalendarEvents(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<List<CalendarEvent>>() {
+            @Override
+            public void onSuccess(List<CalendarEvent> events) {
+                if (!isAdded()) return;
+                allEvents = events;
+                eventsFailed = false;
+                DataCache.getInstance(requireContext()).saveEvents(events);
+                // 取り直した時間割で、終わった授業の「欠席？（要確認）」を見る。
+                com.shakenokirimi12.uoa_app.services.attendance.AutoAbsenceRunner.evaluateAsync(requireContext());
+                updateFetchNotice();
+                filterAndDisplay();
+                startClassNotification(events);
+                com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(requireContext());
+                fetchFinished();
+            }
+
+            @Override
+            public void onError(String message) {
+                if (!isAdded()) return;
+                // 以前はここで「今日の授業はありません」を出していた。取れなかっただけなので、
+                // キャッシュ (あれば) を出したまま、いつの情報かを帯で示す。
+                eventsFailed = true;
+                updateFetchNotice();
+                filterAndDisplay();
+                fetchFinished();
             }
         });
     }
