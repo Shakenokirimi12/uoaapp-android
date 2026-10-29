@@ -29,16 +29,12 @@
 
     <!-- Courses -->
     <string name="courses_search_hint">コースを検索</string>
-    <string name="courses_active">履修中</string>
-    <string name="courses_past">過去のコース</string>
 
     <!-- Gakushoku -->
     <string name="gakushoku_title">学食メニュー</string>
     <string name="gakushoku_no_menu">メニューがありません</string>
     <string name="gakushoku_lunch">ランチ</string>
-    <string name="gakushoku_fish">お魚</string>
     <string name="gakushoku_salad">サラダ</string>
-    <string name="gakushoku_dinner">ディナー</string>
 
     <!-- Settings -->
     <string name="settings_title">設定</string>
@@ -65,19 +61,13 @@
     <string name="otp_switch_not_switched">登録はできましたが、大学の認証システムのログイン方法が切り替わっていません。このアプリの受け取り方は変えていません。</string>
     <string name="otp_registration_cancelled">登録を中断しました。大学のアカウントの設定は変わっていません。</string>
     <string name="otp_switch_not_on_campus">学内のネットワーク経由で大学の認証システムに接続できませんでした。時間をおいて、もう一度お試しください。</string>
-    <string name="settings_username">ユーザー名</string>
-    <string name="settings_password">パスワード</string>
     <string name="settings_notifications">通知</string>
     <string name="settings_assignment_notify">課題の締切</string>
     <string name="settings_lunch_notify">学食のメニュー</string>
-    <string name="settings_general">一般</string>
-    <string name="settings_reset">データをリセット</string>
     <string name="settings_version">バージョン</string>
     <string name="settings_logout">ログアウト</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_welcome">UoA非公式アプリへようこそ</string>
-    <string name="onboarding_disclaimer">このアプリは会津大学の非公式アプリです。\n大学とは一切の関係がありません。</string>
     <!-- 「同意して続ける」の対象を明示する。プライバシーポリシーのページは無いので、同意内容はこの場に書く。 -->
     <string name="onboarding_consent_title">続ける前に</string>
     <string name="onboarding_consent_body">「同意して続ける」を押すと、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquare や大学のメールにあなたの代わりにログインするためだけに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールで受け取る設定 (既定) では、大学のメールに届いたワンタイムパスワードを、このアプリが読み取って入力します。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
@@ -87,20 +77,15 @@
     <string name="onboarding_username_hint">ユーザー名 (例: s1234567)</string>
     <string name="onboarding_password_hint">パスワード</string>
     <string name="onboarding_login_button">ログイン</string>
-    <string name="onboarding_skip">スキップ</string>
-    <string name="onboarding_done">完了</string>
 
     <!-- Grades -->
 
     <!-- Common -->
-    <string name="loading">読み込み中…</string>
-    <string name="error_generic">エラーが発生しました</string>
     <string name="retry">再試行</string>
     <string name="ok">OK</string>
     <string name="secure_storage_unavailable_title">ログイン情報を保存できません</string>
     <string name="secure_storage_unavailable_message">この端末ではログイン情報を暗号化して保存できないため、ログインできません。暗号化せずに保存することはしません。</string>
     <string name="cancel">キャンセル</string>
-    <string name="remaining_format">残り %d 分</string>
     <!-- Remote config (maintenance / force update / status notice) -->
     <string name="maintenance_title">ただいまメンテナンス中です</string>
     <string name="maintenance_default_message">ただいまメンテナンス中です。しばらくしてから再度お試しください。</string>
@@ -110,7 +95,6 @@
     <string name="force_update_default_message">このバージョンはご利用いただけません。最新版にアップデートしてください。</string>
     <string name="force_update_open_store">Google Playで開く</string>
     <string name="status_notice_dismiss">閉じる</string>
-    <string name="feature_disabled">この機能は現在利用できません</string>
     <!-- In-app browser -->
     <string name="browser_close">閉じる</string>
     <string name="browser_menu">メニュー</string>
