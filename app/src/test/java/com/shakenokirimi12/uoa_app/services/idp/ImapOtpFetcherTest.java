@@ -221,4 +221,14 @@ public class ImapOtpFetcherTest {
         assertNull(ImapOtpFetcher.cleanupChunkBelow(1));
         assertEquals(Arrays.asList(1, 1), Arrays.asList(ImapOtpFetcher.cleanupChunkBelow(2)[0], ImapOtpFetcher.cleanupChunkBelow(2)[1]));
     }
+
+    /** 同じ送信元でも、本文に OTP のコードが無いメールは消さない。 */
+    @Test
+    public void otpMailsWithCode_keepsMailsWithoutACode() {
+        java.util.Map<Integer, String> texts = new java.util.HashMap<>();
+        texts.put(7, "Your one-time password is below.\r\n\r\n12345678\r\n");
+        texts.put(3, "OTP の登録を受け付けました。\r\n受付番号 2026-10-30\r\n");
+        texts.put(5, "\r\n  654321  \r\n");
+        assertEquals(Arrays.asList(5, 7), ImapOtpFetcher.otpMailsWithCode(texts));
+    }
 }

@@ -205,10 +205,12 @@ public final class ImapOtpFetcher {
         }
 
         /**
-         * 使い終わった OTP メールを消して、LOGOUT して閉じる。1 回だけ効く。消すのは、このメールと、
-         * UID がこのメールより小さく、From が送信元と完全に一致するものすべて (範囲の上限は無い)。
-         * 取得の間に見た範囲 (scannedFrom 以降) は確かめ済みのものを使い、その手前は CLEANUP_UID_CHUNK ずつ古い方へ
-         * ヘッダを取り直す (SEARCH は使わない)。遡るのは timeoutMs の 3 分の 2 までで、残りは削除に使う。
+         * 使い終わった OTP メールを消して、LOGOUT して閉じる。1 回だけ効く。消すのは、このメールと、それより古い
+         * OTP メール (UID がこのメールより小さく、From が送信元と完全に一致し、本文に取得と同じ形のコードがあるもの)。
+         * 同じ送信元からの OTP 以外のメールは消さない。範囲の上限は無い。
+         * 取得の間に見た範囲 (scannedFrom 以降) は確かめ済みの送信元を使い、その手前は CLEANUP_UID_CHUNK ずつ古い方へ
+         * ヘッダを取り直す (SEARCH は使わない)。送信元が合ったものだけ本文を取って確かめる。
+         * 遡るのは timeoutMs の 3 分の 2 までで、残りは削除に使う。
          * 遡りきれなかった分は、次に成功したときの削除で消える。失敗しても結果には影響させない。
          * 呼ぶのはログイン (または中継) が成功したときだけ (SPEC.md「8. OTP メールの削除」)。
          */
@@ -220,19 +222,24 @@ public final class ImapOtpFetcher {
                 long scanUntil = startedAt + timeoutMs * 2 / 3;
                 stream.setReadLimits(timeoutMs, startedAt + timeoutMs);
                 java.util.TreeSet<Integer> toDelete = new java.util.TreeSet<>();
-                // このメールの From は見つけたときに確かめてある。
+                // このメールの From と本文のコードは見つけたときに確かめてある。
                 toDelete.add(uid);
+                java.util.TreeSet<Integer> known = new java.util.TreeSet<>();
                 for (int u : knownOtpUids) {
-                    if (u <= uid) toDelete.add(u);
+                    if (u < uid) known.add(u);
                 }
                 // 両端を決めるので n:* の落とし穴も無い。
                 int[] range = cleanupChunkBelow(Math.min(uid, scannedFrom));
                 try {
+                    toDelete.addAll(otpMailsWithCode(fetchTexts(stream, known)));
                     while (range != null && System.currentTimeMillis() < scanUntil) {
-                        // 消すのは From が OTP の送信元と完全に一致したものだけ (送信者名で名乗っただけのメールは消さない)。
+                        // 候補は From が OTP の送信元と完全に一致したものだけ (送信者名で名乗っただけのメールは消さない)。
+                        java.util.TreeSet<Integer> fromSender = new java.util.TreeSet<>();
                         for (FetchedMail m : fetchHeaders(stream, range[0], range[1])) {
-                            if (isOtpSender(m.fromHeader)) toDelete.add(m.uid);
+                            if (isOtpSender(m.fromHeader) && m.uid < uid) fromSender.add(m.uid);
                         }
+                        if (System.currentTimeMillis() >= scanUntil) break;
+                        toDelete.addAll(otpMailsWithCode(fetchTexts(stream, fromSender)));
                         range = cleanupChunkBelow(range[0]);
                     }
                 } catch (ImapException e) {
@@ -619,6 +626,39 @@ public final class ImapOtpFetcher {
         String status = words.length > 1 ? words[1] : "?";
         Matcher m = Pattern.compile("\\[CAPABILITY ([A-Za-z0-9 =+.-]{1,300})\\]").matcher(line);
         return m.find() ? status + " CAPABILITY " + m.group(1) : status;
+    }
+
+    /** uids の本文を 1 回の FETCH で取る。応答の無かった UID (消されていた) は入らない。 */
+    @NonNull
+    private static java.util.Map<Integer, String> fetchTexts(ImapStream stream, @NonNull java.util.Set<Integer> uids)
+            throws IOException, ImapException {
+        java.util.Map<Integer, String> texts = new java.util.HashMap<>();
+        if (uids.isEmpty()) return texts;
+        StringBuilder set = new StringBuilder();
+        for (int u : uids) {
+            if (set.length() > 0) set.append(',');
+            set.append(u);
+        }
+        String tag = stream.nextTag();
+        stream.note(tag + " UID FETCH (" + uids.size() + " 通) (BODY.PEEK[TEXT])");
+        stream.send(tag + " UID FETCH " + set + " (BODY.PEEK[TEXT])");
+        for (FetchedMail m : parseFetchedMails(stream.readResponsesUntilTagged(tag))) {
+            if (uids.contains(m.uid) && m.text != null) texts.put(m.uid, m.text);
+        }
+        return texts;
+    }
+
+    /**
+     * 本文に OTP のコード (取得と同じ extractCode の形) があるメールの UID。送信元は確かめ済みのものだけを渡す。
+     * 送信元が同じでも、コードの無いメール (登録の案内など) は消さない。
+     */
+    @NonNull
+    static java.util.List<Integer> otpMailsWithCode(@NonNull java.util.Map<Integer, String> texts) {
+        java.util.List<Integer> uids = new ArrayList<>();
+        for (java.util.Map.Entry<Integer, String> e : new java.util.TreeMap<>(texts).entrySet()) {
+            if (e.getValue() != null && extractCode(e.getValue()) != null) uids.add(e.getKey());
+        }
+        return uids;
     }
 
     /** 1 通の本文。メールが無くなっていた (FETCH の応答が無い) ら null。 */
