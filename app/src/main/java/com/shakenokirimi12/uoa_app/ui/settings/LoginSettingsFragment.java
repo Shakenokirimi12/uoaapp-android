@@ -125,7 +125,7 @@ public class LoginSettingsFragment extends Fragment {
             otpMethodLabel.setText(method == OtpMethod.AUTHENTICATOR
                     ? R.string.settings_otp_method_authenticator : R.string.settings_otp_method_mail);
             otpMethodDetail.setText(method == OtpMethod.AUTHENTICATOR
-                    ? (hasSecret() ? R.string.login_authenticator_with_secret : R.string.login_authenticator_without_secret)
+                    ? authenticatorDetail()
                     : R.string.settings_otp_method_mail_description);
             otpMethodDetail.setVisibility(View.VISIBLE);
         }
@@ -157,6 +157,13 @@ public class LoginSettingsFragment extends Fragment {
 
     private static void setVisible(boolean visible, View... views) {
         for (View v : views) v.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    /** 認証アプリ方式の説明。鍵を止めている間は「自動で再ログインします」と言わない。 */
+    private int authenticatorDetail() {
+        if (!hasSecret()) return R.string.login_authenticator_without_secret;
+        return Totp.parse(prefs.usableTotpOtpauthFor(prefs.getUsername())) != null
+                ? R.string.login_authenticator_with_secret : R.string.login_authenticator_key_suspended;
     }
 
     private boolean hasSecret() {
@@ -215,7 +222,7 @@ public class LoginSettingsFragment extends Fragment {
         boolean unknown = !prefs.isOtpMethodKnown();
         boolean blocked = noAccount || unknown || prefs.isCredentialsInvalid();
         String message = (unknown ? "" : getString(current == OtpMethod.AUTHENTICATOR
-                ? (hasSecret() ? R.string.login_authenticator_with_secret : R.string.login_authenticator_without_secret)
+                ? authenticatorDetail()
                 : R.string.settings_otp_method_mail_description) + "\n\n")
                 + getString(noAccount ? R.string.otp_switch_blocked_no_account
                 : unknown ? R.string.otp_switch_blocked_unknown

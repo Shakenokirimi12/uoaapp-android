@@ -178,8 +178,8 @@
     <string name="auth_mail_dispatch_notify_title">自動でログインしています</string>
     <string name="auth_mail_dispatch_notify_text">時間割と成績を更新するため、自動でログインしています。大学から OTP メールが 1 通届きます。</string>
     <string name="auth_credentials_invalid_title">ユーザー名かパスワードが違います</string>
-    <string name="auth_credentials_invalid_text">保存しているユーザー名かパスワードで大学のシステムにログインできませんでした。入力し直すまで、ログインを止めています。</string>
-    <string name="auth_credentials_invalid_action">入力し直す</string>
+    <string name="auth_credentials_invalid_text">保存しているユーザー名かパスワードでログインできませんでした。どちらかを変えるまで、ログインを止めます。同じ値を入れ直しても再開しません。</string>
+    <string name="auth_credentials_invalid_action">ユーザー名かパスワードを変える</string>
     <!-- Push -->
     <string name="push_channel_name">課題の期限通知</string>
     <!-- Assignment countdown -->
@@ -261,6 +261,7 @@
     <string name="close">閉じる</string>
     <string name="login_not_logged_in">未ログイン</string>
     <string name="login_authenticator_with_secret">コードはこのアプリが自動で入力します。バックグラウンドでも自動で再ログインします。</string>
+    <string name="login_authenticator_key_suspended">このアプリのキーを止めています。登録し直すまで、ログインのたびにコードを入力します。</string>
     <string name="login_authenticator_without_secret">このアプリにキーがありません。登録し直してください。</string>
     <string name="login_reregister_needed_title">認証アプリの登録し直しが必要です</string>
     <string name="login_reregister_needed_text">このアプリにキーがありません。登録し直すと、このアプリがコードを自動で入力し、バックグラウンドでも再ログインします。それまではログインのたびにコードを入力します。</string>
