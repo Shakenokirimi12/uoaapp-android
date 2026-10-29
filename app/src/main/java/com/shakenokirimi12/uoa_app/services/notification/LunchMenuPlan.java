@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.TimeZone;
 
 /**
- * 学食メニュー通知の判断 (Android に依存しない部分。LunchMenuPlanTest で固定)。
+ * 学食メニュー通知の判断 (LunchMenuPlanTest で固定)。判断は Android に依存しない。文字にする Content.title / body だけ Context を取る。
  * iOS の NotificationManager.scheduleLunchNotifications と同じ文面・同じ条件:
  * その日のメニューが公開されている日だけ、設定した時刻に 1 回。メニューが無い日は何も出さない。
  */

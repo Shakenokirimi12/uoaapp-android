@@ -285,3 +285,28 @@
 - Auto attendance notification
     - `自動出席登録完了` -> `auto_attendance_registered_title` (LocationGeofenceService.java)
     - `%1$s の出席を自動登録しました。` -> `auto_attendance_registered_text_format` (LocationGeofenceService.java)
+
+- Removed (no reference anywhere, including the skipped files)
+    - `courses_active`, `courses_past`, `gakushoku_fish`, `gakushoku_dinner`
+    - `settings_username`, `settings_password`, `settings_general`, `settings_reset`
+    - `onboarding_welcome`, `onboarding_disclaimer`, `onboarding_skip`, `onboarding_done`
+    - `loading`, `error_generic`, `remaining_format`, `feature_disabled`
+
+- Signature changes needed to take a Context (callers updated)
+    - `GroupedClass.formatPeriods(Context)`, `FacilityUsage.getStatusMessage(Context)`
+    - `MainTabs.label(Context, key)`, `MainTabs.moreLabel(Context, key)`
+    - `TimetableGrid.dayLabel(Context, day)`, `rowLabel(Context, row)`, `freeSummary(Context, ...)` (the merge rule is now `freeRanges`)
+    - `TimetableDates.*(Context, ...)`, `FetchStatus.failureText(Context, ...)` (the time label is now `lastUpdatedLabel`)
+    - `TimetableShareApi.Failure.message(Context)` replaces `getMessage()` as the text for the screen
+    - `LunchMenuPlan.Content` holds `date` and `lines`; `title(Context)` / `body(Context)` build the text
+    - `AssignmentReminderSync.presetLabel(Context, minutes)` is public and also builds the notification timing chips
+    - Unit tests adjusted to the new shapes: `FetchStatusTest`, `LunchMenuPlanTest`, `TimetableShareTest`
+
+- Left as Japanese on purpose (see `scripts/check-strings.py`, part 3)
+    - `AppConfigService.FEATURE_DISABLED_MESSAGE`: a String constant that `MoodleService` / `CampusSquareService` (skip list) pass to callbacks
+    - `FacilitiesFragment`: compares an error message with that constant
+    - `AutoAbsencePlanner`: matches CampusSquare event text (休講 / オンライン / 遠隔)
+    - `TimetableShareStore.UNNAMED`: persisted friend name when the sender sent none
+    - `GakushokuService`, `SyllabusService`: exception text that no screen shows
+    - `OtpDiagnostics`: diagnostic event text sent to Wana
+    - `nav_graph.xml` labels of the two IdP destinations
