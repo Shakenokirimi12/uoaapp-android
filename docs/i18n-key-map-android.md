@@ -259,3 +259,29 @@
     - `自分も授業` -> `timetable_grid_mine_busy` (TimetableGridView.java)
     - `自分は %1$s` -> `timetable_grid_mine_class_spoken_format` (TimetableGridView.java)
     - `自分` -> `timetable_legend_mine_label` (TimetableGridView.java)
+
+- Main tabs, fetch status
+    - `成績` -> `main_tab_grades` (MainTabs.java)
+    - `成績一覧` -> `more_tab_grades` (MainTabs.java)
+    - `施設利用` -> `main_tab_facilities` (MainTabs.java)
+    - `ホーム` -> `nav_home` (MainTabs.java)
+    - `カレンダー` -> `nav_calendar` (MainTabs.java)
+    - `履修` -> `nav_courses` (MainTabs.java)
+    - `学食` -> `nav_gakushoku` (MainTabs.java)
+    - `その他` -> `nav_more` (MainTabs.java)
+    - `学食メニュー` -> `gakushoku_title` (MainTabs.java)
+    - `施設利用状況` -> `facilities_title` (MainTabs.java)
+    - `取得できませんでした（まだ一度も取得できていません）` -> `fetch_status_never_fetched` (FetchStatus.java)
+    - `取得できませんでした（最終更新 %1$s）` -> `fetch_status_failed_format` (FetchStatus.java)
+
+- Lunch menu notification
+    - `今日の学食メニュー (%1$s)` -> `lunch_menu_notification_title_format` (LunchMenuPlan.java)
+    - `ランチ` -> `gakushoku_lunch` (LunchMenuPlan.java)
+    - `麺類` -> `gakushoku_category_noodles` (LunchMenuPlan.java)
+    - `魚` -> `gakushoku_category_fish` (LunchMenuPlan.java)
+    - `サラダ` -> `gakushoku_salad` (LunchMenuPlan.java)
+    - `夕食` -> `gakushoku_category_dinner` (LunchMenuPlan.java)
+
+- Auto attendance notification
+    - `自動出席登録完了` -> `auto_attendance_registered_title` (LocationGeofenceService.java)
+    - `%1$s の出席を自動登録しました。` -> `auto_attendance_registered_text_format` (LocationGeofenceService.java)

@@ -557,4 +557,20 @@
     <string name="timetable_grid_same_class_spoken">自分と同じ授業</string>
     <string name="timetable_grid_mine_busy">自分も授業</string>
     <string name="timetable_grid_mine_class_spoken_format">自分は %1$s</string>
+
+    <!-- Tabs -->
+    <string name="main_tab_grades">成績</string>
+    <string name="more_tab_grades">成績一覧</string>
+    <string name="main_tab_facilities">施設利用</string>
+
+    <!-- Fetch status -->
+    <string name="fetch_status_never_fetched">取得できませんでした（まだ一度も取得できていません）</string>
+    <string name="fetch_status_failed_format">取得できませんでした（最終更新 %1$s）</string>
+
+    <!-- Lunch menu notification -->
+    <string name="lunch_menu_notification_title_format">今日の学食メニュー (%1$s)</string>
+
+    <!-- Attendance -->
+    <string name="auto_attendance_registered_title">自動出席登録完了</string>
+    <string name="auto_attendance_registered_text_format">%1$s の出席を自動登録しました。</string>
 </resources>

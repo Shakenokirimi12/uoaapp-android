@@ -48,7 +48,7 @@ public class MoreFragment extends Fragment {
         for (String key : keys) {
             if (index > 0) features.addView(inflater.inflate(R.layout.item_divider, features, false), index++);
             TextView row = (TextView) inflater.inflate(R.layout.item_more_row, features, false);
-            row.setText(MainTabs.moreLabel(key));
+            row.setText(MainTabs.moreLabel(requireContext(), key));
             row.setCompoundDrawablesRelativeWithIntrinsicBounds(MainTabs.iconRes(key), 0, R.drawable.ic_chevron_right, 0);
             int destination = MainTabs.destinationId(key);
             row.setOnClickListener(v -> Navigation.findNavController(v).navigate(destination));

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.models.GakushokuMenu;
 
 import org.junit.Test;
@@ -65,8 +66,13 @@ public class LunchMenuPlanTest {
         LunchMenuPlan.Content content = LunchMenuPlan.decide(menu, at, at + 60_000);
 
         assertNotNull(content);
-        assertEquals("今日の学食メニュー (10/16)", content.title);
-        assertEquals("ランチ: カレー / サラダ付き\n魚: 鮭定食", content.body);
+        // 文字にするのは通知を出す側 (Context が要る)。ここでは日付とカテゴリごとの品目を確かめる。
+        assertEquals("10/16", content.date);
+        assertEquals(2, content.lines.size());
+        assertEquals(R.string.gakushoku_lunch, content.lines.get(0).label);
+        assertEquals(Arrays.asList("カレー", "サラダ付き"), content.lines.get(0).items);
+        assertEquals(R.string.gakushoku_category_fish, content.lines.get(1).label);
+        assertEquals(Collections.singletonList("鮭定食"), content.lines.get(1).items);
     }
 
     @Test

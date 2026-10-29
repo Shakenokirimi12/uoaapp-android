@@ -1,5 +1,6 @@
 package com.shakenokirimi12.uoa_app.ui.util;
 
+import android.content.Context;
 import android.view.View;
 import android.widget.TextView;
 
@@ -46,10 +47,10 @@ public final class FetchStatus {
         return failed ? Empty.UNAVAILABLE : Empty.LOADING;
     }
 
-    /** 「取得できませんでした（最終更新 10/16 12:34）」。一度も取れていなければその旨。 */
-    @NonNull
-    public static String failureText(long lastFetchedAt, long now, @NonNull TimeZone zone) {
-        if (lastFetchedAt <= 0) return "取得できませんでした（まだ一度も取得できていません）";
+    /** 「10/16 12:34」(同じ日なら「12:34」)。一度も取れていなければ null。 */
+    @Nullable
+    public static String lastUpdatedLabel(long lastFetchedAt, long now, @NonNull TimeZone zone) {
+        if (lastFetchedAt <= 0) return null;
         Calendar fetched = Calendar.getInstance(zone);
         fetched.setTimeInMillis(lastFetchedAt);
         Calendar today = Calendar.getInstance(zone);
@@ -58,14 +59,22 @@ public final class FetchStatus {
                 && fetched.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR);
         SimpleDateFormat f = new SimpleDateFormat(sameDay ? "HH:mm" : "M/d HH:mm", Locale.JAPAN);
         f.setTimeZone(zone);
-        return "取得できませんでした（最終更新 " + f.format(new Date(lastFetchedAt)) + "）";
+        return f.format(new Date(lastFetchedAt));
+    }
+
+    /** 「取得できませんでした（最終更新 10/16 12:34）」。一度も取れていなければその旨。 */
+    @NonNull
+    public static String failureText(@NonNull Context ctx, long lastFetchedAt, long now, @NonNull TimeZone zone) {
+        String label = lastUpdatedLabel(lastFetchedAt, now, zone);
+        if (label == null) return ctx.getString(R.string.fetch_status_never_fetched);
+        return ctx.getString(R.string.fetch_status_failed_format, label);
     }
 
     /** notice は fetch_notice (view_status_notice) のルート。null なら何もしない。 */
     public static void showFailure(@Nullable View notice, long lastFetchedAt) {
         if (notice == null) return;
         TextView text = notice.findViewById(R.id.status_notice_text);
-        text.setText(failureText(lastFetchedAt, System.currentTimeMillis(), TimeZone.getDefault()));
+        text.setText(failureText(notice.getContext(), lastFetchedAt, System.currentTimeMillis(), TimeZone.getDefault()));
         View dismiss = notice.findViewById(R.id.status_notice_dismiss);
         if (dismiss != null) dismiss.setOnClickListener(v -> notice.setVisibility(View.GONE));
         notice.setVisibility(View.VISIBLE);

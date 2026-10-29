@@ -79,7 +79,7 @@ public class NavSettingsFragment extends Fragment {
     }
 
     private void addTabRow(LinearLayout parent, String tabKey, boolean isMain) {
-        String label = MainTabs.label(tabKey);
+        String label = MainTabs.label(requireContext(), tabKey);
         // ホームは起動時の画面なので、下タブから外せない (MainTabs.mainTabKeys が先頭に戻す)。
         boolean movable = !(isMain && MainTabs.HOME.equals(tabKey));
 

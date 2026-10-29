@@ -1,9 +1,11 @@
 package com.shakenokirimi12.uoa_app.ui.util;
 
+import android.content.Context;
 import android.view.Menu;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.shakenokirimi12.uoa_app.R;
@@ -31,11 +33,11 @@ public final class MainTabs {
     private static final class Tab {
         final int destinationId;
         final int iconRes;
-        final String label;
+        @StringRes final int label;
         /** 「その他」の行に出す名前。下タブより幅があるので、略さない名前にする。 */
-        final String moreLabel;
+        @StringRes final int moreLabel;
 
-        Tab(int destinationId, int iconRes, String label, String moreLabel) {
+        Tab(int destinationId, int iconRes, @StringRes int label, @StringRes int moreLabel) {
             this.destinationId = destinationId;
             this.iconRes = iconRes;
             this.label = label;
@@ -45,12 +47,12 @@ public final class MainTabs {
 
     private static final Map<String, Tab> TABS = new LinkedHashMap<>();
     static {
-        TABS.put(HOME, new Tab(R.id.navigation_home, R.drawable.ic_home, "ホーム", "ホーム"));
-        TABS.put("calendar", new Tab(R.id.navigation_calendar, R.drawable.ic_calendar, "カレンダー", "カレンダー"));
-        TABS.put("courses", new Tab(R.id.navigation_courses, R.drawable.ic_courses, "履修", "履修"));
-        TABS.put("grades", new Tab(R.id.navigation_grades, R.drawable.ic_grades, "成績", "成績一覧"));
-        TABS.put("gakushoku", new Tab(R.id.navigation_gakushoku, R.drawable.ic_restaurant, "学食", "学食メニュー"));
-        TABS.put("facilities", new Tab(R.id.navigation_facilities, R.drawable.ic_building, "施設利用", "施設利用状況"));
+        TABS.put(HOME, new Tab(R.id.navigation_home, R.drawable.ic_home, R.string.nav_home, R.string.nav_home));
+        TABS.put("calendar", new Tab(R.id.navigation_calendar, R.drawable.ic_calendar, R.string.nav_calendar, R.string.nav_calendar));
+        TABS.put("courses", new Tab(R.id.navigation_courses, R.drawable.ic_courses, R.string.nav_courses, R.string.nav_courses));
+        TABS.put("grades", new Tab(R.id.navigation_grades, R.drawable.ic_grades, R.string.main_tab_grades, R.string.more_tab_grades));
+        TABS.put("gakushoku", new Tab(R.id.navigation_gakushoku, R.drawable.ic_restaurant, R.string.nav_gakushoku, R.string.gakushoku_title));
+        TABS.put("facilities", new Tab(R.id.navigation_facilities, R.drawable.ic_building, R.string.main_tab_facilities, R.string.facilities_title));
     }
 
     private MainTabs() {}
@@ -119,7 +121,7 @@ public final class MainTabs {
             // item id = destination id にしておくと NavigationUI がそのまま遷移させてくれる。
             menu.add(Menu.NONE, tab.destinationId, Menu.NONE, tab.label).setIcon(tab.iconRes);
         }
-        menu.add(Menu.NONE, R.id.navigation_more, Menu.NONE, "その他").setIcon(R.drawable.ic_more);
+        menu.add(Menu.NONE, R.id.navigation_more, Menu.NONE, R.string.nav_more).setIcon(R.drawable.ic_more);
     }
 
     /**
@@ -153,8 +155,8 @@ public final class MainTabs {
     public static int iconRes(@NonNull String key) { return TABS.get(key).iconRes; }
 
     @NonNull
-    public static String label(@NonNull String key) { return TABS.get(key).label; }
+    public static String label(@NonNull Context ctx, @NonNull String key) { return ctx.getString(TABS.get(key).label); }
 
     @NonNull
-    public static String moreLabel(@NonNull String key) { return TABS.get(key).moreLabel; }
+    public static String moreLabel(@NonNull Context ctx, @NonNull String key) { return ctx.getString(TABS.get(key).moreLabel); }
 }
