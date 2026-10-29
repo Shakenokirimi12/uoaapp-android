@@ -93,7 +93,7 @@ public class SyncWorker extends Worker {
         if (!prefs.hasCredentials()) return Result.success();
 
         // ID/PW 誤りが確定している間は試みない。ここを止めないと、誤ったパスワードで
-        // 定期的にログインを試行し続け、大学側でアカウントがロックされうる。
+        // 定期的にログインを試行し続け、大学側でアカウントがロックされうる。印は ID かパスワードが変わると外れる。
         if (prefs.isCredentialsInvalid()) {
             Log.w(TAG, "Skipping sync: credentials marked invalid");
             return Result.success();
@@ -113,9 +113,9 @@ public class SyncWorker extends Worker {
         DataCache cache = DataCache.getInstance(ctx);
         boolean anyFailure = false;
         // 保存済みセッションが切れていて、OTP 付きの新規ログインが要るが、ここでは始められなかった。失敗とは数えない。
-        // 認証アプリ方式でこのアプリが鍵を持っていれば、サービスがこの場でログインし直してデータを取るので、ここには
-        // 来ない。来るのは、メール方式 (裏ではログインしない)・鍵が無い・前回のバックグラウンドのログインの失敗で
-        // 止めている・間隔の制限 (BackgroundLoginPolicy) のとき。
+        // 来るのは、バックグラウンドの新規ログインの条件 (BackgroundLoginPolicy: 止めた印・鍵が無いか止めている・
+        // 間隔の制限・メール方式の 6 時間の枠) を満たさないとき。通知は出さない (SPEC.md「12. 通知」)。
+        // Moodle → CampusSquare の順に直列にする。2 本目は 1 本目が保存した IdP の SSO で入る。
         boolean loginRequired = false;
 
         // 1. Moodle
@@ -148,7 +148,7 @@ public class SyncWorker extends Worker {
                 } else {
                     anyFailure = true;
                     if (MoodleService.isInvalidCredentialsError(err)) {
-                        prefs.setCredentialsInvalid(true);
+                        // 誤りの印と通知は SessionCoordinator (BackgroundLoginPolicy) が付けている。
                         Log.w(TAG, "Credentials rejected; disabling automatic sync until password is re-entered");
                         // 同じ資格情報で CampusSquare も試すと試行回数が倍になるだけなので、ここで止める。
                         return Result.success();
@@ -176,8 +176,8 @@ public class SyncWorker extends Worker {
                 anyFailure = true;
                 // CampusSquare 側だけで ID/PW 誤りが判明することもある (Moodle が killswitch で
                 // 止まっている、または片方だけ認証方式が変わった場合)。
+                // 誤りの印と通知は SessionCoordinator (BackgroundLoginPolicy) が付けている。
                 if (csError.get() != null && com.shakenokirimi12.uoa_app.services.AuthErrors.isInvalidCredentials(csError.get())) {
-                    prefs.setCredentialsInvalid(true);
                     Log.w(TAG, "CampusSquare rejected credentials; disabling automatic sync");
                 }
             }
@@ -185,12 +185,6 @@ public class SyncWorker extends Worker {
 
         boolean success = !anyFailure && !loginRequired;
         if (success) prefs.setLastSync(System.currentTimeMillis());
-        if (loginRequired) {
-            LoginRequiredNotice.postAtMostOncePerDay(ctx);
-        } else if (success) {
-            // ログインし直して同期が通ったら、前に出した「ログインが必要です」は役目を終えている。
-            LoginRequiredNotice.cancel(ctx);
-        }
         // 失敗は次回の定期実行に任せる。retry にすると指数バックオフで短時間に再ログインを重ねる。
         return Result.success();
     }

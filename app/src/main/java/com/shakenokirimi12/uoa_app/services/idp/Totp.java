@@ -134,6 +134,12 @@ public final class Totp {
         return Math.floorDiv(timeMillis / 1000L, p.periodSeconds);
     }
 
+    /**
+     * 窓の残りがこれより短ければ、そのコードは作らずに次の窓を待つ。送る間 (PC が入れて送る間も) に切り替わって
+     * 弾かれうるため。アプリのログインと PC への中継で同じ値を使う (SPEC.md「3.3 認証アプリ方式」)。
+     */
+    public static final long MIN_MS_LEFT_TO_SEND = 5_000L;
+
     /** 今の窓が終わるまでのミリ秒。 */
     public static long millisLeftInWindow(@NonNull Params p, long timeMillis) {
         long periodMs = p.periodSeconds * 1000L;

@@ -31,10 +31,18 @@ public final class SeciossError extends Exception {
          */
         SESSION_TIMED_OUT,
         /**
-         * OTP が必要だが、ユーザーがメール自動取得 (IMAP) を許可していない。バックグラウンド同期は
-         * OTP 入力を待ち受けられないため、ここで明示的に止めて設定画面からの手動ログインに誘導する。
+         * 人の操作が要るので、この文脈では新規ログインを進めない。バックグラウンドで新規ログインの条件
+         * (BackgroundLoginPolicy) を満たさない、メール方式の 6 時間の枠が空いていない、前面で OTP の入力を
+         * 取り消した、など。アプリ内の事情なので、バックグラウンドの「止めた印」は立てない。次に前面へ来たときに任せる。
          */
         INTERACTIVE_LOGIN_REQUIRED,
+        /**
+         * 認証アプリのコードを作れる未使用の窓が、待てる間に来なかった (同じ窓を中継や別のログインが使った)。
+         * アプリ内の事情なので、バックグラウンドの「止めた印」は立てない (SPEC.md「6. バックグラウンドログイン」)。
+         */
+        TOTP_STEP_UNAVAILABLE,
+        /** バックグラウンドのメール方式で、OTP メールを IMAP から取れなかった (手入力は待たない)。 */
+        OTP_FETCH_FAILED,
         /**
          * ID/PW が誤っている。同じ資格情報でリトライし続けると大学側でアカウントがロックされうるため、
          * 他の失敗と必ず区別して呼び出し元に伝える。
@@ -108,6 +116,10 @@ public final class SeciossError extends Exception {
                 return "IdP側のセッションがタイムアウトしました。もう一度ログインからやり直してください。";
             case INTERACTIVE_LOGIN_REQUIRED:
                 return "ワンタイムパスワードの入力が必要です。";
+            case TOTP_STEP_UNAVAILABLE:
+                return "認証アプリのコードを作れませんでした。少し待ってからもう一度ログインしてください。";
+            case OTP_FETCH_FAILED:
+                return "OTP メールを読み取れませんでした。アプリを開いてログインしてください。";
             case MAINTENANCE:
                 return "大学のシステムがメンテナンス中です。終了後にもう一度お試しください。\n" + detail;
             case ACCESS_DENIED:
@@ -146,6 +158,10 @@ public final class SeciossError extends Exception {
                 return "IdP側のセッションがタイムアウトしました。もう一度やり直してください。";
             case INTERACTIVE_LOGIN_REQUIRED:
                 return "ワンタイムパスワードの入力が必要です。設定画面から手動でログインしてください。";
+            case TOTP_STEP_UNAVAILABLE:
+                return "認証アプリのコードを作れませんでした。少し待ってからもう一度やり直してください。";
+            case OTP_FETCH_FAILED:
+                return "OTP メールを読み取れませんでした。もう一度やり直してください。";
             case MAINTENANCE:
                 return "大学のシステムがメンテナンス中です。終了後にもう一度お試しください。\n" + detail;
             case ACCESS_DENIED:

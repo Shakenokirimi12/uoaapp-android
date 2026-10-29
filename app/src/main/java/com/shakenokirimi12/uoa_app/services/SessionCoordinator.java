@@ -14,12 +14,11 @@ import java.util.concurrent.FutureTask;
  *   1. 直近 TRUST_WINDOW_MS 以内に検証済み → そのまま使う (リクエスト 0)
  *   2. それ以外は probe で 1 リクエストだけ確認し、認証済みなら検証時刻だけ更新
  *   3. 未認証なら単一飛行でログイン。同時に来た呼び出しは同じログインの結果を待つ。
+ *      ID / パスワードが誤りと分かっている資格情報では、どの文脈でも始めない (Unattended.credentialsInvalid)。
  *      バックグラウンド (AuthorizationContext.BACKGROUND) からの要求は、Unattended (BackgroundLoginPolicy)
- *      が許したときだけ新規ログインを始める: 認証アプリ方式でこのアプリが鍵を持ち、パスワードが前回成功した
- *      ものと同じで、前のバックグラウンドのログインが失敗しておらず、間隔の制限 (30 分) も通ったとき。
- *      メール方式では決して始めない (ログイン 1 回 = OTP メール 1 通のため)。始めないときは
+ *      が許したときだけ新規ログインを始める (方式ごとの条件と間隔は BackgroundLoginPolicy)。始めないときは
  *      INTERACTIVE_LOGIN_REQUIRED を返して諦め、次にユーザーが画面を開いたときに任せる。
- *      直前の障害系失敗から LOGIN_BACKOFF_MS 以内なら再試行しない
+ *      直前の前面の障害系失敗から LOGIN_BACKOFF_MS 以内なら再試行しない (バックグラウンドの失敗は前面を止めない)
  *
  * 各画面と SyncWorker はそれぞれ別のサービスインスタンス (= 別の単一スレッド executor) から
  * 同時にここへ来るため、素の static フィールドでは単一飛行が破れて二重ログイン (= 二重 OTP メール)
@@ -37,20 +36,23 @@ final class SessionCoordinator<S> {
      * (BackgroundLoginPolicy.forAccount)。既定 (NEVER) は決して始めない。
      */
     interface Unattended {
-        /** OTP を人もメールも使わずに用意できるか、など (間隔の制限は含まない)。lock の外で呼ぶ。 */
+        /** この資格情報は誤りと分かっている。前面でもバックグラウンドでもログインを始めない。lock の外で呼ぶ。 */
+        boolean credentialsInvalid();
+        /** バックグラウンドで始めてよいか (間隔の制限は含まない)。lock の外で呼ぶ。 */
         boolean permits();
         /** 間隔の制限。始めてよければ試行として記録して true。始めると決める直前に lock の下で呼ぶ。 */
         boolean claimSlot();
         /** ログインが成功した (文脈を問わない)。 */
         void succeeded();
-        /** バックグラウンドのログインが失敗した。 */
-        void failed(Exception e);
+        /** ログインが失敗した (background: バックグラウンドのログインだったか)。 */
+        void failed(Exception e, boolean background);
 
         Unattended NEVER = new Unattended() {
+            @Override public boolean credentialsInvalid() { return false; }
             @Override public boolean permits() { return false; }
             @Override public boolean claimSlot() { return false; }
             @Override public void succeeded() {}
-            @Override public void failed(Exception e) {}
+            @Override public void failed(Exception e, boolean background) {}
         };
     }
 
@@ -143,6 +145,7 @@ final class SessionCoordinator<S> {
         // 始めるかどうか (間隔の枠を取る) は下の lock の中で決める。
         boolean background = !context.allowsNewLogin();
         boolean mayLoginUnattended = background && unattended.permits();
+        boolean credentialsInvalid = unattended.credentialsInvalid();
 
         while (true) {
             FutureTask<S> task;
@@ -160,9 +163,11 @@ final class SessionCoordinator<S> {
                 } else {
                     // バックグラウンドでは、Unattended が許したときだけ新規ログインを始める。ここが唯一の判断点で、
                     // 許さなければ login クロージャ自体を呼ばない (フラグを見落とす経路を作らないため)。
+                    if (credentialsInvalid) throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
                     if (background && !mayLoginUnattended) {
                         throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
                     }
+                    // 記録するのは前面の失敗だけ (runLogin)。バックグラウンドの失敗で前面を待たせない。
                     if (lastFailure != null
                             && System.currentTimeMillis() - lastFailureAt < LOGIN_BACKOFF_MS) {
                         throw lastFailure;
@@ -204,8 +209,12 @@ final class SessionCoordinator<S> {
         return forceLogin(method, login, Unattended.NEVER);
     }
 
-    /** 前面のログインなので、成功したら unattended に伝える (パスワードの確認と、止めていた再ログインの解除)。 */
+    /**
+     * 前面のログインなので、成功したら unattended に伝える (パスワードの確認と、止めていた再ログインの解除)。
+     * 誤りと分かっている資格情報 (同じ値の入れ直し) では始めない。
+     */
     S forceLogin(Object method, Login<S> login, Unattended unattended) throws Exception {
+        if (unattended.credentialsInvalid()) throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
         while (true) {
             FutureTask<S> mine = null;
             FutureTask<S> other = null;
@@ -245,11 +254,12 @@ final class SessionCoordinator<S> {
             return session;
         } catch (ExecutionException e) {
             Exception cause = unwrap(e);
-            if (background) unattended.failed(cause);
+            unattended.failed(cause, background);
             synchronized (lock) {
                 if (inFlight == task) inFlight = null;
-                // ID/PW 誤りは呼び出し側が同期を止めるので、ここで抑える対象は障害系だけ。
-                if (!AuthErrors.isInvalidCredentials(cause.getMessage())) {
+                // ID/PW 誤りは誤りの印で止まるので、ここで抑える対象は障害系だけ。バックグラウンドの失敗は
+                // 止めた印 (BackgroundLoginPolicy) が受け持ち、前面のログインは待たせない。
+                if (!background && !AuthErrors.isInvalidCredentials(cause.getMessage())) {
                     lastFailure = cause;
                     lastFailureAt = System.currentTimeMillis();
                 }

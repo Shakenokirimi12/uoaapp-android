@@ -29,12 +29,19 @@ public class UoaApplication extends Application {
     @Nullable
     public static Activity getForegroundActivity() { return foregroundActivity; }
 
+    /** アプリの Context。サービス層からローカル通知を出すのに使う (AuthNotices)。onCreate より前は null。 */
+    @Nullable private static volatile android.content.Context appContext;
+
+    @Nullable
+    public static android.content.Context getAppContext() { return appContext; }
+
     /** 開始している (画面に見えている) Activity の数。0 から 1 になったときがアプリの前面復帰。 */
     private int startedActivities = 0;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        appContext = getApplicationContext();
         // 同期結果の通知は消した。端末の通知設定に、もう使わないチャンネルを残さない。
         getSystemService(android.app.NotificationManager.class)
                 .deleteNotificationChannel(com.shakenokirimi12.uoa_app.services.sync.SyncWorker.REMOVED_CHANNEL_ID);

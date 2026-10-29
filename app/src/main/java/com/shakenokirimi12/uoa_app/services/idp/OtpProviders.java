@@ -7,8 +7,11 @@ import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 
 /**
- * 設定と文脈から OtpProvider の実体を決める。
+ * IdP の画面・設定・文脈から OtpProvider の実体を決める。
  * 「どの方式を使うか」の判断はここだけが持ち、認証チェーンにも UI にも持たせない。
+ *
+ * 方式の正は IdP 側の登録で、設定の方式はその控え (SPEC.md「3.1 方式の決め方」)。ログインのたびに OTP 入力画面の
+ * otp_type を読んで選び、控えと違えば書き換える。読めなければ控えを、控えも無ければメール方式を使う。
  */
 public final class OtpProviders {
 
@@ -20,45 +23,38 @@ public final class OtpProviders {
     }
 
     /**
-     * バックグラウンドの文脈で、人もメールも使わずにコードを用意できるか。認証アプリ方式で、このアプリが
-     * uid の鍵を持っているときだけ true。受け取り方がまだ決まっていない端末とメール方式は false。
+     * uid のバックグラウンドの新規ログインで使う方式。人に入力を求めずにコードを用意できないなら null。
+     * - 控えが無い、または保存しているアカウントと違う: null (どの方式で入るか分からない)
+     * - 認証アプリ方式: このアプリが uid の止めていない鍵を持つときだけ
+     * - メール方式: IMAP の自動取得で用意する (送ってよいかは BackgroundLoginPolicy が 6 時間の枠で決める)
      */
+    @Nullable
+    public static OtpMethod unattendedMethod(@NonNull String uid) {
+        PreferenceManager prefs = PreferenceManager.getInstance();
+        if (!uid.equals(prefs.getUsername()) || !prefs.isOtpMethodKnown()) return null;
+        OtpMethod method = OtpMethod.from(prefs.getOtpMethod());
+        if (method == OtpMethod.AUTHENTICATOR && Totp.parse(prefs.usableTotpOtpauthFor(uid)) == null) return null;
+        return method;
+    }
+
     public static boolean canRunUnattended(@NonNull String uid, @NonNull String pass) {
-        return forLogin(uid, pass, AuthorizationContext.BACKGROUND).canRunUnattended();
+        return unattendedMethod(uid) != null;
     }
 
     @NonNull
     public static OtpProvider forLogin(@NonNull String uid, @NonNull String pass,
                                        @NonNull AuthorizationContext context) {
-        PreferenceManager prefs = PreferenceManager.getInstance();
-        String stored = prefs.getUsername();
-        // 保存しているアカウントとは別のアカウントでのログイン (設定画面でのアカウント変更の確認)。保存している
-        // 方式は前のアカウントのものなので使わず、IdP から読んだ方式でこのログインだけ進める (保存はしない)。
-        if (!stored.isEmpty() && !stored.equals(uid)) return new UndecidedOtpProvider(uid, pass, context, false);
-        if (!prefs.isOtpMethodKnown()) return new UndecidedOtpProvider(uid, pass, context, true);
-        return of(OtpMethod.from(prefs.getOtpMethod()), uid, pass, context);
-    }
-
-    /**
-     * OTP 入力画面の otp_type から、IdP がログインに使っている方式を読む。分からなければ null。
-     * 'mail' はメール方式のアカウントで確かめた値 (2026-09-07 の HAR、uoa-unofficial-extension の
-     * fixtures/idp/allotplogin.html)。'none' は同じページの JS が「OTP 未設定」(auth_err_020) として
-     * 扱う値なので方式には数えない。認証アプリ方式で出る値は未確かめなので、それ以外の値を認証アプリとみなす
-     * (OtpRegistrationCommit.idpUsesMethod と同じ見分け方)。
-     */
-    @Nullable
-    static OtpMethod methodFromOtpType(@Nullable String otpType) {
-        if (otpType == null || otpType.trim().isEmpty() || "none".equalsIgnoreCase(otpType.trim())) return null;
-        return "mail".equalsIgnoreCase(otpType.trim()) ? OtpMethod.MAIL : OtpMethod.AUTHENTICATOR;
+        return new ResolvingOtpProvider(uid, pass, context);
     }
 
     @NonNull
     static OtpProvider of(@NonNull OtpMethod method, @NonNull String uid, @NonNull String pass,
-                                  @NonNull AuthorizationContext context) {
+                          @NonNull AuthorizationContext context) {
         switch (method) {
             case AUTHENTICATOR:
+                // 止めた鍵 (2 回弾かれた) は自動では使わない。前面では手入力になる (SPEC.md「7.2」)。
                 return new AuthenticatorOtpProvider(uid, context,
-                        () -> PreferenceManager.getInstance().totpOtpauthFor(uid));
+                        () -> PreferenceManager.getInstance().usableTotpOtpauthFor(uid));
             case MAIL:
             default:
                 return new MailOtpProvider(uid, pass, context);
@@ -66,52 +62,107 @@ public final class OtpProviders {
     }
 
     /**
-     * 受け取り方がまだ決まっていない端末 (新しく入れた・復元した・アカウントを変えた) のログイン。
-     * 受け取り方は大学側 (IdP) に登録されている方式と揃っていないとログインできないので、既定のメールを
-     * 決め打ちせず、OTP 入力画面の otp_type から IdP の方式を読んで保存し、その方式で続ける。
-     * 読めなければメール方式で進み、保存はしない (次のログインでまた読む)。persist が false (保存している
-     * アカウントとは別のアカウントでのログイン) なら、読んだ方式で進むだけで保存しない。
-     * iOS は初期設定で本人に方式を選んでもらう。Android の初期設定にはその段が無いので、こうしている。
+     * OTP 入力画面に着くまでは方式を決めない。着いたら otp_type で選ぶ (forOtpPage)。
+     * 保存しているアカウントとは別のアカウントでのログイン (設定画面でのアカウント変更の確認) では、保存している
+     * 控えと鍵は前のアカウントのものなので使わず、書き換えもしない。
      */
-    private static final class UndecidedOtpProvider implements OtpProvider {
+    private static final class ResolvingOtpProvider implements OtpProvider {
         private final String uid;
         private final String pass;
         private final AuthorizationContext context;
-        private final OtpProvider fallback;
-        private final boolean persist;
+        /** このアカウントの控えを読み書きしてよいか (保存しているアカウントと同じ、または未保存)。 */
+        private final boolean ownsSettings;
 
-        UndecidedOtpProvider(String uid, String pass, AuthorizationContext context, boolean persist) {
+        ResolvingOtpProvider(String uid, String pass, AuthorizationContext context) {
             this.uid = uid;
             this.pass = pass;
             this.context = context;
-            this.fallback = new MailOtpProvider(uid, pass, context);
-            this.persist = persist;
+            String stored = PreferenceManager.getInstance().getUsername();
+            this.ownsSettings = stored.isEmpty() || stored.equals(uid);
         }
 
-        @Override public boolean requiresMailDispatch() { return fallback.requiresMailDispatch(); }
+        @Nullable
+        private OtpMethod cached() {
+            PreferenceManager prefs = PreferenceManager.getInstance();
+            if (!ownsSettings || !prefs.isOtpMethodKnown()) return null;
+            return OtpMethod.from(prefs.getOtpMethod());
+        }
+
+        private OtpProvider fallback() {
+            OtpMethod cached = cached();
+            return of(cached != null ? cached : OtpMethod.MAIL, uid, pass, context);
+        }
+
+        // forOtpPage の前に問われたときは控えの方式で答える (SeciossIdPClient は必ず forOtpPage を先に呼ぶ)。
+        @Override public boolean requiresMailDispatch() { return fallback().requiresMailDispatch(); }
 
         @NonNull
-        @Override public String code() throws Exception { return fallback.code(); }
+        @Override public String code() throws Exception { return fallback().code(); }
+
+        @Override public boolean canRunUnattended() { return ownsSettings && unattendedMethod(uid) != null; }
 
         @NonNull
         @Override public OtpProvider forOtpPage(@Nullable String otpType) {
-            OtpMethod method = methodFromOtpType(otpType);
-            if (method == null) return fallback;
-            if (!persist) return of(method, uid, pass, context);
-            PreferenceManager.getInstance().adoptOtpMethodFromIdp(method);
-            // 登録の完了がほぼ同時に別の方式を書いていたら、そちらに従う (adopt は決まっていれば書かない)。
-            return of(OtpMethod.from(PreferenceManager.getInstance().getOtpMethod()), uid, pass, context);
+            OtpMethod read = OtpMethod.fromOtpType(otpType);
+            OtpMethod cached = cached();
+            reportOtpType(otpType, read, cached);
+            if (read == null) return fallback();
+            if (ownsSettings) {
+                PreferenceManager prefs = PreferenceManager.getInstance();
+                // 控えは IdP の値に揃える (別の場所で登録し直した場合も、次のログインで追従する)。
+                prefs.recordOtpMethodFromIdp(read);
+                // IdP がメール方式なら、このアカウントの認証アプリの鍵は使えないので消す
+                // (アプリから切り替えたときと同じ。SPEC.md「3.1 方式の決め方」、decisions D-12)。
+                if (read == OtpMethod.MAIL && prefs.totpOtpauthFor(uid) != null) prefs.clearTotp();
+            }
+            return of(read, uid, pass, context);
+        }
+
+        /**
+         * otp_type の生の値を OTP 診断に残す。認証アプリ方式で何が来るかが未確認なので、実データで確かめる
+         * (秘密ではない。設定「利用状況と診断情報を送る」がオフなら送らない)。
+         */
+        private void reportOtpType(@Nullable String raw, @Nullable OtpMethod read, @Nullable OtpMethod cached) {
+            try {
+                java.util.Map<String, String> tags = new java.util.TreeMap<>();
+                tags.put("otp_type", otpTypeLabel(raw));
+                tags.put("otp_type_method", read != null ? read.value : "unknown");
+                tags.put("cached_method", cached != null ? cached.value : "unknown");
+                tags.put("login_context", context.allowsNewLogin() ? "interactive" : "background");
+                com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.sendAsync(java.util.Collections.singletonList(
+                        com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.event("IdPOtpType", null,
+                                com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.CONTEXT_LOGIN,
+                                read != null ? read.value : "unknown",
+                                com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.supportId(), tags,
+                                new com.google.gson.JsonObject(), java.util.Collections.emptyList(),
+                                com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.Build.current(),
+                                System.currentTimeMillis())));
+            } catch (RuntimeException e) {
+                // 診断が送れなくてもログインは続ける (単体テストでは android の API が使えない)。
+            }
         }
     }
 
+    /** 診断に載せる otp_type。null は "(absent)"、空は "(empty)"。英数と - _ だけを 32 文字まで残す。 */
+    @NonNull
+    static String otpTypeLabel(@Nullable String raw) {
+        if (raw == null) return "(absent)";
+        String cleaned = raw.trim().replaceAll("[^A-Za-z0-9_-]", "?");
+        if (cleaned.isEmpty()) return "(empty)";
+        return cleaned.length() > 32 ? cleaned.substring(0, 32) : cleaned;
+    }
+
     /**
-     * メールで届いたコードを IMAP から取得し、取れなければ入力を求める。
-     * 取得と入力の出し分けは OtpPromptCoordinator が持つ。
+     * メールで届いたコードを IMAP から取得し、取れなければ (前面だけ) 入力を求める。
+     * 取得と入力の出し分けは OtpPromptCoordinator が持つ。取れたメールは IdP がコードを受け付けてから消す。
      */
-    private static final class MailOtpProvider implements OtpProvider {
+    static final class MailOtpProvider implements OtpProvider {
         private final String uid;
         private final String pass;
         private final AuthorizationContext context;
+        /** 直前の code() で使ったメール (接続を持ったまま)。手入力なら null。 */
+        @Nullable private ImapOtpFetcher.OtpMail mail;
+        @Nullable private String sent;
 
         MailOtpProvider(String uid, String pass, AuthorizationContext context) {
             this.uid = uid;
@@ -121,23 +172,71 @@ public final class OtpProviders {
 
         @Override public boolean requiresMailDispatch() { return true; }
 
+        @Override public boolean canRunUnattended() { return true; }
+
+        /** バックグラウンドでは、端末全体で 6 時間に 1 回の枠を、送信を頼む直前に取る (BackgroundLoginPolicy)。 */
+        @Override public void beforeMailDispatch() throws SeciossError {
+            if (context.allowsNewLogin()) return;
+            com.shakenokirimi12.uoa_app.services.BackgroundLoginPolicy.getInstance().claimMailDispatch();
+        }
+
         @NonNull
         @Override public String code() throws Exception {
-            return OtpPromptCoordinator.getInstance().code(uid, pass, context);
+            release();
+            OtpPromptCoordinator.MailCode got = OtpPromptCoordinator.getInstance().mailCode(uid, pass, context);
+            synchronized (this) {
+                mail = got.mail;
+                sent = got.code;
+            }
+            return got.code;
         }
+
+        /**
+         * IdP が受け付けた。送ったコードが取得済みのメールのものなら、そのメールとそれより古い OTP メールを消す。
+         * 手入力で、取得済みのメールに同じコードが無ければ消さない (SPEC.md「8. OTP メールの削除」)。
+         */
+        @Override public void onAccepted() {
+            ImapOtpFetcher.OtpMail used;
+            String code;
+            synchronized (this) {
+                used = mail;
+                code = sent;
+                mail = null;
+            }
+            if (used == null) return;
+            if (shouldDeleteAfterAccepted(used.code, code)) used.deleteUsedMails(DELETE_TIMEOUT_MS);
+            else used.close();
+        }
+
+        @Override public void release() {
+            ImapOtpFetcher.OtpMail held;
+            synchronized (this) {
+                held = mail;
+                mail = null;
+            }
+            if (held != null) held.close();
+        }
+    }
+
+    /** 使ったメールを消すのに使う時間の上限 (中継と同じ。SPEC.md「8. OTP メールの削除」)。 */
+    static final long DELETE_TIMEOUT_MS = 3_000L;
+
+    /** 取得済みのメールのコード mailCode と、IdP に送って受け付けられた sentCode が同じか (空白は無視する)。 */
+    static boolean shouldDeleteAfterAccepted(@Nullable String mailCode, @Nullable String sentCode) {
+        if (mailCode == null || sentCode == null) return false;
+        String a = mailCode.replaceAll("\\s", "");
+        String b = sentCode.replaceAll("\\s", "");
+        return !a.isEmpty() && a.equals(b);
     }
 
     /**
      * 認証アプリ方式。登録のときに必ずシークレットをこのアプリにも保存し、アプリがコードを作って入れる
      * (iOS と同じ)。バックグラウンドの再ログインも同じシークレットで作る (canRunUnattended)。
-     * 持っていないのは、この決まりより前に登録した人か、作ったコードを IdP に弾かれて捨てたときだけ
+     * 使えないのは、この決まりより前に登録した人 (鍵が無い) か、作ったコードを IdP に 2 回弾かれて止めたとき
      * (登録し直しが要る)。その間は前面でだけ認証アプリのコードを手入力してもらい、バックグラウンドでは
      * INTERACTIVE_LOGIN_REQUIRED で止める (OtpPromptCoordinator.codeFromAuthenticator)。
      */
     static final class AuthenticatorOtpProvider implements OtpProvider {
-        /** 窓の終わり間際に作ると、送る間に切れて弾かれうる。これより残りが短ければ次の窓を待つ。 */
-        private static final long MIN_MS_LEFT = 3_000L;
-
         private final String uid;
         private final AuthorizationContext context;
         /** このアプリが持つ uid の otpauth URL。持っていなければ null。 */
@@ -150,16 +249,25 @@ public final class OtpProviders {
          */
         private final TotpStepLedger ledger;
 
+        /** 鍵を止める (PreferenceManager.suspendTotp)。テストで差し替える。 */
+        private final java.util.function.Consumer<String> suspend;
+
         AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth) {
-            this(uid, context, otpauth, TotpStepLedger.shared());
+            this(uid, context, otpauth, TotpStepLedger.shared(), AuthenticatorOtpProvider::suspendStoredKey);
         }
 
         AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth,
                                  TotpStepLedger ledger) {
+            this(uid, context, otpauth, ledger, AuthenticatorOtpProvider::suspendStoredKey);
+        }
+
+        AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth,
+                                 TotpStepLedger ledger, java.util.function.Consumer<String> suspend) {
             this.uid = uid;
             this.context = context;
             this.otpauth = otpauth;
             this.ledger = ledger;
+            this.suspend = suspend;
         }
 
         @Override public boolean requiresMailDispatch() { return false; }
@@ -189,10 +297,12 @@ public final class OtpProviders {
                 long now = System.currentTimeMillis();
                 long left = Totp.millisLeftInWindow(params, now);
                 long step = Totp.step(params, now);
-                if (left >= MIN_MS_LEFT && ledger.claim(step)) return Totp.code(params, now);
+                // 窓の終わり間際に作ると、送る間に切れて弾かれうる。中継と同じ下限 (Totp.MIN_MS_LEFT_TO_SEND)。
+                if (left >= Totp.MIN_MS_LEFT_TO_SEND && ledger.claim(step)) return Totp.code(params, now);
                 Thread.sleep(left + 100);
             }
-            throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE, "no unused TOTP step became available");
+            // アプリ内の事情 (使える窓が来なかった)。バックグラウンドの止めた印は立てない (TOTP_STEP_UNAVAILABLE)。
+            throw new SeciossError(SeciossError.Kind.TOTP_STEP_UNAVAILABLE, "no unused TOTP step became available");
         }
 
         /** 保存したシークレットで作ったコードだけ、次の窓で 1 回やり直す (手入力のコードは入れ直してもらう)。 */
@@ -200,13 +310,19 @@ public final class OtpProviders {
 
         /**
          * アプリが作ったコードを、次の窓でのやり直しも含めて IdP が 2 回続けて受け付けなかった。保存したシークレットが
-         * IdP の登録と食い違っている (別の場所で登録し直した等) ので捨て、次からは認証アプリのコードを入力してもらう
-         * (iOS と同じ)。1 回目では捨てない。同じ窓を PC への中継や別のログインが先に使っていると、正しい鍵でも弾かれうる。
+         * IdP の登録と食い違っている (別の場所で登録し直した等) か、時計がずれている。鍵は消さずに止め、自動では
+         * 使わない (前面は手入力、バックグラウンドと PC 中継は使わない)。登録し直しの成功で外れる
+         * (SPEC.md「7.2 鍵のコードが IdP に 2 回弾かれたとき」)。1 回目では止めない。同じ窓を PC への中継や
+         * 別のログインが先に使っていると、正しい鍵でも弾かれうる。
          */
         @Override public void onRejected() {
             if (!generated) return;
-            android.util.Log.w("OtpProviders", "IdP rejected the generated code; discarding the stored authenticator secret");
-            PreferenceManager.getInstance().clearTotp();
+            suspend.accept(uid);
+        }
+
+        private static void suspendStoredKey(@NonNull String owner) {
+            android.util.Log.w("OtpProviders", "IdP rejected the generated code twice; suspending the stored authenticator key");
+            PreferenceManager.getInstance().suspendTotp(owner);
         }
     }
 }

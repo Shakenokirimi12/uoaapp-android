@@ -22,7 +22,12 @@ public class PreferenceManager {
     /** 時間割共有で、自分が出している共有の返事を読むトークン (data/timetable/TimetableShareStore)。 */
     private static final String KEY_TIMETABLE_SHARE_OWNER_TOKEN = "timetable_share_owner_token";
     private static final String KEY_ONBOARDING_DONE = "onboarding_done";
-    private static final String KEY_CREDENTIALS_INVALID = "credentials_invalid";
+    /** 以前の「ID/PW 誤り」の印 (真偽値)。指紋 (KEY_CREDENTIALS_INVALID_FP) に移して消す。 */
+    private static final String KEY_CREDENTIALS_INVALID_LEGACY = "credentials_invalid";
+    /** ID/PW 誤りと分かった資格情報の指紋 (BackgroundLoginPolicy.fingerprint)。資格情報が変わるまでログインしない (D-8)。 */
+    private static final String KEY_CREDENTIALS_INVALID_FP = "credentials_invalid_fingerprint";
+    /** 誤りを通知で知らせた指紋。同じ指紋では 2 回知らせない。 */
+    private static final String KEY_CREDENTIALS_INVALID_NOTIFIED_FP = "credentials_invalid_notified_fingerprint";
     private static final String KEY_FCM_TOKEN = "fcm_token";
     private static final String KEY_SERVER_HOLDS_REMINDERS = "server_holds_assignment_reminders";
     private static final String KEY_NOTIFY_ASSIGNMENTS = "notify_assignments";
@@ -38,7 +43,6 @@ public class PreferenceManager {
     private static final String KEY_SELECTED_NOTIFY_TIMES = "selected_notify_times";
     private static final String KEY_CUSTOM_NOTIFY_TIMES = "custom_notify_times";
     private static final String KEY_LUNCH_NOTIFY_TIME = "lunch_notify_time";
-    private static final String KEY_LOGIN_REQUIRED_NOTIFIED_DAY = "login_required_notified_day";
     private static final String KEY_MAIN_TABS = "main_tabs";
     private static final String KEY_OTHER_TABS = "other_tabs";
     private static final String KEY_HAS_SEEN_IDP_TUTORIAL = "has_seen_idp_tutorial";
@@ -58,7 +62,11 @@ public class PreferenceManager {
     /** バックグラウンドのログインが失敗して、前面で成功するまで止めている。 */
     private static final String KEY_BG_LOGIN_BLOCKED = "background_login_blocked";
     private static final String KEY_BG_LOGIN_LAST_ATTEMPT_PREFIX = "background_login_last_attempt.";
-    /** 認証アプリ方式なのに鍵が無い人へ、登録し直しを案内したか (起動時に一度だけ)。鍵を保存したら戻す。 */
+    /** メール方式のバックグラウンドのログインで、最後に OTP メールの送信を頼んだ時刻 (端末全体で 6 時間に 1 回)。 */
+    private static final String KEY_BG_LOGIN_LAST_MAIL_DISPATCH = "background_login_last_mail_dispatch";
+    /** 鍵で作ったコードが IdP に 2 回続けて弾かれ、自動での使用を止めている (D-5)。鍵と同じ暗号化側に置き、鍵と一緒に消える。 */
+    private static final String KEY_TOTP_SUSPENDED = "totp_suspended";
+    /** 認証アプリ方式なのに鍵が無い (止めている) 人へ、登録し直しを案内したか (起動時に一度だけ)。鍵を保存・停止したら戻す。 */
     private static final String KEY_TOTP_REREGISTRATION_PROMPTED = "totp_reregistration_prompted";
     /** 最後に IdP に渡した (渡す予定の) TOTP の窓の番号 (TotpStepLedger)。番号だけなので平文の prefs に置く。 */
     private static final String KEY_TOTP_LAST_USED_STEP = "totp_last_used_step";
@@ -119,6 +127,26 @@ public class PreferenceManager {
                 "bg_notify_failure", "bg_notify_nochange"}, new String[0]);
         // 誰も読み書きしていなかった値 (ICS の URL、Moodle のトークン。以前の平文の写しも)。
         dropRemovedKeys(new String[] {"ics_url", "moodle_token"}, new String[] {"moodle_token"});
+        // 「ログインが必要です」の通知は出さなくなった (2026-10-30, D-10)。最後に出した日も要らない。
+        dropRemovedKeys(new String[] {"login_required_notified_day"}, new String[0]);
+        migrateLegacyCredentialsInvalid();
+    }
+
+    /** 以前の真偽値の「ID/PW 誤り」を、今の資格情報の指紋の印に移す (同じ資格情報のままなら止めたまま)。 */
+    private void migrateLegacyCredentialsInvalid() {
+        if (!prefs.contains(KEY_CREDENTIALS_INVALID_LEGACY)) return;
+        boolean invalid = prefs.getBoolean(KEY_CREDENTIALS_INVALID_LEGACY, false);
+        if (invalid && hasCredentials()) {
+            String fp = currentCredentialFingerprint();
+            // 前の版で既に知らせているので、もう一度は知らせない。
+            if (encryptedPrefs == null || !encryptedPrefs.edit()
+                    .putString(KEY_CREDENTIALS_INVALID_FP, fp)
+                    .putString(KEY_CREDENTIALS_INVALID_NOTIFIED_FP, fp)
+                    .commit()) {
+                return;
+            }
+        }
+        prefs.edit().remove(KEY_CREDENTIALS_INVALID_LEGACY).apply();
     }
 
     /**
@@ -260,20 +288,27 @@ public class PreferenceManager {
 
     // Credentials
     public String getUsername() { return getSecret(KEY_USERNAME); }
-    public void setUsername(String username) {
+    /**
+     * ユーザー名を保存する。別のアカウントに変えたかを返す (初めて保存するとき・同じ名前の保存では false)。
+     */
+    public boolean setUsername(String username) {
         String previous = getUsername();
         boolean otherAccount = !previous.isEmpty() && !previous.equals(username != null ? username : "");
         putSecret(KEY_USERNAME, username);
-        // OTP の受け取り方はアカウントごと。別のアカウントにしたら、次のログインで IdP から読み直す
-        // (OtpProviders)。初めて保存するとき (初期設定) は、そのログインで読んだ方式を残す。
-        if (otherAccount) prefs.edit().remove(KEY_OTP_METHOD).apply();
+        if (!otherAccount) return false;
+        // OTP の受け取り方 (IdP の方式の控え) はアカウントごと。別のアカウントにしたら、次のログインで IdP から
+        // 読み直す (OtpProviders)。初めて保存するとき (初期設定) は、そのログインで読んだ方式を残す。
+        prefs.edit().remove(KEY_OTP_METHOD).apply();
         // 認証アプリのシークレットもアカウントごと。別のアカウントの鍵でコードを作らない。
-        if (otherAccount) clearTotp();
-        // 別のアカウントに切り替えたとき、前のユーザーの IdP セッションを引き継がない。
+        clearTotp();
+        // 前のユーザーの IdP セッションと SP のセッションを引き継がない。同じアカウントの保存 (初期設定の直後・
+        // パスワードだけの更新) では消さない。直前の確認ログインが保存した SSO を使えば、次のサービスで
+        // OTP をもう一度求めずに済む (S-8)。
         setCsIdpSessionCookies(null);
         // メモリ上のセッション cookie も含めて消す (ストアはプロセス内に写しを持つ)。
         com.shakenokirimi12.uoa_app.services.idp.SeciossSsoStore.getInstance().clear();
         setMoodleSessionCookies(null);
+        return true;
     }
 
     /** 時間割共有の返事を読むトークン。暗号化 prefs にだけ置く (使えない端末では保存されず、空)。 */
@@ -289,17 +324,46 @@ public class PreferenceManager {
 
     public String getPassword() { return getSecret(KEY_PASSWORD); }
     public void setPassword(String password) {
+        // 「ID/PW 誤り」の印は資格情報の指紋に結び付いている。同じ値を入れ直しても外れず、変えたら外れる (D-8)。
         putSecret(KEY_PASSWORD, password);
-        // 入力し直したら「資格情報が不正」の判定を解除して同期を再開できるようにする。
-        setCredentialsInvalid(false);
     }
 
     /**
-     * ID/PW 誤りが確定しているか。立っている間は自動同期でログインを試みない。
-     * 誤ったパスワードのまま定期同期がリトライを繰り返すと、大学側でアカウントが
-     * ロックされうる。パスワードの再入力でだけ解除される。
+     * 保存している ID/PW が誤りと分かっているか。分かっている間は前面でもバックグラウンドでもログインしない。
+     * 誤ったパスワードのまま試し続けると、大学側でアカウントがロックされうる。ID かパスワードが変わるまで外れない。
      */
-    public boolean isCredentialsInvalid() { return prefs.getBoolean(KEY_CREDENTIALS_INVALID, false); }
+    public boolean isCredentialsInvalid() {
+        return hasCredentials() && isCredentialsInvalid(getUsername(), getPassword());
+    }
+
+    /** uid / pass (前後の空白は落とす) が誤りと分かっているか。 */
+    public boolean isCredentialsInvalid(@NonNull String uid, @NonNull String pass) {
+        String marked = getSecret(KEY_CREDENTIALS_INVALID_FP);
+        return !marked.isEmpty() && marked.equals(credentialFingerprint(uid, pass));
+    }
+
+    /**
+     * uid / pass が誤りと分かったと記録する。この指紋をまだ通知で知らせていなければ true (呼び出し側が 1 回知らせて
+     * markCredentialsInvalidNotified を呼ぶ)。
+     */
+    public synchronized boolean markCredentialsInvalid(@NonNull String uid, @NonNull String pass) {
+        if (encryptedPrefs == null) return false;
+        String fp = credentialFingerprint(uid, pass);
+        encryptedPrefs.edit().putString(KEY_CREDENTIALS_INVALID_FP, fp).commit();
+        return !fp.equals(getSecret(KEY_CREDENTIALS_INVALID_NOTIFIED_FP));
+    }
+
+    public void markCredentialsInvalidNotified(@NonNull String uid, @NonNull String pass) {
+        putSecret(KEY_CREDENTIALS_INVALID_NOTIFIED_FP, credentialFingerprint(uid, pass));
+    }
+
+    @NonNull
+    private static String credentialFingerprint(@NonNull String uid, @NonNull String pass) {
+        return com.shakenokirimi12.uoa_app.services.BackgroundLoginPolicy.fingerprint(uid.trim(), pass.trim());
+    }
+
+    @NonNull
+    private String currentCredentialFingerprint() { return credentialFingerprint(getUsername(), getPassword()); }
 
     public String getFcmToken() { return prefs.getString(KEY_FCM_TOKEN, ""); }
     public void setFcmToken(String token) { prefs.edit().putString(KEY_FCM_TOKEN, token).apply(); }
@@ -310,7 +374,6 @@ public class PreferenceManager {
      */
     public boolean isServerHoldingReminders() { return prefs.getBoolean(KEY_SERVER_HOLDS_REMINDERS, false); }
     public void setServerHoldingReminders(boolean holds) { prefs.edit().putBoolean(KEY_SERVER_HOLDS_REMINDERS, holds).apply(); }
-    public void setCredentialsInvalid(boolean invalid) { prefs.edit().putBoolean(KEY_CREDENTIALS_INVALID, invalid).apply(); }
 
     public boolean hasCredentials() {
         return !getUsername().isEmpty() && !getPassword().isEmpty();
@@ -394,10 +457,6 @@ public class PreferenceManager {
     public String getLunchNotifyTime() { return prefs.getString(KEY_LUNCH_NOTIFY_TIME, "11:30"); }
     public void setLunchNotifyTime(String time) { prefs.edit().putString(KEY_LUNCH_NOTIFY_TIME, time).apply(); }
 
-    /** 「ログインが必要です」を最後に通知した日 (yyyy-MM-dd, 日本時間)。1 日 1 回に抑えるため。 */
-    public String getLoginRequiredNotifiedDay() { return prefs.getString(KEY_LOGIN_REQUIRED_NOTIFIED_DAY, ""); }
-    public void setLoginRequiredNotifiedDay(String day) { prefs.edit().putString(KEY_LOGIN_REQUIRED_NOTIFIED_DAY, day).apply(); }
-
     // Tab ordering (comma-separated tab names)
     public String getMainTabs() { return prefs.getString(KEY_MAIN_TABS, "home,calendar,courses,gakushoku"); }
     public void setMainTabs(String tabs) { prefs.edit().putString(KEY_MAIN_TABS, tabs).apply(); }
@@ -410,9 +469,10 @@ public class PreferenceManager {
     public void setHasSeenIdPTutorial(boolean seen) { prefs.edit().putBoolean(KEY_HAS_SEEN_IDP_TUTORIAL, seen).apply(); }
 
     /**
-     * OTP をどこから受け取るか ("mail" / "authenticator")。既定はメール (大学が既定で設定する方式)。
-     * 認証アプリ方式を選んだ場合、アプリはシークレットを保持しないので毎回手入力になる。
-     * そのぶんセッションの永続化が効いていることが前提になる。iOS の SettingsStore.otpMethod と同じ値。
+     * OTP をどこから受け取るか ("mail" / "authenticator")。正は IdP 側の登録で、これはその控え (D-2)。
+     * ログインのたびに OTP 入力画面の otp_type から書き直す (OtpProviders)。読めなかったときだけこの値を使う。
+     * 認証アプリ方式では、登録のときにこのアプリにもシークレットを保存し、アプリがコードを作る (saveTotp)。
+     * 未決定のときの既定はメール (大学が既定で設定する方式)。iOS の SettingsStore.otpMethod と同じ値。
      */
     public String getOtpMethod() { return prefs.getString(KEY_OTP_METHOD, "mail"); }
 
@@ -423,18 +483,19 @@ public class PreferenceManager {
     public boolean isOtpMethodKnown() { return prefs.contains(KEY_OTP_METHOD); }
 
     /**
-     * ログインで着いた OTP 入力画面の otp_type から分かった、IdP が実際に使っている方式を保存する。
-     * まだ決まっていないときだけ書く (IdP の方式は変えない。登録の完了で決まった方式を上書きしない)。
+     * ログインで着いた OTP 入力画面の otp_type から分かった、IdP が実際に使っている方式を控えに書く (D-2)。
+     * IdP 側の登録が正なので、控えと違えば書き換える (別の場所で登録し直した場合も次のログインで追従する)。
+     * 書き換えたら true。
      */
-    public synchronized void adoptOtpMethodFromIdp(@NonNull OtpMethod method) {
-        if (isOtpMethodKnown()) return;
+    public synchronized boolean recordOtpMethodFromIdp(@NonNull OtpMethod method) {
+        if (isOtpMethodKnown() && method.value.equals(getOtpMethod())) return false;
         prefs.edit().putString(KEY_OTP_METHOD, method.value).apply();
+        return true;
     }
     /**
-     * IdP への登録が完了した方式に揃える。受け取り方を新しく変えられるのはここだけで、呼ぶのは
-     * OtpRegistrationCommit (登録が済んだと分かったとき) だけ。大学側 (IdP) に登録されている方式と
-     * 揃っていないとログインできないので、設定画面の切り替えも復元も、値を直接書かない。
-     * (ほかに書くのは、決まっていない端末で IdP の方式を読み取ったときの adoptOtpMethodFromIdp だけ。)
+     * IdP への登録が完了した方式に揃える。呼ぶのは OtpRegistrationCommit (登録が済んだと分かったとき) だけ。
+     * 大学側 (IdP) に登録されている方式と揃っていないとログインできないので、設定画面の切り替えも復元も、
+     * 値を直接書かない。ほかに書くのは、ログインで IdP の方式を読み取ったときの recordOtpMethodFromIdp だけ。
      */
     public synchronized void applyRegisteredOtpMethod(@NonNull OtpMethod method) {
         prefs.edit().putString(KEY_OTP_METHOD, method.value).apply();
@@ -507,9 +568,11 @@ public class PreferenceManager {
      */
     public boolean saveTotp(@NonNull String otpauthUrl, @NonNull String owner) {
         if (encryptedPrefs == null) return false;
+        // 新しく保存した鍵は止めていない (登録し直しの成功で止めた状態を外す、D-5)。
         boolean saved = encryptedPrefs.edit()
                 .putString(KEY_TOTP_OTPAUTH, otpauthUrl)
                 .putString(KEY_TOTP_OWNER, owner.trim())
+                .remove(KEY_TOTP_SUSPENDED)
                 .commit();
         // 鍵を持てたので、また無くなったら (作ったコードを IdP に弾かれて捨てたら) もう一度案内する。
         if (saved) prefs.edit().remove(KEY_TOTP_REREGISTRATION_PROMPTED).apply();
@@ -534,6 +597,11 @@ public class PreferenceManager {
     public void setBackgroundLoginBlocked(boolean blocked) {
         prefs.edit().putBoolean(KEY_BG_LOGIN_BLOCKED, blocked).commit();
     }
+    public long getBackgroundLoginLastMailDispatch() { return prefs.getLong(KEY_BG_LOGIN_LAST_MAIL_DISPATCH, 0L); }
+    /** commit で書く。送信を頼む直前に書くので、送ったあとでプロセスが落ちても数え漏らさない。 */
+    public void setBackgroundLoginLastMailDispatch(long at) {
+        prefs.edit().putLong(KEY_BG_LOGIN_LAST_MAIL_DISPATCH, at).commit();
+    }
     public long getBackgroundLoginLastAttempt(@NonNull String scope) {
         return prefs.getLong(KEY_BG_LOGIN_LAST_ATTEMPT_PREFIX + scope, 0L);
     }
@@ -551,9 +619,35 @@ public class PreferenceManager {
         return url;
     }
 
+    /**
+     * owner の、自動で使ってよい otpauth URL。持っていない・別のアカウントのもの・止めているもの (D-5) なら null。
+     * 前面の自動入力・バックグラウンドのログイン・PC への中継はこれを使う (止めた鍵は自動では使わない)。
+     */
+    @androidx.annotation.Nullable
+    public String usableTotpOtpauthFor(@NonNull String owner) {
+        String url = totpOtpauthFor(owner);
+        return url != null && !isTotpSuspended(owner) ? url : null;
+    }
+
+    /** owner の鍵を持っていて、それを止めているか。 */
+    public boolean isTotpSuspended(@NonNull String owner) {
+        if (encryptedPrefs == null || totpOtpauthFor(owner) == null) return false;
+        return encryptedPrefs.getBoolean(KEY_TOTP_SUSPENDED, false);
+    }
+
+    /**
+     * 鍵で作ったコードが IdP に 2 回続けて弾かれた。鍵は消さずに、自動での使用を止める (D-5)。登録し直しの成功
+     * (saveTotp) で外れる。owner の鍵でなければ何もしない。登録し直しの案内をもう一度出せるようにする。
+     */
+    public void suspendTotp(@NonNull String owner) {
+        if (encryptedPrefs == null || totpOtpauthFor(owner) == null) return;
+        encryptedPrefs.edit().putBoolean(KEY_TOTP_SUSPENDED, true).commit();
+        prefs.edit().remove(KEY_TOTP_REREGISTRATION_PROMPTED).apply();
+    }
+
     public void clearTotp() {
         if (encryptedPrefs == null) return;
-        encryptedPrefs.edit().remove(KEY_TOTP_OTPAUTH).remove(KEY_TOTP_OWNER).apply();
+        encryptedPrefs.edit().remove(KEY_TOTP_OTPAUTH).remove(KEY_TOTP_OWNER).remove(KEY_TOTP_SUSPENDED).apply();
     }
 
     // Reset

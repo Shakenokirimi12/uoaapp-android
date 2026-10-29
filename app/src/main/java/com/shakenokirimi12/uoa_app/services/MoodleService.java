@@ -149,12 +149,12 @@ public class MoodleService {
     private void loginViaIdP(String username, String password, AuthorizationContext context) throws Exception {
         String uid = username.trim();
         String pass = password.trim();
-        // ここに来るのは SessionCoordinator が新規ログインを許した場合だけ。BACKGROUND なら、OTP を人もメールも
-        // 使わずに用意できると確かめてある (認証アプリ方式で、このアプリが鍵を持っている)。
+        // ここに来るのは SessionCoordinator が新規ログインを許した場合だけ。BACKGROUND なら、BackgroundLoginPolicy が
+        // 方式ごとの条件 (認証アプリは止めていない鍵、メールは 6 時間の枠) を確かめてある。
         com.shakenokirimi12.uoa_app.services.idp.OtpProvider otp =
                 com.shakenokirimi12.uoa_app.services.idp.OtpProviders.forLogin(uid, pass, context);
-        // バックグラウンドでは、判定 (BackgroundLoginPolicy) のあとで方式が変わっていたら IdP に触れずに止める。
-        // 触れるとメール方式では motp.cgi が OTP メールを送ってしまう (送ったあとで code() が止めても遅い)。
+        // バックグラウンドでは、判定 (BackgroundLoginPolicy) のあとで条件が崩れていたら IdP に触れずに止める
+        // (鍵を止めた・控えが消えた等)。メールの送信の枠は送る直前にもう一度取る (OtpProvider.beforeMailDispatch)。
         // 下の catch で文言に包むと SyncWorker が「ログインが必要」と見分けられないので、try の外で投げる。
         if (!context.allowsNewLogin() && !otp.canRunUnattended()) {
             throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);

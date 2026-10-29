@@ -653,6 +653,13 @@ public final class SeciossIdPClient {
     @NonNull
     public Session login(@NonNull String entryUrl, @NonNull String uid, @NonNull String pass,
                          @NonNull OtpProvider otp) throws Exception {
+        // サービスをまたいで IdP へのログインを 1 本にする。2 本目は 1 本目が保存した SSO で入る (IdpLoginGate)。
+        return IdpLoginGate.shared().run(() -> loginExclusively(entryUrl, uid, pass, otp));
+    }
+
+    @NonNull
+    private Session loginExclusively(@NonNull String entryUrl, @NonNull String uid, @NonNull String pass,
+                                     @NonNull OtpProvider otp) throws Exception {
         PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass, true);
         HttpResult current = state.result;
 
@@ -682,12 +689,23 @@ public final class SeciossIdPClient {
             throw new SeciossError(SeciossError.Kind.MISSING_FIELD, "sessid/back/username on OTP form");
         }
 
-        // 受け取り方がまだ決まっていなければ、この画面の otp_type に合わせて決める (OtpProviders)。
+        // 方式は IdP 側の登録が正。この画面の otp_type で選ぶ (読めなければ控え。OtpProviders)。
         OtpProvider provider = otp.forOtpPage(otpType(current.html));
+        try {
+            return submitOtp(provider, current, otpSessid, otpBack, otpUsername);
+        } finally {
+            provider.release();
+        }
+    }
 
+    @NonNull
+    private Session submitOtp(@NonNull OtpProvider provider, @NonNull HttpResult current, @NonNull String otpSessid,
+                              @NonNull String otpBack, @NonNull String otpUsername) throws Exception {
         // メール方式のときだけ送信を要求する (motprefresh=0)。認証アプリ方式はこのステップを使わない。
         HttpResult motp = current;
         if (provider.requiresMailDispatch()) {
+            // 送ってよいかは送る前に決める (バックグラウンドの 6 時間の枠など)。送ったあとで止めても遅い。
+            provider.beforeMailDispatch();
             String motpBody = "username=" + urlEncode(otpUsername) + "&sessid=" + urlEncode(otpSessid)
                     + "&motprefresh=0";
             motp = postForm(MOTP_URL, motpBody, current.cookies, current.url);
@@ -698,7 +716,7 @@ public final class SeciossIdPClient {
 
         // 保存したシークレットで作ったコードが弾かれたら、戻された OTP の入力画面から次の窓で 1 回だけやり直す
         // (OtpProvider.retriesRejectedCode)。同じ窓を PC への中継や別のログインが先に使っていた、窓の境目で切れた、
-        // などで正しい鍵でも弾かれうる。2 回続けて弾かれたら onRejected (鍵を捨てる)。
+        // などで正しい鍵でも弾かれうる。2 回続けて弾かれたら onRejected (鍵を止める)。
         HttpResult form = motp;
         String referer = current.url;
         HttpResult relayed;
@@ -743,6 +761,7 @@ public final class SeciossIdPClient {
             provider.onRejected();
             throw new SeciossError(SeciossError.Kind.INVALID_OTP);
         }
+        provider.onAccepted();
         return new Session(relayed.html, relayed.url, relayed.status, sessionCookieHeader(relayed),
                 sessionCookies(relayed));
     }

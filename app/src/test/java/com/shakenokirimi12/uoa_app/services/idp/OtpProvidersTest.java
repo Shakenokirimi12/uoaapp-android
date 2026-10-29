@@ -13,26 +13,49 @@ import org.junit.Test;
 /** 受け取り方が決まっていない端末で、OTP 入力画面の otp_type から IdP の方式を読む。 */
 public class OtpProvidersTest {
 
+    /** otp_type の解釈は 1 か所 (OtpMethod.fromOtpType)。"mail" だけがメール、ほかの値は認証アプリ。 */
     @Test
-    public void methodFromOtpType_mapsMailAndOtherValues() {
-        assertEquals(OtpMethod.MAIL, OtpProviders.methodFromOtpType("mail"));
-        assertEquals(OtpMethod.AUTHENTICATOR, OtpProviders.methodFromOtpType("totp"));
+    public void fromOtpType_mapsMailAndOtherValues() {
+        assertEquals(OtpMethod.MAIL, OtpMethod.fromOtpType("mail"));
+        assertEquals(OtpMethod.MAIL, OtpMethod.fromOtpType(" MAIL "));
+        assertEquals(OtpMethod.AUTHENTICATOR, OtpMethod.fromOtpType("totp"));
     }
 
-    /** 読めない値や「未設定」の印では決めない (既定のメールのまま進み、保存しない)。 */
+    /** 読めない値や「未設定」の印では決めない (控えの方式で進み、保存しない)。 */
     @Test
-    public void methodFromOtpType_unknownValues_returnNull() {
-        assertNull(OtpProviders.methodFromOtpType(null));
-        assertNull(OtpProviders.methodFromOtpType(""));
-        assertNull(OtpProviders.methodFromOtpType("none"));
+    public void fromOtpType_unknownValues_returnNull() {
+        assertNull(OtpMethod.fromOtpType(null));
+        assertNull(OtpMethod.fromOtpType(""));
+        assertNull(OtpMethod.fromOtpType("none"));
+        assertNull(OtpMethod.fromOtpType(" none "));
+    }
+
+    /** 診断に載せるのは otp_type の値だけ。無い・空を区別し、記号は伏せて 32 文字まで。 */
+    @Test
+    public void otpTypeLabel_distinguishesAbsentAndEmpty_andSanitizes() {
+        assertEquals("(absent)", OtpProviders.otpTypeLabel(null));
+        assertEquals("(empty)", OtpProviders.otpTypeLabel("  "));
+        assertEquals("mail", OtpProviders.otpTypeLabel("mail"));
+        assertEquals("a?b", OtpProviders.otpTypeLabel("a=b"));
+        assertEquals(32, OtpProviders.otpTypeLabel("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx").length());
+    }
+
+    /** 送ったコードと同じコードのメールだけ、IdP が受け付けたあとに消す (空白は無視)。 */
+    @Test
+    public void shouldDeleteAfterAccepted_onlyWhenTheSentCodeMatchesTheMail() {
+        assertTrue(OtpProviders.shouldDeleteAfterAccepted("123456", "123456"));
+        assertTrue(OtpProviders.shouldDeleteAfterAccepted("123456", " 123 456 "));
+        assertFalse(OtpProviders.shouldDeleteAfterAccepted("123456", "654321"));
+        assertFalse(OtpProviders.shouldDeleteAfterAccepted(null, "123456"));
+        assertFalse(OtpProviders.shouldDeleteAfterAccepted("", ""));
     }
 
     private static final String OTPAUTH = "otpauth://totp/SECIOSS:s1300000?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=SECIOSS";
 
-    /** メール方式はバックグラウンドの新規ログインを始めさせない (ログイン 1 回 = OTP メール 1 通)。 */
+    /** メール方式もバックグラウンドでログインする (送信の回数は BackgroundLoginPolicy が 6 時間に 1 回に抑える)。 */
     @Test
-    public void mail_cannotRunUnattended() {
-        assertFalse(OtpProviders.of(OtpMethod.MAIL, "s1300000", "pw", AuthorizationContext.BACKGROUND).canRunUnattended());
+    public void mail_canRunUnattended() {
+        assertTrue(OtpProviders.of(OtpMethod.MAIL, "s1300000", "pw", AuthorizationContext.BACKGROUND).canRunUnattended());
     }
 
     /** 鍵を持つ認証アプリ方式は、バックグラウンドでも鍵からコードを作る (入力は求めない)。 */
@@ -67,6 +90,19 @@ public class OtpProvidersTest {
         assertFalse(ledger.claim(10));
         assertFalse(ledger.claim(9));
         assertTrue(ledger.claim(11));
+    }
+
+    /** 作ったコードが (やり直しを含めて) 弾かれたら鍵を止める。手入力のコードが弾かれても止めない。 */
+    @Test
+    public void rejectedGeneratedCode_suspendsTheKey_butTypedCodeDoesNot() throws Exception {
+        java.util.List<String> suspended = new java.util.ArrayList<>();
+        OtpProvider p = new OtpProviders.AuthenticatorOtpProvider("s1300000", AuthorizationContext.BACKGROUND, () -> OTPAUTH,
+                TotpStepLedger.inMemory(), suspended::add);
+        p.onRejected();
+        assertTrue("コードを作る前は止めない", suspended.isEmpty());
+        p.code();
+        p.onRejected();
+        assertEquals(java.util.Collections.singletonList("s1300000"), suspended);
     }
 
     /** 鍵が無ければ (登録し直しが要る)、バックグラウンドではコードを用意できない。 */
