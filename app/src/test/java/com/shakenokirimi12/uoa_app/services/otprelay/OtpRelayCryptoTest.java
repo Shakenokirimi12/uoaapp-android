@@ -6,7 +6,7 @@ import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
-/** docs/otp-relay.md §3 と iOS の OTPRelayCryptoTests と同じベクタ。 */
+/** SPEC.md「10.3 鍵と暗号」と iOS の OTPRelayCryptoTests と同じベクタ。 */
 public class OtpRelayCryptoTest {
     /** 0x00..0x1f */
     private static final String K = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8";

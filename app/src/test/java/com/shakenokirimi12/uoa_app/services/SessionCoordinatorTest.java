@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * セッションの再利用と「ログインしてよいか」の判断を固定する。
  *
  * ログイン 1 回につき OTP メールが 1 通飛ぶ。ここが緩むと、画面を見ていない間にメールが
- * 積み上がる (iOS で 2026-09-25 に発生。対策の設計は docs/auth-rewrite/ を参照)。
+ * 積み上がる (iOS で 2026-09-25 に発生。対策は SPEC.md「6. バックグラウンドログイン」を参照)。
  */
 public class SessionCoordinatorTest {
 

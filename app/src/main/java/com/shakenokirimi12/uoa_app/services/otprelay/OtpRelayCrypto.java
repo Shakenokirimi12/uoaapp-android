@@ -14,7 +14,7 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * PC 中継 (docs/otp-relay.md §3) の鍵導出と封緘。iOS の OTPRelayCrypto.swift と同じ計算。
+ * PC 中継 (SPEC.md「10.3 鍵と暗号」) の鍵導出と封緘。iOS の OTPRelayCrypto.swift と同じ計算。
  *
  * QR の K (32 バイト) から HMAC-SHA256 で 3 つを作る:
  *   requestToken = base64url(HMAC(K, "uoa-otp-relay/request"))  拡張が依頼に使う

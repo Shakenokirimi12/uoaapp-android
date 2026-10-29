@@ -17,7 +17,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 /**
- * 中継サーバ (workers/otp-relay、docs/otp-relay.md) の呼び出し。認証は Authorization: Bearer <token>。
+ * 中継サーバ (workers/otp-relay、SPEC.md「10.7 中継サーバの API」) の呼び出し。認証は Authorization: Bearer <token>。
  * 応答は HTTP ステータスで返す (通信できなければ IOException)。
  */
 public final class OtpRelayApi {
