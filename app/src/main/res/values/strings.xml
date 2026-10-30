@@ -146,9 +146,7 @@
     <string name="otp_relay_paired_on">%1$sに連携</string>
     <string name="otp_relay_section_last_result">直近の結果</string>
     <string name="otp_relay_section_howto">連携のしかた</string>
-    <string name="otp_relay_howto">1. PCの拡張機能の設定で「OTP 自動入力」の「スマホと連携」をクリックし、連携用のQRコードを表示する
-2. そのQRを、この端末の標準のカメラ (またはGoogleレンズ) で読む。カメラから開けないときは、QRコードの中身のリンクをコピーして「リンクを貼り付けて連携」に貼る
-3. このアプリが開いたら「同意して連携する」をタップする</string>
+    <string name="otp_relay_howto">1. PCの拡張機能の設定で「OTP 自動入力」の「スマホと連携」をクリックし、連携用のQRコードを表示する\n2. そのQRを、この端末の標準のカメラ (またはGoogleレンズ) で読む。カメラから開けないときは、QRコードの中身のリンクをコピーして「リンクを貼り付けて連携」に貼る\n3. このアプリが開いたら「同意して連携する」をタップする</string>
     <string name="otp_relay_unpair_confirm">「%1$s」との連携を解除しますか？</string>
     <string name="otp_relay_unpair_failed_title">中継サーバーで解除できませんでした</string>
     <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からだけ削除してください。削除しても、PCの拡張機能で解除するまで依頼は届きます。届いてもOTPは送りません。</string>
