@@ -130,15 +130,18 @@ public class OtpRelayResponderTest {
         assertEquals(OtpRelayResponder.Route.Kind.TOTP, OtpRelayResponder.route("totp", true, key).kind);
         OtpRelayResponder.Route noKey = OtpRelayResponder.route("totp", true, null);
         assertEquals(OtpRelayResponder.NO_TOTP_KEY, noKey.reason);
+        // 方式の違いだけでは断らない。認証アプリの画面は、鍵があればメール方式の端末でもコードを返す。
+        assertEquals(OtpRelayResponder.Route.Kind.TOTP, OtpRelayResponder.route("totp", false, key).kind);
         OtpRelayResponder.Route mailPhone = OtpRelayResponder.route("totp", false, null);
-        assertEquals(OtpRelayResponder.METHOD_MISMATCH, mailPhone.reason);
+        assertEquals(OtpRelayResponder.NO_TOTP_KEY, mailPhone.reason);
         assertEquals("mail", mailPhone.method);
-        OtpRelayResponder.Route totpPhone = OtpRelayResponder.route("mail", true, key);
-        assertEquals(OtpRelayResponder.METHOD_MISMATCH, totpPhone.reason);
-        assertEquals("totp", totpPhone.method);
+        // メールの画面は、認証アプリ方式の端末でもメールを読む。
+        assertEquals(OtpRelayResponder.Route.Kind.MAIL, OtpRelayResponder.route("mail", true, key).kind);
         assertEquals(OtpRelayResponder.Route.Kind.MAIL, OtpRelayResponder.route("mail", false, null).kind);
-        // 目印の無い依頼 (古い拡張) は、認証アプリ方式でも以前と同じくメールを読む。
-        assertEquals(OtpRelayResponder.Route.Kind.MAIL, OtpRelayResponder.route(null, true, key).kind);
+        // 目印の無い依頼 (1.1.0 までの拡張) は、この端末の方式で答える。
+        assertEquals(OtpRelayResponder.Route.Kind.TOTP, OtpRelayResponder.route(null, true, key).kind);
+        assertEquals(OtpRelayResponder.NO_TOTP_KEY, OtpRelayResponder.route(null, true, null).reason);
+        assertEquals(OtpRelayResponder.Route.Kind.MAIL, OtpRelayResponder.route(null, false, key).kind);
     }
 
     /** 鍵を止めている間は、認証アプリの画面からの依頼をすぐ key-suspended で断る (黙らない。D-11)。 */
@@ -149,8 +152,7 @@ public class OtpRelayResponderTest {
         assertEquals(OtpRelayResponder.Route.Kind.REFUSE, suspended.kind);
         assertEquals(OtpRelayResponder.KEY_SUSPENDED, suspended.reason);
         assertEquals("totp", suspended.method);
-        // 方式の食い違いは止めているかより先に伝える。
-        assertEquals(OtpRelayResponder.METHOD_MISMATCH, OtpRelayResponder.route("totp", false, null, true).reason);
+        assertEquals(OtpRelayResponder.KEY_SUSPENDED, OtpRelayResponder.route(null, true, key, true).reason);
         // メールの画面は止めた鍵と関係ない。
         assertEquals(OtpRelayResponder.Route.Kind.MAIL, OtpRelayResponder.route("mail", false, null, true).kind);
     }
@@ -239,35 +241,39 @@ public class OtpRelayResponderTest {
         assertEquals("{\"error\":\"no-totp-key\",\"method\":\"totp\"}", openBox(body.get("box").getAsString(), TOTP_REQUEST_ID));
     }
 
-    /** 方式の食い違い (メール方式の画面なのに、この端末は認証アプリ方式): メールを読まずに断る。 */
+    /** メール方式の画面: この端末が認証アプリ方式でも、断らずにメールを読む (端末の方式が古い)。 */
     @Test
-    public void mailPage_onAnAuthenticatorPhone_refusesWithoutReadingMail() throws Exception {
+    public void mailPage_onAnAuthenticatorPhone_readsMail() throws Exception {
         authenticator = true;
-        OtpRelayResponder.Outcome outcome = respondTo(MAIL_REQUEST_ID);
+        respondTo(MAIL_REQUEST_ID);
 
-        assertEquals(OtpRelayResponder.METHOD_MISMATCH, outcome.reason);
-        assertTrue(mailSince.isEmpty());
-        assertEquals("{\"error\":\"method-mismatch\",\"method\":\"totp\"}",
-                openBox(postBodyFor(MAIL_REQUEST_ID).get("box").getAsString(), MAIL_REQUEST_ID));
+        assertFalse(mailSince.isEmpty());
     }
 
+    /** 認証アプリ方式の画面: メール方式の端末でも、今の ID の鍵があればコードを返す。メールは読まない。 */
     @Test
-    public void totpPage_onAMailPhone_refusesWithoutReadingMail() throws Exception {
+    public void totpPage_onAMailPhone_withAHeldKey_sendsTheCode() throws Exception {
+        clockNow = 1_234_567_890_000L;
         OtpRelayResponder.Outcome outcome = respondTo(TOTP_REQUEST_ID);
 
-        assertEquals(OtpRelayResponder.METHOD_MISMATCH, outcome.reason);
+        assertEquals(OtpRelayResponder.Kind.SENT, outcome.kind);
         assertTrue(mailSince.isEmpty());
-        assertEquals("{\"error\":\"method-mismatch\",\"method\":\"mail\"}",
+        assertEquals("{\"code\":\"005924\",\"method\":\"totp\"}",
                 openBox(postBodyFor(TOTP_REQUEST_ID).get("box").getAsString(), TOTP_REQUEST_ID));
     }
 
-    /** 目印の無い依頼 (古い拡張) は、認証アプリ方式の端末でも今までどおりメールを読む。 */
+    /** 目印の無い依頼 (1.1.0 までの拡張): 認証アプリ方式の端末は鍵でコードを返す。メールは読まない。 */
     @Test
-    public void untaggedRequest_onAnAuthenticatorPhone_stillReadsMail() {
+    public void untaggedRequest_onAnAuthenticatorPhone_sendsTheCode() throws Exception {
         authenticator = true;
-        OtpRelayResponder.Outcome outcome = respond(pairing);
+        clockNow = 1_234_567_890_000L;
+        String untagged = "AAECAwQFBgcICQoLDA0ODw";
+        OtpRelayResponder.Outcome outcome = respondTo(untagged);
+
         assertEquals(OtpRelayResponder.Kind.SENT, outcome.kind);
-        assertEquals(1, mailSince.size());
+        assertTrue(mailSince.isEmpty());
+        assertEquals("{\"code\":\"005924\",\"method\":\"totp\"}",
+                openBox(postBodyFor(untagged).get("box").getAsString(), untagged));
     }
 
     private OtpRelayResponder.Outcome respond(OtpRelayPairing p) {

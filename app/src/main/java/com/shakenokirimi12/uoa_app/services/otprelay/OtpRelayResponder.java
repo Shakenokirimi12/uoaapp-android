@@ -40,7 +40,7 @@ public final class OtpRelayResponder {
      * 前の結果を「送れませんでした」で上書きしないよう、呼び出し側は結果の通知を出さない。
      */
     public static final String ALREADY_ANSWERED = "already-answered";
-    /** PC の画面とこの端末の方式が食い違う。理由は box に入れて返す (iOS と同じ)。 */
+    /** PC の画面とこの端末の方式が食い違う。以前の版が返していた断り。今は返さない (route)。文面は古い版のために残す。 */
     public static final String METHOD_MISMATCH = "method-mismatch";
     /** PC の画面は認証アプリ方式で、この端末も認証アプリ方式だが、今の ID のセットアップキーが無い。 */
     public static final String NO_TOTP_KEY = "no-totp-key";
@@ -246,9 +246,12 @@ public final class OtpRelayResponder {
     }
 
     /**
-     * - 目印の無い依頼 (古い拡張・画面の種類が読めなかった) は、以前と同じくメールを読む。古い拡張はメール方式の
-     *   画面でしか頼まないので、認証アプリ方式でもコードは作らない (入れても IdP の失敗が増えるだけ)。
-     * - 目印と方式が食い違えば断る。メールは読まない。
+     * 方式の違いだけでは断らない。答えられるものは、拡張が古くても返す (利用者の判断、2026-10-31。iOS と同じ)。
+     * 返したものを画面に入れるかは、拡張が返事の method で決める (1.1.1 の acceptReply)。
+     * - 目印のある依頼は画面を正とする (IdP の今の画面で、端末の方式より新しい)。
+     *     - メール方式の画面: メールを読む。この端末が認証アプリ方式でも読む。
+     *     - 認証アプリ方式の画面: 今の ID の鍵でコードを作る。鍵が無い・止めているときは理由を返す (メールは来ない)。
+     * - 目印の無い依頼 (1.1.0 までの拡張・画面の種類が読めなかった) は、この端末の方式で決める。
      *
      * - 止めたキー (IdP に 2 回弾かれた) ではコードを作らず、すぐに KEY_SUSPENDED で断る。
      *
@@ -263,13 +266,11 @@ public final class OtpRelayResponder {
 
     @NonNull
     static Route route(@Nullable String page, boolean authenticatorMethod, @Nullable Totp.Params key, boolean suspended) {
-        if (page == null) return Route.mail();
-        if (OtpRelayCrypto.PAGE_TOTP.equals(page)) {
-            if (!authenticatorMethod) return Route.refuse(METHOD_MISMATCH, OtpRelayCrypto.PAGE_MAIL);
-            if (key == null) return Route.refuse(NO_TOTP_KEY, OtpRelayCrypto.PAGE_TOTP);
-            return suspended ? Route.refuse(KEY_SUSPENDED, OtpRelayCrypto.PAGE_TOTP) : Route.totp(key);
-        }
-        return authenticatorMethod ? Route.refuse(METHOD_MISMATCH, OtpRelayCrypto.PAGE_TOTP) : Route.mail();
+        if (OtpRelayCrypto.PAGE_MAIL.equals(page)) return Route.mail();
+        if (!OtpRelayCrypto.PAGE_TOTP.equals(page) && !authenticatorMethod) return Route.mail();
+        String method = authenticatorMethod ? OtpRelayCrypto.PAGE_TOTP : OtpRelayCrypto.PAGE_MAIL;
+        if (key == null) return Route.refuse(NO_TOTP_KEY, method);
+        return suspended ? Route.refuse(KEY_SUSPENDED, OtpRelayCrypto.PAGE_TOTP) : Route.totp(key);
     }
 
     /**
