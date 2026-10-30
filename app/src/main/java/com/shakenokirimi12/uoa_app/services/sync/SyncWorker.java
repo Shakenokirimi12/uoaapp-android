@@ -11,6 +11,7 @@ import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
+import com.shakenokirimi12.uoa_app.services.AccountSwitch;
 import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 import com.shakenokirimi12.uoa_app.services.AppConfigService;
 import com.shakenokirimi12.uoa_app.services.AuthErrors;
@@ -108,6 +109,9 @@ public class SyncWorker extends Worker {
             return Result.success();
         }
 
+        // ユーザー名より先に控える。同期の途中でアカウントを切り替えたりログアウトしたりしたら、取れた結果を
+        // 片付けたあとのキャッシュ・リマインダー・ウィジェットに書き戻さない (AccountSwitch.runIfCurrent)。
+        AccountSwitch.Ticket ticket = AccountSwitch.ticket();
         String user = prefs.getUsername();
         String pass = prefs.getPassword();
         DataCache cache = DataCache.getInstance(ctx);
@@ -135,9 +139,14 @@ public class SyncWorker extends Worker {
                     }));
                     List<Assignment> assignments = fetched.get();
                     if (assignments != null) {
-                        cache.saveAssignments(assignments);
-                        com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.sync(ctx, assignments);
-                        com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier.post(ctx, assignments);
+                        if (!AccountSwitch.runIfCurrent(ticket, () -> {
+                            cache.saveAssignments(assignments);
+                            com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.sync(ctx, assignments);
+                            com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier.post(ctx, assignments);
+                        })) {
+                            Log.w(TAG, "Account changed during sync; dropping assignments");
+                            return Result.success();
+                        }
                     } else if (AuthErrors.isInteractiveLoginRequired(fetchError.get())) {
                         loginRequired = true;
                     } else {
@@ -168,8 +177,13 @@ public class SyncWorker extends Worker {
                 @Override public void onError(String m) { csError.set(m); latch.countDown(); }
             }));
             if (fetched.get() != null) {
-                cache.saveEvents(fetched.get());
-                com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(ctx);
+                if (!AccountSwitch.runIfCurrent(ticket, () -> {
+                    cache.saveEvents(fetched.get());
+                    com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(ctx);
+                })) {
+                    Log.w(TAG, "Account changed during sync; dropping calendar events");
+                    return Result.success();
+                }
             } else if (AuthErrors.isInteractiveLoginRequired(csError.get())) {
                 loginRequired = true;
             } else {

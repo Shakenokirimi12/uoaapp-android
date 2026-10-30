@@ -329,7 +329,9 @@ public class LoginSettingsFragment extends Fragment {
                         // 前のアカウントの SSO・セッションは確認のログインの前に捨ててある。ここで捨てると、確認の
                         // ログインで得た SSO とセッションまで消える (S-8)。
                         // 別のアカウントに決まったら、確認の最中に前のアカウントで始まった取得の結果も捨てる。
-                        if (prefs.setUsername(newUser)) com.shakenokirimi12.uoa_app.services.AccountSwitch.committed();
+                        if (prefs.setUsername(newUser)) {
+                            com.shakenokirimi12.uoa_app.services.AccountSwitch.committed(requireContext(), prefs, newUser);
+                        }
                         prefs.setPassword(newPass);
                         render();
                         Toast.makeText(requireContext(), R.string.login_account_saved, Toast.LENGTH_SHORT).show();

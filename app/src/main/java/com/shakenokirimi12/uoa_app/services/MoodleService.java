@@ -511,6 +511,8 @@ public class MoodleService {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
         }
+        // 結果を渡す直前にアカウントが変わっていないか確かめる (前のアカウントの課題や科目を画面・キャッシュに出さない)。
+        AccountSwitch.Ticket ticket = AccountSwitch.ticket();
         executor.execute(() -> {
             try {
                 String jsonBody = "[{\"index\":0,\"methodname\":" +
@@ -526,7 +528,7 @@ public class MoodleService {
                     data = MoodleAjax.firstData(gson, response);
                 } catch (MoodleAjax.AjaxException e) {
                     Log.w(TAG, "core_course_get_enrolled_courses_by_timeline_classification failed: " + e.getMessage());
-                    postError(callback, AppStrings.get(R.string.courses_unavailable));
+                    postErrorForAccount(callback, AppStrings.get(R.string.courses_unavailable), ticket);
                     return;
                 }
                 List<Map<String, Object>> coursesRaw =
@@ -546,10 +548,10 @@ public class MoodleService {
                     }
                 }
 
-                postSuccess(callback, courses);
+                postSuccessForAccount(callback, courses, ticket);
             } catch (Exception e) {
                 Log.e(TAG, "fetchCourses error", e);
-                postError(callback, e.getMessage());
+                postErrorForAccount(callback, e.getMessage(), ticket);
             }
         });
     }
@@ -559,6 +561,8 @@ public class MoodleService {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
         }
+        // 結果を渡す直前にアカウントが変わっていないか確かめる (前のアカウントの課題や科目を画面・キャッシュに出さない)。
+        AccountSwitch.Ticket ticket = AccountSwitch.ticket();
         executor.execute(() -> {
             try {
                 long now = System.currentTimeMillis() / 1000;
@@ -577,14 +581,14 @@ public class MoodleService {
                     data = MoodleAjax.firstData(gson, response);
                 } catch (MoodleAjax.AjaxException e) {
                     Log.w(TAG, "core_calendar_get_action_events_by_timesort failed: " + e.getMessage());
-                    postError(callback, AppStrings.get(R.string.assignments_unavailable));
+                    postErrorForAccount(callback, AppStrings.get(R.string.assignments_unavailable), ticket);
                     return;
                 }
                 List<Map<String, Object>> events = data.get("events") instanceof List
                         ? (List<Map<String, Object>>) data.get("events") : null;
                 if (events == null) {
                     Log.w(TAG, "core_calendar_get_action_events_by_timesort failed: no events");
-                    postError(callback, AppStrings.get(R.string.assignments_unavailable));
+                    postErrorForAccount(callback, AppStrings.get(R.string.assignments_unavailable), ticket);
                     return;
                 }
 
@@ -609,10 +613,10 @@ public class MoodleService {
                     assignments.add(a);
                 }
 
-                postSuccess(callback, assignments);
+                postSuccessForAccount(callback, assignments, ticket);
             } catch (Exception e) {
                 Log.e(TAG, "fetchAssignments error", e);
-                postError(callback, e.getMessage());
+                postErrorForAccount(callback, e.getMessage(), ticket);
             }
         });
     }
@@ -646,11 +650,13 @@ public class MoodleService {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
         }
+        // 結果を渡す直前にアカウントが変わっていないか確かめる (前のアカウントの課題や科目を画面・キャッシュに出さない)。
+        AccountSwitch.Ticket ticket = AccountSwitch.ticket();
         executor.execute(() -> {
             try {
-                postSuccess(callback, withSession(context, key -> fetchCourseContentsWithSession(key, courseId)));
+                postSuccessForAccount(callback, withSession(context, key -> fetchCourseContentsWithSession(key, courseId)), ticket);
             } catch (Exception e) {
-                postError(callback, e.getMessage());
+                postErrorForAccount(callback, e.getMessage(), ticket);
             }
         });
     }
@@ -794,5 +800,35 @@ public class MoodleService {
 
     private <T> void postError(ServiceCallback<T> cb, String msg) {
         mainHandler.post(() -> cb.onError(msg != null ? msg : AppStrings.get(R.string.common_unknown_problem)));
+    }
+
+    /**
+     * ticket を控えてからアカウントが切り替わった (またはログアウトした) 取得の結果は渡さない。入口の確認
+     * (ensureSession の isStale) を通ったあとに切り替えが始まると、前のアカウントのセッションで取った課題や科目が
+     * 新しいアカウントの画面とキャッシュに入る。確かめるのは渡すメインスレッドの上 (切り替えもメインスレッドで決まる)。
+     */
+    private <T> void postSuccessForAccount(ServiceCallback<T> cb, T result, AccountSwitch.Ticket ticket) {
+        mainHandler.post(() -> {
+            if (ticket.isCurrent()) {
+                cb.onSuccess(result);
+            } else {
+                Log.w(TAG, "Dropping Moodle data fetched for the previous account");
+                cb.onError(new AccountChangedException().getMessage());
+            }
+        });
+    }
+
+    /**
+     * postSuccessForAccount の失敗版。前のアカウントの失敗 (ID / パスワードの誤りなど) をそのまま渡すと、画面が
+     * 今のアカウントの資格情報に誤りの印を付けてログインを止めるので、差し替える。
+     */
+    private <T> void postErrorForAccount(ServiceCallback<T> cb, String msg, AccountSwitch.Ticket ticket) {
+        mainHandler.post(() -> {
+            if (ticket.isCurrent()) {
+                cb.onError(msg != null ? msg : AppStrings.get(R.string.common_unknown_problem));
+            } else {
+                cb.onError(new AccountChangedException().getMessage());
+            }
+        });
     }
 }

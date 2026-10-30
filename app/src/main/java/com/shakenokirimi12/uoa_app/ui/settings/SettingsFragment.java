@@ -290,6 +290,9 @@ public class SettingsFragment extends Fragment {
                         .setTitle(R.string.settings_logout)
                         .setMessage(R.string.settings_logout_message)
                         .setPositiveButton(R.string.ok, (dialog, which) -> {
+                            // 先に世代を進める。ログアウトの前に始まった取得 (裏の同期など) が、このあと空にする
+                            // キャッシュとリマインダーに前のユーザーのデータを書き戻さない。
+                            com.shakenokirimi12.uoa_app.services.AccountSwitch.loggedOut();
                             // サーバーの削除が失敗しても端末内の削除は続け、失敗したことは 1 回だけ知らせる (SPEC.md「11」)。
                             // 画面はすぐ閉じるので、アプリの Context で出す。
                             Runnable serverDeleteFailed = logoutServerFailureNotice(requireContext().getApplicationContext());
@@ -306,14 +309,11 @@ public class SettingsFragment extends Fragment {
                             // 返事を読むトークンは clearAll が消すので、その前に呼ぶ。
                             com.shakenokirimi12.uoa_app.data.timetable.TimetableShareStore.getInstance(requireContext()).clearAllOnLogout(serverDeleteFailed);
                             prefs.clearAll();
-                            DataCache.getInstance(requireContext()).clearAll();
-                            // キャッシュを捨てたら、それを映しているウィジェットと通知も片付ける。
-                            // 放置すると次の定期更新まで前のユーザーの時間割が出続ける。
-                            com.shakenokirimi12.uoa_app.widget.ClassScheduleWidgetProvider.refresh(requireContext());
+                            // キャッシュと、それを映しているウィジェット・通知を片付ける (アカウントの切り替えと共通)。
+                            com.shakenokirimi12.uoa_app.services.AccountSwitch.clearAccountCaches(requireContext());
                             // 利用状況のまだ送っていない回数と ID も消す (次のユーザーの分と混ぜない)。
+                            // ウィジェットの更新も数えるので、片付けのあとに消す。
                             com.shakenokirimi12.uoa_app.services.usage.UsageStats.clearLocal(requireContext());
-                            com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier.clearAll(requireContext());
-                            com.shakenokirimi12.uoa_app.services.notification.ClassNotificationService.stop(requireContext());
                             // OkHttp の cookie と WebView の cookie は別の入れ物。片方だけ消しても、
                             // 次のユーザーがアプリ内ブラウザを開いたときに前のセッションが使われる。
                             com.shakenokirimi12.uoa_app.services.NetworkClient.clearCookies();
