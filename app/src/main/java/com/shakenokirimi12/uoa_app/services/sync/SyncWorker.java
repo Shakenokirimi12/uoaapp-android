@@ -198,7 +198,8 @@ public class SyncWorker extends Worker {
         }
 
         boolean success = !anyFailure && !loginRequired;
-        if (success) prefs.setLastSync(System.currentTimeMillis());
+        // 途中でアカウントが切り替わっていたら、新しいアカウントを同期済みと記録しない。
+        if (success) AccountSwitch.runIfCurrent(ticket, () -> prefs.setLastSync(System.currentTimeMillis()));
         // 失敗は次回の定期実行に任せる。retry にすると指数バックオフで短時間に再ログインを重ねる。
         return Result.success();
     }

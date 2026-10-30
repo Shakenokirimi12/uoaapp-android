@@ -64,6 +64,10 @@ public final class AssignmentReminderSync {
         }
 
         List<PushNotificationService.AssignmentReminder> reminders = build(ctx, prefs, assignments);
+        // 送る前に「持っている」と記録する。応答を待ってから記録すると、送っている最中のログアウトや
+        // アカウントの切り替えで clear が何も送らずに戻り、そのあと届いた前のアカウントの予約が残る。
+        // 送信は 1 本の executor に並ぶので、ここで記録すれば clear の削除はこの同期のあとに届く。
+        if (!reminders.isEmpty()) prefs.setServerHoldingReminders(true);
         push(ctx).syncAssignmentReminders(reminders, false, ok -> {
             // 「サーバーは空」と言い切れるのは clearAll のときだけ。通常の再同期は期限の来た
             // 未配信分を残すので、空を送っても空になったとは限らない。
