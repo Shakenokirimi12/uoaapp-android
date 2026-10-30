@@ -145,6 +145,12 @@ public final class AutoAbsenceRunner {
      * (この prefs は OS のバックアップに入るので、学籍番号をキーに残さない)。足した値の書き込みと元のキーの削除は
      * 同じ Editor の 1 回の書き込み。読めないものは触らない。
      */
+    public static void migrateRawUsernameKeys(@NonNull Context ctx) {
+        synchronized (AutoAbsenceRunner.class) {
+            migrateRawUsernameKeys(ctx.getApplicationContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE));
+        }
+    }
+
     private static void migrateRawUsernameKeys(SharedPreferences sp) {
         for (String key : new java.util.HashSet<>(sp.getAll().keySet())) {
             if (!key.startsWith(KEY_MARKED + "@")) continue;

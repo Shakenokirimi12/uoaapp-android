@@ -121,4 +121,18 @@ public class AttendanceManagerTest {
         assertEquals(1, summary.present);
         assertEquals(0, summary.absent);
     }
+
+    /** 同じ日なら、後から付いた「欠席？（要確認）」より確かめた記録を残す。 */
+    @Test
+    public void mergePrefersAConfirmedRecordOverAnUnconfirmedAbsence() {
+        MapStore store = new MapStore();
+        store.values.put(AttendanceManager.keyFor("s1300001"), "{\"101\":{\"history\":[{\"id\":\"mine\","
+                + "\"date\":\"2026-10-01\",\"status\":\"PRESENT\",\"timestamp\":1,\"source\":\"manual\"}]}}");
+        AttendanceManager attendance = new AttendanceManager(store, () -> "s1300001");
+        attendance.importRecords("s1300001", "{\"101\":{\"history\":[{\"id\":\"auto\",\"date\":\"2026-10-01\","
+                + "\"status\":\"ABSENT_UNCONFIRMED\",\"timestamp\":2,\"source\":\"auto\"}]}}");
+        AttendanceManager.AttendanceSummary summary = attendance.getAttendance("101");
+        assertEquals(1, summary.history.size());
+        assertEquals("PRESENT", summary.history.get(0).status);
+    }
 }

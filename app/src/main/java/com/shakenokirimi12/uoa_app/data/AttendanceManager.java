@@ -199,17 +199,25 @@ public class AttendanceManager {
     }
 
     /**
-     * 記録は 1 日 1 つ (addHistory が同じ日を置き換える)。合わせた結果、同じ日に 2 つあれば後に付けた方を残す
-     * (両方残すと同じ授業を 2 回数える)。日付の無いものはそのまま残す。
+     * 記録は 1 日 1 つ (addHistory が同じ日を置き換える)。合わせた結果、同じ日に 2 つあれば 1 つにする (両方残すと
+     * 同じ授業を 2 回数える)。確かめた記録 (出席・欠席・遅刻) を「欠席？（要確認）」より優先し、同じ種類なら後に
+     * 付けた方を残す。日付の無いものはそのまま残す。
      */
     private static void keepOnePerDate(List<HistoryItem> history) {
         Map<String, HistoryItem> latest = new HashMap<>();
         for (HistoryItem h : history) {
             if (h.date == null) continue;
             HistoryItem kept = latest.get(h.date);
-            if (kept == null || h.timestamp > kept.timestamp) latest.put(h.date, h);
+            if (kept == null || prefer(h, kept)) latest.put(h.date, h);
         }
         history.removeIf(h -> h.date != null && latest.get(h.date) != h);
+    }
+
+    private static boolean prefer(HistoryItem candidate, HistoryItem kept) {
+        boolean candidateUnconfirmed = Status.ABSENT_UNCONFIRMED.name().equals(candidate.status);
+        boolean keptUnconfirmed = Status.ABSENT_UNCONFIRMED.name().equals(kept.status);
+        if (candidateUnconfirmed != keptUnconfirmed) return keptUnconfirmed;
+        return candidate.timestamp > kept.timestamp;
     }
 
     /**
@@ -223,7 +231,11 @@ public class AttendanceManager {
             String json = store.get(key);
             if (json == null) continue;
             if (KEY_DATA.equals(key)) out.put("", json);
-            else if (key.startsWith(KEY_DATA + "@")) out.put(key.substring(KEY_DATA.length() + 1), json);
+            else if (key.startsWith(KEY_DATA + "@")) {
+                // 読めずに移せなかった versionCode 7 のキー (ユーザー名そのもの) も、書き出すのは accountId。
+                String suffix = key.substring(KEY_DATA.length() + 1);
+                out.put(isAccountId(suffix) ? suffix : accountId(suffix), json);
+            }
         }
         return out;
     }
