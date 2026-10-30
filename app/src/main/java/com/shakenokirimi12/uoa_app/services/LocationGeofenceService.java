@@ -254,19 +254,18 @@ public class LocationGeofenceService {
             }
             if (matched == null) continue;
             String courseId = String.valueOf(matched.getId());
-            if (attendance.hasRecordToday(courseId)) {
-                Log.d(TAG, "Already recorded today: " + courseId);
-                continue;
-            }
-
+            // その日の記録の有無は、書き込みと同じ所 (addHistoryIfUnrecorded) で、控えたアカウントの記録を見る。
             java.util.concurrent.atomic.AtomicBoolean saved = new java.util.concurrent.atomic.AtomicBoolean();
             if (!AccountSwitch.runIfCurrent(ticket, () -> saved.set(attendance.addHistoryIfUnrecorded(
                     username, courseId, AttendanceManager.Status.PRESENT, new Date(), "auto")))) {
                 Log.d(TAG, "Account changed; not recording attendance");
                 return;
             }
-            // 保存しなかったら (その間に記録が付いた・記録が読めない) 登録したと知らせず、間隔も空けない。
-            if (!saved.get()) return;
+            // 保存しなかったら (その日の記録が既にある・記録が読めない) 登録したと知らせず、次の候補を試す。
+            if (!saved.get()) {
+                Log.d(TAG, "Not recorded (already recorded today or unreadable): " + courseId);
+                continue;
+            }
             com.shakenokirimi12.uoa_app.services.usage.UsageStats.record(ctx,
                     com.shakenokirimi12.uoa_app.services.usage.UsageFeature.AUTO_ATTENDANCE);
             sp.edit().putLong("last_geofence_time", now).apply();
