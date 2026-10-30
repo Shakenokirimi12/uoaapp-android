@@ -437,12 +437,12 @@ public class CampusSquareService {
             try {
                 List<Grade> grades = withSession(username, password, context, this::fetchGradesWithSession);
                 if (grades == null) {
-                    postError(callback, AppStrings.get(R.string.campussquare_flow_key_failed));
+                    postErrorForAccount(callback, AppStrings.get(R.string.campussquare_flow_key_failed), ticket);
                     return;
                 }
                 postSuccessForAccount(callback, grades, ticket);
             } catch (Exception e) {
-                postError(callback, e.getMessage());
+                postErrorForAccount(callback, e.getMessage(), ticket);
             }
         });
     }
@@ -532,12 +532,12 @@ public class CampusSquareService {
             try {
                 List<CalendarEvent> events = withSession(username, password, context, this::fetchCalendarEventsWithSession);
                 if (events == null) {
-                    postError(callback, AppStrings.get(R.string.campussquare_calendar_url_failed));
+                    postErrorForAccount(callback, AppStrings.get(R.string.campussquare_calendar_url_failed), ticket);
                     return;
                 }
                 postSuccessForAccount(callback, events, ticket);
             } catch (Exception e) {
-                postError(callback, e.getMessage());
+                postErrorForAccount(callback, e.getMessage(), ticket);
             }
         });
     }
@@ -949,6 +949,20 @@ public class CampusSquareService {
                 cb.onSuccess(result);
             } else {
                 Log.w(TAG, "Dropping CampusSquare data fetched for the previous account");
+                cb.onError(new AccountChangedException().getMessage());
+            }
+        });
+    }
+
+    /**
+     * postSuccessForAccount の失敗版。前のアカウントの失敗 (ID / パスワードの誤りなど) をそのまま渡すと、画面が
+     * 今のアカウントの資格情報に誤りの印を付けて (markInvalidIfCredentialsError) ログインを止めるので、差し替える。
+     */
+    private <T> void postErrorForAccount(ServiceCallback<T> cb, String msg, AccountSwitch.Ticket ticket) {
+        mainHandler.post(() -> {
+            if (ticket.isCurrent()) {
+                cb.onError(msg != null ? msg : AppStrings.get(R.string.common_unknown_problem));
+            } else {
                 cb.onError(new AccountChangedException().getMessage());
             }
         });
