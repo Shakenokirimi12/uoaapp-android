@@ -359,13 +359,6 @@ public class HomeFragment extends Fragment {
             return;
         }
 
-        // 引っ張って更新 (と IdP のチュートリアルの「今すぐログインする」) は利用者のやり直し。直前のログインの
-        // 失敗による 60 秒の待ちを解いて、新しくログインさせる。画面を開いただけの自動の取得では解かない。
-        if (force) {
-            MoodleService.allowLoginRetry();
-            CampusSquareService.allowLoginRetry();
-        }
-
         // += so a pull-to-refresh during an in-flight sync does not hide the spinner early.
         pendingFetches += (fetchEvents ? 1 : 0) + (fetchAssignments ? 1 : 0);
 
@@ -382,9 +375,12 @@ public class HomeFragment extends Fragment {
                 fetchFinished();
                 return;
             }
-            fetchCalendarEvents(user, pass);
+            fetchCalendarEvents(user, pass, force);
         };
 
+        // 引っ張って更新 (と IdP のチュートリアルの「今すぐログインする」) は利用者のやり直し。直前のログインの
+        // 失敗による 60 秒の待ちを、それぞれの取得の直前に解く (allowLoginRetry)。画面を開いただけの取得では解かない。
+        if (fetchAssignments && force) moodleService.allowLoginRetry();
         if (fetchAssignments) moodleService.ensureLoggedIn(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
@@ -433,7 +429,9 @@ public class HomeFragment extends Fragment {
         else if (fetchCalendar != null) fetchCalendar.run();
     }
 
-    private void fetchCalendarEvents(String user, String pass) {
+    /** @param userRetry 利用者のやり直し (引っ張って更新など)。直前のログインの失敗による待ちを解いてから取る。 */
+    private void fetchCalendarEvents(String user, String pass, boolean userRetry) {
+        if (userRetry) csService.allowLoginRetry();
         csService.fetchCalendarEvents(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<List<CalendarEvent>>() {
             @Override
             public void onSuccess(List<CalendarEvent> events) {

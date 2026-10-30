@@ -58,7 +58,7 @@ public class FacilitiesFragment extends Fragment {
         buttonRetry = view.findViewById(R.id.button_retry);
         // 再試行は利用者のやり直し。直前のログインの失敗による待ちを解く (日付の切り替えでは解かない)。
         buttonRetry.setOnClickListener(v -> {
-            CampusSquareService.allowLoginRetry();
+            csService.allowLoginRetry();
             loadFacilities();
         });
         progressBar = view.findViewById(R.id.progress_bar);

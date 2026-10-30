@@ -220,12 +220,15 @@ public class CampusSquareService {
     }
 
     /**
-     * 利用者がやり直したとき (引っ張って更新・再試行ボタン) に、取得を始める前に呼ぶ。直前のログインの
-     * 失敗による待ち (SessionCoordinator.LOGIN_BACKOFF_MS) を解き、次の取得で新しくログインさせる。
+     * 利用者がやり直したとき (引っ張って更新・再試行ボタン) に、その取得を同じインスタンスで呼ぶ直前に呼ぶ。
+     * 直前のログインの失敗による待ち (SessionCoordinator.LOGIN_BACKOFF_MS) を解き、その取得で新しくログインさせる。
      * 画面を開いただけの取得では呼ばない (失敗の直後に OTP を自動で求め直さないため)。iOS の allowLoginRetry と同じ。
+     *
+     * 解くのは executor の上で、利用者の取得の直前の順番にする。すぐに解くと、同じ executor で先に走っている
+     * 自動の取得が後から失敗して待ちを付け直し、利用者の取得がその失敗を受け取る (自動の同期の最中に引っ張ったとき)。
      */
-    public static void allowLoginRetry() {
-        coordinator.clearBackoff();
+    public void allowLoginRetry() {
+        executor.execute(coordinator::clearBackoff);
     }
 
     /** ログアウト時に呼ぶ。永続化した IdP cookie とメモリ上のセッション状態を両方捨てる。 */

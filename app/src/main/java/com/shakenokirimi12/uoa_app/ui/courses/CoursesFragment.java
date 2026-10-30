@@ -138,7 +138,7 @@ public class CoursesFragment extends Fragment {
             return;
         }
         // 引っ張って更新は利用者のやり直し。直前のログインの失敗による待ちを解く (画面を開いただけでは解かない)。
-        if (force) MoodleService.allowLoginRetry();
+        if (force) moodleService.allowLoginRetry();
         moodleService.ensureLoggedIn(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
