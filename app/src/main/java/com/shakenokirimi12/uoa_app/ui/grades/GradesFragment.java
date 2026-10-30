@@ -92,6 +92,8 @@ public class GradesFragment extends Fragment {
             showFetchFailure();
             return;
         }
+        // 引っ張って更新は利用者のやり直し。直前のログインの失敗による待ちを解く (画面を開いただけでは解かない)。
+        if (force) CampusSquareService.allowLoginRetry();
         csService.fetchGrades(user, pass, AuthorizationContext.INTERACTIVE, new ServiceCallback<List<Grade>>() {
             @Override
             public void onSuccess(List<Grade> grades) {

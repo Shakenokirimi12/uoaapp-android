@@ -19,7 +19,8 @@ import java.util.concurrent.FutureTask;
  *      バックグラウンド (AuthorizationContext.BACKGROUND) からの要求は、Unattended (BackgroundLoginPolicy)
  *      が許したときだけ新規ログインを始める (方式ごとの条件と間隔は BackgroundLoginPolicy)。始めないときは
  *      INTERACTIVE_LOGIN_REQUIRED を返して諦め、次にユーザーが画面を開いたときに任せる。
- *      直前の前面の障害系失敗から LOGIN_BACKOFF_MS 以内なら再試行しない (バックグラウンドの失敗は前面を止めない)
+ *      直前の前面の障害系失敗から LOGIN_BACKOFF_MS 以内なら再試行しない (バックグラウンドの失敗は前面を止めない)。
+ *      利用者がやり直したとき (引っ張って更新・再試行ボタン) は、呼び出し側が clearBackoff で待ちを解く
  *
  * 各画面と SyncWorker はそれぞれ別のサービスインスタンス (= 別の単一スレッド executor) から
  * 同時にここへ来るため、素の static フィールドでは単一飛行が破れて二重ログイン (= 二重 OTP メール)
@@ -87,6 +88,20 @@ final class SessionCoordinator<S> {
     void reset() {
         synchronized (lock) {
             live = null;
+            lastFailure = null;
+            lastFailureAt = 0;
+        }
+    }
+
+    /**
+     * 利用者がやり直したとき (引っ張って更新・再試行ボタン) に呼ぶ。直前の失敗による待ち (LOGIN_BACKOFF_MS) を解く。
+     * 待ちは、画面を開いただけの取得や同じ更新の中で続く取得が、失敗の直後にログインし直して OTP を
+     * もう一度求めない (メールをもう一通飛ばさない) ためのもの。利用者の操作にまで効かせると、OTP を
+     * 取り消した・通信が戻った直後に引っ張って更新しても、最大 1 分間同じ失敗が返るだけになる。
+     * バックグラウンドの判定 (Unattended) と誤りの印は変えない。
+     */
+    void clearBackoff() {
+        synchronized (lock) {
             lastFailure = null;
             lastFailureAt = 0;
         }

@@ -359,6 +359,13 @@ public class HomeFragment extends Fragment {
             return;
         }
 
+        // 引っ張って更新 (と IdP のチュートリアルの「今すぐログインする」) は利用者のやり直し。直前のログインの
+        // 失敗による 60 秒の待ちを解いて、新しくログインさせる。画面を開いただけの自動の取得では解かない。
+        if (force) {
+            MoodleService.allowLoginRetry();
+            CampusSquareService.allowLoginRetry();
+        }
+
         // += so a pull-to-refresh during an in-flight sync does not hide the spinner early.
         pendingFetches += (fetchEvents ? 1 : 0) + (fetchAssignments ? 1 : 0);
 

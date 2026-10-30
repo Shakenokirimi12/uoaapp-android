@@ -153,6 +153,40 @@ public class SessionCoordinatorTest {
         assertEquals(2, attempts.get());
     }
 
+    /**
+     * 前面の障害系の失敗 (OTP の取り消し・通信の失敗) のあと、自動の取得は待つ (OTP を求め直さない)。
+     * 利用者がやり直したとき (clearBackoff) は待たずにもう一度ログインする。
+     */
+    @Test
+    public void interactiveFailure_backsOffUntilUserRetries() throws Exception {
+        SessionCoordinator<String> coordinator = new SessionCoordinator<>();
+        AtomicInteger logins = new AtomicInteger();
+        Exception cancelled = new Exception("OTP の入力が取り消されました");
+        try {
+            coordinator.session(METHOD, AuthorizationContext.INTERACTIVE, null, s -> null,
+                    () -> { logins.incrementAndGet(); throw cancelled; });
+            fail("失敗が投げられるはず");
+        } catch (Exception e) {
+            assertSame(cancelled, e);
+        }
+
+        // 自動の取得 (画面を開いただけ) は、直前の失敗をそのまま受け取り、ログインを始めない。
+        try {
+            coordinator.session(METHOD, AuthorizationContext.INTERACTIVE, null, s -> null,
+                    () -> { logins.incrementAndGet(); return "auto"; });
+            fail("待ちの間は直前の失敗が返るはず");
+        } catch (Exception e) {
+            assertSame(cancelled, e);
+        }
+        assertEquals(1, logins.get());
+
+        coordinator.clearBackoff();
+        String retried = coordinator.session(METHOD, AuthorizationContext.INTERACTIVE, null, s -> null,
+                () -> { logins.incrementAndGet(); return "retried"; });
+        assertEquals("retried", retried);
+        assertEquals(2, logins.get());
+    }
+
     /** 障害系の失敗は、バックグラウンドからの再試行を抑える前にそもそもログインへ進ませない。 */
     @Test
     public void backgroundAfterFailure_stillDoesNotLogIn() throws Exception {

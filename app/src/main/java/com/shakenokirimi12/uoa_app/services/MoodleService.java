@@ -77,6 +77,15 @@ public class MoodleService {
         return sesskey != null && !sesskey.isEmpty();
     }
 
+    /**
+     * 利用者がやり直したとき (引っ張って更新・再試行ボタン) に、取得を始める前に呼ぶ。直前のログインの
+     * 失敗による待ち (SessionCoordinator.LOGIN_BACKOFF_MS) を解き、次の取得で新しくログインさせる。
+     * 画面を開いただけの取得では呼ばない (失敗の直後に OTP を自動で求め直さないため)。iOS の allowLoginRetry と同じ。
+     */
+    public static void allowLoginRetry() {
+        coordinator.clearBackoff();
+    }
+
     /** ログアウト時に呼ぶ。cookie jar は NetworkClient.clearCookies() が別に消す。 */
     public static void clearSession() {
         sesskey = "";

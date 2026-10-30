@@ -139,7 +139,11 @@ public class CourseDetailFragment extends Fragment {
             InAppBrowserActivity.open(requireContext(), url);
         });
 
-        swipeRefresh.setOnRefreshListener(this::loadData);
+        // 引っ張って更新は利用者のやり直し。直前のログインの失敗による待ちを解く (開いたときの loadData では解かない)。
+        swipeRefresh.setOnRefreshListener(() -> {
+            MoodleService.allowLoginRetry();
+            loadData();
+        });
 
         cardSyllabus.setVisibility(View.GONE);
         loadData();
