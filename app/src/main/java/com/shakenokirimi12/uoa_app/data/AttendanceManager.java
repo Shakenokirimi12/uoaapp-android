@@ -180,7 +180,10 @@ public class AttendanceManager {
         store.put(key, gson.toJson(target), KEY_DATA);
     }
 
-    /** from の記録を into に足す。同じ id の記録は重ねない。 */
+    /**
+     * from の記録を into に足す。同じ id の記録は重ねず、日付ごとと同じ選び方で 1 つを残す (片方だけ確かめた
+     * 記録なら、確かめた方)。
+     */
     static void mergeInto(Map<String, Record> into, Map<String, Record> from) {
         for (Map.Entry<String, Record> e : from.entrySet()) {
             Record src = e.getValue();
@@ -188,11 +191,20 @@ public class AttendanceManager {
             Record dst = into.get(e.getKey());
             if (dst == null) { dst = new Record(); into.put(e.getKey(), dst); }
             if (dst.history == null) dst.history = new ArrayList<>();
-            Set<String> ids = new HashSet<>();
-            for (HistoryItem h : dst.history) if (h.id != null) ids.add(h.id);
+            Map<String, Integer> indexById = new HashMap<>();
+            for (int i = 0; i < dst.history.size(); i++) {
+                HistoryItem h = dst.history.get(i);
+                if (h != null && h.id != null) indexById.putIfAbsent(h.id, i);
+            }
             for (HistoryItem h : src.history) {
                 if (h == null) continue;
-                if (h.id == null || ids.add(h.id)) dst.history.add(h);
+                Integer at = h.id != null ? indexById.get(h.id) : null;
+                if (at == null) {
+                    if (h.id != null) indexById.put(h.id, dst.history.size());
+                    dst.history.add(h);
+                } else if (prefer(h, dst.history.get(at))) {
+                    dst.history.set(at, h);
+                }
             }
             keepOnePerDate(dst.history);
         }

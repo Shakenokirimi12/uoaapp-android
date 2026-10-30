@@ -135,4 +135,25 @@ public class AttendanceManagerTest {
         assertEquals(1, summary.history.size());
         assertEquals("PRESENT", summary.history.get(0).status);
     }
+
+    /** 同じ id の記録で片方だけ確かめていれば、どちらの側にあっても確かめた方を残す (読み戻しで要確認に戻らない)。 */
+    @Test
+    public void mergeWithTheSameIdKeepsTheConfirmedRecord() {
+        String unconfirmed = "{\"101\":{\"history\":[{\"id\":\"same\",\"date\":\"2026-10-01\","
+                + "\"status\":\"ABSENT_UNCONFIRMED\",\"timestamp\":1,\"source\":\"auto\"}]}}";
+        String confirmed = "{\"101\":{\"history\":[{\"id\":\"same\",\"date\":\"2026-10-01\","
+                + "\"status\":\"PRESENT\",\"timestamp\":1,\"source\":\"auto\"}]}}";
+        String[][] cases = {{unconfirmed, confirmed}, {confirmed, unconfirmed}};
+        for (String[] c : cases) {
+            MapStore store = new MapStore();
+            store.values.put(AttendanceManager.keyFor("s1300001"), c[0]);
+            AttendanceManager attendance = new AttendanceManager(store, () -> "s1300001");
+            assertTrue(attendance.importRecords("s1300001", c[1]));
+            AttendanceManager.AttendanceSummary summary = attendance.getAttendance("101");
+            assertEquals(1, summary.history.size());
+            assertEquals("PRESENT", summary.history.get(0).status);
+            assertEquals(1, summary.present);
+            assertEquals(0, summary.absent);
+        }
+    }
 }
