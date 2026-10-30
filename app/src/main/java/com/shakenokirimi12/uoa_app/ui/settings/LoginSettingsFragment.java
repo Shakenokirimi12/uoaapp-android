@@ -267,12 +267,22 @@ public class LoginSettingsFragment extends Fragment {
         EditText editUsername = dialogView.findViewById(R.id.edit_username);
         EditText editPassword = dialogView.findViewById(R.id.edit_password);
         TextInputLayout layoutPassword = dialogView.findViewById(R.id.layout_password);
+        // エラーのアイコンがパスワードの表示切り替えを隠さないようにする。
+        layoutPassword.setErrorIconDrawable(null);
         editUsername.setText(prefs.getUsername());
+        // 打ち直したらエラーを外す (補足の文に戻る)。
+        android.text.TextWatcher clearError = new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(android.text.Editable s) { layoutPassword.setError(null); }
+        };
+        editUsername.addTextChangedListener(clearError);
+        editPassword.addTextChangedListener(clearError);
 
         androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.settings_account)
                 .setView(dialogView)
-                .setPositiveButton("保存", null)
+                .setPositiveButton(R.string.login_account_save, null)
                 .setNegativeButton(R.string.cancel, null)
                 .show();
         // 入力が足りないときは閉じない。閉じると、打ったユーザー名が消えて最初から入れ直しになる。
@@ -280,7 +290,7 @@ public class LoginSettingsFragment extends Fragment {
             String newUser = editUsername.getText().toString().trim();
             String newPass = editPassword.getText().toString().trim();
             if (newUser.isEmpty()) {
-                Toast.makeText(requireContext(), "ユーザー名を入力してください", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.login_account_username_required, Toast.LENGTH_SHORT).show();
                 return;
             }
             if (newPass.isEmpty()) {
@@ -292,7 +302,7 @@ public class LoginSettingsFragment extends Fragment {
                 // 新しいユーザー名と、保存しているパスワード (前のアカウントのもの) を組み合わせない。組み合わせると
                 // 次のログインで前のアカウントのパスワードを別のアカウントとして大学の認証システムに送り、失敗して
                 // (ロックの回数に数えられうる) 誤りの印まで立つ。ユーザー名を変えるときはパスワードも入れてもらう。
-                layoutPassword.setError(getString(R.string.account_password_required_for_new_username));
+                layoutPassword.setError(getString(R.string.login_account_password_required));
                 editPassword.requestFocus();
                 return;
             }
@@ -321,9 +331,9 @@ public class LoginSettingsFragment extends Fragment {
                         prefs.setUsername(newUser);
                         prefs.setPassword(newPass);
                         render();
-                        Toast.makeText(requireContext(), "ログイン情報を更新しました", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), R.string.login_account_saved, Toast.LENGTH_SHORT).show();
                     } else {
-                        Toast.makeText(requireContext(), "ログインに失敗しました", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), R.string.login_account_login_failed, Toast.LENGTH_SHORT).show();
                     }
                 }
 

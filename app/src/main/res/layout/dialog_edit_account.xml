@@ -29,7 +29,8 @@
         android:hint="@string/onboarding_password_hint"
         app:startIconDrawable="@drawable/ic_lock"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-        app:endIconMode="password_toggle">
+        app:endIconMode="password_toggle"
+        app:helperText="@string/login_account_password_required">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/edit_password"
@@ -38,13 +39,5 @@
             android:inputType="textPassword"
             android:maxLines="1" />
     </com.google.android.material.textfield.TextInputLayout>
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/account_password_required_for_new_username"
-        android:textAppearance="?attr/textAppearanceBodySmall"
-        android:textColor="?attr/colorOnSurfaceVariant" />
 
 </LinearLayout>

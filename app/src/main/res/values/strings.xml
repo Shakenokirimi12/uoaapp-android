@@ -261,7 +261,11 @@
     <string name="login_secret_confirm_description">本人か確かめます</string>
     <string name="close">閉じる</string>
     <string name="login_not_logged_in">未ログイン</string>
-    <string name="account_password_required_for_new_username">ユーザー名を変えるときは、パスワードも入力してください。</string>
+    <string name="login_account_save">保存</string>
+    <string name="login_account_username_required">ユーザー名を入力してください。</string>
+    <string name="login_account_password_required">ユーザー名を変えるときは、パスワードも入力してください。</string>
+    <string name="login_account_saved">ログイン情報を保存しました。</string>
+    <string name="login_account_login_failed">ログインできませんでした。時間をおいて、もう一度お試しください。</string>
     <string name="login_authenticator_with_secret">コードはこのアプリが自動で入力します。バックグラウンドでも自動で再ログインします。</string>
     <string name="login_authenticator_key_suspended">このアプリのキーを止めています。登録し直すまで、ログインのたびにコードを入力します。</string>
     <string name="login_authenticator_without_secret">このアプリにキーがありません。登録し直してください。</string>
