@@ -431,6 +431,8 @@ public class CampusSquareService {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
         }
+        // 積んだ時点で控える。待っている間に切り替えが始まった取得の結果も捨てられるように。
+        AccountSwitch.Ticket ticket = AccountSwitch.ticket();
         executor.execute(() -> {
             try {
                 List<Grade> grades = withSession(username, password, context, this::fetchGradesWithSession);
@@ -438,7 +440,7 @@ public class CampusSquareService {
                     postError(callback, AppStrings.get(R.string.campussquare_flow_key_failed));
                     return;
                 }
-                postSuccess(callback, grades);
+                postSuccessForAccount(callback, grades, ticket);
             } catch (Exception e) {
                 postError(callback, e.getMessage());
             }
@@ -525,6 +527,7 @@ public class CampusSquareService {
             callback.onError(AppConfigService.FEATURE_DISABLED_MESSAGE);
             return;
         }
+        AccountSwitch.Ticket ticket = AccountSwitch.ticket();
         executor.execute(() -> {
             try {
                 List<CalendarEvent> events = withSession(username, password, context, this::fetchCalendarEventsWithSession);
@@ -532,7 +535,7 @@ public class CampusSquareService {
                     postError(callback, AppStrings.get(R.string.campussquare_calendar_url_failed));
                     return;
                 }
-                postSuccess(callback, events);
+                postSuccessForAccount(callback, events, ticket);
             } catch (Exception e) {
                 postError(callback, e.getMessage());
             }
@@ -933,6 +936,22 @@ public class CampusSquareService {
 
     private <T> void postSuccess(ServiceCallback<T> cb, T result) {
         mainHandler.post(() -> cb.onSuccess(result));
+    }
+
+    /**
+     * アカウントのデータ (成績・カレンダー) を渡す。取得を始めてからアカウントの切り替えが始まっていたら、前の
+     * アカウントのデータなので渡さずに捨て、失敗として返す (画面やキャッシュに残さない)。切り替えは
+     * メインスレッドで行うので、ここもメインスレッドで比べる。
+     */
+    private <T> void postSuccessForAccount(ServiceCallback<T> cb, T result, AccountSwitch.Ticket ticket) {
+        mainHandler.post(() -> {
+            if (ticket.isCurrent()) {
+                cb.onSuccess(result);
+            } else {
+                Log.w(TAG, "Dropping CampusSquare data fetched for the previous account");
+                cb.onError(new AccountChangedException().getMessage());
+            }
+        });
     }
 
     private <T> void postError(ServiceCallback<T> cb, String msg) {

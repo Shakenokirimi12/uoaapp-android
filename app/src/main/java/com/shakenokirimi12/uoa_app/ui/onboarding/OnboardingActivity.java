@@ -110,7 +110,7 @@ public class OnboardingActivity extends AppCompatActivity {
         moodleService.login(username, password, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
-                prefs.setUsername(username);
+                if (prefs.setUsername(username)) com.shakenokirimi12.uoa_app.services.AccountSwitch.committed();
                 prefs.setPassword(password);
                 // ログインは済んだ。連携の段で閉じられても、次の起動でログインからやり直させない。
                 prefs.setOnboardingDone(true);
