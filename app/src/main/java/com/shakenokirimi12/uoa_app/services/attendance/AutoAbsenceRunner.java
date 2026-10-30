@@ -88,6 +88,7 @@ public final class AutoAbsenceRunner {
         List<Asked> asks = new ArrayList<>();
         synchronized (AutoAbsenceRunner.class) {
             SharedPreferences sp = ctx.getApplicationContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+            migrateRawUsernameKeys(sp);
             String markedKey = markedKeyFor(username);
             migrateLegacyMarked(sp, markedKey);
             Map<String, Long> marked = loadMarked(sp, markedKey, now);
@@ -136,7 +137,33 @@ public final class AutoAbsenceRunner {
 
     /** username の、付けた分の保存先。出席の記録 (AttendanceManager) と同じくアカウントごと。 */
     static String markedKeyFor(@NonNull String username) {
-        return KEY_MARKED + "@" + username.trim();
+        return KEY_MARKED + "@" + AttendanceManager.accountId(username);
+    }
+
+    /**
+     * versionCode 7 が書いたユーザー名そのままのキー ("marked_v1@<ユーザー名>") を、accountId のキーへ移す
+     * (この prefs は OS のバックアップに入るので、学籍番号をキーに残さない)。足した値の書き込みと元のキーの削除は
+     * 同じ Editor の 1 回の書き込み。読めないものは触らない。
+     */
+    private static void migrateRawUsernameKeys(SharedPreferences sp) {
+        for (String key : new java.util.HashSet<>(sp.getAll().keySet())) {
+            if (!key.startsWith(KEY_MARKED + "@")) continue;
+            String suffix = key.substring(KEY_MARKED.length() + 1);
+            if (AttendanceManager.isAccountId(suffix)) continue;
+            String target = markedKeyFor(suffix);
+            Map<String, Long> merged = parseMarked(sp.getString(target, null));
+            Map<String, Long> old = parseMarked(sp.getString(key, null));
+            if (merged == null || old == null) continue;
+            mergeMarked(merged, old);
+            sp.edit().putString(target, gson.toJson(merged)).remove(key).apply();
+        }
+    }
+
+    private static void mergeMarked(Map<String, Long> into, Map<String, Long> from) {
+        for (Map.Entry<String, Long> e : from.entrySet()) {
+            Long cur = into.get(e.getKey());
+            if (e.getValue() != null && (cur == null || cur < e.getValue())) into.put(e.getKey(), e.getValue());
+        }
     }
 
     /**
@@ -149,10 +176,7 @@ public final class AutoAbsenceRunner {
         Map<String, Long> merged = parseMarked(sp.getString(markedKey, null));
         Map<String, Long> old = parseMarked(legacy);
         if (merged == null || old == null) return;
-        for (Map.Entry<String, Long> e : old.entrySet()) {
-            Long cur = merged.get(e.getKey());
-            if (e.getValue() != null && (cur == null || cur < e.getValue())) merged.put(e.getKey(), e.getValue());
-        }
+        mergeMarked(merged, old);
         sp.edit().putString(markedKey, gson.toJson(merged)).remove(KEY_MARKED).apply();
     }
 

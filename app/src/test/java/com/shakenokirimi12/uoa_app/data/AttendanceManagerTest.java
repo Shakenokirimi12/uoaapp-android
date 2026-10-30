@@ -1,6 +1,8 @@
 package com.shakenokirimi12.uoa_app.data;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNull;
 
 import androidx.annotation.NonNull;
@@ -66,8 +68,57 @@ public class AttendanceManagerTest {
         user.set("s1300001");
         attendance.migrateLegacyRecords();
         assertNull(store.values.get("data"));
+        // versionCode 7 のユーザー名そのままのキーも、accountId のキーへ移っている。
+        assertNull(store.values.get("data@s1300001"));
         AttendanceManager.AttendanceSummary summary = attendance.getAttendance("101");
         assertEquals(1, summary.present);
         assertEquals(1, summary.late);
+    }
+
+    /** キーにユーザー名を書かない。accountId は SHA-256 の先頭 16 バイト (iOS と同じ値)。 */
+    @Test
+    public void keysDoNotContainTheUsername() {
+        MapStore store = new MapStore();
+        AttendanceManager attendance = new AttendanceManager(store, () -> " s1300001 ");
+        attendance.addHistory("101", AttendanceManager.Status.PRESENT, new Date(), "manual");
+        for (String key : store.values.keySet()) assertFalse(key, key.contains("s1300001"));
+        // printf s1300001 | shasum -a 256 の先頭 32 文字。iOS の AttendanceOwner.keySuffix と同じ。
+        assertEquals("916500d31be2273bce7d0f0b51de8cb0", AttendanceManager.accountId("s1300001"));
+        assertEquals("data@916500d31be2273bce7d0f0b51de8cb0", AttendanceManager.keyFor("s1300001"));
+        assertTrue(AttendanceManager.isAccountId(AttendanceManager.accountId("s1300001")));
+        assertTrue(store.values.containsKey(AttendanceManager.keyFor("s1300001")));
+    }
+
+    /**
+     * versionCode 7 のキーの移行は、足した記録の書き込みと元のキーの削除が 1 回。削除が無かった (止まった) ように
+     * 元のキーを戻してもう一度移しても、同じ id の記録は二重にならない。
+     */
+    @Test
+    public void rawKeyMigrationIsIdempotent() {
+        MapStore store = new MapStore();
+        String raw = "{\"101\":{\"history\":[{\"id\":\"a\",\"date\":\"2026-10-01\","
+                + "\"status\":\"PRESENT\",\"timestamp\":1,\"source\":\"manual\"}]}}";
+        store.values.put("data@s1300001", raw);
+        new AttendanceManager(store, () -> "s1300001").migrateLegacyRecords();
+        store.values.put("data@s1300001", raw);
+        AttendanceManager again = new AttendanceManager(store, () -> "s1300001");
+        again.migrateLegacyRecords();
+        assertNull(store.values.get("data@s1300001"));
+        assertEquals(1, again.getAttendance("101").present);
+    }
+
+    /** 合わせた結果、同じ日の記録が 2 つになったら後に付けた方を残す (同じ授業を 2 回数えない)。 */
+    @Test
+    public void mergeKeepsOneRecordPerDate() {
+        MapStore store = new MapStore();
+        store.values.put("data", "{\"101\":{\"history\":[{\"id\":\"old\",\"date\":\"2026-10-01\","
+                + "\"status\":\"ABSENT\",\"timestamp\":1,\"source\":\"manual\"}]}}");
+        store.values.put(AttendanceManager.keyFor("s1300001"), "{\"101\":{\"history\":[{\"id\":\"new\","
+                + "\"date\":\"2026-10-01\",\"status\":\"PRESENT\",\"timestamp\":2,\"source\":\"manual\"}]}}");
+        AttendanceManager attendance = new AttendanceManager(store, () -> "s1300001");
+        AttendanceManager.AttendanceSummary summary = attendance.getAttendance("101");
+        assertEquals(1, summary.history.size());
+        assertEquals(1, summary.present);
+        assertEquals(0, summary.absent);
     }
 }

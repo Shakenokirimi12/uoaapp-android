@@ -10,6 +10,9 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,8 +28,12 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
- * 出席の記録。AINS のアカウント (ユーザー名) ごとに分けて持つ ("data@<ユーザー名>")。アカウントを切り替えても
+ * 出席の記録。AINS のアカウント (ユーザー名) ごとに分けて持つ ("data@<accountId>")。アカウントを切り替えても
  * 前のアカウントの記録は消さず、そのアカウントに戻れば見える。
+ *
+ * accountId はユーザー名の SHA-256 の先頭 16 バイト (iOS と同じ)。この prefs は OS のバックアップに入るので、
+ * 学籍番号をそのままキーに書かない。versionCode 7 はユーザー名をそのまま書いていた ("data@<ユーザー名>") ので、
+ * 起動後の最初の読み書きで accountId のキーへ移す。
  *
  * 分ける前の記録 ("data") は、ログインしているアカウントのものとして移す (初めて起動したとき、または次に
  * ログインしたとき)。誰もログインしていない間は "data" のまま読み書きし、次にログインしたアカウントに移す。
@@ -104,7 +111,49 @@ public class AttendanceManager {
     /** username の記録の保存先。誰もログインしていなければ分ける前の "data"。 */
     static String keyFor(@Nullable String username) {
         String u = username != null ? username.trim() : "";
-        return u.isEmpty() ? KEY_DATA : KEY_DATA + "@" + u;
+        return u.isEmpty() ? KEY_DATA : KEY_DATA + "@" + accountId(u);
+    }
+
+    /** ユーザー名 (前後の空白を除く) の SHA-256 の先頭 16 バイトを 16 進で。prefs のキーに使う (iOS と同じ)。 */
+    public static String accountId(@NonNull String username) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(username.trim().getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 16; i++) sb.append(String.format(Locale.US, "%02x", hash[i]));
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** accountId の形 (16 進 32 文字) か。versionCode 7 のユーザー名そのままのキーと分ける。 */
+    public static boolean isAccountId(@NonNull String s) {
+        return s.matches("[0-9a-f]{32}");
+    }
+
+    /** versionCode 7 のキー ("data@<ユーザー名>") を移し終えたか (このプロセスで)。 */
+    private boolean rawKeysMigrated;
+
+    /**
+     * versionCode 7 が書いたユーザー名そのままのキーを、accountId のキーへ移す。移す先にもあれば足し合わせる。
+     * 1 アカウントずつ、足した記録の書き込みと元のキーの削除を 1 回の書き込み (同じ Editor) で行うので、途中で
+     * 止まっても片方だけが残ることはない。読めないものは触らない。
+     */
+    private void migrateRawUsernameKeys() {
+        if (rawKeysMigrated) return;
+        boolean done = true;
+        for (String key : store.keys()) {
+            if (!key.startsWith(KEY_DATA + "@")) continue;
+            String suffix = key.substring(KEY_DATA.length() + 1);
+            if (isAccountId(suffix)) continue;
+            String target = keyFor(suffix);
+            Map<String, Record> from = parse(store.get(key));
+            Map<String, Record> into = parse(store.get(target));
+            if (from == null || into == null) { done = false; continue; }
+            mergeInto(into, from);
+            store.put(target, gson.toJson(into), key);
+        }
+        rawKeysMigrated = done;
     }
 
     // 画面 (手動の記録) と自動出席・自動の欠席 (別スレッド) が同じ保存先を読み書きする。読んで書き戻すまでを
@@ -117,6 +166,7 @@ public class AttendanceManager {
 
     /** 分ける前の記録が残っていて、誰かがログインしていれば、そのアカウントに移す。起動時にも呼ぶ。 */
     public synchronized void migrateLegacyRecords() {
+        migrateRawUsernameKeys();
         String key = keyFor(currentUser.get());
         if (KEY_DATA.equals(key)) return;
         String legacyJson = store.get(KEY_DATA);
@@ -144,12 +194,27 @@ public class AttendanceManager {
                 if (h == null) continue;
                 if (h.id == null || ids.add(h.id)) dst.history.add(h);
             }
+            keepOnePerDate(dst.history);
         }
     }
 
     /**
-     * バックアップに書き出す、アカウントごとの記録 (ユーザー名 → JSON)。分ける前の記録と誰もログインしていない間の
-     * 記録は "" に入る。
+     * 記録は 1 日 1 つ (addHistory が同じ日を置き換える)。合わせた結果、同じ日に 2 つあれば後に付けた方を残す
+     * (両方残すと同じ授業を 2 回数える)。日付の無いものはそのまま残す。
+     */
+    private static void keepOnePerDate(List<HistoryItem> history) {
+        Map<String, HistoryItem> latest = new HashMap<>();
+        for (HistoryItem h : history) {
+            if (h.date == null) continue;
+            HistoryItem kept = latest.get(h.date);
+            if (kept == null || h.timestamp > kept.timestamp) latest.put(h.date, h);
+        }
+        history.removeIf(h -> h.date != null && latest.get(h.date) != h);
+    }
+
+    /**
+     * バックアップに書き出す、アカウントごとの記録 (accountId → JSON)。分ける前の記録と誰もログインしていない間の
+     * 記録は "" に入る。ユーザー名は書き出さない。
      */
     public synchronized Map<String, String> exportByAccount() {
         migrateLegacyRecords();
@@ -171,13 +236,15 @@ public class AttendanceManager {
     }
 
     /**
-     * バックアップの記録を username の記録に足す ("" は分ける前の記録で、ログインしているアカウントに移る)。
+     * バックアップの記録を username (accountId でもよい) の記録に足す ("" は分ける前の記録で、ログインしている
+     * アカウントに移る)。
      * 上書きはしない (読み戻しで今の記録を失わない)。読めなければ何もせず false。
      */
     public synchronized boolean importRecords(@NonNull String username, @Nullable String json) {
         Map<String, Record> from = json != null ? parse(json) : null;
         if (from == null) return false;
-        String key = keyFor(username);
+        // この版の書き出しは accountId、versionCode 7 の書き出しはユーザー名そのもの。
+        String key = isAccountId(username) ? KEY_DATA + "@" + username : keyFor(username);
         Map<String, Record> into = parse(store.get(key));
         if (into == null) return false;
         mergeInto(into, from);
