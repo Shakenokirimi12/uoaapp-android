@@ -156,4 +156,23 @@ public class AttendanceManagerTest {
             assertEquals(0, summary.absent);
         }
     }
+
+    /** status の読めない記録 (手で書き換えたバックアップなど) は、新しくても数える記録を置き換えない。 */
+    @Test
+    public void mergeKeepsACountedRecordOverOneWithAnUnknownStatus() {
+        MapStore store = new MapStore();
+        store.values.put(AttendanceManager.keyFor("s1300001"), "{\"101\":{\"history\":[{\"id\":\"same\","
+                + "\"date\":\"2026-10-01\",\"status\":\"ABSENT_UNCONFIRMED\",\"timestamp\":1,\"source\":\"auto\"},"
+                + "{\"id\":\"b\",\"date\":\"2026-10-02\",\"status\":\"PRESENT\",\"timestamp\":1,\"source\":\"manual\"}]}}");
+        AttendanceManager attendance = new AttendanceManager(store, () -> "s1300001");
+        assertTrue(attendance.importRecords("s1300001", "{\"101\":{\"history\":["
+                + "{\"id\":\"same\",\"date\":\"2026-10-01\",\"status\":\"BOGUS\",\"timestamp\":9},"
+                + "{\"id\":\"c\",\"date\":\"2026-10-02\",\"timestamp\":9}]}}"));
+        AttendanceManager.AttendanceSummary summary = attendance.getAttendance("101");
+        assertEquals(2, summary.history.size());
+        assertEquals(1, summary.present);
+        for (AttendanceManager.HistoryItem h : summary.history) {
+            assertTrue("PRESENT".equals(h.status) || "ABSENT_UNCONFIRMED".equals(h.status));
+        }
+    }
 }

@@ -226,10 +226,23 @@ public class AttendanceManager {
     }
 
     private static boolean prefer(HistoryItem candidate, HistoryItem kept) {
-        boolean candidateUnconfirmed = Status.ABSENT_UNCONFIRMED.name().equals(candidate.status);
-        boolean keptUnconfirmed = Status.ABSENT_UNCONFIRMED.name().equals(kept.status);
-        if (candidateUnconfirmed != keptUnconfirmed) return keptUnconfirmed;
+        int candidateRank = rank(candidate.status);
+        int keptRank = rank(kept.status);
+        if (candidateRank != keptRank) return candidateRank > keptRank;
         return candidate.timestamp > kept.timestamp;
+    }
+
+    /**
+     * 確かめた記録 > 「欠席？（要確認）」 > 読めない status (無い・知らない値。手で書き換えたバックアップなど)。
+     * 読めない記録はどこにも数えないので、それで数える記録を置き換えない。
+     */
+    private static int rank(@Nullable String status) {
+        if (status == null) return 0;
+        switch (status) {
+            case "PRESENT": case "ABSENT": case "LATE": return 2;
+            case "ABSENT_UNCONFIRMED": return 1;
+            default: return 0;
+        }
     }
 
     /**
