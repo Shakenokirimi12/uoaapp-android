@@ -657,16 +657,33 @@ public final class SeciossIdPClient {
     public Session login(@NonNull String entryUrl, @NonNull String uid, @NonNull String pass,
                          @NonNull OtpProvider otp) throws Exception {
         // サービスをまたいで IdP へのログインを 1 本にする。2 本目は 1 本目が保存した SSO で入る (IdpLoginGate)。
-        return IdpLoginGate.shared().run(() -> loginExclusively(entryUrl, uid, pass, otp));
+        return IdpLoginGate.shared().run(() -> loginExclusively(entryUrl, uid, pass, otp, false));
+    }
+
+    /**
+     * 資格情報の確認のためのログイン (設定のアカウントのダイアログ・初期設定)。保存している SSO を載せず、必ず
+     * pass を tenantlogin.cgi に POST する。SSO を載せると IdP がそれだけで通し (パスワードを送らない)、
+     * 打ち間違えた新しいパスワードを確かめないまま保存してしまう。受け取った SSO は通常どおり保存するので、
+     * 確認のあとの同期は OTP をもう一度求めずにそれで入れる。メール方式では OTP メールが 1 通飛ぶ
+     * (利用者が資格情報を変えているので許す)。
+     */
+    @NonNull
+    public Session loginVerifyingPassword(@NonNull String entryUrl, @NonNull String uid, @NonNull String pass,
+                                          @NonNull OtpProvider otp) throws Exception {
+        return IdpLoginGate.shared().run(() -> loginExclusively(entryUrl, uid, pass, otp, true));
     }
 
     @NonNull
     private Session loginExclusively(@NonNull String entryUrl, @NonNull String uid, @NonNull String pass,
-                                     @NonNull OtpProvider otp) throws Exception {
+                                     @NonNull OtpProvider otp, boolean verifyPassword) throws Exception {
         // IdpLoginGate で待っている間に、先のログインが ID / パスワードの誤りを見つけた・鍵を止めた等なら、
         // パスワードを送らずに終える (OtpProvider.beforeLogin)。
         otp.beforeLogin();
-        PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass, true);
+        PostPasswordState state = authenticateUpToOtpDecision(entryUrl, uid, pass, !verifyPassword);
+        if (verifyPassword && !state.passwordAccepted) {
+            // SSO を載せずに入って、パスワードの画面を通らなかった。確かめられていないので成功にしない。
+            throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE, "verification login did not post the password");
+        }
         if (state.passwordAccepted) LoginEvidence.notePasswordAccepted();
         HttpResult current = state.result;
 

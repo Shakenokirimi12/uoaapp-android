@@ -157,8 +157,10 @@ public class MoodleService {
      * アプリが前面にいれば入力ダイアログ、バックグラウンド同期なら INTERACTIVE_LOGIN_REQUIRED)。
      * 成功した cookie だけを共有 cookie jar へ注入する。順序が逆だと、ログイン失敗時にも IdP 側の cookie が
      * 残り、以降のリクエストに無関係なセッションが乗る。
+     *
+     * @param verifyPassword 資格情報の確認 (login)。保存している SSO を使わず、必ずパスワードを送る。
      */
-    private void loginViaIdP(String username, String password, AuthorizationContext context) throws Exception {
+    private void loginViaIdP(String username, String password, AuthorizationContext context, boolean verifyPassword) throws Exception {
         String uid = username.trim();
         String pass = password.trim();
         // ここに来るのは SessionCoordinator が新規ログインを許した場合だけ。BACKGROUND なら、BackgroundLoginPolicy が
@@ -173,7 +175,9 @@ public class MoodleService {
         }
         SeciossIdPClient.Session session;
         try {
-            session = seciossClient.login(samlEntryUrl(), uid, pass, otp);
+            session = verifyPassword
+                    ? seciossClient.loginVerifyingPassword(samlEntryUrl(), uid, pass, otp)
+                    : seciossClient.login(samlEntryUrl(), uid, pass, otp);
         } catch (SeciossError e) {
             // OTP 未設定はここでしか分からない。設定画面を探させず、その場で登録画面を開く。
             com.shakenokirimi12.uoa_app.services.idp.OtpRegistrationLauncher.launchIfNeeded(e);
@@ -219,7 +223,7 @@ public class MoodleService {
         }
         executor.execute(() -> {
             try {
-                coordinator.forceLogin(resolveLoginMethod(), () -> doLogin(username, password, AuthorizationContext.INTERACTIVE),
+                coordinator.forceLogin(resolveLoginMethod(), () -> doLogin(username, password, AuthorizationContext.INTERACTIVE, true),
                         unattended(username, password));
                 postSuccess(callback, true);
             } catch (Exception e) {
@@ -265,7 +269,7 @@ public class MoodleService {
             }
         }
         return coordinator.session(resolveLoginMethod(), context, candidate,
-                key -> probeDashboardQuietly(), () -> doLogin(username, password, context), unattended(username, password));
+                key -> probeDashboardQuietly(), () -> doLogin(username, password, context, false), unattended(username, password));
     }
 
     /** バックグラウンドの再ログインの判定。ログインに使うのと同じ ID / パスワードで作る。 */
@@ -308,8 +312,12 @@ public class MoodleService {
         }
     }
 
-    /** ログイン手順 (旧方式 / IdP) を実行し、/my/ から sesskey を取り出して返す。 */
-    private String doLogin(String username, String password, AuthorizationContext context) throws Exception {
+    /**
+     * ログイン手順 (旧方式 / IdP) を実行し、/my/ から sesskey を取り出して返す。
+     *
+     * @param verifyPassword 資格情報の確認 (login)。IdP 方式では保存している SSO を使わず、必ずパスワードを送る。
+     */
+    private String doLogin(String username, String password, AuthorizationContext context, boolean verifyPassword) throws Exception {
         OkHttpClient client = NetworkClient.getCookieClient();
 
         Log.d(TAG, "Starting login for: " + username);
@@ -320,7 +328,7 @@ public class MoodleService {
         if (resolveLoginMethod() == LoginMethod.IDP) {
             // IdP 経由でセッション cookie を得たら、以降 (/my/ で sesskey 取得) は旧方式と共通。
             try {
-                loginViaIdP(username, password, context);
+                loginViaIdP(username, password, context, verifyPassword);
             } catch (Exception e) {
                 if (AuthErrors.isInvalidCredentials(e.getMessage())) throw new LoginFailure(e.getMessage());
                 throw e;
