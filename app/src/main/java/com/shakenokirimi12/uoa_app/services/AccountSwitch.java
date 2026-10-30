@@ -78,7 +78,13 @@ public final class AccountSwitch {
      * までの間、新しいアカウントの画面・ウィジェット・通知に前のアカウントの成績や課題が出る。
      */
     public static void committed(@NonNull Context context, @NonNull PreferenceManager prefs, @NonNull String newUser) {
-        advance();
+        // キャッシュを空にすることと世代を進めることを 1 つのロックの中で行う。世代を先に進めると、その直後に
+        // 世代を控えた裏の処理 (自動の出席・欠席) が、新しいユーザー名と前のアカウントの時間割を組にして読む。
+        // 後に進めると、そのあいだに裏の同期が前のアカウントのデータを書き戻す (runIfCurrent が同じロック)。
+        synchronized (lock) {
+            DataCache.getInstance(context).clearAll();
+            advance();
+        }
         // 確認のログインの最中は、保存しているユーザー名がまだ前のアカウントなので、読んだ方式を控えに書けなかった
         // (OtpProviders)。ユーザー名が決まったここで書く。
         OtpMethod method = takePendingOtpMethod(newUser);

@@ -114,6 +114,9 @@ public final class AutoAbsenceRunner {
             sp.edit().putString(markedKey, gson.toJson(marked)).apply();
         }
         for (Asked a : asks) {
+            // 付けたあとに切り替わったら、前のアカウントの授業を新しいアカウントの利用者に尋ねない
+            // (記録は前のアカウントに残り、そのアカウントに戻れば画面から選べる)。
+            if (!ticket.isCurrent()) return;
             Log.d(TAG, "Marked unconfirmed absence for course " + a.mark.courseId + " on " + a.mark.date);
             String name = names.get(a.mark.courseId);
             AttendanceConfirmation.ask(ctx, username, a.mark.courseId, a.historyId, name != null ? name : "",

@@ -260,12 +260,12 @@ public class LocationGeofenceService {
             }
 
             java.util.concurrent.atomic.AtomicBoolean saved = new java.util.concurrent.atomic.AtomicBoolean();
-            if (!AccountSwitch.runIfCurrent(ticket, () -> saved.set(attendance.addHistory(
+            if (!AccountSwitch.runIfCurrent(ticket, () -> saved.set(attendance.addHistoryIfUnrecorded(
                     username, courseId, AttendanceManager.Status.PRESENT, new Date(), "auto")))) {
                 Log.d(TAG, "Account changed; not recording attendance");
                 return;
             }
-            // 保存できなかったら (記録が読めない) 登録したと知らせず、間隔も空けない。
+            // 保存しなかったら (その間に記録が付いた・記録が読めない) 登録したと知らせず、間隔も空けない。
             if (!saved.get()) return;
             com.shakenokirimi12.uoa_app.services.usage.UsageStats.record(ctx,
                     com.shakenokirimi12.uoa_app.services.usage.UsageFeature.AUTO_ATTENDANCE);

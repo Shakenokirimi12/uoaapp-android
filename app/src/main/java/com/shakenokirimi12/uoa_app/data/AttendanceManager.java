@@ -313,6 +313,18 @@ public class AttendanceManager {
         return true;
     }
 
+    /**
+     * その日に記録が無いときだけ足す (確かめてから足すまでを 1 つにする。別々に呼ぶと、そのあいだに付いた
+     * 手動の記録を上書きする)。足したら true。記録があった、または記録が読めなかったら false。
+     */
+    public synchronized boolean addHistoryIfUnrecorded(@NonNull String username, String courseId, Status status,
+                                                       Date date, String source) {
+        String dateStr = dateFmt.format(date);
+        Record r = loadAll(keyOf(username)).get(courseId);
+        if (r != null) for (HistoryItem h : r.history) if (dateStr.equals(h.date)) return false;
+        return addHistory(username, courseId, status, date, source);
+    }
+
     /** 記録の状態を手で変える (自動の欠席を出席に直す、など)。手で変えたものは手動の記録になる。 */
     public void updateStatus(String courseId, String historyId, Status status) {
         updateStatus(null, courseId, historyId, status);
