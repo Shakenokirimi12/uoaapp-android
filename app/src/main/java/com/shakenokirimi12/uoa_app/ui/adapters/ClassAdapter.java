@@ -52,7 +52,7 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ViewHolder> 
         holder.textStartTime.setText(cls.getDtstart() != null ? timeFmt.format(cls.getDtstart()) : "");
         holder.textEndTime.setText(cls.getDtend() != null ? timeFmt.format(cls.getDtend()) : "");
 
-        String periodStr = cls.formatPeriods();
+        String periodStr = cls.formatPeriods(holder.itemView.getContext());
         if (!periodStr.isEmpty()) {
             holder.textPeriod.setText(periodStr);
             holder.textPeriod.setVisibility(View.VISIBLE);

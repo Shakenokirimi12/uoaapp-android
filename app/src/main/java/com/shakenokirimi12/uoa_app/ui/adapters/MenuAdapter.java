@@ -1,5 +1,6 @@
 package com.shakenokirimi12.uoa_app.ui.adapters;
 
+import android.content.Context;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -100,7 +101,9 @@ public class MenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
         DayHolder h = (DayHolder) holder;
         GakushokuMenu.Day day = row.day;
-        h.textDate.setText(row.isToday ? day.dateString + "  今日" : day.dateString);
+        h.textDate.setText(row.isToday
+                ? h.itemView.getContext().getString(R.string.gakushoku_day_today_format, day.dateString)
+                : day.dateString);
         // 今日のカードだけ枠線を付けて、一覧の中で目に留まるようにする。
         com.google.android.material.card.MaterialCardView card =
                 (com.google.android.material.card.MaterialCardView) h.itemView;
@@ -136,11 +139,12 @@ public class MenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     public static void bindCategoryRows(LinearLayout container, GakushokuMenu.Day day) {
         container.removeAllViews();
         // 見出し (lunchMain) は昼のメイン (レイアウト側に「昼食」ラベル)。副菜〜サラダも昼、夕食だけ別。
-        addCategoryRow(container, "副菜", day.lunchSides());
-        addCategoryRow(container, "麺類", day.noodles);
-        addCategoryRow(container, "魚", day.fish);
-        addCategoryRow(container, "サラダ", day.salad);
-        addCategoryRow(container, "夕食", day.dinner);
+        Context ctx = container.getContext();
+        addCategoryRow(container, ctx.getString(R.string.gakushoku_category_side), day.lunchSides());
+        addCategoryRow(container, ctx.getString(R.string.gakushoku_category_noodles), day.noodles);
+        addCategoryRow(container, ctx.getString(R.string.gakushoku_category_fish), day.fish);
+        addCategoryRow(container, ctx.getString(R.string.gakushoku_salad), day.salad);
+        addCategoryRow(container, ctx.getString(R.string.gakushoku_category_dinner), day.dinner);
     }
 
     private static void addCategoryRow(LinearLayout container, String label, List<String> lines) {
@@ -148,7 +152,7 @@ public class MenuAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         View row = LayoutInflater.from(container.getContext())
                 .inflate(R.layout.item_menu_category_row, container, false);
         ((TextView) row.findViewById(R.id.text_menu_category_label)).setText(label);
-        ((TextView) row.findViewById(R.id.text_menu_category_value)).setText(TextUtils.join("、", lines));
+        ((TextView) row.findViewById(R.id.text_menu_category_value)).setText(TextUtils.join(container.getContext().getString(R.string.gakushoku_list_separator), lines));
         container.addView(row);
     }
 

@@ -29,62 +29,52 @@
 
     <!-- Courses -->
     <string name="courses_search_hint">コースを検索</string>
-    <string name="courses_active">履修中</string>
-    <string name="courses_past">過去のコース</string>
 
     <!-- Gakushoku -->
     <string name="gakushoku_title">学食メニュー</string>
-    <string name="gakushoku_no_menu">メニューがありません</string>
+    <string name="gakushoku_no_menu">メニューは掲載されていません</string>
     <string name="gakushoku_lunch">ランチ</string>
-    <string name="gakushoku_fish">お魚</string>
     <string name="gakushoku_salad">サラダ</string>
-    <string name="gakushoku_dinner">ディナー</string>
 
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_account">アカウント</string>
     <string name="settings_otp_method">ワンタイムパスワード</string>
-    <string name="settings_otp_method_mail">メールで受け取る</string>
-    <string name="settings_otp_method_authenticator">認証アプリを使う</string>
+    <string name="settings_otp_method_mail">メール方式</string>
+    <string name="settings_otp_method_authenticator">認証アプリ方式</string>
     <string name="idp_tutorial_otp_mail">メールで届くワンタイムパスワードは、このアプリが大学のメールから読み取って入力します。読み取れないときは、届いたコードを入力してください。認証アプリを使う場合は、設定の「ワンタイムパスワード」で切り替えます。</string>
     <string name="settings_otp_method_mail_description">大学のメールに届くコードを自動で読み取って入力します。</string>
     <string name="otp_method_name_mail">メール</string>
     <string name="otp_method_name_authenticator">認証アプリ</string>
-    <string name="otp_switch_to_mail">メールに切り替える</string>
-    <string name="otp_switch_to_authenticator">認証アプリに切り替える</string>
-    <string name="otp_switch_note">大学の認証システムに新しい方式を登録します。登録が終わるまでは、今の受け取り方のままです。</string>
+    <string name="otp_switch_to_mail">メールに切り替え</string>
+    <string name="otp_switch_to_authenticator">認証アプリに切り替え</string>
+    <string name="otp_switch_note">大学の認証システムに新しい方式を登録します。登録が終わるまでは、今のログイン方法のままです。</string>
     <string name="otp_switch_blocked_credentials">ユーザー名かパスワードが正しくないため、切り替えられません。</string>
     <string name="settings_otp_method_unknown">次のログインで、大学の設定から読み取ります</string>
-    <string name="otp_switch_blocked_unknown">今の受け取り方を、次のログインで大学の設定から読み取ります。読み取ったあとで切り替えられます。</string>
+    <string name="otp_switch_blocked_unknown">今のログイン方法を、次のログインで大学の設定から読み取ります。読み取ったあとで切り替えられます。</string>
     <string name="otp_switch_blocked_no_account">ログインすると切り替えられます。</string>
-    <string name="otp_switch_cancelled">登録を中断したため、受け取り方は%1$sのままです。</string>
-    <string name="otp_switch_failed">登録できなかったため、受け取り方は%1$sのままです。</string>
-    <string name="otp_switch_done">受け取り方を切り替えました。</string>
-    <string name="otp_switch_keeps_current">登録が終わるまでは、今の受け取り方のままです。</string>
-    <string name="otp_switch_mail_consent">大学のメールに届く確認コードを、このアプリが読み取って入力します。確認コードのメールは、古いものも含めて削除します。</string>
-    <string name="otp_switch_not_switched">登録はできましたが、大学の認証システムのログイン方法が切り替わっていません。このアプリの受け取り方は変えていません。</string>
+    <string name="otp_switch_cancelled">登録を中断したため、ログイン方法は「%1$s」のままです。</string>
+    <string name="otp_switch_failed">登録できなかったため、ログイン方法は「%1$s」のままです。</string>
+    <string name="otp_switch_done">ログイン方法を切り替えました。</string>
+    <string name="otp_switch_keeps_current">登録が終わるまでは、今のログイン方法のままです。</string>
+    <string name="otp_switch_mail_consent">大学のメールに届くワンタイムパスワードを、このアプリが読み取って入力します。ワンタイムパスワードのメールは、古いものも含めて削除します。</string>
+    <string name="otp_switch_not_switched">登録はできましたが、大学の認証システムのログイン方法が切り替わっていません。このアプリのログイン方法は変えていません。</string>
     <string name="otp_registration_cancelled">登録を中断しました。大学のアカウントの設定は変わっていません。</string>
     <string name="otp_switch_not_on_campus">学内のネットワーク経由で大学の認証システムに接続できませんでした。時間をおいて、もう一度お試しください。</string>
-    <string name="settings_username">ユーザー名</string>
-    <string name="settings_password">パスワード</string>
     <string name="settings_notifications">通知</string>
-    <string name="settings_assignment_notify">課題の締切</string>
+    <string name="settings_assignment_notify">課題の提出期限</string>
     <string name="settings_lunch_notify">学食のメニュー</string>
-    <string name="settings_general">一般</string>
-    <string name="settings_reset">データをリセット</string>
     <string name="settings_version">バージョン</string>
     <string name="settings_logout">ログアウト</string>
     <string name="settings_logout_server_failed">サーバーのデータの一部を消せませんでした。この端末のデータは消しました。</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_welcome">UoA非公式アプリへようこそ</string>
-    <string name="onboarding_disclaimer">このアプリは会津大学の非公式アプリです。\n大学とは一切の関係がありません。</string>
     <!-- 「同意して続ける」の対象を明示する。プライバシーポリシーのページは無いので、同意内容はこの場に書く。 -->
     <string name="onboarding_consent_title">続ける前に</string>
-    <string name="onboarding_consent_body">「同意して続ける」を押すと、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquare や大学のメールにあなたの代わりにログインするためだけに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールで受け取る設定 (既定) では、大学のメールに届いたワンタイムパスワードを、このアプリが読み取って入力します。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
+    <string name="onboarding_consent_body">「同意して続ける」をタップすると、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquareや大学のメールへのログインを代行するためのみに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールで受け取る設定 (既定) では、大学のメールに届いたワンタイムパスワードを、このアプリが読み取って入力します。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
     <string name="onboarding_agree">同意して続ける</string>
     <string name="onboarding_login_title">ログイン</string>
-    <string name="onboarding_login_desc">Moodle / CampusSquare のアカウントでログインしてください。</string>
+    <string name="onboarding_login_desc">Moodle / CampusSquareのアカウントでログインしてください。</string>
     <string name="onboarding_username_hint">ユーザー名 (例: s1234567)</string>
     <string name="onboarding_password_hint">パスワード</string>
     <string name="onboarding_login_button">ログイン</string>
@@ -97,24 +87,20 @@
     <!-- Grades -->
 
     <!-- Common -->
-    <string name="loading">読み込み中…</string>
-    <string name="error_generic">エラーが発生しました</string>
     <string name="retry">再試行</string>
     <string name="ok">OK</string>
     <string name="secure_storage_unavailable_title">ログイン情報を保存できません</string>
     <string name="secure_storage_unavailable_message">この端末ではログイン情報を暗号化して保存できないため、ログインできません。暗号化せずに保存することはしません。</string>
     <string name="cancel">キャンセル</string>
-    <string name="remaining_format">残り %d 分</string>
     <!-- Remote config (maintenance / force update / status notice) -->
-    <string name="maintenance_title">ただいまメンテナンス中です</string>
-    <string name="maintenance_default_message">ただいまメンテナンス中です。しばらくしてから再度お試しください。</string>
-    <string name="maintenance_recheck">再確認する</string>
+    <string name="maintenance_title">メンテナンス中</string>
+    <string name="maintenance_default_message">メンテナンス中です。時間をおいて、もう一度お試しください。</string>
+    <string name="maintenance_recheck">再確認</string>
     <string name="maintenance_rechecking">確認中…</string>
     <string name="force_update_title">アップデートが必要です</string>
-    <string name="force_update_default_message">このバージョンはご利用いただけません。最新版にアップデートしてください。</string>
+    <string name="force_update_default_message">引き続き利用するには、最新バージョンへのアップデートが必要です。</string>
     <string name="force_update_open_store">Google Playで開く</string>
     <string name="status_notice_dismiss">閉じる</string>
-    <string name="feature_disabled">この機能は現在利用できません</string>
     <!-- In-app browser -->
     <string name="browser_close">閉じる</string>
     <string name="browser_menu">メニュー</string>
@@ -123,69 +109,69 @@
     <string name="browser_reload">再読み込み</string>
     <string name="browser_share">共有</string>
     <string name="browser_open_external">ブラウザで開く</string>
-    <string name="browser_auth_confirm_title">大学の ID とパスワードを送りますか？</string>
-    <string name="browser_auth_confirm_message">%1$s がログイン (Basic 認証) を求めています。このアプリに保存している大学の ID とパスワードをこのページに送ります。開こうとしたページでなければ「キャンセル」を押してください。</string>
+    <string name="browser_auth_confirm_title">大学のユーザー名とパスワードを送りますか？</string>
+    <string name="browser_auth_confirm_message">%1$sがログイン (Basic認証) を求めています。このアプリに保存している大学のユーザー名とパスワードをこのページに送ります。開こうとしたページでなければ「キャンセル」をタップしてください。</string>
     <string name="browser_auth_confirm_send">送る</string>
-    <string name="browser_auth_failed">%1$s の認証を通過できませんでした。メニューからブラウザで開いてください。</string>
+    <string name="browser_auth_failed">%1$sの認証を通過できませんでした。メニューからブラウザで開いてください。</string>
     <string name="browser_download_started">ダウンロードを開始しました: %1$s</string>
     <string name="browser_download_failed">ダウンロードを開始できませんでした</string>
     <!-- Background sync -->
     <string name="class_channel_name">授業通知</string>
     <string name="lunch_channel_name">学食メニュー</string>
-    <string name="otp_relay_channel_name">PC への OTP 送信結果</string>
-    <string name="otp_relay_title">PC との連携</string>
-    <string name="otp_relay_intro">PC で OTP の入力画面が出ると、この端末が OTP を暗号化して自動で PC に送ります (メール方式なら大学のメールから読み、認証アプリ方式ならセットアップキーで作ります)。ユーザー名・パスワード・セットアップキーは、PC にも中継サーバにも送りません。</string>
+    <string name="otp_relay_channel_name">PCへのOTP送信結果</string>
+    <string name="otp_relay_title">PCとの連携</string>
+    <string name="otp_relay_intro">PCでOTPの入力画面が出ると、この端末がOTPを暗号化して自動でPCに送ります (メール方式なら大学のメールから読み、認証アプリ方式ならセットアップキーで作ります)。ユーザー名・パスワード・セットアップキーは、PCにも中継サーバーにも送りません。</string>
     <string name="otp_relay_consent_continue">続ける</string>
-    <string name="otp_relay_consent_pending">確認が済むまで OTP を送りません</string>
-    <string name="otp_relay_consent_save_failed">この端末に保存できませんでした。設定の「PC との連携 (OTP)」を開いて、もう一度お試しください。</string>
-    <string name="otp_relay_unreachable">中継サーバに接続できませんでした。</string>
-    <string name="otp_relay_consent_title">PC との連携を続けますか？</string>
-    <string name="otp_relay_consent_message">「%1$s」で OTP の入力画面が出ると、このアプリが OTP を用意し、暗号化してその PC に自動で送ります。メール方式なら大学のメールから読み取り (確認コードのメールは、古いものも含めて削除します)、認証アプリ方式ならこのアプリにあるセットアップキーでコードを作ります。ユーザー名・パスワード・セットアップキーは送りません。「続ける」を押すと、そのためにメールを読み、コードを作って送ることに同意したことになります。\n\n心当たりのない PC なら、「解除」を押してください。</string>
+    <string name="otp_relay_consent_pending">確認が済むまでOTPを送りません</string>
+    <string name="otp_relay_consent_save_failed">この端末に保存できませんでした。設定の「PCとの連携」を開いて、もう一度お試しください。</string>
+    <string name="otp_relay_unreachable">中継サーバーに接続できませんでした。</string>
+    <string name="otp_relay_consent_title">PCとの連携を続けますか？</string>
+    <string name="otp_relay_consent_message">「%1$s」でOTPの入力画面が出ると、このアプリがOTPを用意し、暗号化してそのPCに自動で送ります。メール方式なら大学のメールから読み取り (OTPのメールは、古いものも含めて削除します)、認証アプリ方式ならこのアプリにあるセットアップキーでコードを作ります。ユーザー名・パスワード・セットアップキーは送りません。「続ける」をタップすると、そのためにメールを読み、コードを作って送ることに同意したことになります。\n\n心当たりのないPCなら、「解除」をタップしてください。</string>
     <string name="otp_relay_totp_consent_title">「%1$s」に認証アプリのコードを送りますか？</string>
-    <string name="otp_relay_totp_consent_message">この PC で OTP の入力画面が出ると、このアプリが認証アプリのコードを作って自動で送ります。自分の PC でなければ「解除」を押してください。</string>
+    <string name="otp_relay_totp_consent_message">このPCでOTPの入力画面が出ると、このアプリが認証アプリのコードを作って自動で送ります。自分のPCでなければ「解除」をタップしてください。</string>
     <string name="otp_relay_totp_consent_send">送る</string>
     <string name="otp_relay_totp_consent_later">あとで</string>
-    <string name="otp_relay_ext_title">PC に拡張を入れる</string>
-    <string name="otp_relay_ext_lead">PC のブラウザでこの URL を開くと、UoA 非公式拡張を入れられます。</string>
+    <string name="otp_relay_ext_title">PCに拡張機能を追加</string>
+    <string name="otp_relay_ext_lead">PCのブラウザでこのアドレスを開くと、UoA 非公式拡張を入れられます。</string>
     <string name="otp_relay_ext_url_display" translatable="false">uoa-app.shakenokiri.me/ext</string>
-    <string name="otp_relay_ext_copy">URL をコピー</string>
+    <string name="otp_relay_ext_copy">アドレスをコピー</string>
     <string name="otp_relay_ext_copied">コピーしました</string>
     <string name="otp_relay_ext_mail">大学のメールに送る</string>
     <string name="otp_relay_ext_share">共有</string>
-    <string name="otp_relay_ext_search">PC のブラウザで、Chrome ウェブストアか Firefox アドオンで「UoA 非公式拡張」を検索しても見つかります。</string>
+    <string name="otp_relay_ext_search">PCのブラウザのChromeウェブストアかFirefoxアドオンで、「UoA 非公式拡張」を検索しても見つかります。</string>
     <string name="otp_relay_ext_mail_subject">UoA 非公式拡張のインストール</string>
-    <string name="otp_relay_ext_mail_body">PC のブラウザで次の URL を開くと、UoA 非公式拡張を入れられます。\n%1$s</string>
-    <string name="otp_relay_ext_no_mail_app">メールのアプリが見つかりませんでした。</string>
+    <string name="otp_relay_ext_mail_body">PCのブラウザで次のアドレスを開くと、UoA 非公式拡張を入れられます。\n%1$s</string>
+    <string name="otp_relay_ext_no_mail_app">メールアプリが見つかりませんでした。</string>
     <string name="otp_relay_paste_link">リンクを貼り付けて連携</string>
     <string name="otp_relay_paste_title">連携用のリンクを貼り付け</string>
     <string name="otp_relay_paste_hint">uoa-app://otp-pair#…</string>
-    <string name="otp_relay_paste_invalid">連携用のリンクではありません。PC の拡張で連携用の QR を出し直し、その中身のリンクを貼り付けてください。</string>
+    <string name="otp_relay_paste_invalid">連携用のリンクではありません。PCの拡張機能で連携用のQRコードを表示し直し、その中身のリンクを貼り付けてください。</string>
     <string name="otp_relay_section_pairings">連携しているブラウザ</string>
     <string name="otp_relay_none">まだありません</string>
     <string name="otp_relay_unpair">解除</string>
-    <string name="otp_relay_paired_on">%1$s に連携</string>
+    <string name="otp_relay_paired_on">%1$sに連携</string>
     <string name="otp_relay_section_last_result">直近の結果</string>
-    <string name="otp_relay_section_howto">連携のしかた</string>
-    <string name="otp_relay_howto">1. PC の拡張の設定で「OTP の自動入力」の「スマホと連携」を押し、連携用の QR を出す
-2. その QR を、この端末の標準のカメラ (または Google レンズ) で読む。カメラから開けないときは、QR の中身のリンクをコピーして「リンクを貼り付けて連携」に貼る
-3. このアプリが開いたら「同意して連携する」を押す</string>
+    <string name="otp_relay_section_howto">連携方法</string>
+    <string name="otp_relay_howto">1. PCの拡張機能の設定で「OTP 自動入力」の「スマホと連携」をクリックし、連携用のQRコードを表示する\n2. そのQRコードを、この端末の標準のカメラ (またはGoogleレンズ) で読む。カメラから開けないときは、QRコードの中身のリンクをコピーして「リンクを貼り付けて連携」に貼る\n3. このアプリが開いたら「同意して連携する」をタップする</string>
     <string name="otp_relay_unpair_confirm">「%1$s」との連携を解除しますか？</string>
-    <string name="otp_relay_unpair_failed_title">中継サーバで解除できませんでした</string>
-    <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からだけ削除してください。削除しても、PC 側の拡張で連携を解除するまで依頼は届きます。届いても OTP は送りません。</string>
-    <string name="otp_relay_forget_local">この端末からだけ削除</string>
-    <string name="otp_relay_progress_channel_name">PC への OTP 送信中</string>
-    <string name="class_channel_description">授業中・次の授業の常駐通知と、自動出席登録の完了を表示します</string>
-    <string name="login_required_channel_name">ログインのお知らせ</string>
+    <string name="otp_relay_unpair_failed_title">中継サーバーで解除できませんでした</string>
+    <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からのみ削除してください。削除しても、PCの拡張機能で解除するまで依頼は届きます。届いてもOTPは送りません。</string>
+    <string name="otp_relay_forget_local">この端末からのみ削除</string>
+    <string name="otp_relay_progress_channel_name">PCへのOTP送信中</string>
+    <string name="class_channel_description">授業中・次の授業の常駐通知と、出席の自動記録の完了を表示します</string>
+    <string name="login_required_channel_name">ログインの通知</string>
     <string name="auth_mail_dispatch_notify_title">自動でログインしています</string>
     <string name="auth_mail_dispatch_notify_text">時間割と成績を更新するため、自動でログインしています。大学から OTP メールが 1 通届きます。</string>
     <string name="auth_credentials_invalid_title">ユーザー名かパスワードが違います</string>
     <string name="auth_credentials_invalid_text">保存しているユーザー名かパスワードでログインできませんでした。どちらかを変えるまで、ログインを止めます。同じ値を入れ直しても再開しません。</string>
     <string name="auth_credentials_invalid_action">ユーザー名かパスワードを変える</string>
+    <string name="login_required_notify_title">ログインが必要です</string>
+    <string name="login_required_notify_text">大学のシステムへのログインが切れたため、バックグラウンドでの同期を止めています。アプリを開いてログインしてください。</string>
     <!-- Push -->
-    <string name="push_channel_name">課題の期限通知</string>
+    <string name="push_channel_name">課題の提出期限通知</string>
     <!-- Assignment countdown -->
-    <string name="countdown_channel_name">課題の締切カウントダウン</string>
-    <string name="countdown_title">課題の締め切りが近づいています</string>
+    <string name="countdown_channel_name">課題の提出期限カウントダウン</string>
+    <string name="countdown_title">課題の提出期限が近づいています</string>
     <!-- Widget -->
     <string name="widget_description">次の授業と今日の時間割</string>
     <string name="widget_next_class">次の授業</string>
@@ -195,70 +181,70 @@
     <string name="widget_no_class_today_short">今日の授業はありません</string>
     <string name="widget_not_logged_in">ログインすると表示されます</string>
     <string name="widget_not_fetched">時間割をまだ取得していません</string>
-    <string name="widget_stale">時間割を更新できていません</string>
-    <string name="widget_last_updated">最終更新 %1$s</string>
+    <string name="widget_stale">時間割を同期できていません</string>
+    <string name="widget_last_updated">最終同期%1$s</string>
     <string name="widget_classes_finished">今日の授業は終わりました</string>
-    <string name="widget_more">他 %1$d 件</string>
-    <string name="settings_assignment_notify_summary">締切前のお知らせと、2 時間前からの残り時間の表示</string>
-    <string name="settings_notify_times">通知するタイミング</string>
+    <string name="widget_more">他%1$d件</string>
+    <string name="settings_assignment_notify_summary">提出期限前の通知と、2時間前からの残り時間の表示</string>
+    <string name="settings_notify_times">通知のタイミング</string>
     <string name="settings_class_notification">授業の常駐通知</string>
     <string name="settings_class_notification_summary">授業中と次の授業を通知欄に常に表示します</string>
     <string name="settings_lunch_notify_summary">毎日決まった時刻に、その日のメニューを通知します</string>
     <string name="settings_lunch_time">時刻</string>
     <string name="settings_attendance">出席</string>
-    <string name="settings_auto_attendance">自動出席</string>
-    <string name="settings_auto_absence_note">授業のあいだずっと位置情報を確認できていて、来た記録が無かった授業は「欠席？（要確認）」として残し、通知で確かめます</string>
+    <string name="settings_auto_attendance">出席の自動記録</string>
+    <string name="settings_auto_absence_note">授業のあいだずっと位置情報を確認できていて、来た記録が無かった授業は「欠席？ (要確認)」として残し、通知で確認します。</string>
     <string name="attendance_confirm_channel_name">出席の確認</string>
     <string name="attendance_confirm_channel_description">キャンパスに来た記録が無かった授業について、出席したかを尋ねます</string>
     <string name="attendance_confirm_title">%1$sの授業に出席しましたか？</string>
     <string name="attendance_confirm_body">キャンパスに来た記録がありませんでした。出席か欠席を選んでください。</string>
     <string name="attendance_present">出席</string>
     <string name="attendance_absent">欠席</string>
-    <string name="attendance_unconfirmed">欠席？（要確認）</string>
-    <string name="settings_auto_attendance_summary">キャンパスに着くと、その時間の授業を出席としてこの端末に記録します。大学の出席登録にはなりません</string>
+    <string name="attendance_unconfirmed">欠席？ (要確認)</string>
+    <string name="settings_auto_attendance_summary">キャンパスに着くと、その時間の授業を出席としてこの端末に記録します。大学の出席登録にはなりません。</string>
     <string name="settings_location_warning">位置情報が「常に許可」でないため、アプリを閉じている間は動きません。タップして変更</string>
     <string name="settings_other">その他</string>
     <string name="settings_support">問い合わせ</string>
-    <string name="settings_support_id">問い合わせ ID</string>
-    <string name="settings_support_id_summary">問い合わせるときは、この ID を書き添えてください。この端末の記録を探すのに使います。</string>
-    <string name="settings_support_id_copy">問い合わせ ID をコピー</string>
-    <string name="settings_support_id_copied">問い合わせ ID をコピーしました</string>
+    <string name="settings_support_id">問い合わせID</string>
+    <string name="settings_support_id_summary">問い合わせるときは、このIDを書き添えてください。この端末の記録を探すのに使います。</string>
+    <string name="settings_support_id_copy">問い合わせIDをコピー</string>
+    <string name="settings_support_id_copied">問い合わせIDをコピーしました</string>
     <string name="settings_usage_stats">利用状況と診断情報を送る</string>
-    <string name="settings_usage_stats_summary">開いた画面の回数と学籍番号の期 (27期など) を1日1回送ります。学籍番号そのものや時間割は送りません。\nOTP メールの読み取りと PC への中継のたびに、かかった時間と手順を問い合わせ ID と一緒に送ります。ID・パスワード・OTP・メールの中身は送りません。</string>
+    <string name="settings_usage_stats_summary">開いた画面の回数と学籍番号の期 (27期など) を1日1回送ります。学籍番号そのものや時間割は送りません。\nOTPメールの読み取りとPCへの中継のたびに、かかった時間と手順を問い合わせIDと一緒に送ります。ユーザー名・パスワード・OTP・メールの中身は送りません。</string>
     <string name="settings_tabs">タブの並び替え</string>
     <string name="settings_backup">設定をバックアップ</string>
-    <string name="settings_restore">バックアップから戻す</string>
+    <string name="settings_restore">バックアップから復元</string>
     <string name="otp_add_to_authenticator">認証アプリで開く</string>
     <string name="otp_choose_authenticator">開く認証アプリを選ぶ</string>
-    <string name="otp_manual_secret_hint">Authy など、リンクから追加できないアプリでは、下のキーを手で入力するか、別の端末で QR コードを読み取ってください。</string>
-    <string name="otp_show_qr">QR コードを表示</string>
-    <string name="otp_qr_description">認証アプリ用の QR コード</string>
-    <string name="otp_key_dialog_hint">Authy など、リンクから追加できないアプリでは、このキーを手で入力するか、別の端末でこの QR コードを読み取ってください。</string>
-    <string name="otp_copy_secret">キーをコピー</string>
-    <string name="otp_method_authenticator_summary">このアプリがコードを作って入力します。Google Authenticator や Authy にも追加できます。</string>
-    <string name="otp_code_from_app">認証アプリにキーを追加して、表示されたコードを入力してください。このアプリにも同じキーを保存し、ログインのコードを自動で入力します。</string>
-    <string name="otp_code_mismatch">コードが一致しません。認証アプリに今のキーを追加したか確かめて、表示中のコードを入力してください。</string>
-    <string name="otp_secret_unreadable">大学のシステムが発行したキーを読み取れなかったため、登録していません。</string>
-    <string name="otp_secret_not_saved">このアプリにキーを保存できなかったため、登録していません。</string>
+    <string name="otp_manual_secret_hint">Authyなど、リンクから追加できないアプリでは、下のセットアップキーを手で入力するか、別の端末でQRコードを読み取ってください。</string>
+    <string name="otp_show_qr">QRコードを表示</string>
+    <string name="otp_qr_description">認証アプリ用のQRコード</string>
+    <string name="otp_key_dialog_hint">Authyなど、リンクから追加できないアプリでは、このセットアップキーを手で入力するか、別の端末でこのQRコードを読み取ってください。</string>
+    <string name="otp_copy_secret">セットアップキーをコピー</string>
+    <string name="otp_method_authenticator_summary">このアプリがコードを作って入力します。Google AuthenticatorやAuthyにも追加できます。</string>
+    <string name="otp_code_from_app">認証アプリにセットアップキーを追加して、表示されたコードを入力してください。このアプリにも同じセットアップキーを保存し、ログインのコードを自動で入力します。</string>
+    <string name="otp_code_mismatch">コードが一致しません。認証アプリに今のセットアップキーを追加したか確認して、表示中のコードを入力してください。</string>
+    <string name="otp_secret_unreadable">大学のシステムが発行したセットアップキーを読み取れなかったため、登録していません。</string>
+    <string name="otp_secret_not_saved">このアプリにセットアップキーを保存できなかったため、登録していません。</string>
     <string name="otp_code_mail_prompt">メールに届いたコードを入力してください</string>
-    <string name="otp_no_otpauth_app">開けるアプリがありません。キーをコピーして、認証アプリに手で追加してください</string>
-    <string name="otp_secret_copied">キーをコピーしました</string>
+    <string name="otp_no_otpauth_app">開けるアプリがありません。セットアップキーをコピーして、認証アプリに手で追加してください。</string>
+    <string name="otp_secret_copied">セットアップキーをコピーしました</string>
     <string name="otp_reregister">認証アプリに登録し直す</string>
-    <string name="otp_reregister_summary">新しいキーを発行して、このアプリと認証アプリに入れ直します</string>
-    <string name="otp_reregister_notice">新しいキーを登録します。外部の認証アプリに入れていたら、新しいキーで入れ直してください。</string>
+    <string name="otp_reregister_summary">新しいセットアップキーを発行して、このアプリと認証アプリに入れ直します</string>
+    <string name="otp_reregister_notice">新しいセットアップキーを登録します。外部の認証アプリに入れていたら、新しいセットアップキーで入れ直してください。</string>
     <string name="otp_reregister_done">登録し直しました。ログインのコードはこのアプリが入力します。</string>
     <string name="login_settings_title">ログインとワンタイムパスワード</string>
     <string name="login_account_summary">大学のユーザー名とパスワード</string>
     <string name="login_otp_section">ワンタイムパスワード</string>
-    <string name="login_otp_method">受け取り方</string>
-    <string name="login_show_secret">キーと QR コードを表示</string>
-    <string name="login_show_secret_summary">Authy などに追加するとき。画面ロックの確認があります</string>
-    <string name="login_relay_section">PC での入力</string>
-    <string name="login_relay_summary">PC のブラウザでログインするとき、コードをこの端末から送ります</string>
-    <string name="login_secret_title">認証アプリのキー</string>
-    <string name="login_secret_needs_lock">画面ロック (PIN やパターン) を設定すると表示できます。</string>
-    <string name="login_secret_confirm_title">キーを表示</string>
-    <string name="login_secret_confirm_description">本人か確かめます</string>
+    <string name="login_otp_method">ログイン方法</string>
+    <string name="login_show_secret">セットアップキーとQRコードを表示</string>
+    <string name="login_show_secret_summary">Authyなどに追加するときに使います。画面ロックの確認があります。</string>
+    <string name="login_relay_section">PCでの入力</string>
+    <string name="login_relay_summary">PCのブラウザでログインするとき、コードをこの端末から送ります</string>
+    <string name="login_secret_title">認証アプリのセットアップキー</string>
+    <string name="login_secret_needs_lock">画面ロック (PINやパターン) を設定すると表示できます。</string>
+    <string name="login_secret_confirm_title">セットアップキーの表示</string>
+    <string name="login_secret_confirm_description">本人か確認します</string>
     <string name="close">閉じる</string>
     <string name="login_not_logged_in">未ログイン</string>
     <string name="login_account_save">保存</string>
@@ -268,12 +254,324 @@
     <string name="login_account_login_failed">ログインできませんでした。時間をおいて、もう一度お試しください。</string>
     <string name="login_authenticator_with_secret">コードはこのアプリが自動で入力します。バックグラウンドでも自動で再ログインします。</string>
     <string name="login_authenticator_key_suspended">このアプリのキーを止めています。登録し直すまで、ログインのたびにコードを入力します。</string>
-    <string name="login_authenticator_without_secret">このアプリにキーがありません。登録し直してください。</string>
+    <string name="login_authenticator_without_secret">このアプリにセットアップキーがありません。登録し直してください。</string>
     <string name="login_reregister_needed_title">認証アプリの登録し直しが必要です</string>
-    <string name="login_reregister_needed_text">このアプリにキーがありません。登録し直すと、このアプリがコードを自動で入力し、バックグラウンドでも再ログインします。それまではログインのたびにコードを入力します。</string>
+    <string name="login_reregister_needed_text">このアプリにセットアップキーがありません。登録し直すと、このアプリがコードを自動で入力し、バックグラウンドでも再ログインします。それまではログインのたびにコードを入力します。</string>
     <string name="auth_key_suspended_title">認証が通らず、再設定が必要です</string>
     <string name="auth_key_suspended_text">このアプリのキーで作ったコードが、大学の認証システムで 2 回続けて通りませんでした。登録し直すまで、キーは自動では使わず、ログインのたびにコードを入力します。</string>
     <string name="login_reregister_prompt_open">登録し直す</string>
     <string name="login_reregister_prompt_later">あとで</string>
     <string name="settings_login_row">ログインとワンタイムパスワード</string>
+
+    <!-- Class dialogs -->
+    <string name="class_location_dialog_location_description">場所</string>
+    <string name="class_location_dialog_directions_button">Google Mapsで道案内</string>
+    <string name="class_detail_dialog_time_description">時間</string>
+    <string name="class_detail_dialog_location_description">場所</string>
+    <string name="class_detail_dialog_duration_description">長さ</string>
+
+    <!-- Common -->
+    <string name="common_button_open_moodle">Moodleで開く</string>
+    <string name="common_description_previous_day">前の日</string>
+    <string name="common_description_next_day">次の日</string>
+
+    <!-- Assignment detail -->
+    <string name="assignment_detail_due_label">提出期限</string>
+
+    <!-- Facilities -->
+    <string name="facilities_empty_message">施設データがありません</string>
+
+    <!-- Grades -->
+    <string name="grades_empty_message">成績データがありません</string>
+
+    <!-- Home -->
+    <string name="home_button_back_to_today">今日に戻る</string>
+    <string name="home_legend_class">授業</string>
+    <string name="home_legend_assignment_deadline">課題の提出期限</string>
+    <string name="home_menu_icon_description">学食</string>
+    <string name="home_menu_detail_description">詳細</string>
+    <string name="home_menu_loading">メニューを取得中…</string>
+
+    <!-- Gakushoku -->
+    <string name="gakushoku_day_lunch_label">昼食</string>
+    <string name="gakushoku_day_empty">掲載なし</string>
+
+    <!-- Course detail -->
+    <string name="course_detail_syllabus_title">シラバス</string>
+    <string name="course_detail_credits_label">単位数</string>
+    <string name="course_detail_info_title">詳細</string>
+    <string name="course_detail_attendance_simulator_title">出席状況 (シミュレーター)</string>
+    <string name="course_detail_attendance_today_title">今日の出席記録</string>
+    <string name="course_detail_attendance_history_title">履歴</string>
+    <string name="course_detail_attendance_history_empty">履歴なし</string>
+    <string name="course_detail_assignments_title">課題・小テスト</string>
+    <string name="course_detail_assignments_empty">未完了の課題はありません</string>
+    <string name="course_detail_contents_title">コースコンテンツ</string>
+    <string name="course_detail_links_title">リンク</string>
+    <string name="attendance_late">遅刻</string>
+    <string name="course_detail_history_delete_description">削除</string>
+
+    <!-- More -->
+    <string name="more_disclaimer">本アプリは学生が個人で提供する非公式アプリであり、会津大学とは一切関係ありません。</string>
+    <string name="more_features_header">機能</string>
+
+    <!-- Notification timing settings -->
+    <string name="notify_times_description">提出期限の何分前に通知するかを選びます。複数選べます。</string>
+    <string name="notify_times_presets_header">よく使うもの</string>
+    <string name="notify_times_custom_header">自分で追加</string>
+    <string name="notify_times_remove_hint">× で消せます</string>
+    <string name="notify_times_add_timing">タイミングを追加</string>
+
+    <!-- Tab order settings -->
+    <string name="nav_settings_description">タップで入れ替えます。下のタブに無い画面は「その他」から開けます。</string>
+    <string name="nav_settings_bottom_tabs_header">下のタブ (4つまで)</string>
+    <string name="nav_settings_more_header">「その他」</string>
+    <string name="nav_settings_reset_button">最初の並びに戻す</string>
+
+    <!-- Timetable sharing -->
+    <string name="timetable_exchange_qr_description">時間割の共有のQRコード</string>
+
+    <!-- Syllabus -->
+    <string name="syllabus_section_basic">基本情報</string>
+    <string name="syllabus_section_overview">講義概要</string>
+    <string name="syllabus_section_goals">到達目標</string>
+    <string name="syllabus_section_evaluation">評価方法</string>
+    <string name="syllabus_section_schedule">授業計画</string>
+    <string name="syllabus_section_textbooks">教科書・参考書</string>
+    <string name="syllabus_open_web_button">Webシラバスで見る</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_tagline">時間割・課題・成績・学食を\nひとつのアプリでまとめて確認</string>
+    <string name="onboarding_feature_classes_title">今日の授業と教室</string>
+    <string name="onboarding_feature_classes_body">時間割から今日の予定と教室をすぐ確認</string>
+    <string name="onboarding_feature_notify_title">提出期限と休講の通知</string>
+    <string name="onboarding_feature_notify_body">課題の提出期限や休講を通知で受け取る</string>
+    <string name="onboarding_feature_grades_title">成績と取得単位</string>
+    <string name="onboarding_feature_grades_body">成績と取得単位をまとめて見る</string>
+
+    <!-- Calendar -->
+    <string name="calendar_month_previous_description">前の月</string>
+    <string name="calendar_month_next_description">次の月</string>
+
+    <!-- Screen titles -->
+    <string name="grades_title">成績</string>
+    <string name="facilities_title">施設利用状況</string>
+    <string name="syllabus_dashboard_title">シラバス・ダッシュボード</string>
+    <string name="syllabus_title">シラバス</string>
+    <string name="assignment_detail_title">課題詳細</string>
+
+    <!-- Facilities -->
+    <string name="facilities_status_available">利用可能</string>
+    <string name="facilities_status_outside_hours_message">時間外 (06:00から利用可能)</string>
+    <string name="facilities_status_busy_until_message">現在利用中 (〜%1$sまで)</string>
+    <string name="facilities_status_available_from_message">利用可能 (%1$sから利用予定)</string>
+    <string name="facilities_badge_busy">利用中</string>
+    <string name="facilities_badge_outside_hours">時間外</string>
+    <string name="facilities_schedule_free">空き</string>
+    <string name="facilities_schedule_in_use">使用中</string>
+
+    <!-- Class periods -->
+    <string name="class_period_single">%1$d限</string>
+    <string name="class_period_range">%1$d〜%2$d限</string>
+
+    <!-- Class dialogs -->
+    <string name="class_detail_dialog_location_unset">未設定</string>
+    <string name="class_detail_dialog_duration_minutes">%1$d分</string>
+    <string name="class_detail_dialog_duration_with_count">%1$d分 (%2$dコマ)</string>
+    <string name="class_detail_dialog_status_in_progress">授業中、残り%1$d分</string>
+    <string name="class_detail_dialog_status_starts_in">%1$d分後に開始</string>
+    <string name="class_location_dialog_no_room">教室情報なし</string>
+    <string name="class_location_dialog_university_name">会津大学</string>
+    <string name="class_location_dialog_no_map_app">地図を開けるアプリがありません</string>
+
+    <!-- Class notification -->
+    <string name="class_notification_remaining">"%1$s  残り%2$d分"</string>
+    <string name="class_notification_next_title">次の授業: %1$s</string>
+    <string name="class_notification_starts_in">"%1$s  %2$d分後"</string>
+    <string name="class_notification_finished">今日の授業は終わりました</string>
+
+    <!-- Assignments -->
+    <string name="assignment_due_format">提出期限: %1$s</string>
+
+    <!-- Grades -->
+    <string name="grades_credits_format">%1$s単位</string>
+    <string name="grades_score_format">点数: %1$s</string>
+
+    <!-- Gakushoku -->
+    <string name="gakushoku_day_today_format">"%1$s  今日"</string>
+    <string name="gakushoku_category_side">副菜</string>
+    <string name="gakushoku_category_noodles">麺類</string>
+    <string name="gakushoku_category_fish">魚</string>
+    <string name="gakushoku_category_dinner">夕食</string>
+    <string name="gakushoku_list_separator">、</string>
+
+    <!-- Common -->
+    <string name="common_format_date_month_day_weekday">M月d日 (E)</string>
+
+    <!-- Home -->
+    <string name="home_last_synced_just_now">たった今</string>
+    <string name="home_last_synced_minutes_ago">%1$d分前</string>
+    <string name="home_last_synced_hours_ago">%1$d時間前</string>
+    <string name="home_last_synced_days_ago">%1$d日前</string>
+    <string name="home_menu_failed">メニューを取得できませんでした</string>
+    <string name="home_menu_none_today">今日のメニューは掲載されていません</string>
+
+    <!-- Gakushoku -->
+    <string name="gakushoku_unavailable">メニューを取得できませんでした</string>
+    <string name="gakushoku_show_past_format">過去%1$d日分を表示</string>
+
+    <!-- Grades -->
+    <string name="grades_unavailable">成績を取得できませんでした</string>
+
+    <!-- Courses -->
+    <string name="courses_unavailable">コースを取得できませんでした</string>
+    <string name="courses_no_search_match">検索に一致するコースがありません</string>
+    <string name="courses_empty_message">コースがありません</string>
+
+    <!-- Facilities -->
+    <string name="facilities_load_failed_format">施設利用状況を取得できませんでした\n\n%1$s</string>
+
+    <!-- Assignment detail -->
+    <string name="assignment_detail_due_expired">期限切れ</string>
+    <string name="assignment_detail_remaining_minutes">残り%1$d分</string>
+    <string name="assignment_detail_remaining_hours">残り%1$d時間</string>
+    <string name="assignment_detail_remaining_days">残り%1$d日</string>
+
+    <!-- Course detail -->
+    <string name="course_detail_today_has_class_format">授業あり: %1$s 〜</string>
+    <string name="course_detail_today_no_class">今日は授業の予定がありません</string>
+    <string name="course_detail_contents_empty">コンテンツがありません</string>
+    <string name="course_detail_modules_empty">モジュールがありません</string>
+    <string name="course_detail_assignment_due_format">提出期限: %1$s</string>
+    <string name="course_detail_history_auto_format">%1$s (自動)</string>
+    <string name="course_detail_history_change_description">%1$s。タップして変更</string>
+
+    <!-- Weekdays -->
+    <string name="weekday_short_sun">日</string>
+    <string name="weekday_short_mon">月</string>
+    <string name="weekday_short_tue">火</string>
+    <string name="weekday_short_wed">水</string>
+    <string name="weekday_short_thu">木</string>
+    <string name="weekday_short_fri">金</string>
+    <string name="weekday_short_sat">土</string>
+
+    <!-- Calendar -->
+    <string name="calendar_month_title_format">%1$d年%2$d月</string>
+
+    <!-- Syllabus -->
+    <string name="syllabus_field_name">科目名</string>
+    <string name="syllabus_field_category">カテゴリ</string>
+    <string name="syllabus_field_subcategory">サブカテゴリ</string>
+    <string name="syllabus_field_semester">学期</string>
+    <string name="syllabus_field_target">対象</string>
+    <string name="syllabus_field_credits">単位数</string>
+    <string name="syllabus_field_coordinator">コーディネーター</string>
+    <string name="syllabus_field_instructor">担当教員</string>
+    <string name="syllabus_field_recommended_track">推奨トラック</string>
+    <string name="syllabus_field_essential_courses">必修科目</string>
+    <string name="syllabus_references_heading">"\n\n参考書\n"</string>
+
+    <!-- Assignment reminders -->
+    <string name="assignment_reminder_title">課題の提出期限</string>
+    <string name="notify_before_weeks_format">%1$d週間前</string>
+    <string name="notify_before_days_format">%1$d日前</string>
+    <string name="notify_before_hours_format">%1$d時間前</string>
+    <string name="notify_before_minutes_format">%1$d分前</string>
+
+    <!-- Common -->
+    <string name="common_button_delete">削除</string>
+    <string name="common_button_add">追加</string>
+    <string name="common_button_later">あとで</string>
+
+    <!-- Notification timing settings -->
+    <string name="notify_times_delete_message_format">%1$sを削除しますか？</string>
+    <string name="notify_times_unit_days">日</string>
+    <string name="notify_times_unit_hours">時間</string>
+    <string name="notify_times_unit_minutes">分</string>
+    <string name="notify_times_before_suffix">前</string>
+
+    <!-- Tab order settings -->
+    <string name="nav_settings_move_to_more_description">「その他」へ移動</string>
+    <string name="nav_settings_move_to_bottom_description">下のタブへ移動</string>
+
+    <!-- Backup -->
+    <string name="backup_file_open_failed">ファイルを開けませんでした</string>
+
+    <!-- Settings -->
+    <string name="settings_location_permission_required">位置情報の許可が無いと出席の自動記録は使えません</string>
+    <string name="settings_location_option_always">常に許可</string>
+    <string name="settings_location_dialog_title_format">位置情報を「%1$s」にしてください</string>
+    <string name="settings_location_dialog_message_format">出席の自動記録はアプリを閉じている間にキャンパスへの到着を検知します。次の画面で位置情報を「%1$s」に変更してください。</string>
+    <string name="settings_location_dialog_open_settings">設定へ</string>
+    <string name="settings_backup_done">バックアップ完了</string>
+    <string name="settings_backup_failed_format">バックアップできませんでした: %1$s</string>
+    <string name="settings_restore_done">バックアップから復元しました。アプリを開き直すと反映されます。</string>
+    <string name="settings_restore_failed_format">復元できませんでした: %1$s</string>
+    <string name="settings_logout_message">この端末に保存したログイン情報とデータを消します。</string>
+    <string name="settings_lunch_time_picker_title">通知時刻</string>
+    <string name="settings_login_summary_format">%1$s ・ %2$s</string>
+
+    <!-- Timetable sharing -->
+    <string name="timetable_failure_share_expired">この共有は期限切れか、停止されています。相手に、もう一度QRコードを表示してもらってください。</string>
+    <string name="timetable_failure_too_many_requests">短い時間に何度も送られました。少し待ってから、もう一度お試しください。</string>
+    <string name="timetable_failure_full">このQRコードは、受け取れる人数の上限に達しました。相手に、新しいQRコードを表示してもらってください。</string>
+    <string name="timetable_failure_no_network">通信できませんでした。通信状況を確認し、もう一度お試しください。</string>
+    <string name="timetable_failure_unreadable">受け取った時間割を読めませんでした。アプリを最新にしてください。</string>
+    <string name="timetable_failure_server_error">サーバーで問題が起きました。時間をおいて、もう一度お試しください。</string>
+    <string name="timetable_failure_cannot_store">この端末では共有を始められませんでした。</string>
+    <string name="timetable_date_format_month_day">M月d日</string>
+    <string name="timetable_date_format_full">yyyy年M月d日</string>
+    <string name="timetable_date_format_until">M月d日H:mm</string>
+    <string name="timetable_received_on_format">%1$sに受け取り</string>
+    <string name="timetable_valid_until_format">%1$sまで有効</string>
+    <string name="timetable_received_line_format">%1$s ・ 週%2$dコマ</string>
+    <string name="timetable_exchange_sending_unnamed">名前なしで送ります</string>
+    <string name="timetable_exchange_sending_as_format">「%1$s」として送ります</string>
+    <string name="timetable_exchange_expired">共有の期限が切れました。もう一度QRコードを生成してください。</string>
+    <string name="timetable_exchange_received_format">%1$sさんの時間割を受け取りました</string>
+    <string name="timetable_incoming_open_failed_title">時間割の共有を開けませんでした</string>
+    <string name="timetable_incoming_invalid_link_message">QRコードかリンクが正しくありません。相手に、もう一度QRコードを表示してもらってください。</string>
+    <string name="timetable_incoming_receive_failed_title">受け取れませんでした</string>
+    <string name="timetable_incoming_name_format">%1$sさん</string>
+    <string name="timetable_incoming_count_format">週%1$dコマ</string>
+    <string name="timetable_incoming_sent_back_message">自分の時間割も送りました。相手の画面にも届きます。</string>
+    <string name="timetable_incoming_send_back_failed_format">自分の時間割は送れませんでした。%1$s</string>
+    <string name="timetable_incoming_saved_title_format">%1$sさんの時間割を保存</string>
+    <string name="timetable_friend_missing">この友達の時間割はありません</string>
+    <string name="timetable_friend_counts_format">同じ授業%1$dコマ ・ どちらも空き%2$dコマ</string>
+    <string name="timetable_friend_no_free_slots">どちらも空いているコマはありません</string>
+    <string name="timetable_friend_no_same_classes">同じ時間に受けている授業はありません</string>
+    <string name="timetable_friend_day_row_format">%1$s %2$s</string>
+    <string name="timetable_friend_delete_title_format">%1$sさんの時間割を削除しますか？</string>
+    <string name="timetable_paste_open_button">開く</string>
+    <string name="timetable_paste_invalid_title">読み取れませんでした</string>
+    <string name="timetable_paste_invalid_message">貼り付けた文字に、時間割の共有リンクが見つかりませんでした。</string>
+
+    <!-- Timetable grid -->
+    <string name="timetable_grid_period_range_format">%1$d〜%2$d限</string>
+    <string name="timetable_grid_all_day">終日</string>
+    <string name="timetable_grid_list_separator">、</string>
+    <string name="timetable_grid_day_spoken_format">%1$s曜%2$s</string>
+    <string name="timetable_grid_more_format">他%1$d件</string>
+    <string name="timetable_grid_no_class_spoken">授業なし</string>
+    <string name="timetable_grid_same_badge">同じ</string>
+    <string name="timetable_grid_same_class_spoken">自分と同じ授業</string>
+    <string name="timetable_grid_mine_busy">自分も授業</string>
+    <string name="timetable_grid_mine_class_spoken_format">自分は%1$s</string>
+
+    <!-- Tabs -->
+    <string name="main_tab_grades">成績</string>
+    <string name="more_tab_grades">成績一覧</string>
+    <string name="main_tab_facilities">施設利用</string>
+
+    <!-- Fetch status -->
+    <string name="fetch_status_never_fetched">まだ一度も取得できていません</string>
+    <string name="fetch_status_failed_format">取得できませんでした。最終同期: %1$s</string>
+
+    <!-- Lunch menu notification -->
+    <string name="lunch_menu_notification_title_format">今日の学食メニュー (%1$s)</string>
+
+    <!-- Attendance -->
+    <string name="auto_attendance_registered_title">出席を自動で記録しました</string>
+    <string name="auto_attendance_registered_text_format">「%1$s」の出席をこの端末に記録しました。</string>
 </resources>

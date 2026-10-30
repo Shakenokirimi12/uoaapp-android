@@ -18,7 +18,7 @@ import java.util.Map;
 public final class OtpRelayLink {
     private OtpRelayLink() {}
 
-    static final String DEFAULT_NAME = "PC のブラウザ";
+    static final String DEFAULT_NAME = "PCのブラウザ";
     private static final int MAX_NAME_CODE_POINTS = 40;
 
     public static final class Pending {

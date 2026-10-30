@@ -1,8 +1,12 @@
 package com.shakenokirimi12.uoa_app.services.notification;
 
+import android.content.Context;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 
+import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.models.GakushokuMenu;
 
 import java.util.ArrayList;
@@ -11,7 +15,7 @@ import java.util.List;
 import java.util.TimeZone;
 
 /**
- * 学食メニュー通知の判断 (Android に依存しない部分。LunchMenuPlanTest で固定)。
+ * 学食メニュー通知の判断 (LunchMenuPlanTest で固定)。判断は Android に依存しない。文字にする Content.title / body だけ Context を取る。
  * iOS の NotificationManager.scheduleLunchNotifications と同じ文面・同じ条件:
  * その日のメニューが公開されている日だけ、設定した時刻に 1 回。メニューが無い日は何も出さない。
  */
@@ -27,13 +31,37 @@ public final class LunchMenuPlan {
      */
     static final long MAX_LATENESS_MS = 2 * 60 * 60_000L;
 
-    public static final class Content {
-        @NonNull public final String title;
-        @NonNull public final String body;
+    /** 本文の 1 行 (カテゴリ名の資源 ID と品目)。文字にするのは通知を出す側 (Context が要るため)。 */
+    public static final class Line {
+        @StringRes public final int label;
+        @NonNull public final List<String> items;
 
-        Content(@NonNull String title, @NonNull String body) {
-            this.title = title;
-            this.body = body;
+        Line(@StringRes int label, @NonNull List<String> items) {
+            this.label = label;
+            this.items = items;
+        }
+    }
+
+    public static final class Content {
+        /** 通知の題に入れる日付 (メニューに印刷された表記、無ければ「月/日」)。 */
+        @NonNull public final String date;
+        @NonNull public final List<Line> lines;
+
+        Content(@NonNull String date, @NonNull List<Line> lines) {
+            this.date = date;
+            this.lines = lines;
+        }
+
+        @NonNull
+        public String title(@NonNull Context ctx) {
+            return ctx.getString(R.string.lunch_menu_notification_title_format, date);
+        }
+
+        @NonNull
+        public String body(@NonNull Context ctx) {
+            List<String> out = new ArrayList<>();
+            for (Line line : lines) out.add(ctx.getString(line.label) + ": " + String.join(" / ", line.items));
+            return String.join("\n", out);
         }
     }
 
@@ -81,22 +109,22 @@ public final class LunchMenuPlan {
         if (entry == null || !entry.hasContent()) return null;
 
         // hasMenu だけでは全カテゴリ空のことがある。どのカテゴリだけの日でも本文が空にならないよう全部を候補にする。
-        List<String> lines = new ArrayList<>();
-        addLine(lines, "ランチ", entry.lunch);
-        addLine(lines, "麺類", entry.noodles);
-        addLine(lines, "魚", entry.fish);
-        addLine(lines, "サラダ", entry.salad);
-        addLine(lines, "夕食", entry.dinner);
+        List<Line> lines = new ArrayList<>();
+        addLine(lines, R.string.gakushoku_lunch, entry.lunch);
+        addLine(lines, R.string.gakushoku_category_noodles, entry.noodles);
+        addLine(lines, R.string.gakushoku_category_fish, entry.fish);
+        addLine(lines, R.string.gakushoku_salad, entry.salad);
+        addLine(lines, R.string.gakushoku_category_dinner, entry.dinner);
         if (lines.isEmpty()) return null;
 
         String date = entry.dateString != null && !entry.dateString.isEmpty()
                 ? entry.dateString
                 : (day.get(Calendar.MONTH) + 1) + "/" + day.get(Calendar.DAY_OF_MONTH);
-        return new Content("今日の学食メニュー (" + date + ")", String.join("\n", lines));
+        return new Content(date, lines);
     }
 
-    private static void addLine(List<String> lines, String label, @Nullable List<String> items) {
+    private static void addLine(List<Line> lines, @StringRes int label, @Nullable List<String> items) {
         if (items == null || items.isEmpty()) return;
-        lines.add(label + ": " + String.join(" / ", items));
+        lines.add(new Line(label, items));
     }
 }

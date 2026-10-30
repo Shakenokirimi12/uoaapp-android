@@ -1,6 +1,10 @@
 package com.shakenokirimi12.uoa_app.ui.timetable;
 
+import android.content.Context;
+
 import androidx.annotation.NonNull;
+
+import com.shakenokirimi12.uoa_app.R;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -13,21 +17,23 @@ final class TimetableDates {
     private TimetableDates() {}
 
     @NonNull
-    static String received(long ms) {
+    static String received(@NonNull Context ctx, long ms) {
         ZonedDateTime t = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault());
         boolean thisYear = t.getYear() == ZonedDateTime.now().getYear();
-        String date = DateTimeFormatter.ofPattern(thisYear ? "M月d日" : "yyyy年M月d日", Locale.JAPAN).format(t);
-        return date + " に受け取り";
+        String pattern = ctx.getString(thisYear ? R.string.timetable_date_format_month_day : R.string.timetable_date_format_full);
+        String date = DateTimeFormatter.ofPattern(pattern, Locale.JAPAN).format(t);
+        return ctx.getString(R.string.timetable_received_on_format, date);
     }
 
     @NonNull
-    static String until(long ms) {
+    static String until(@NonNull Context ctx, long ms) {
         ZonedDateTime t = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault());
-        return DateTimeFormatter.ofPattern("M月d日 H:mm", Locale.JAPAN).format(t) + " まで有効";
+        String date = DateTimeFormatter.ofPattern(ctx.getString(R.string.timetable_date_format_until), Locale.JAPAN).format(t);
+        return ctx.getString(R.string.timetable_valid_until_format, date);
     }
 
     @NonNull
-    static String receivedLine(long ms, int classes) {
-        return received(ms) + " ・ 週 " + classes + " コマ";
+    static String receivedLine(@NonNull Context ctx, long ms, int classes) {
+        return ctx.getString(R.string.timetable_received_line_format, received(ctx, ms), classes);
     }
 }

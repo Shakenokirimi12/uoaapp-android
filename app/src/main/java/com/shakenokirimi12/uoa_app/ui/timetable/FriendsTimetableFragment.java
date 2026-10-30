@@ -75,7 +75,7 @@ public class FriendsTimetableFragment extends Fragment {
             ItemTimetableFriendBinding row = ItemTimetableFriendBinding.inflate(inflater, binding.listFriends, false);
             row.textAvatar.setText(f.name.isEmpty() ? "" : f.name.substring(0, f.name.offsetByCodePoints(0, 1)));
             row.textName.setText(f.name);
-            row.textDetail.setText(TimetableDates.receivedLine(f.receivedAt, f.timetable.classes.size()));
+            row.textDetail.setText(TimetableDates.receivedLine(requireContext(), f.receivedAt, f.timetable.classes.size()));
             row.getRoot().setOnClickListener(v -> {
                 Bundle args = new Bundle();
                 args.putString(FriendTimetableFragment.ARG_FRIEND_ID, f.id);
@@ -106,14 +106,14 @@ public class FriendsTimetableFragment extends Fragment {
         new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.timetable_paste_link)
                 .setView(container)
-                .setPositiveButton("開く", (d, w) -> {
+                .setPositiveButton(R.string.timetable_paste_open_button, (d, w) -> {
                     String text = edit.getText() != null ? edit.getText().toString() : "";
                     String id = TimetableShareLink.shareId(text);
                     if (id == null) {
                         new MaterialAlertDialogBuilder(ctx)
-                                .setTitle("読み取れませんでした")
-                                .setMessage("貼り付けた文字に、時間割の共有リンクが見つかりませんでした。")
-                                .setPositiveButton("OK", null)
+                                .setTitle(R.string.timetable_paste_invalid_title)
+                                .setMessage(R.string.timetable_paste_invalid_message)
+                                .setPositiveButton(R.string.ok, null)
                                 .show();
                         return;
                     }

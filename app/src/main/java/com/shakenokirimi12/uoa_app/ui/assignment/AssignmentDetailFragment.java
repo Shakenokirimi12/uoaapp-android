@@ -63,16 +63,16 @@ public class AssignmentDetailFragment extends Fragment {
             long nowSec = System.currentTimeMillis() / 1000;
             long diffSec = assignment.getDueDate() - nowSec;
             if (diffSec < 0) {
-                textDueRelative.setText("期限切れ");
+                textDueRelative.setText(R.string.assignment_detail_due_expired);
                 textDueRelative.setTextColor(MaterialColors.getColor(textDueRelative, androidx.appcompat.R.attr.colorError));
             } else if (diffSec < 3600) {
-                textDueRelative.setText("残り" + (diffSec / 60) + "分");
+                textDueRelative.setText(getString(R.string.assignment_detail_remaining_minutes, diffSec / 60));
                 textDueRelative.setTextColor(MaterialColors.getColor(textDueRelative, androidx.appcompat.R.attr.colorError));
             } else if (diffSec < 86400) {
-                textDueRelative.setText("残り" + (diffSec / 3600) + "時間");
+                textDueRelative.setText(getString(R.string.assignment_detail_remaining_hours, diffSec / 3600));
                 textDueRelative.setTextColor(MaterialColors.getColor(textDueRelative, androidx.appcompat.R.attr.colorPrimary));
             } else {
-                textDueRelative.setText("残り" + (diffSec / 86400) + "日");
+                textDueRelative.setText(getString(R.string.assignment_detail_remaining_days, diffSec / 86400));
                 textDueRelative.setTextColor(MaterialColors.getColor(textDueRelative, androidx.appcompat.R.attr.colorPrimary));
             }
         }

@@ -152,9 +152,9 @@ public class LunchMenuWorker extends Worker {
         PendingIntent pi = PendingIntent.getActivity(ctx, NOTIFICATION_ID, open, PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, NotificationChannels.ensureLunchMenu(ctx))
                 .setSmallIcon(R.drawable.ic_stat_notification)
-                .setContentTitle(content.title)
-                .setContentText(content.body)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(content.body))
+                .setContentTitle(content.title(ctx))
+                .setContentText(content.body(ctx))
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(content.body(ctx)))
                 .setContentIntent(pi)
                 .setAutoCancel(true);
         NotificationManagerCompat.from(ctx).notify(NOTIFICATION_ID, b.build());

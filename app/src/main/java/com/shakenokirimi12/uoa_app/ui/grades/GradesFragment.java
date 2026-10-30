@@ -134,8 +134,8 @@ public class GradesFragment extends Fragment {
                 !PreferenceManager.getInstance(requireContext()).getUsername().isEmpty(), failed,
                 DataCache.getInstance(requireContext()).fetchedAt(DataCache.Dataset.GRADES));
         if (kind == FetchStatus.Empty.NOT_LOGGED_IN) textEmpty.setText(R.string.not_logged_in_empty);
-        else if (kind == FetchStatus.Empty.UNAVAILABLE) textEmpty.setText("成績を取得できませんでした");
-        else if (kind == FetchStatus.Empty.NONE) textEmpty.setText("成績データがありません");
+        else if (kind == FetchStatus.Empty.UNAVAILABLE) textEmpty.setText(R.string.grades_unavailable);
+        else if (kind == FetchStatus.Empty.NONE) textEmpty.setText(R.string.grades_empty_message);
         boolean empty = gradeAdapter.getItemCount() == 0;
         textEmpty.setVisibility(empty && kind != FetchStatus.Empty.LOADING ? View.VISIBLE : View.GONE);
     }

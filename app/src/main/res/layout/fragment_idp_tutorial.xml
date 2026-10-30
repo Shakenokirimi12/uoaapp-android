@@ -39,7 +39,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:text="なぜこの設定が必要なの?"
+                    android:text="なぜこの設定が必要ですか？"
                     android:textAppearance="?attr/textAppearanceTitleMedium"
                     android:textColor="?attr/colorOnPrimaryContainer" />
 
@@ -48,7 +48,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:lineSpacingExtra="2dp"
-                    android:text="会津大学の学内システムが、大学公式の統合認証(IdP)によるログインに切り替わりました。このアプリもそれに合わせてログイン方法を対応させています。お手数ですが、最初の設定だけお付き合いください。"
+                    android:text="会津大学の学内システムのログインが、大学公式の統合認証に切り替わりました。このアプリもそれに合わせています。設定が必要なのは最初だけです。"
                     android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:textColor="?attr/colorOnPrimaryContainer" />
             </LinearLayout>
@@ -89,14 +89,14 @@
                             style="@style/Widget.Uoa.ListRow.Title"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="大学の統合ログイン(IdP)に接続します" />
+                            android:text="大学の統合認証に接続します" />
 
                         <TextView
                             style="@style/Widget.Uoa.ListRow.Supporting"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="いつものID・パスワードで、会津大学の統合認証システムへ直接ログインします。" />
+                            android:text="いつものユーザー名とパスワードで、会津大学の統合認証に直接ログインします。" />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -149,7 +149,7 @@
             android:layout_height="wrap_content"
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
-            android:text="ワンタイムパスワードの受け取り方法" />
+            android:text="ログイン方法" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -171,7 +171,7 @@
             android:layout_marginTop="16dp"
             android:drawablePadding="12dp"
             android:gravity="center_vertical"
-            android:text="入力したID・パスワードは、大学の認証システムへ直接送信されます。開発者のサーバーを経由したり、そこに保存されたりすることはありません。"
+            android:text="入力したユーザー名とパスワードは、大学の認証システムへ直接送信されます。開発者のサーバーを経由したり、そこに保存されたりすることはありません。"
             app:drawableStartCompat="@drawable/ic_shield_check"
             app:drawableTint="?attr/colorOnSecondaryContainer" />
 

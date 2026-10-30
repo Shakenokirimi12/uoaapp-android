@@ -18,7 +18,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="前の月"
+            android:contentDescription="@string/calendar_month_previous_description"
             android:src="@drawable/ic_chevron_left"
             app:tint="?attr/colorOnSurface" />
 
@@ -37,7 +37,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="次の月"
+            android:contentDescription="@string/calendar_month_next_description"
             android:src="@drawable/ic_chevron_right"
             app:tint="?attr/colorOnSurface" />
     </LinearLayout>

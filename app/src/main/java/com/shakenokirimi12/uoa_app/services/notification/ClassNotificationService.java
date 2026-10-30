@@ -192,13 +192,13 @@ public class ClassNotificationService extends Service {
             long remainMs = current.getDtend().getTime() - System.currentTimeMillis();
             long remainMin = Math.max(0, remainMs / 60_000);
 
-            String periodStr = current.formatPeriods();
+            String periodStr = current.formatPeriods(this);
             String subtitle = timeFmt.format(current.getDtstart()) + " - " + timeFmt.format(current.getDtend());
             if (!periodStr.isEmpty()) subtitle = periodStr + "  " + subtitle;
 
             builder.setContentTitle(current.getSummary())
-                    .setContentText(String.format(Locale.JAPANESE,
-                            "%s  残り %d分", current.getLocation(), remainMin))
+                    .setContentText(getString(R.string.class_notification_remaining,
+                            current.getLocation(), remainMin))
                     .setSubText(subtitle)
                     .setUsesChronometer(true)
                     .setChronometerCountDown(true)
@@ -207,16 +207,16 @@ public class ClassNotificationService extends Service {
             long untilMs = next.getDtstart().getTime() - System.currentTimeMillis();
             long untilMin = Math.max(0, untilMs / 60_000);
 
-            String periodStr = next.formatPeriods();
+            String periodStr = next.formatPeriods(this);
             String subtitle = timeFmt.format(next.getDtstart()) + " - " + timeFmt.format(next.getDtend());
             if (!periodStr.isEmpty()) subtitle = periodStr + "  " + subtitle;
 
-            builder.setContentTitle("次の授業: " + next.getSummary())
-                    .setContentText(String.format(Locale.JAPANESE,
-                            "%s  %d分後", next.getLocation(), untilMin))
+            builder.setContentTitle(getString(R.string.class_notification_next_title, next.getSummary()))
+                    .setContentText(getString(R.string.class_notification_starts_in,
+                            next.getLocation(), untilMin))
                     .setSubText(subtitle);
         } else {
-            builder.setContentTitle("今日の授業は終わりました")
+            builder.setContentTitle(getString(R.string.class_notification_finished))
                     .setContentText("");
         }
 

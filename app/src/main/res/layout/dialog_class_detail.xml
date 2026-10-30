@@ -45,7 +45,7 @@
         <ImageView
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:contentDescription="時間"
+            android:contentDescription="@string/class_detail_dialog_time_description"
             android:src="@drawable/ic_clock"
             app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -70,7 +70,7 @@
         <ImageView
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:contentDescription="場所"
+            android:contentDescription="@string/class_detail_dialog_location_description"
             android:src="@drawable/ic_map_pin"
             app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -95,7 +95,7 @@
         <ImageView
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:contentDescription="長さ"
+            android:contentDescription="@string/class_detail_dialog_duration_description"
             android:src="@drawable/ic_timer"
             app:tint="?attr/colorOnSurfaceVariant" />
 

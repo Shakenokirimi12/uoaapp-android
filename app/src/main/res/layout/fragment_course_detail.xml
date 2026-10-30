@@ -51,7 +51,7 @@
                 style="@style/Widget.Uoa.SectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="シラバス" />
+                android:text="@string/course_detail_syllabus_title" />
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_syllabus"
@@ -86,7 +86,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="単位数"
+                            android:text="@string/course_detail_credits_label"
                             android:textAppearance="?attr/textAppearanceLabelMedium"
                             android:textColor="?attr/colorOnPrimaryContainer" />
 
@@ -122,7 +122,7 @@
                         android:drawablePadding="4dp"
                         android:drawableTint="?attr/colorOnPrimaryContainer"
                         android:gravity="center_vertical"
-                        android:text="詳細"
+                        android:text="@string/course_detail_info_title"
                         android:textAppearance="?attr/textAppearanceLabelLarge"
                         android:textColor="?attr/colorOnPrimaryContainer" />
                 </LinearLayout>
@@ -133,7 +133,7 @@
                 style="@style/Widget.Uoa.SectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="出席状況（シミュレーター）" />
+                android:text="@string/course_detail_attendance_simulator_title" />
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_attendance"
@@ -179,7 +179,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="出席"
+                                    android:text="@string/attendance_present"
                                     android:textAppearance="?attr/textAppearanceLabelMedium"
                                     android:textColor="?attr/colorOnSurfaceVariant" />
                             </LinearLayout>
@@ -211,7 +211,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="欠席"
+                                    android:text="@string/attendance_absent"
                                     android:textAppearance="?attr/textAppearanceLabelMedium"
                                     android:textColor="?attr/colorOnSurfaceVariant" />
                             </LinearLayout>
@@ -243,7 +243,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="遅刻"
+                                    android:text="@string/attendance_late"
                                     android:textAppearance="?attr/textAppearanceLabelMedium"
                                     android:textColor="?attr/colorOnSurfaceVariant" />
                             </LinearLayout>
@@ -258,7 +258,7 @@
                 style="@style/Widget.Uoa.SectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="本日の出席登録" />
+                android:text="@string/course_detail_attendance_today_title" />
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_today_action"
@@ -297,7 +297,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="4dp"
                             android:layout_weight="1"
-                            android:text="出席"
+                            android:text="@string/attendance_present"
                             app:icon="@drawable/ic_check" />
 
                         <com.google.android.material.button.MaterialButton
@@ -307,7 +307,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginHorizontal="4dp"
                             android:layout_weight="1"
-                            android:text="遅刻"
+                            android:text="@string/attendance_late"
                             app:icon="@drawable/ic_clock" />
 
                         <com.google.android.material.button.MaterialButton
@@ -317,7 +317,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="4dp"
                             android:layout_weight="1"
-                            android:text="欠席"
+                            android:text="@string/attendance_absent"
                             app:icon="@drawable/ic_x_circle" />
                     </LinearLayout>
                 </LinearLayout>
@@ -328,7 +328,7 @@
                 style="@style/Widget.Uoa.SectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="履歴" />
+                android:text="@string/course_detail_attendance_history_title" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
@@ -354,7 +354,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:padding="24dp"
-                        android:text="履歴なし" />
+                        android:text="@string/course_detail_attendance_history_empty" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -363,7 +363,7 @@
                 style="@style/Widget.Uoa.SectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="課題・小テスト" />
+                android:text="@string/course_detail_assignments_title" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_assignments"
@@ -380,7 +380,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="24dp"
-                android:text="未完了の課題はありません。"
+                android:text="@string/course_detail_assignments_empty"
                 android:visibility="gone" />
 
             <!-- Course contents -->
@@ -388,7 +388,7 @@
                 style="@style/Widget.Uoa.SectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="コースコンテンツ" />
+                android:text="@string/course_detail_contents_title" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
@@ -423,7 +423,7 @@
                 style="@style/Widget.Uoa.SectionHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="リンク" />
+                android:text="@string/course_detail_links_title" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_moodle_browser"
@@ -431,7 +431,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="8dp"
-                android:text="Moodleで開く"
+                android:text="@string/common_button_open_moodle"
                 app:icon="@drawable/ic_link" />
 
         </LinearLayout>

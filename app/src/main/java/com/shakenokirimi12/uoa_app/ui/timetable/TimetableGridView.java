@@ -52,7 +52,7 @@ public class TimetableGridView extends LinearLayout {
         LinearLayout header = row();
         header.addView(new View(getContext()), new LayoutParams(dp(HEADER_WIDTH_DP), 1));
         for (int day : days) {
-            TextView label = text(TimetableGrid.dayLabel(day), 14, true, MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface));
+            TextView label = text(TimetableGrid.dayLabel(getContext(), day), 14, true, MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface));
             label.setGravity(Gravity.CENTER);
             LayoutParams lp = new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f);
             lp.setMarginStart(dp(GAP_DP));
@@ -113,7 +113,8 @@ public class TimetableGridView extends LinearLayout {
                 ? com.google.android.material.R.attr.colorOnPrimaryContainer : com.google.android.material.R.attr.colorOnSurface);
         int onSurfaceVariant = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant);
         List<String> spoken = new ArrayList<>();
-        spoken.add(TimetableGrid.dayLabel(day) + "曜 " + TimetableGrid.rowLabel(r));
+        spoken.add(getContext().getString(R.string.timetable_grid_day_spoken_format,
+                TimetableGrid.dayLabel(getContext(), day), TimetableGrid.rowLabel(getContext(), r)));
         if (!here.isEmpty()) {
             SharedClass first = here.get(0);
             TextView title = text(first.title, 11, true, onSurface);
@@ -126,13 +127,13 @@ public class TimetableGridView extends LinearLayout {
                 room.setEllipsize(TextUtils.TruncateAt.END);
                 content.addView(room);
             }
-            if (here.size() > 1) content.addView(text("ほか " + (here.size() - 1) + " 件", 9, false, onSurfaceVariant));
+            if (here.size() > 1) content.addView(text(getContext().getString(R.string.timetable_grid_more_format, here.size() - 1), 9, false, onSurfaceVariant));
             for (SharedClass c : here) spoken.add(c.room.isEmpty() ? c.title : c.title + " " + c.room);
         } else {
-            spoken.add("授業なし");
+            spoken.add(getContext().getString(R.string.timetable_grid_no_class_spoken));
             if (overlap == TimetableGrid.Overlap.MINE_ONLY && !mineHere.isEmpty()) {
                 // 友達は空き、自分は授業。自分の授業名を薄く出して「空き」と取り違えないようにする。
-                content.addView(text("自分", 9, true, onSurfaceVariant));
+                content.addView(text(getContext().getString(R.string.timetable_legend_mine_label), 9, true, onSurfaceVariant));
                 TextView mineTitle = text(mineHere.get(0).title, 10, false, onSurfaceVariant);
                 mineTitle.setMaxLines(3);
                 mineTitle.setEllipsize(TextUtils.TruncateAt.END);
@@ -142,7 +143,7 @@ public class TimetableGridView extends LinearLayout {
         // 下に寄せる印 (同じ / 自分も授業)。
         content.addView(new View(getContext()), new LayoutParams(1, 0, 1f));
         if (overlap == TimetableGrid.Overlap.SAME) {
-            TextView badge = text("同じ", 9, true, ContextCompat.getColor(getContext(), R.color.white));
+            TextView badge = text(getContext().getString(R.string.timetable_grid_same_badge), 9, true, ContextCompat.getColor(getContext(), R.color.white));
             GradientDrawable pill = new GradientDrawable();
             pill.setCornerRadius(dp(8));
             pill.setColor(success);
@@ -151,18 +152,18 @@ public class TimetableGridView extends LinearLayout {
             LayoutParams lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             lp.topMargin = dp(2);
             content.addView(badge, lp);
-            spoken.add("自分と同じ授業");
+            spoken.add(getContext().getString(R.string.timetable_grid_same_class_spoken));
         } else if (overlap == TimetableGrid.Overlap.BOTH_BUSY) {
             LayoutParams lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             lp.topMargin = dp(2);
-            content.addView(text("自分も授業", 9, false, onSurfaceVariant), lp);
+            content.addView(text(getContext().getString(R.string.timetable_grid_mine_busy), 9, false, onSurfaceVariant), lp);
         }
         if ((overlap == TimetableGrid.Overlap.MINE_ONLY || overlap == TimetableGrid.Overlap.BOTH_BUSY) && !mineHere.isEmpty()) {
-            spoken.add("自分は " + mineHere.get(0).title);
+            spoken.add(getContext().getString(R.string.timetable_grid_mine_class_spoken_format, mineHere.get(0).title));
         }
-        if (overlap == TimetableGrid.Overlap.BOTH_FREE) spoken.add("どちらも空き");
+        if (overlap == TimetableGrid.Overlap.BOTH_FREE) spoken.add(getContext().getString(R.string.timetable_legend_free));
         frame.addView(content, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        frame.setContentDescription(TextUtils.join("、", spoken));
+        frame.setContentDescription(TextUtils.join(getContext().getString(R.string.timetable_grid_list_separator), spoken));
         frame.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
         content.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         return frame;

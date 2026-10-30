@@ -117,7 +117,7 @@
                             style="@style/Widget.Material3.Button.IconButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:contentDescription="前の日"
+                            android:contentDescription="@string/common_description_previous_day"
                             app:icon="@drawable/ic_chevron_left"
                             app:iconTint="?attr/colorOnPrimaryContainer" />
 
@@ -126,7 +126,7 @@
                             style="@style/Widget.Material3.Button.IconButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:contentDescription="次の日"
+                            android:contentDescription="@string/common_description_next_day"
                             app:icon="@drawable/ic_chevron_right"
                             app:iconTint="?attr/colorOnPrimaryContainer" />
                     </LinearLayout>
@@ -139,7 +139,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="-12dp"
                         android:minHeight="36dp"
-                        android:text="今日に戻る"
+                        android:text="@string/home_button_back_to_today"
                         android:textColor="?attr/colorOnPrimaryContainer"
                         android:visibility="gone"
                         app:icon="@drawable/ic_rotate_ccw"
@@ -173,7 +173,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="授業"
+                                android:text="@string/home_legend_class"
                                 android:textAppearance="?attr/textAppearanceLabelLarge"
                                 android:textColor="?attr/colorOnPrimaryContainer" />
                         </LinearLayout>
@@ -196,7 +196,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="課題〆切"
+                                android:text="@string/home_legend_assignment_deadline"
                                 android:textAppearance="?attr/textAppearanceLabelLarge"
                                 android:textColor="?attr/colorOnPrimaryContainer" />
                         </LinearLayout>
@@ -283,7 +283,7 @@
 
                         <ImageView
                             style="@style/Widget.Uoa.IconContainer"
-                            android:contentDescription="学食"
+                            android:contentDescription="@string/home_menu_icon_description"
                             android:src="@drawable/ic_restaurant" />
 
                         <TextView
@@ -291,14 +291,14 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="16dp"
                             android:layout_weight="1"
-                            android:text="学食メニュー"
+                            android:text="@string/gakushoku_title"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
                             android:textColor="?attr/colorOnSurface" />
 
                         <ImageView
                             android:layout_width="20dp"
                             android:layout_height="20dp"
-                            android:contentDescription="詳細"
+                            android:contentDescription="@string/home_menu_detail_description"
                             android:src="@drawable/ic_chevron_right"
                             app:tint="?attr/colorOnSurfaceVariant" />
                     </LinearLayout>
@@ -320,7 +320,7 @@
                             android:id="@+id/text_menu_lunch_label"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="昼食"
+                            android:text="@string/gakushoku_day_lunch_label"
                             android:textAppearance="?attr/textAppearanceLabelMedium"
                             android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -348,7 +348,7 @@
                         android:paddingStart="16dp"
                         android:paddingEnd="16dp"
                         android:paddingBottom="16dp"
-                        android:text="メニュー取得中…"
+                        android:text="@string/home_menu_loading"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:textColor="?attr/colorOnSurfaceVariant" />
                 </LinearLayout>

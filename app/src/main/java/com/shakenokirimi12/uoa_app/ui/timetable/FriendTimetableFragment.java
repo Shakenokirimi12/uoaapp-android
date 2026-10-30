@@ -78,7 +78,7 @@ public class FriendTimetableFragment extends Fragment {
         TimetableFriend f = friend();
         if (f == null) {
             // 消した直後など。
-            binding.textName.setText("この友達の時間割はありません");
+            binding.textName.setText(R.string.timetable_friend_missing);
             binding.textDetail.setText("");
             binding.toggleMode.setVisibility(View.GONE);
             binding.rowActions.setVisibility(View.GONE);
@@ -87,7 +87,7 @@ public class FriendTimetableFragment extends Fragment {
         }
         boolean compare = binding.toggleMode.getCheckedButtonId() == R.id.button_mode_compare && !mine.isEmpty();
         binding.textName.setText(f.name);
-        binding.textDetail.setText(TimetableDates.receivedLine(f.receivedAt, f.timetable.classes.size()));
+        binding.textDetail.setText(TimetableDates.receivedLine(requireContext(), f.receivedAt, f.timetable.classes.size()));
         binding.grid.setData(f.timetable.classes, compare ? mine : null);
         binding.legend.getRoot().setVisibility(compare ? View.VISIBLE : View.GONE);
         binding.cardSummary.setVisibility(compare ? View.VISIBLE : View.GONE);
@@ -108,7 +108,7 @@ public class FriendTimetableFragment extends Fragment {
                 else if (o == TimetableGrid.Overlap.BOTH_FREE) free++;
             }
         }
-        return "同じ授業 " + same + " コマ ・ どちらも空き " + free + " コマ";
+        return getString(R.string.timetable_friend_counts_format, same, free);
     }
 
     /** 「どちらも空き」と「同じ授業」を文で並べる。表で色を見分けにくい人にも分かるように。 */
@@ -118,7 +118,7 @@ public class FriendTimetableFragment extends Fragment {
         List<Integer> days = TimetableGrid.days(friend, mine);
         List<int[]> rows = TimetableGrid.rows(friend, mine);
 
-        box.addView(heading("どちらも空き"));
+        box.addView(heading(getString(R.string.timetable_legend_free)));
         boolean anyFree = false;
         for (int day : days) {
             List<int[]> slots = new ArrayList<>();
@@ -127,9 +127,10 @@ public class FriendTimetableFragment extends Fragment {
             }
             if (slots.isEmpty()) continue;
             anyFree = true;
-            box.addView(line(TimetableGrid.dayLabel(day), TimetableGrid.freeSummary(slots, rows)));
+            box.addView(line(TimetableGrid.dayLabel(requireContext(), day),
+                    TimetableGrid.freeSummary(requireContext(), slots, rows)));
         }
-        if (!anyFree) box.addView(body("どちらも空いているコマはありません"));
+        if (!anyFree) box.addView(body(getString(R.string.timetable_friend_no_free_slots)));
 
         View divider = new View(requireContext());
         divider.setBackgroundColor(MaterialColors.getColor(box, com.google.android.material.R.attr.colorOutlineVariant));
@@ -138,7 +139,7 @@ public class FriendTimetableFragment extends Fragment {
         lp.bottomMargin = dp(12);
         box.addView(divider, lp);
 
-        box.addView(heading("同じ授業"));
+        box.addView(heading(getString(R.string.timetable_legend_same)));
         boolean anySame = false;
         for (int day : days) {
             for (int[] r : rows) {
@@ -150,10 +151,11 @@ public class FriendTimetableFragment extends Fragment {
                     if (mineTitles.contains(TimetableGrid.comparableTitle(c.title))) { title = c.title; break; }
                 }
                 anySame = true;
-                box.addView(line(TimetableGrid.dayLabel(day) + " " + TimetableGrid.rowLabel(r), title));
+                box.addView(line(getString(R.string.timetable_friend_day_row_format,
+                        TimetableGrid.dayLabel(requireContext(), day), TimetableGrid.rowLabel(requireContext(), r)), title));
             }
         }
-        if (!anySame) box.addView(body("同じ時間に受けている授業はありません"));
+        if (!anySame) box.addView(body(getString(R.string.timetable_friend_no_same_classes)));
     }
 
     private TextView heading(String s) {
@@ -219,7 +221,7 @@ public class FriendTimetableFragment extends Fragment {
 
     private void delete(TimetableFriend f) {
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(f.name + " さんの時間割を削除しますか？")
+                .setTitle(getString(R.string.timetable_friend_delete_title_format, f.name))
                 .setPositiveButton(R.string.timetable_delete, (d, w) -> {
                     TimetableShareStore.getInstance(requireContext()).remove(f.id);
                     if (getView() != null) Navigation.findNavController(getView()).popBackStack();

@@ -42,16 +42,16 @@ public class SyllabusFragment extends Fragment {
         if (syllabus == null) return;
 
         LinearLayout basicInfo = view.findViewById(R.id.layout_basic_info);
-        addInfoRow(basicInfo, "科目名", syllabus.getName());
-        addInfoRow(basicInfo, "カテゴリ", syllabus.getCategory());
-        addInfoRow(basicInfo, "サブカテゴリ", syllabus.getSubCategory());
-        addInfoRow(basicInfo, "学期", syllabus.getSemester());
-        addInfoRow(basicInfo, "対象", syllabus.getCourseFor());
-        addInfoRow(basicInfo, "単位数", syllabus.getCredits());
-        addInfoRow(basicInfo, "コーディネーター", syllabus.getCoordinator());
-        addInfoRow(basicInfo, "担当教員", syllabus.getInstructor());
-        addInfoRow(basicInfo, "推奨トラック", syllabus.getRecommendedTrack());
-        addInfoRow(basicInfo, "必修科目", syllabus.getEssentialCourses());
+        addInfoRow(basicInfo, getString(R.string.syllabus_field_name), syllabus.getName());
+        addInfoRow(basicInfo, getString(R.string.syllabus_field_category), syllabus.getCategory());
+        addInfoRow(basicInfo, getString(R.string.syllabus_field_subcategory), syllabus.getSubCategory());
+        addInfoRow(basicInfo, getString(R.string.syllabus_field_semester), syllabus.getSemester());
+        addInfoRow(basicInfo, getString(R.string.syllabus_field_target), syllabus.getCourseFor());
+        addInfoRow(basicInfo, getString(R.string.syllabus_field_credits), syllabus.getCredits());
+        addInfoRow(basicInfo, getString(R.string.syllabus_field_coordinator), syllabus.getCoordinator());
+        addInfoRow(basicInfo, getString(R.string.syllabus_field_instructor), syllabus.getInstructor());
+        addInfoRow(basicInfo, getString(R.string.syllabus_field_recommended_track), syllabus.getRecommendedTrack());
+        addInfoRow(basicInfo, getString(R.string.syllabus_field_essential_courses), syllabus.getEssentialCourses());
 
         setSection(view, R.id.card_outline, R.id.text_outline, syllabus.getOutline());
         setSection(view, R.id.card_objectives, R.id.text_objectives, syllabus.getObjectives());
@@ -117,7 +117,7 @@ public class SyllabusFragment extends Fragment {
             sb.append(syllabus.getTextbook());
         }
         if (syllabus.getReference() != null && !syllabus.getReference().isEmpty()) {
-            if (sb.length() > 0) sb.append("\n\n参考書:\n");
+            if (sb.length() > 0) sb.append(getString(R.string.syllabus_references_heading));
             sb.append(syllabus.getReference());
         }
         return sb.toString();

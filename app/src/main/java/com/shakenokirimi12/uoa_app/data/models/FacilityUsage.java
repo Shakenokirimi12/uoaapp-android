@@ -1,5 +1,11 @@
 package com.shakenokirimi12.uoa_app.data.models;
 
+import android.content.Context;
+
+import androidx.annotation.StringRes;
+
+import com.shakenokirimi12.uoa_app.R;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -12,13 +18,15 @@ public class FacilityUsage {
 
     private String name;
     private Status currentStatus;
-    private String statusMessage;
+    // 文面は画面に出す時点で Context から引く (モデルは Context を持たない)。
+    @StringRes private int statusMessageRes;
+    private String statusMessageArg;
     private List<ScheduleItem> schedule = new ArrayList<>();
 
     public FacilityUsage(String name) {
         this.name = name;
         this.currentStatus = Status.AVAILABLE;
-        this.statusMessage = "利用可能";
+        this.statusMessageRes = R.string.facilities_status_available;
     }
 
     public String getName() { return name; }
@@ -26,8 +34,11 @@ public class FacilityUsage {
     public Status getCurrentStatus() { return currentStatus; }
     public void setCurrentStatus(Status s) { this.currentStatus = s; }
 
-    public String getStatusMessage() { return statusMessage; }
-    public void setStatusMessage(String msg) { this.statusMessage = msg; }
+    public String getStatusMessage(Context ctx) {
+        return statusMessageArg == null
+                ? ctx.getString(statusMessageRes)
+                : ctx.getString(statusMessageRes, statusMessageArg);
+    }
 
     public List<ScheduleItem> getSchedule() { return schedule; }
     public void addScheduleItem(ScheduleItem item) { schedule.add(item); }
@@ -38,7 +49,8 @@ public class FacilityUsage {
 
         if (nowMinutes < 360) {
             currentStatus = Status.OUTSIDE_HOURS;
-            statusMessage = "時間外 (06:00から利用可能)";
+            statusMessageRes = R.string.facilities_status_outside_hours_message;
+            statusMessageArg = null;
             return;
         }
 
@@ -58,13 +70,16 @@ public class FacilityUsage {
 
         if (currentEvent != null) {
             currentStatus = Status.BUSY;
-            statusMessage = "利用中 (〜" + currentEvent.getEndTime() + "まで)";
+            statusMessageRes = R.string.facilities_status_busy_until_message;
+            statusMessageArg = currentEvent.getEndTime();
         } else if (nextEvent != null) {
             currentStatus = Status.AVAILABLE;
-            statusMessage = "利用可能 (" + nextEvent.getStartTime() + "から利用予定)";
+            statusMessageRes = R.string.facilities_status_available_from_message;
+            statusMessageArg = nextEvent.getStartTime();
         } else {
             currentStatus = Status.AVAILABLE;
-            statusMessage = "利用可能";
+            statusMessageRes = R.string.facilities_status_available;
+            statusMessageArg = null;
         }
     }
 

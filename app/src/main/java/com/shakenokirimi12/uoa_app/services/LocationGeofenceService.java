@@ -270,8 +270,8 @@ public class LocationGeofenceService {
             String channel = com.shakenokirimi12.uoa_app.services.notification.NotificationChannels.ensureClassOngoing(ctx);
             NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, channel)
                     .setSmallIcon(R.drawable.ic_stat_calendar)
-                    .setContentTitle("自動出席登録完了")
-                    .setContentText(matched.getFullname() + " の出席を自動登録しました。")
+                    .setContentTitle(ctx.getString(R.string.auto_attendance_registered_title))
+                    .setContentText(ctx.getString(R.string.auto_attendance_registered_text_format, matched.getFullname()))
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setAutoCancel(true);
 

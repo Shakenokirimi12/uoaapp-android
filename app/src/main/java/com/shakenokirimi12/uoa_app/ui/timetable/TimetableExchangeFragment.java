@@ -1,5 +1,6 @@
 package com.shakenokirimi12.uoa_app.ui.timetable;
 
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -143,13 +144,14 @@ public class TimetableExchangeFragment extends Fragment {
         SharedTimetable timetable = myTimetable();
         if (timetable == null) { show(binding.groupUnavailable); return; }
         show(binding.groupCreating);
+        Context appContext = requireContext().getApplicationContext();
         executor.execute(() -> {
             OutgoingShare share = null;
             String error = null;
             try {
                 share = store.startSharing(timetable, forceNew);
             } catch (TimetableShareApi.Failure e) {
-                error = e.getMessage();
+                error = e.message(appContext);
             }
             OutgoingShare s = share;
             String err = error;
@@ -166,8 +168,10 @@ public class TimetableExchangeFragment extends Fragment {
         Bitmap qr = QrCodes.make(TimetableShareLink.appUrl(share.shareId), size);
         binding.imageQr.setImageBitmap(qr);
         String name = store.myName();
-        binding.textSendingAs.setText(name.isEmpty() ? "名前なしで送ります" : "「" + name + "」として送ります");
-        binding.textExpiry.setText(TimetableDates.until(share.expiresAt));
+        binding.textSendingAs.setText(name.isEmpty()
+                ? getString(R.string.timetable_exchange_sending_unnamed)
+                : getString(R.string.timetable_exchange_sending_as_format, name));
+        binding.textExpiry.setText(TimetableDates.until(requireContext(), share.expiresAt));
         show(binding.groupShowing);
         if (isResumed()) startPolling();
     }
@@ -214,7 +218,7 @@ public class TimetableExchangeFragment extends Fragment {
                 if (binding == null || !polling) return;
                 if (r != null && !r.isEmpty()) addReceived(r);
                 if (gone) {
-                    fail("共有の期限が切れました。もう一度 QR コードを作ってください。");
+                    fail(getString(R.string.timetable_exchange_expired));
                     return;
                 }
                 main.postDelayed(poll, POLL_MS);
@@ -227,7 +231,7 @@ public class TimetableExchangeFragment extends Fragment {
         binding.textReceivedMore.setVisibility(View.VISIBLE);
         for (TimetableFriend f : friends) {
             TextView t = new TextView(requireContext());
-            t.setText(f.name + " さんの時間割を受け取りました");
+            t.setText(getString(R.string.timetable_exchange_received_format, f.name));
             t.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleSmall);
             t.setTextColor(ContextCompat.getColor(requireContext(), R.color.success));
             t.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_check_circle, 0, 0, 0);

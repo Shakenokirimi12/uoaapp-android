@@ -20,13 +20,13 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:text="締切の何分前に通知するかを選びます。いくつでも選べます。" />
+            android:text="@string/notify_times_description" />
 
         <TextView
             style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="よく使うもの" />
+            android:text="@string/notify_times_presets_header" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -48,7 +48,7 @@
             style="@style/Widget.Uoa.SectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="自分で追加"
+            android:text="@string/notify_times_custom_header"
             android:visibility="gone"
             tools:visibility="visible" />
 
@@ -81,7 +81,7 @@
                     android:layout_marginStart="4dp"
                     android:layout_marginTop="4dp"
                     android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:text="× で消せます" />
+                    android:text="@string/notify_times_remove_hint" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -93,7 +93,7 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:text="タイミングを追加"
+            android:text="@string/notify_times_add_timing"
             app:icon="@drawable/ic_plus"
             app:iconGravity="textStart" />
 

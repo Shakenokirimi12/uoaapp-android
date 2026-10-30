@@ -28,7 +28,7 @@ public class ClassDetailDialog {
         TextView textDuration = view.findViewById(R.id.text_duration);
         TextView textStatus = view.findViewById(R.id.text_status);
 
-        String periodStr = cls.formatPeriods();
+        String periodStr = cls.formatPeriods(context);
         if (!periodStr.isEmpty()) {
             textPeriod.setText(periodStr);
             textPeriod.setVisibility(View.VISIBLE);
@@ -40,19 +40,20 @@ public class ClassDetailDialog {
             timeStr = TIME_FMT.format(cls.getDtstart()) + " - " + TIME_FMT.format(cls.getDtend());
         }
         textTime.setText(timeStr);
-        textLocation.setText(cls.getLocation().isEmpty() ? "未設定" : cls.getLocation());
+        textLocation.setText(cls.getLocation().isEmpty() ? context.getString(R.string.class_detail_dialog_location_unset) : cls.getLocation());
 
         long durationMin = cls.getDurationMinutes();
         int eventCount = cls.getEventCount();
-        String durationText = durationMin + "分";
-        if (eventCount > 1) durationText += " (" + eventCount + "コマ)";
+        String durationText = eventCount > 1
+                ? context.getString(R.string.class_detail_dialog_duration_with_count, durationMin, eventCount)
+                : context.getString(R.string.class_detail_dialog_duration_minutes, durationMin);
         textDuration.setText(durationText);
 
         Date now = new Date();
         if (cls.getDtstart() != null && cls.getDtend() != null) {
             if (cls.isActiveAt(now)) {
                 long remainMin = Math.max(0, (cls.getDtend().getTime() - now.getTime()) / 60_000);
-                textStatus.setText("授業中 — 残り " + remainMin + "分");
+                textStatus.setText(context.getString(R.string.class_detail_dialog_status_in_progress, remainMin));
                 textStatus.setVisibility(View.VISIBLE);
                 GradientDrawable bg = (GradientDrawable) textStatus.getBackground().mutate();
                 bg.setColor(0x1A008578);
@@ -60,7 +61,7 @@ public class ClassDetailDialog {
             } else if (cls.getDtstart().after(now)) {
                 long untilMin = (cls.getDtstart().getTime() - now.getTime()) / 60_000;
                 if (untilMin <= 60) {
-                    textStatus.setText(untilMin + "分後に開始");
+                    textStatus.setText(context.getString(R.string.class_detail_dialog_status_starts_in, untilMin));
                     textStatus.setVisibility(View.VISIBLE);
                     GradientDrawable bg = (GradientDrawable) textStatus.getBackground().mutate();
                     bg.setColor(0x1AFF9800);

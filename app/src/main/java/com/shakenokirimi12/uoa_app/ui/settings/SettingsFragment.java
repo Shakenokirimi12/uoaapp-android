@@ -48,7 +48,7 @@ public class SettingsFragment extends Fragment {
                 if (hasFineLocation()) {
                     switchAutoAttendance.setChecked(true);
                 } else {
-                    Toast.makeText(requireContext(), "位置情報の許可が無いと自動出席は使えません", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), R.string.settings_location_permission_required, Toast.LENGTH_LONG).show();
                     updateLocationWarning();
                 }
             });
@@ -94,14 +94,13 @@ public class SettingsFragment extends Fragment {
         if (hasBackgroundLocation()) return;
         String option = Build.VERSION.SDK_INT >= 30
                 ? requireContext().getPackageManager().getBackgroundPermissionOptionLabel().toString()
-                : "常に許可";
+                : getString(R.string.settings_location_option_always);
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("位置情報を「" + option + "」にしてください")
-                .setMessage("自動出席はアプリを閉じている間にキャンパスへの到着を検知します。"
-                        + "次の画面で位置情報を「" + option + "」に変更してください。")
-                .setPositiveButton("設定へ", (d, w) ->
+                .setTitle(getString(R.string.settings_location_dialog_title_format, option))
+                .setMessage(getString(R.string.settings_location_dialog_message_format, option))
+                .setPositiveButton(R.string.settings_location_dialog_open_settings, (d, w) ->
                         backgroundLocationLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION))
-                .setNegativeButton("あとで", null)
+                .setNegativeButton(R.string.common_button_later, null)
                 .show();
     }
 
@@ -127,9 +126,9 @@ public class SettingsFragment extends Fragment {
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     try {
                         BackupService.exportTo(requireContext(), result.getData().getData());
-                        Toast.makeText(requireContext(), "バックアップしました", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), R.string.settings_backup_done, Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
-                        Toast.makeText(requireContext(), "バックアップできませんでした: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), getString(R.string.settings_backup_failed_format, e.getMessage()), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -140,9 +139,9 @@ public class SettingsFragment extends Fragment {
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     try {
                         BackupService.importFrom(requireContext(), result.getData().getData());
-                        Toast.makeText(requireContext(), "バックアップから戻しました。アプリを開き直すと反映されます", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), R.string.settings_restore_done, Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
-                        Toast.makeText(requireContext(), "戻せませんでした: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), getString(R.string.settings_restore_failed_format, e.getMessage()), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -289,7 +288,7 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.button_logout).setOnClickListener(v ->
                 new MaterialAlertDialogBuilder(requireContext())
                         .setTitle(R.string.settings_logout)
-                        .setMessage("この端末に保存したログイン情報とデータを消します。")
+                        .setMessage(R.string.settings_logout_message)
                         .setPositiveButton(R.string.ok, (dialog, which) -> {
                             // サーバーの削除が失敗しても端末内の削除は続け、失敗したことは 1 回だけ知らせる (SPEC.md「11」)。
                             // 画面はすぐ閉じるので、アプリの Context で出す。
@@ -356,7 +355,7 @@ public class SettingsFragment extends Fragment {
                 .setTimeFormat(TimeFormat.CLOCK_24H)
                 .setHour(hour)
                 .setMinute(minute)
-                .setTitleText("通知する時刻")
+                .setTitleText(R.string.settings_lunch_time_picker_title)
                 .build();
 
         picker.addOnPositiveButtonClickListener(v -> {
@@ -380,6 +379,7 @@ public class SettingsFragment extends Fragment {
                 : getString(OtpMethod.from(prefs.getOtpMethod()) == OtpMethod.AUTHENTICATOR
                         ? R.string.settings_otp_method_authenticator : R.string.settings_otp_method_mail);
         String name = user.isEmpty() ? getString(R.string.login_not_logged_in) : user;
-        loginSummary.setText(method != null ? name + " ・ " + method : name);
+        loginSummary.setText(method != null
+                ? getString(R.string.settings_login_summary_format, name, method) : name);
     }
 }

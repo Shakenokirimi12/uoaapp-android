@@ -114,11 +114,11 @@ public class IdPOtpRegistrationFragment extends Fragment {
         buttonCloseStatus.setOnClickListener(v -> Navigation.findNavController(v).popBackStack());
         view.findViewById(R.id.card_method_email).setOnClickListener(v -> viewModel.chooseEmail());
         view.findViewById(R.id.card_method_authenticator).setOnClickListener(v -> {
-            showProgress("認証アプリ用の情報を取得しています...");
+            showProgress("認証アプリ用の情報を取得しています…");
             viewModel.chooseAuthenticator();
         });
         view.findViewById(R.id.button_email_next).setOnClickListener(v -> {
-            showProgress("確認コードを送信しています...");
+            showProgress("確認コードを送信しています…");
             viewModel.confirmEmailAddressAndProceed(editEmail.getText().toString());
         });
         view.findViewById(R.id.button_confirm_proceed).setOnClickListener(v -> viewModel.proceedAfterConfirmation());
@@ -220,11 +220,11 @@ public class IdPOtpRegistrationFragment extends Fragment {
         setLeaveLocked(stage == IdPOtpRegistrationViewModel.Stage.COMPLETING);
         switch (stage) {
             case CHECKING:
-                showProgress("確認中...");
+                showProgress("確認中…");
                 break;
             case ALREADY_CONFIGURED:
                 showStatus(R.drawable.ic_shield_check, androidx.appcompat.R.attr.colorPrimary,
-                        "このアカウントは既にワンタイムパスワードが設定済みです。");
+                        "このアカウントは、すでにワンタイムパスワードが設定されています。");
                 break;
             case CHOOSING_METHOD:
                 hideAll();
@@ -238,7 +238,7 @@ public class IdPOtpRegistrationFragment extends Fragment {
                 hideAll();
                 String existing = viewModel.existingStatusLabel();
                 textExistingStatus.setText(existing != null
-                        ? "既に設定済みの方式があります: " + existing
+                        ? "すでに設定されている方式: " + existing
                         : "このアカウントは新規登録になります");
                 textMailConsent.setVisibility(switchingTo == OtpMethod.MAIL ? View.VISIBLE : View.GONE);
                 // 新規登録ではレイアウトの「一度登録すると、未設定の状態には戻せません。」のまま。
@@ -265,7 +265,7 @@ public class IdPOtpRegistrationFragment extends Fragment {
                 break;
             }
             case COMPLETING:
-                showProgress("登録しています...");
+                showProgress("登録しています…");
                 break;
             case SUCCESS:
                 showStatus(R.drawable.ic_check_circle, androidx.appcompat.R.attr.colorPrimary,

@@ -1,6 +1,7 @@
 package com.shakenokirimi12.uoa_app.ui.util;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
@@ -13,19 +14,17 @@ public class FetchStatusTest {
 
     @Test
     public void sameDay_showsTimeOnly() {
-        assertEquals("取得できませんでした（最終更新 12:34）",
-                FetchStatus.failureText(FETCHED, FETCHED + 3 * 60 * 60_000L, JST));
+        assertEquals("12:34", FetchStatus.lastUpdatedLabel(FETCHED, FETCHED + 3 * 60 * 60_000L, JST));
     }
 
     @Test
     public void earlierDay_showsDate() {
-        assertEquals("取得できませんでした（最終更新 10/16 12:34）",
-                FetchStatus.failureText(FETCHED, FETCHED + 24 * 60 * 60_000L, JST));
+        assertEquals("10/16 12:34", FetchStatus.lastUpdatedLabel(FETCHED, FETCHED + 24 * 60 * 60_000L, JST));
     }
 
     @Test
     public void neverFetched_saysSo() {
-        assertEquals("取得できませんでした（まだ一度も取得できていません）", FetchStatus.failureText(0, FETCHED, JST));
+        assertNull(FetchStatus.lastUpdatedLabel(0, FETCHED, JST));
     }
 
     @Test

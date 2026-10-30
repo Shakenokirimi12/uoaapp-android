@@ -5,6 +5,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.services.AppConfigService;
@@ -93,7 +94,7 @@ public final class AssignmentReminderSync {
         Map<String, Integer> minutesById = new HashMap<>(PRESET_MINUTES);
         Map<String, String> labelById = new HashMap<>();
         for (Map.Entry<String, Integer> e : PRESET_MINUTES.entrySet()) {
-            labelById.put(e.getKey(), presetLabel(e.getValue()));
+            labelById.put(e.getKey(), presetLabel(ctx, e.getValue()));
         }
         try {
             JSONArray customs = new JSONArray(prefs.getCustomNotifyTimes());
@@ -124,7 +125,7 @@ public final class AssignmentReminderSync {
                 String url = a.getUrl() != null ? a.getUrl() : MoodleService.currentBaseUrl() + "/my/";
                 out.add(new PushNotificationService.AssignmentReminder(
                         a.getId(), id, iso.format(new Date(triggerMs)),
-                        "課題提出期限",
+                        ctx.getString(R.string.assignment_reminder_title),
                         a.getName() + " (" + labelById.get(id) + ")",
                         url));
             }
@@ -132,10 +133,11 @@ public final class AssignmentReminderSync {
         return out;
     }
 
-    private static String presetLabel(int minutes) {
-        if (minutes % 10080 == 0) return (minutes / 10080) + "週間前";
-        if (minutes % 1440 == 0) return (minutes / 1440) + "日前";
-        if (minutes % 60 == 0) return (minutes / 60) + "時間前";
-        return minutes + "分前";
+    /** 「10分前」「1時間前」「1日前」「1週間前」。設定画面の既定の選択肢と同じ文面。 */
+    public static String presetLabel(Context ctx, int minutes) {
+        if (minutes % 10080 == 0) return ctx.getString(R.string.notify_before_weeks_format, minutes / 10080);
+        if (minutes % 1440 == 0) return ctx.getString(R.string.notify_before_days_format, minutes / 1440);
+        if (minutes % 60 == 0) return ctx.getString(R.string.notify_before_hours_format, minutes / 60);
+        return ctx.getString(R.string.notify_before_minutes_format, minutes);
     }
 }

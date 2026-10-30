@@ -17,6 +17,7 @@ import com.google.android.material.chip.ChipDrawable;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 
 import org.json.JSONArray;
@@ -31,20 +32,8 @@ public class NotifyTimesFragment extends Fragment {
 
     // 課題の締切に対する通知タイミング。iOS と同じ id/分数にしてサーバー側の予約を共通にする。
     // 以前は授業開始向けのラベルが付いていたが、それに対応する通知はどこにも実装されていなかった。
-    private static final String[][] DEFAULT_OPTIONS = {
-            {"prev_10", "10分前"},
-            {"prev_20", "20分前"},
-            {"prev_30", "30分前"},
-            {"prev_60", "1時間前"},
-            {"prev_120", "2時間前"},
-            {"prev_180", "3時間前"},
-            {"prev_360", "6時間前"},
-            {"prev_720", "12時間前"},
-            {"prev_1440", "1日前"},
-            {"prev_2880", "2日前"},
-            {"prev_4320", "3日前"},
-            {"prev_10080", "1週間前"},
-    };
+    // id は "prev_" + 分数。ラベルは分数から AssignmentReminderSync.presetLabel が作る。
+    private static final int[] DEFAULT_MINUTES = {10, 20, 30, 60, 120, 180, 360, 720, 1440, 2880, 4320, 10080};
 
     private PreferenceManager prefs;
     private Set<String> selectedTimes;
@@ -82,9 +71,9 @@ public class NotifyTimesFragment extends Fragment {
 
     private void buildDefaultOptions() {
         layoutDefaultTimes.removeAllViews();
-        for (String[] option : DEFAULT_OPTIONS) {
-            String key = option[0];
-            String label = option[1];
+        for (int minutes : DEFAULT_MINUTES) {
+            String key = "prev_" + minutes;
+            String label = AssignmentReminderSync.presetLabel(requireContext(), minutes);
             boolean checked = selectedTimes.contains(key);
             addOptionRow(layoutDefaultTimes, key, label, checked, false);
         }
@@ -140,9 +129,9 @@ public class NotifyTimesFragment extends Fragment {
             chip.setCloseIconVisible(true);
             View.OnClickListener confirmDelete = v ->
                     new MaterialAlertDialogBuilder(requireContext())
-                            .setTitle("削除")
-                            .setMessage(label + " を削除しますか？")
-                            .setPositiveButton("削除", (d, w) -> {
+                            .setTitle(R.string.common_button_delete)
+                            .setMessage(getString(R.string.notify_times_delete_message_format, label))
+                            .setPositiveButton(R.string.common_button_delete, (d, w) -> {
                                 selectedTimes.remove(key);
                                 removeCustomTime(key);
                                 saveSelectedTimes();
@@ -166,33 +155,36 @@ public class NotifyTimesFragment extends Fragment {
         dialogLayout.setGravity(android.view.Gravity.CENTER);
         dialogLayout.setPadding(dp(16), dp(16), dp(16), dp(16));
 
-        NumberPicker pickerDays = createPicker(0, 7, "日");
-        NumberPicker pickerHours = createPicker(0, 23, "時間");
-        NumberPicker pickerMinutes = createPicker(0, 59, "分");
+        String unitDays = getString(R.string.notify_times_unit_days);
+        String unitHours = getString(R.string.notify_times_unit_hours);
+        String unitMinutes = getString(R.string.notify_times_unit_minutes);
+        NumberPicker pickerDays = createPicker(0, 7, unitDays);
+        NumberPicker pickerHours = createPicker(0, 23, unitHours);
+        NumberPicker pickerMinutes = createPicker(0, 59, unitMinutes);
         pickerMinutes.setValue(10);
 
         dialogLayout.addView(pickerDays);
-        dialogLayout.addView(createLabel("日"));
+        dialogLayout.addView(createLabel(unitDays));
         dialogLayout.addView(pickerHours);
-        dialogLayout.addView(createLabel("時間"));
+        dialogLayout.addView(createLabel(unitHours));
         dialogLayout.addView(pickerMinutes);
-        dialogLayout.addView(createLabel("分"));
+        dialogLayout.addView(createLabel(unitMinutes));
 
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("タイミングを追加")
+                .setTitle(R.string.notify_times_add_timing)
                 .setView(dialogLayout)
-                .setPositiveButton("追加", (d, w) -> {
+                .setPositiveButton(R.string.common_button_add, (d, w) -> {
                     int totalMin = pickerDays.getValue() * 24 * 60
                             + pickerHours.getValue() * 60
                             + pickerMinutes.getValue();
                     if (totalMin <= 0) return;
 
                     StringBuilder label = new StringBuilder();
-                    if (pickerDays.getValue() > 0) label.append(pickerDays.getValue()).append("日");
-                    if (pickerHours.getValue() > 0) label.append(pickerHours.getValue()).append("時間");
+                    if (pickerDays.getValue() > 0) label.append(pickerDays.getValue()).append(unitDays);
+                    if (pickerHours.getValue() > 0) label.append(pickerHours.getValue()).append(unitHours);
                     if (pickerMinutes.getValue() > 0 || label.length() == 0)
-                        label.append(pickerMinutes.getValue()).append("分");
-                    label.append("前");
+                        label.append(pickerMinutes.getValue()).append(unitMinutes);
+                    label.append(getString(R.string.notify_times_before_suffix));
 
                     String id = UUID.randomUUID().toString();
                     addCustomTime(id, label.toString(), totalMin);

@@ -42,11 +42,11 @@ public final class OtpRelayPairingService {
             throw new PairingException("この端末では連携の鍵を暗号化して保存できないため、連携できません。");
         }
         if (!NotificationManagerCompat.from(ctx).areNotificationsEnabled()) {
-            throw new PairingException("通知の許可がないため連携できません。設定アプリで通知を許可してから、もう一度 QR を読んでください。");
+            throw new PairingException("通知が許可されていないため、連携できません。端末の設定で通知を許可してから、もう一度QRコードを読み取ってください。");
         }
         String token = fcmToken();
         if (token == null) {
-            throw new PairingException("通知の登録 (FCM) が済んでいないため連携できません。通信できる状態で、少し待ってからもう一度 QR を読んでください。");
+            throw new PairingException("通知の登録が完了していないため、連携できません。通信できる状態で、少し待ってからもう一度QRコードを読み取ってください。");
         }
 
         OtpRelayApi api = new OtpRelayApi();
@@ -55,7 +55,7 @@ public final class OtpRelayPairingService {
             reply = api.register(pending.pairingId, keys, token, deviceName(), pending.browserName, false,
                     PreferenceManager.getInstance(ctx).getSupportId());
         } catch (IOException e) {
-            throw new PairingException("中継サーバに接続できませんでした。");
+            throw new PairingException("中継サーバーに接続できませんでした。");
         }
         if (reply.status != 200 && reply.status != 201) {
             throw new PairingException(serverMessage(reply.status, reply.error));
@@ -67,13 +67,13 @@ public final class OtpRelayPairingService {
         // (消すと、端末に残っている元の連携が使えなくなる)。
         boolean existed = OtpRelayStore.find(pending.pairingId) != null;
         if (!OtpRelayStore.add(pairing)) {
-            if (existed) throw new PairingException("連携をこの端末に保存できませんでした。もう一度 QR を読んでください。");
+            if (existed) throw new PairingException("連携の情報をこの端末に保存できませんでした。もう一度QRコードを読み取ってください。");
             try {
                 api.unpair(pending.pairingId, keys);
             } catch (IOException e) {
                 Log.w(TAG, "could not roll back the server-side pairing: " + e);
             }
-            throw new PairingException("連携をこの端末に保存できませんでした。もう一度 QR を読んでください。");
+            throw new PairingException("連携の情報をこの端末に保存できませんでした。もう一度QRコードを読み取ってください。");
         }
         return pairing;
     }
@@ -154,7 +154,7 @@ public final class OtpRelayPairingService {
 
     @NonNull
     static String serverMessage(int status, @Nullable String code) {
-        if ("pairing-taken".equals(code)) return "この QR は既に別の端末で使われています。PC 側で QR を出し直してください。";
-        return "中継サーバでエラーが起きました (" + (code != null ? code : "http-" + status) + ")。";
+        if ("pairing-taken".equals(code)) return "このQRコードは、すでに別の端末で使われています。PCでQRコードを表示し直してください。";
+        return "中継サーバーで問題が起きました (" + (code != null ? code : "http-" + status) + ")。";
     }
 }

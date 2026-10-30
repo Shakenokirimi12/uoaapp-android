@@ -54,13 +54,13 @@ public class GradeAdapter extends RecyclerView.Adapter<GradeAdapter.ViewHolder> 
 
         StringBuilder detail = new StringBuilder();
         if (g.getCredits() != null && !g.getCredits().isEmpty()) {
-            detail.append(g.getCredits()).append("単位");
+            detail.append(holder.itemView.getContext().getString(R.string.grades_credits_format, g.getCredits()));
         }
         // CampusSquare は履修中の科目の点数欄に「履修中」と入れてくる。数値でなければ点数としては
         // 出さない (右のチップに状態として出るので重複する)。
         if (g.getScore() != null && g.getScore().matches("\\d+(\\.\\d+)?")) {
             if (detail.length() > 0) detail.append("  ");
-            detail.append("点数: ").append(g.getScore());
+            detail.append(holder.itemView.getContext().getString(R.string.grades_score_format, g.getScore()));
         }
         holder.textCredits.setText(detail.toString());
         holder.textCredits.setVisibility(detail.length() > 0 ? View.VISIBLE : View.GONE);

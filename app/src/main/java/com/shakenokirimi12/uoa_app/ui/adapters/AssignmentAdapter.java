@@ -54,7 +54,7 @@ public class AssignmentAdapter extends RecyclerView.Adapter<AssignmentAdapter.Vi
         holder.textCourse.setText(a.getCourseName());
         if (a.getDueDate() > 0) {
             Date due = new Date(a.getDueDate() * 1000);
-            holder.textDue.setText("締切: " + dateFmt.format(due));
+            holder.textDue.setText(holder.itemView.getContext().getString(R.string.assignment_due_format, dateFmt.format(due)));
             // Past deadlines are muted; upcoming ones keep the error tone so they stand out.
             int dueColor = MaterialColors.getColor(holder.itemView, a.isDuePast()
                     ? com.google.android.material.R.attr.colorOnSurfaceVariant

@@ -32,19 +32,20 @@ public class ClassLocationDialog {
 
         textClassName.setText(cls.getSummary());
         textLocation.setText(cls.getLocation() != null && !cls.getLocation().isEmpty()
-                ? cls.getLocation() : "教室情報なし");
+                ? cls.getLocation() : context.getString(R.string.class_location_dialog_no_room));
 
         WebSettings ws = webView.getSettings();
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
 
-        String html = buildMapHtml(cls.getLocation());
+        String universityName = context.getString(R.string.class_location_dialog_university_name);
+        String html = buildMapHtml(cls.getLocation(), universityName);
         webView.loadDataWithBaseURL("https://www.openstreetmap.org",
                 html, "text/html", "UTF-8", null);
 
         dialogView.findViewById(R.id.button_open_maps).setOnClickListener(v -> {
             String query = cls.getLocation() != null && !cls.getLocation().isEmpty()
-                    ? cls.getLocation() + " 会津大学" : "会津大学";
+                    ? cls.getLocation() + " " + universityName : universityName;
             Uri gmmUri = Uri.parse("geo:" + CAMPUS_LAT + "," + CAMPUS_LNG
                     + "?q=" + Uri.encode(query));
             Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmUri);
@@ -58,18 +59,18 @@ public class ClassLocationDialog {
                 try {
                     context.startActivity(new Intent(Intent.ACTION_VIEW, webUri));
                 } catch (ActivityNotFoundException noBrowser) {
-                    Toast.makeText(context, "地図を開けるアプリがありません", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, R.string.class_location_dialog_no_map_app, Toast.LENGTH_SHORT).show();
                 }
             }
         });
 
         new MaterialAlertDialogBuilder(context)
                 .setView(dialogView)
-                .setPositiveButton("閉じる", null)
+                .setPositiveButton(R.string.close, null)
                 .show();
     }
 
-    private static String buildMapHtml(String location) {
+    private static String buildMapHtml(String location, String universityName) {
         return "<!DOCTYPE html><html><head>"
                 + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
                 + "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/>"
@@ -82,7 +83,7 @@ public class ClassLocationDialog {
                 + "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{"
                 + "attribution:'© OSM'}).addTo(map);"
                 + "L.marker([" + CAMPUS_LAT + "," + CAMPUS_LNG + "])"
-                + ".addTo(map).bindPopup('" + escapeJs(location != null ? location : "会津大学") + "').openPopup();"
+                + ".addTo(map).bindPopup('" + escapeJs(location != null ? location : universityName) + "').openPopup();"
                 + "</script></body></html>";
     }
 

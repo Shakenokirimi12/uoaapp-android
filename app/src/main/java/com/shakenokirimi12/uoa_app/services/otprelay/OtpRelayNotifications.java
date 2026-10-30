@@ -26,7 +26,7 @@ public final class OtpRelayNotifications {
 
     private OtpRelayNotifications() {}
 
-    private static final String FAILED_TITLE = "PC に OTP を送れませんでした";
+    private static final String FAILED_TITLE = "PCにOTPを送れませんでした";
 
     static int notificationId(@NonNull String requestId) {
         return 0x52000000 | (requestId.hashCode() & 0x00ffffff);
@@ -37,8 +37,8 @@ public final class OtpRelayNotifications {
     static Notification progress(@NonNull Context ctx, @NonNull String browserName) {
         return new NotificationCompat.Builder(ctx, NotificationChannels.ensureOtpRelayProgress(ctx))
                 .setSmallIcon(R.drawable.ic_stat_notification)
-                .setContentTitle("「" + browserName + "」の OTP")
-                .setContentText("PC に送る OTP を用意しています")
+                .setContentTitle("「" + browserName + "」のOTP")
+                .setContentText("PCに送るOTPを用意しています")
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -50,8 +50,8 @@ public final class OtpRelayNotifications {
     static Notification working(@NonNull Context ctx, @NonNull String browserName) {
         return new NotificationCompat.Builder(ctx, NotificationChannels.ensureOtpRelayProgress(ctx))
                 .setSmallIcon(R.drawable.ic_stat_notification)
-                .setContentTitle("「" + browserName + "」の OTP")
-                .setContentText("PC からの OTP 依頼を処理しています")
+                .setContentTitle("「" + browserName + "」のOTP")
+                .setContentText("PCからのOTP依頼を処理しています")
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -59,8 +59,8 @@ public final class OtpRelayNotifications {
     }
 
     static void sent(@NonNull Context ctx, @NonNull OtpRelayPairing pairing, @NonNull OtpRelayRequest request) {
-        String body = "「" + pairing.browserName + "」の OTP 画面に入力されます。心当たりがなければ、アプリの設定から連携を解除してください。";
-        result(ctx, request, "PC に OTP を送りました", body, false, null);
+        String body = "「" + pairing.browserName + "」のOTP画面に入力されます。心当たりがなければ、アプリの設定から連携を解除してください。";
+        result(ctx, request, "PCにOTPを送りました", body, false, null);
     }
 
     static void failed(@NonNull Context ctx, @NonNull OtpRelayRequest request, @Nullable String reason) {
@@ -70,19 +70,19 @@ public final class OtpRelayNotifications {
     /** 見張りが時間切れの失敗を返し、中継サーバが受け付けた。 */
     static void timedOut(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
         result(ctx, request, FAILED_TITLE,
-                "時間内に大学のメールから OTP を読み取れませんでした。PC では、メールに届いた OTP を入力してください。", true, null);
+                "時間内に大学のメールからOTPを読み取れませんでした。PCでは、メールに届いたOTPを入力してください。", true, null);
     }
 
     /** 見張りが失敗を送ったが、届いたか分からない。事実と違うことを言わず、確かめ方だけを伝える。 */
     static void unknownResult(@NonNull Context ctx, @NonNull OtpRelayPairing pairing, @NonNull OtpRelayRequest request) {
-        result(ctx, request, "「" + pairing.browserName + "」からの OTP の依頼",
-                "PC に OTP が入力されない場合は、PC で手入力してください。", true, null);
+        result(ctx, request, "「" + pairing.browserName + "」からのOTPの依頼",
+                "PCにOTPが入力されない場合は、PCで手入力してください。", true, null);
     }
 
     /** この端末に無い連携からの依頼。鍵が無いので中継サーバには答えていない。 */
     static void notPaired(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
         result(ctx, request, FAILED_TITLE,
-                "この端末では、この PC と連携していません。PC の拡張で連携を解除して、連携し直してください。", true, null);
+                "この端末では、このPCと連携していません。PCの拡張機能で連携を解除して、連携し直してください。", true, null);
     }
 
     /** 同意を記録する前に作った連携の依頼を断った。押すとアプリで確認が出る。 */
