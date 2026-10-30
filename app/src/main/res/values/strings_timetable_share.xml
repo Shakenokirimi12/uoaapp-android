@@ -11,7 +11,7 @@
     <string name="timetable_camera_hint">友達のQRコードは、標準のカメラアプリで読み取ると開きます。</string>
     <string name="timetable_friends_header">友達の時間割</string>
     <string name="timetable_friends_empty">まだ友達の時間割はありません</string>
-    <string name="timetable_privacy_footer">授業名・曜日・時限・教室と氏名のみを送信します。成績や課題は含まれません。</string>
+    <string name="timetable_privacy_footer">授業名・曜日・時限・教室と表示名のみを送信します。成績や課題は含まれません。</string>
     <string name="timetable_mode_friend">友達の時間割</string>
     <string name="timetable_mode_compare">自分と比較</string>
     <string name="timetable_compare_unavailable">自分の時間割をまだ取得していないため、比較できません。</string>
@@ -24,7 +24,7 @@
     <string name="timetable_delete">削除</string>
     <string name="timetable_name_label">相手への表示名</string>
     <string name="timetable_name_hint">例: 太郎</string>
-    <string name="timetable_name_help">友達の画面でこの氏名が表示されます。</string>
+    <string name="timetable_name_help">友達の画面でこの表示名が表示されます。</string>
     <string name="timetable_show_qr">QRコードを表示</string>
     <string name="timetable_qr_lead">友達のアプリで読み取ってもらうと、おたがいの時間割が届きます</string>
     <string name="timetable_send_link">離れている友達にリンクを送る</string>
@@ -32,7 +32,7 @@
     <string name="timetable_waiting">読み取り待機中…</string>
     <string name="timetable_received_more">一覧から開けます。ほかの友達も、続けて読み取れます。</string>
     <string name="timetable_stop_sharing">共有を停止</string>
-    <string name="timetable_stop_failed">共有を停止に失敗しました。通信状況を確認し、もう一度お試しください。</string>
+    <string name="timetable_stop_failed">共有の停止に失敗しました。通信状況を確認し、もう一度お試しください。</string>
     <string name="timetable_change">変更</string>
     <string name="timetable_change_name">名前を変更する</string>
     <string name="timetable_creating">QR コードを生成中…</string>

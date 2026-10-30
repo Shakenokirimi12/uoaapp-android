@@ -40,14 +40,14 @@
     <string name="settings_title">設定</string>
     <string name="settings_account">アカウント</string>
     <string name="settings_otp_method">ワンタイムパスワード</string>
-    <string name="settings_otp_method_mail">メールで受け取る</string>
-    <string name="settings_otp_method_authenticator">認証アプリを使う</string>
+    <string name="settings_otp_method_mail">メール方式</string>
+    <string name="settings_otp_method_authenticator">認証アプリ方式</string>
     <string name="idp_tutorial_otp_mail">メールで届くワンタイムパスワードは、このアプリが大学のメールから読み取って入力します。読み取れないときは、届いたコードを入力してください。認証アプリを使う場合は、設定の「ワンタイムパスワード」で切り替えます。</string>
     <string name="settings_otp_method_mail_description">大学のメールに届くコードを自動で読み取って入力します。</string>
     <string name="otp_method_name_mail">メール</string>
     <string name="otp_method_name_authenticator">認証アプリ</string>
-    <string name="otp_switch_to_mail">メールに切り替える</string>
-    <string name="otp_switch_to_authenticator">認証アプリに切り替える</string>
+    <string name="otp_switch_to_mail">メールに切り替え</string>
+    <string name="otp_switch_to_authenticator">認証アプリに切り替え</string>
     <string name="otp_switch_note">大学の認証システムに新しい方式を登録します。登録が終わるまでは、今のログイン方法のままです。</string>
     <string name="otp_switch_blocked_credentials">ユーザー名かパスワードが正しくないため、切り替えられません。</string>
     <string name="settings_otp_method_unknown">次のログインで、大学の設定から読み取ります</string>
@@ -70,7 +70,7 @@
     <!-- Onboarding -->
     <!-- 「同意して続ける」の対象を明示する。プライバシーポリシーのページは無いので、同意内容はこの場に書く。 -->
     <string name="onboarding_consent_title">続ける前に</string>
-    <string name="onboarding_consent_body">「同意して続ける」をタップすると、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquareや大学のメールへのログインを代行するためだけに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールで受け取る設定 (既定) では、大学のメールに届いたワンタイムパスワードを、このアプリが読み取って入力します。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
+    <string name="onboarding_consent_body">「同意して続ける」をタップすると、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquareや大学のメールへのログインを代行するためのみに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールで受け取る設定 (既定) では、大学のメールに届いたワンタイムパスワードを、このアプリが読み取って入力します。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
     <string name="onboarding_agree">同意して続ける</string>
     <string name="onboarding_login_title">ログイン</string>
     <string name="onboarding_login_desc">Moodle / CampusSquareのアカウントでログインしてください。</string>
@@ -87,9 +87,9 @@
     <string name="secure_storage_unavailable_message">この端末ではログイン情報を暗号化して保存できないため、ログインできません。暗号化せずに保存することはしません。</string>
     <string name="cancel">キャンセル</string>
     <!-- Remote config (maintenance / force update / status notice) -->
-    <string name="maintenance_title">ただいまメンテナンス中です</string>
-    <string name="maintenance_default_message">ただいまメンテナンス中です。時間をおいて、もう一度お試しください。</string>
-    <string name="maintenance_recheck">再確認する</string>
+    <string name="maintenance_title">メンテナンス中</string>
+    <string name="maintenance_default_message">メンテナンス中です。時間をおいて、もう一度お試しください。</string>
+    <string name="maintenance_recheck">再確認</string>
     <string name="maintenance_rechecking">確認中…</string>
     <string name="force_update_title">アップデートが必要です</string>
     <string name="force_update_default_message">引き続き利用するには、最新バージョンへのアップデートが必要です。</string>
@@ -125,7 +125,7 @@
     <string name="otp_relay_totp_consent_message">このPCでOTPの入力画面が出ると、このアプリが認証アプリのコードを作って自動で送ります。自分のPCでなければ「解除」をタップしてください。</string>
     <string name="otp_relay_totp_consent_send">送る</string>
     <string name="otp_relay_totp_consent_later">あとで</string>
-    <string name="otp_relay_ext_title">PCに拡張機能を入れる</string>
+    <string name="otp_relay_ext_title">PCに拡張機能を追加</string>
     <string name="otp_relay_ext_lead">PCのブラウザでこのアドレスを開くと、UoA 非公式拡張を入れられます。</string>
     <string name="otp_relay_ext_url_display" translatable="false">uoa-app.shakenokiri.me/ext</string>
     <string name="otp_relay_ext_copy">アドレスをコピー</string>
@@ -145,12 +145,12 @@
     <string name="otp_relay_unpair">解除</string>
     <string name="otp_relay_paired_on">%1$sに連携</string>
     <string name="otp_relay_section_last_result">直近の結果</string>
-    <string name="otp_relay_section_howto">連携のしかた</string>
-    <string name="otp_relay_howto">1. PCの拡張機能の設定で「OTP 自動入力」の「スマホと連携」をクリックし、連携用のQRコードを表示する\n2. そのQRを、この端末の標準のカメラ (またはGoogleレンズ) で読む。カメラから開けないときは、QRコードの中身のリンクをコピーして「リンクを貼り付けて連携」に貼る\n3. このアプリが開いたら「同意して連携する」をタップする</string>
+    <string name="otp_relay_section_howto">連携方法</string>
+    <string name="otp_relay_howto">1. PCの拡張機能の設定で「OTP 自動入力」の「スマホと連携」をクリックし、連携用のQRコードを表示する\n2. そのQRコードを、この端末の標準のカメラ (またはGoogleレンズ) で読む。カメラから開けないときは、QRコードの中身のリンクをコピーして「リンクを貼り付けて連携」に貼る\n3. このアプリが開いたら「同意して連携する」をタップする</string>
     <string name="otp_relay_unpair_confirm">「%1$s」との連携を解除しますか？</string>
     <string name="otp_relay_unpair_failed_title">中継サーバーで解除できませんでした</string>
-    <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からだけ削除してください。削除しても、PCの拡張機能で解除するまで依頼は届きます。届いてもOTPは送りません。</string>
-    <string name="otp_relay_forget_local">この端末からだけ削除</string>
+    <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からのみ削除してください。削除しても、PCの拡張機能で解除するまで依頼は届きます。届いてもOTPは送りません。</string>
+    <string name="otp_relay_forget_local">この端末からのみ削除</string>
     <string name="otp_relay_progress_channel_name">PCへのOTP送信中</string>
     <string name="class_channel_description">授業中・次の授業の常駐通知と、出席の自動記録の完了を表示します</string>
     <string name="login_required_channel_name">ログインの通知</string>
@@ -232,7 +232,7 @@
     <string name="login_relay_summary">PCのブラウザでログインするとき、コードをこの端末から送ります</string>
     <string name="login_secret_title">認証アプリのセットアップキー</string>
     <string name="login_secret_needs_lock">画面ロック (PINやパターン) を設定すると表示できます。</string>
-    <string name="login_secret_confirm_title">セットアップキーを表示</string>
+    <string name="login_secret_confirm_title">セットアップキーの表示</string>
     <string name="login_secret_confirm_description">本人か確認します</string>
     <string name="close">閉じる</string>
     <string name="login_not_logged_in">未ログイン</string>
@@ -353,7 +353,7 @@
 
     <!-- Class periods -->
     <string name="class_period_single">%1$d限</string>
-    <string name="class_period_range">%1$d-%2$d限</string>
+    <string name="class_period_range">%1$d〜%2$d限</string>
 
     <!-- Class dialogs -->
     <string name="class_detail_dialog_location_unset">未設定</string>
@@ -482,23 +482,23 @@
     <string name="settings_location_permission_required">位置情報の許可が無いと出席の自動記録は使えません</string>
     <string name="settings_location_option_always">常に許可</string>
     <string name="settings_location_dialog_title_format">位置情報を「%1$s」にしてください</string>
-    <string name="settings_location_dialog_message_format">自動出席はアプリを閉じている間にキャンパスへの到着を検知します。次の画面で位置情報を「%1$s」に変更してください。</string>
+    <string name="settings_location_dialog_message_format">出席の自動記録はアプリを閉じている間にキャンパスへの到着を検知します。次の画面で位置情報を「%1$s」に変更してください。</string>
     <string name="settings_location_dialog_open_settings">設定へ</string>
-    <string name="settings_backup_done">バックアップしました</string>
+    <string name="settings_backup_done">バックアップ完了</string>
     <string name="settings_backup_failed_format">バックアップできませんでした: %1$s</string>
     <string name="settings_restore_done">バックアップから復元しました。アプリを開き直すと反映されます。</string>
     <string name="settings_restore_failed_format">復元できませんでした: %1$s</string>
     <string name="settings_logout_message">この端末に保存したログイン情報とデータを消します。</string>
-    <string name="settings_lunch_time_picker_title">通知する時刻</string>
+    <string name="settings_lunch_time_picker_title">通知時刻</string>
     <string name="settings_login_summary_format">%1$s ・ %2$s</string>
 
     <!-- Timetable sharing -->
-    <string name="timetable_failure_share_expired">この共有は期限切れか、止められています。相手に、もう一度QRコードを出してもらってください。</string>
+    <string name="timetable_failure_share_expired">この共有は期限切れか、停止されています。相手に、もう一度QRコードを表示してもらってください。</string>
     <string name="timetable_failure_too_many_requests">短い時間に何度も送られました。少し待ってから、もう一度お試しください。</string>
-    <string name="timetable_failure_full">このQRコードは、受け取れる人数の上限に達しました。相手に、新しいQRコードを出してもらってください。</string>
-    <string name="timetable_failure_no_network">通信できませんでした。通信状況を確認して、もう一度お試しください。</string>
+    <string name="timetable_failure_full">このQRコードは、受け取れる人数の上限に達しました。相手に、新しいQRコードを表示してもらってください。</string>
+    <string name="timetable_failure_no_network">通信できませんでした。通信状況を確認し、もう一度お試しください。</string>
     <string name="timetable_failure_unreadable">受け取った時間割を読めませんでした。アプリを最新にしてください。</string>
-    <string name="timetable_failure_server_error">サーバーで問題が起きました。少し待ってから、もう一度お試しください。</string>
+    <string name="timetable_failure_server_error">サーバーで問題が起きました。時間をおいて、もう一度お試しください。</string>
     <string name="timetable_failure_cannot_store">この端末では共有を始められませんでした。</string>
     <string name="timetable_date_format_month_day">M月d日</string>
     <string name="timetable_date_format_full">yyyy年M月d日</string>
@@ -508,16 +508,16 @@
     <string name="timetable_received_line_format">%1$s ・ 週%2$dコマ</string>
     <string name="timetable_exchange_sending_unnamed">名前なしで送ります</string>
     <string name="timetable_exchange_sending_as_format">「%1$s」として送ります</string>
-    <string name="timetable_exchange_expired">共有の期限が切れました。もう一度QRコードを作ってください。</string>
+    <string name="timetable_exchange_expired">共有の期限が切れました。もう一度QRコードを生成してください。</string>
     <string name="timetable_exchange_received_format">%1$sさんの時間割を受け取りました</string>
     <string name="timetable_incoming_open_failed_title">時間割の共有を開けませんでした</string>
-    <string name="timetable_incoming_invalid_link_message">QRコードかリンクが正しくありません。相手に、もう一度QRコードを出してもらってください。</string>
+    <string name="timetable_incoming_invalid_link_message">QRコードかリンクが正しくありません。相手に、もう一度QRコードを表示してもらってください。</string>
     <string name="timetable_incoming_receive_failed_title">受け取れませんでした</string>
     <string name="timetable_incoming_name_format">%1$sさん</string>
     <string name="timetable_incoming_count_format">週%1$dコマ</string>
     <string name="timetable_incoming_sent_back_message">自分の時間割も送りました。相手の画面にも届きます。</string>
     <string name="timetable_incoming_send_back_failed_format">自分の時間割は送れませんでした。%1$s</string>
-    <string name="timetable_incoming_saved_title_format">%1$sさんの時間割を保存しました</string>
+    <string name="timetable_incoming_saved_title_format">%1$sさんの時間割を保存</string>
     <string name="timetable_friend_missing">この友達の時間割はありません</string>
     <string name="timetable_friend_counts_format">同じ授業%1$dコマ ・ どちらも空き%2$dコマ</string>
     <string name="timetable_friend_no_free_slots">どちらも空いているコマはありません</string>
