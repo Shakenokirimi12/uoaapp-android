@@ -241,6 +241,8 @@ public class LocationGeofenceService {
         AttendanceManager attendance = AttendanceManager.getInstance(ctx);
         for (CalendarEvent ev : candidates) {
             String eventNorm = normalize(ev.getSummary());
+            // 件名の無い予定は照合しない (空文字はどの科目名にも含まれ、最初の科目に出席を付けてしまう)。
+            if (eventNorm.isEmpty()) continue;
             MoodleCourse matched = null;
             for (MoodleCourse c : courses) {
                 String cNorm = normalize(c.getFullname());
