@@ -100,6 +100,9 @@ public class UoaApplication extends Application {
         });
         // Context を持たないサービス層が PreferenceManager.getInstance() で取れるよう、ここで初期化する。
         PreferenceManager.getInstance(this);
+        // アカウントに分ける前の出席の記録を、ログインしているアカウントに移す。ログインしていなければそのまま
+        // 残し、次にログインしたときに移す (AttendanceManager)。
+        com.shakenokirimi12.uoa_app.data.AttendanceManager.getInstance(this).migrateLegacyRecords();
         // 自動の欠席の根拠。前の終了 (強制停止など) と再起動で監視が止まっていた区間を残す。
         com.shakenokirimi12.uoa_app.services.attendance.PresenceEvidenceLog.onProcessStart(this);
         // 以前の版がアプリ内ブラウザの Basic 認証で WebView の http_auth.db (平文) に書いたパスワードを消す。

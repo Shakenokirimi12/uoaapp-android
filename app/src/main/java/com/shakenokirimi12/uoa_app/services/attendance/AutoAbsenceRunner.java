@@ -76,43 +76,83 @@ public final class AutoAbsenceRunner {
 
         long now = System.currentTimeMillis();
         AttendanceManager attendance = AttendanceManager.getInstance(ctx);
+        // 出席の記録と付けた分はアカウントごと (AttendanceManager)。判定の間にアカウントが切り替わっても、
+        // 読んだのと同じアカウントの記録に付ける。
+        String username = PreferenceManager.getInstance(ctx).getUsername();
+        // ログインしていなければ付けない (付ける先のアカウントが無い)。
+        if (username.trim().isEmpty()) return;
+        // 時間割と科目はキャッシュから読む。キャッシュは切り替えで空になるので、別のアカウントの時間割で
+        // 判定することは無い。
         synchronized (AutoAbsenceRunner.class) {
             SharedPreferences sp = ctx.getApplicationContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-            Map<String, Long> marked = loadMarked(sp, now);
+            String markedKey = markedKeyFor(username);
+            migrateLegacyMarked(sp, markedKey);
+            Map<String, Long> marked = loadMarked(sp, markedKey, now);
             // 読めなければ付けない。付けた分が分からないと、消された欠席を付け直してしまう。
             if (marked == null) return;
             List<AutoAbsencePlanner.Mark> marks = AutoAbsencePlanner.plan(
-                    events, courses, cache.eventsWithStatusFetchedAt(), attendance.recordedDates(),
+                    events, courses, cache.eventsWithStatusFetchedAt(), attendance.recordedDates(username),
                     marked.keySet(), PresenceEvidenceLog.entries(ctx), now, TimeZone.getDefault());
             for (AutoAbsencePlanner.Mark mark : marks) {
-                String historyId = attendance.addUnconfirmedAbsenceIfUnrecorded(mark.courseId, mark.date, mark.lastClassEnd);
+                String historyId = attendance.addUnconfirmedAbsenceIfUnrecorded(username, mark.courseId, mark.date,
+                        mark.lastClassEnd);
                 if (historyId == null) continue;
                 marked.put(mark.key(), now);
                 Log.d(TAG, "Marked unconfirmed absence for course " + mark.courseId + " on " + mark.date);
                 String name = names.get(mark.courseId);
-                AttendanceConfirmation.ask(ctx, mark.courseId, historyId, name != null ? name : "", mark.key());
+                AttendanceConfirmation.ask(ctx, username, mark.courseId, historyId, name != null ? name : "", mark.key());
             }
-            sp.edit().putString(KEY_MARKED, gson.toJson(marked)).apply();
+            sp.edit().putString(markedKey, gson.toJson(marked)).apply();
+        }
+    }
+
+    /** username の、付けた分の保存先。出席の記録 (AttendanceManager) と同じくアカウントごと。 */
+    static String markedKeyFor(@NonNull String username) {
+        return KEY_MARKED + "@" + username.trim();
+    }
+
+    /**
+     * アカウントに分ける前の「付けた分」を、今のアカウントに移す (出席の記録と同じく、分ける前のものは今の
+     * アカウントのもの)。移す先にもあれば足し合わせる。読めなければ触らない。
+     */
+    private static void migrateLegacyMarked(SharedPreferences sp, String markedKey) {
+        String legacy = sp.getString(KEY_MARKED, null);
+        if (legacy == null) return;
+        Map<String, Long> merged = parseMarked(sp.getString(markedKey, null));
+        Map<String, Long> old = parseMarked(legacy);
+        if (merged == null || old == null) return;
+        for (Map.Entry<String, Long> e : old.entrySet()) {
+            Long cur = merged.get(e.getKey());
+            if (e.getValue() != null && (cur == null || cur < e.getValue())) merged.put(e.getKey(), e.getValue());
+        }
+        sp.edit().putString(markedKey, gson.toJson(merged)).remove(KEY_MARKED).apply();
+    }
+
+    /** null は読めなかったとき (無ければ空)。 */
+    @androidx.annotation.Nullable
+    private static Map<String, Long> parseMarked(@androidx.annotation.Nullable String json) {
+        if (json == null) return new HashMap<>();
+        try {
+            Type type = new TypeToken<Map<String, Long>>() {}.getType();
+            Map<String, Long> all = gson.fromJson(json, type);
+            return all != null ? all : null;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Could not read marked absences", e);
+            return null;
         }
     }
 
     /** 前に付けた分。判定の範囲より古いものは、付け直されることが無いので捨てる。 */
     @androidx.annotation.Nullable
-    private static Map<String, Long> loadMarked(SharedPreferences sp, long now) {
+    private static Map<String, Long> loadMarked(SharedPreferences sp, String markedKey, long now) {
         Map<String, Long> out = new HashMap<>();
-        String json = sp.getString(KEY_MARKED, null);
+        String json = sp.getString(markedKey, null);
         if (json == null) return out;
-        try {
-            Type type = new TypeToken<Map<String, Long>>() {}.getType();
-            Map<String, Long> all = gson.fromJson(json, type);
-            if (all == null) return null;
-            long cutoff = now - PresenceEvidenceLog.RETENTION_MS;
-            for (Map.Entry<String, Long> e : all.entrySet()) {
-                if (e.getValue() != null && e.getValue() >= cutoff) out.put(e.getKey(), e.getValue());
-            }
-        } catch (RuntimeException e) {
-            Log.w(TAG, "Could not read marked absences", e);
-            return null;
+        Map<String, Long> all = parseMarked(json);
+        if (all == null) return null;
+        long cutoff = now - PresenceEvidenceLog.RETENTION_MS;
+        for (Map.Entry<String, Long> e : all.entrySet()) {
+            if (e.getValue() != null && e.getValue() >= cutoff) out.put(e.getKey(), e.getValue());
         }
         return out;
     }

@@ -27,15 +27,18 @@ public final class AttendanceConfirmation {
     private static final String EXTRA_HISTORY_ID = "history_id";
     private static final String EXTRA_STATUS = "status";
     private static final String EXTRA_NOTIFICATION_ID = "notification_id";
+    /** 尋ねたときのアカウント。切り替えたあとに押されても、そのアカウントの記録を変える。 */
+    private static final String EXTRA_USERNAME = "username";
 
     private AttendanceConfirmation() {}
 
-    public static void ask(@NonNull Context ctx, @NonNull String courseId, @NonNull String historyId,
-                           @NonNull String courseName, @NonNull String key) {
+    public static void ask(@NonNull Context ctx, @NonNull String username, @NonNull String courseId,
+                           @NonNull String historyId, @NonNull String courseName, @NonNull String key) {
         if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) return; // 画面の「欠席？（要確認）」から選べる
         // 同じ授業の日は 1 通だけ (同じ id なら置き換わる)。
-        int notificationId = key.hashCode();
+        // アカウントごとに別の通知にする (別のアカウントの同じ授業の日の通知を置き換えない)。
+        int notificationId = (username + "|" + key).hashCode();
         String channel = NotificationChannels.ensureAttendanceConfirm(ctx);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, channel)
                 .setSmallIcon(R.drawable.ic_stat_calendar)
@@ -44,9 +47,9 @@ public final class AttendanceConfirmation {
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
                 .addAction(0, ctx.getString(R.string.attendance_present),
-                        action(ctx, courseId, historyId, AttendanceManager.Status.PRESENT, notificationId, 1))
+                        action(ctx, username, courseId, historyId, AttendanceManager.Status.PRESENT, notificationId, 1))
                 .addAction(0, ctx.getString(R.string.attendance_absent),
-                        action(ctx, courseId, historyId, AttendanceManager.Status.ABSENT, notificationId, 2));
+                        action(ctx, username, courseId, historyId, AttendanceManager.Status.ABSENT, notificationId, 2));
         try {
             NotificationManagerCompat.from(ctx).notify(notificationId, builder.build());
         } catch (SecurityException e) {
@@ -54,9 +57,10 @@ public final class AttendanceConfirmation {
         }
     }
 
-    private static PendingIntent action(Context ctx, String courseId, String historyId,
+    private static PendingIntent action(Context ctx, String username, String courseId, String historyId,
                                         AttendanceManager.Status status, int notificationId, int slot) {
         Intent intent = new Intent(ctx, Receiver.class)
+                .putExtra(EXTRA_USERNAME, username)
                 .putExtra(EXTRA_COURSE_ID, courseId)
                 .putExtra(EXTRA_HISTORY_ID, historyId)
                 .putExtra(EXTRA_STATUS, status.name())
@@ -80,7 +84,9 @@ public final class AttendanceConfirmation {
                 return;
             }
             if (chosen != AttendanceManager.Status.PRESENT && chosen != AttendanceManager.Status.ABSENT) return;
-            AttendanceManager.getInstance(context).updateStatus(courseId, historyId, chosen);
+            // 前の版の通知にはアカウントが無い。そのときは今のアカウントの記録を変える (前の版の動き)。
+            String username = intent.getStringExtra(EXTRA_USERNAME);
+            AttendanceManager.getInstance(context).updateStatus(username, courseId, historyId, chosen);
             NotificationManagerCompat.from(context).cancel(intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0));
         }
     }

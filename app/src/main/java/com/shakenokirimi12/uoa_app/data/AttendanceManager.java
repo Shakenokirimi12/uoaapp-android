@@ -3,6 +3,9 @@ package com.shakenokirimi12.uoa_app.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -19,13 +22,33 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
+/**
+ * 出席の記録。AINS のアカウント (ユーザー名) ごとに分けて持つ ("data@<ユーザー名>")。アカウントを切り替えても
+ * 前のアカウントの記録は消さず、そのアカウントに戻れば見える。
+ *
+ * 分ける前の記録 ("data") は、ログインしているアカウントのものとして移す (初めて起動したとき、または次に
+ * ログインしたとき)。誰もログインしていない間は "data" のまま読み書きし、次にログインしたアカウントに移す。
+ * 移す先に記録が既にあれば足し合わせ、どちらの記録も消さない。
+ */
 public class AttendanceManager {
     private static final String PREF_NAME = "attendance_data_v2";
-    private static final String KEY_DATA = "data";
+    /** アカウントに分ける前の記録と、誰もログインしていない間の記録。 */
+    static final String KEY_DATA = "data";
+
+    /** 保存先。テストでは Map で置き換える。 */
+    interface Store {
+        @Nullable String get(@NonNull String key);
+        /** key に value を書き、removeKey があれば同じ書き込みで消す (移すときに片方だけ残らないように)。 */
+        void put(@NonNull String key, @NonNull String value, @Nullable String removeKey);
+        /** 書いてある鍵の一覧 (バックアップの書き出し用)。 */
+        @NonNull Set<String> keys();
+    }
 
     private static AttendanceManager instance;
-    private final SharedPreferences prefs;
+    private final Store store;
+    private final Supplier<String> currentUser;
     private final Gson gson = new Gson();
     private final SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
@@ -59,7 +82,29 @@ public class AttendanceManager {
     }
 
     private AttendanceManager(Context ctx) {
-        prefs = ctx.getApplicationContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = ctx.getApplicationContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        PreferenceManager accounts = PreferenceManager.getInstance(ctx);
+        this.store = new Store() {
+            @Override public String get(@NonNull String key) { return prefs.getString(key, null); }
+            @Override public void put(@NonNull String key, @NonNull String value, @Nullable String removeKey) {
+                SharedPreferences.Editor e = prefs.edit().putString(key, value);
+                if (removeKey != null) e.remove(removeKey);
+                e.apply();
+            }
+            @NonNull @Override public Set<String> keys() { return new HashSet<>(prefs.getAll().keySet()); }
+        };
+        this.currentUser = accounts::getUsername;
+    }
+
+    AttendanceManager(@NonNull Store store, @NonNull Supplier<String> currentUser) {
+        this.store = store;
+        this.currentUser = currentUser;
+    }
+
+    /** username の記録の保存先。誰もログインしていなければ分ける前の "data"。 */
+    static String keyFor(@Nullable String username) {
+        String u = username != null ? username.trim() : "";
+        return u.isEmpty() ? KEY_DATA : KEY_DATA + "@" + u;
     }
 
     // 画面 (手動の記録) と自動出席・自動の欠席 (別スレッド) が同じ保存先を読み書きする。読んで書き戻すまでを
@@ -70,23 +115,110 @@ public class AttendanceManager {
         return instance;
     }
 
-    private Map<String, Record> loadAll() {
-        String json = prefs.getString(KEY_DATA, null);
+    /** 分ける前の記録が残っていて、誰かがログインしていれば、そのアカウントに移す。起動時にも呼ぶ。 */
+    public synchronized void migrateLegacyRecords() {
+        String key = keyFor(currentUser.get());
+        if (KEY_DATA.equals(key)) return;
+        String legacyJson = store.get(KEY_DATA);
+        if (legacyJson == null) return;
+        Map<String, Record> legacy = parse(legacyJson);
+        // 読めない "data" は消さずに残す (読めないまま移すと記録を失う)。
+        if (legacy == null) return;
+        Map<String, Record> target = parse(store.get(key));
+        if (target == null) return;
+        mergeInto(target, legacy);
+        store.put(key, gson.toJson(target), KEY_DATA);
+    }
+
+    /** from の記録を into に足す。同じ id の記録は重ねない。 */
+    static void mergeInto(Map<String, Record> into, Map<String, Record> from) {
+        for (Map.Entry<String, Record> e : from.entrySet()) {
+            Record src = e.getValue();
+            if (src == null || src.history == null) continue;
+            Record dst = into.get(e.getKey());
+            if (dst == null) { dst = new Record(); into.put(e.getKey(), dst); }
+            if (dst.history == null) dst.history = new ArrayList<>();
+            Set<String> ids = new HashSet<>();
+            for (HistoryItem h : dst.history) if (h.id != null) ids.add(h.id);
+            for (HistoryItem h : src.history) {
+                if (h == null) continue;
+                if (h.id == null || ids.add(h.id)) dst.history.add(h);
+            }
+        }
+    }
+
+    /**
+     * バックアップに書き出す、アカウントごとの記録 (ユーザー名 → JSON)。分ける前の記録と誰もログインしていない間の
+     * 記録は "" に入る。
+     */
+    public synchronized Map<String, String> exportByAccount() {
+        migrateLegacyRecords();
+        Map<String, String> out = new HashMap<>();
+        for (String key : store.keys()) {
+            String json = store.get(key);
+            if (json == null) continue;
+            if (KEY_DATA.equals(key)) out.put("", json);
+            else if (key.startsWith(KEY_DATA + "@")) out.put(key.substring(KEY_DATA.length() + 1), json);
+        }
+        return out;
+    }
+
+    /** 今のアカウントの記録の JSON (前の版のバックアップの形)。無ければ null。 */
+    @Nullable
+    public synchronized String exportCurrent() {
+        migrateLegacyRecords();
+        return store.get(keyOf(null));
+    }
+
+    /**
+     * バックアップの記録を username の記録に足す ("" は分ける前の記録で、ログインしているアカウントに移る)。
+     * 上書きはしない (読み戻しで今の記録を失わない)。読めなければ何もせず false。
+     */
+    public synchronized boolean importRecords(@NonNull String username, @Nullable String json) {
+        Map<String, Record> from = json != null ? parse(json) : null;
+        if (from == null) return false;
+        String key = keyFor(username);
+        Map<String, Record> into = parse(store.get(key));
+        if (into == null) return false;
+        mergeInto(into, from);
+        store.put(key, gson.toJson(into), null);
+        migrateLegacyRecords();
+        return true;
+    }
+
+    /** null は読めなかったとき (無ければ空)。 */
+    @Nullable
+    private Map<String, Record> parse(@Nullable String json) {
         if (json == null) return new HashMap<>();
         Type type = new TypeToken<Map<String, Record>>() {}.getType();
         try {
             Map<String, Record> map = gson.fromJson(json, type);
             return map != null ? map : new HashMap<>();
-        } catch (Exception e) { return new HashMap<>(); }
+        } catch (RuntimeException e) { return null; }
     }
 
-    private void saveAll(Map<String, Record> data) {
-        prefs.edit().putString(KEY_DATA, gson.toJson(data)).apply();
+    /**
+     * 読み書きする保存先。username が null なら今のアカウント。1 回の読み書きの中で 1 度だけ決め、読んだのと
+     * 同じ保存先に書く (途中でアカウントが切り替わっても、前のアカウントの記録を次のアカウントに書かない)。
+     */
+    private String keyOf(@Nullable String username) {
+        return keyFor(username != null ? username : currentUser.get());
+    }
+
+    private Map<String, Record> loadAll(String key) {
+        migrateLegacyRecords();
+        Map<String, Record> map = parse(store.get(key));
+        return map != null ? map : new HashMap<>();
+    }
+
+    private void saveAll(String key, Map<String, Record> data) {
+        store.put(key, gson.toJson(data), null);
     }
 
     /** その科目に今日の記録が既にあるか。自動出席の重複登録と、手動記録の上書きを防ぐ。 */
     public synchronized boolean hasRecordToday(String courseId) {
-        Record r = loadAll().get(courseId);
+        String key = keyOf(null);
+        Record r = loadAll(key).get(courseId);
         if (r == null) return false;
         String today = dateFmt.format(new Date());
         for (HistoryItem h : r.history) if (today.equals(h.date)) return true;
@@ -95,17 +227,19 @@ public class AttendanceManager {
 
     /** 今日の記録を消す (デバッグのテスト科目の後始末用)。 */
     public synchronized void removeToday(String courseId) {
-        Map<String, Record> all = loadAll();
+        String key = keyOf(null);
+        Map<String, Record> all = loadAll(key);
         Record r = all.get(courseId);
         if (r == null) return;
         String today = dateFmt.format(new Date());
         r.history.removeIf(h -> today.equals(h.date));
         if (r.history.isEmpty()) all.remove(courseId);
-        saveAll(all);
+        saveAll(key, all);
     }
 
     public synchronized AttendanceSummary getAttendance(String courseId) {
-        Map<String, Record> all = loadAll();
+        String key = keyOf(null);
+        Map<String, Record> all = loadAll(key);
         Record r = all.get(courseId);
         if (r == null) return new AttendanceSummary(0, 0, 0, new ArrayList<>());
 
@@ -123,7 +257,8 @@ public class AttendanceManager {
     }
 
     public synchronized void addHistory(String courseId, Status status, Date date, String source) {
-        Map<String, Record> all = loadAll();
+        String key = keyOf(null);
+        Map<String, Record> all = loadAll(key);
         Record r = all.get(courseId);
         if (r == null) { r = new Record(); all.put(courseId, r); }
 
@@ -140,12 +275,21 @@ public class AttendanceManager {
         item.timestamp = System.currentTimeMillis();
         item.source = source;
         r.history.add(item);
-        saveAll(all);
+        saveAll(key, all);
     }
 
     /** 記録の状態を手で変える (自動の欠席を出席に直す、など)。手で変えたものは手動の記録になる。 */
-    public synchronized void updateStatus(String courseId, String historyId, Status status) {
-        Map<String, Record> all = loadAll();
+    public void updateStatus(String courseId, String historyId, Status status) {
+        updateStatus(null, courseId, historyId, status);
+    }
+
+    /**
+     * username の記録を変える (null なら今のアカウント)。通知のボタンは、尋ねたときのアカウントの記録を変える
+     * (切り替えたあとに押されても、今のアカウントの記録を探さない)。
+     */
+    public synchronized void updateStatus(@Nullable String username, String courseId, String historyId, Status status) {
+        String key = keyOf(username);
+        Map<String, Record> all = loadAll(key);
         Record r = all.get(courseId);
         if (r == null) return;
         for (HistoryItem h : r.history) {
@@ -154,13 +298,17 @@ public class AttendanceManager {
                 h.source = "manual";
             }
         }
-        saveAll(all);
+        saveAll(key, all);
     }
 
     /** 科目ごとの、記録 (手動・自動) がある日付。 */
-    public synchronized Map<String, Set<String>> recordedDates() {
+    public Map<String, Set<String>> recordedDates() { return recordedDates(null); }
+
+    /** username の記録がある日付 (null なら今のアカウント)。 */
+    public synchronized Map<String, Set<String>> recordedDates(@Nullable String username) {
+        String key = keyOf(username);
         Map<String, Set<String>> out = new HashMap<>();
-        for (Map.Entry<String, Record> e : loadAll().entrySet()) {
+        for (Map.Entry<String, Record> e : loadAll(key).entrySet()) {
             Set<String> dates = new HashSet<>();
             for (HistoryItem h : e.getValue().history) dates.add(h.date);
             out.put(e.getKey(), dates);
@@ -173,9 +321,11 @@ public class AttendanceManager {
      * @param classEnd 授業の終わり。履歴はこの順に並ぶので、付けた時刻ではなく授業の時刻にする。
      * @return 付けた記録の id。付けなかったら null。
      */
-    @androidx.annotation.Nullable
-    public synchronized String addUnconfirmedAbsenceIfUnrecorded(String courseId, String date, long classEnd) {
-        Map<String, Record> all = loadAll();
+    @Nullable
+    public synchronized String addUnconfirmedAbsenceIfUnrecorded(@NonNull String username, String courseId,
+                                                                 String date, long classEnd) {
+        String key = keyOf(username);
+        Map<String, Record> all = loadAll(key);
         Record r = all.get(courseId);
         if (r == null) { r = new Record(); all.put(courseId, r); }
         for (HistoryItem h : r.history) if (date.equals(h.date)) return null;
@@ -186,18 +336,19 @@ public class AttendanceManager {
         item.timestamp = classEnd;
         item.source = "auto";
         r.history.add(item);
-        saveAll(all);
+        saveAll(key, all);
         return item.id;
     }
 
     public synchronized void removeHistory(String courseId, String historyId) {
-        Map<String, Record> all = loadAll();
+        String key = keyOf(null);
+        Map<String, Record> all = loadAll(key);
         Record r = all.get(courseId);
         if (r == null) return;
         Iterator<HistoryItem> it = r.history.iterator();
         while (it.hasNext()) {
             if (it.next().id.equals(historyId)) it.remove();
         }
-        saveAll(all);
+        saveAll(key, all);
     }
 }

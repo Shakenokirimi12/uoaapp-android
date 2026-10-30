@@ -11,6 +11,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.shakenokirimi12.uoa_app.R;
 
+import com.shakenokirimi12.uoa_app.data.AttendanceManager;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 
 import java.io.ByteArrayOutputStream;
@@ -39,7 +40,8 @@ public class BackupService {
     private static final int FORMAT_VERSION = 3;
 
     private static final String PREFS_NAME = PreferenceManager.PREF_NAME;
-    private static final String ATTENDANCE_PREFS_NAME = "attendance_data_v2";
+    /** アカウントごとの出席の記録 (ユーザー名 → JSON。"" は分ける前の記録)。 */
+    private static final String KEY_ATTENDANCE_BY_ACCOUNT = "_attendance_by_account";
 
     static final String[] SETTINGS_KEYS = {
             "onboarding_done",
@@ -53,8 +55,14 @@ public class BackupService {
 
     public static void exportTo(Context ctx, Uri uri) throws Exception {
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        SharedPreferences attendancePrefs = ctx.getSharedPreferences(ATTENDANCE_PREFS_NAME, Context.MODE_PRIVATE);
-        JsonObject backup = buildBackup(prefs.getAll(), attendancePrefs.getString("data", null));
+        AttendanceManager attendance = AttendanceManager.getInstance(ctx);
+        // 出席の記録はアカウントごと (AttendanceManager)。前の版でも読めるよう、今のアカウントの分は前の形でも書く。
+        JsonObject backup = buildBackup(prefs.getAll(), attendance.exportCurrent());
+        JsonObject byAccount = new JsonObject();
+        for (Map.Entry<String, String> e : attendance.exportByAccount().entrySet()) {
+            byAccount.addProperty(e.getKey(), e.getValue());
+        }
+        backup.add(KEY_ATTENDANCE_BY_ACCOUNT, byAccount);
 
         try (OutputStream os = ctx.getContentResolver().openOutputStream(uri, "wt")) {
             if (os == null) throw new Exception(ctx.getString(R.string.backup_file_open_failed));
@@ -89,11 +97,15 @@ public class BackupService {
         // 学食通知の ON/OFF と時刻を戻したので、予約もそれに合わせて作り直す。
         com.shakenokirimi12.uoa_app.services.notification.LunchMenuWorker.reschedule(ctx);
 
-        if (backup.has("_attendance_data_v2")) {
-            ctx.getSharedPreferences(ATTENDANCE_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putString("data", backup.get("_attendance_data_v2").getAsString())
-                    .apply();
+        // 出席の記録は上書きせず足す (読み戻しで今の記録を失わない)。アカウントごとの分があればそれを、無ければ
+        // (前の版のバックアップ) 分ける前の記録として読み、ログインしているアカウントに移す。
+        AttendanceManager attendance = AttendanceManager.getInstance(ctx);
+        if (backup.has(KEY_ATTENDANCE_BY_ACCOUNT) && backup.get(KEY_ATTENDANCE_BY_ACCOUNT).isJsonObject()) {
+            for (Map.Entry<String, JsonElement> e : backup.getAsJsonObject(KEY_ATTENDANCE_BY_ACCOUNT).entrySet()) {
+                if (e.getValue().isJsonPrimitive()) attendance.importRecords(e.getKey(), e.getValue().getAsString());
+            }
+        } else if (backup.has("_attendance_data_v2")) {
+            attendance.importRecords("", backup.get("_attendance_data_v2").getAsString());
         }
         Log.d(TAG, "Backup imported");
     }
