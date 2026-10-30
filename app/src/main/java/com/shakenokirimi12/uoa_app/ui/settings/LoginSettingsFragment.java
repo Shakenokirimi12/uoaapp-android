@@ -20,6 +20,7 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputLayout;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.services.MoodleService;
@@ -265,59 +266,70 @@ public class LoginSettingsFragment extends Fragment {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_account, null);
         EditText editUsername = dialogView.findViewById(R.id.edit_username);
         EditText editPassword = dialogView.findViewById(R.id.edit_password);
+        TextInputLayout layoutPassword = dialogView.findViewById(R.id.layout_password);
         editUsername.setText(prefs.getUsername());
 
-        new MaterialAlertDialogBuilder(requireContext())
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.settings_account)
                 .setView(dialogView)
-                .setPositiveButton("保存", (dialog, which) -> {
-                    String newUser = editUsername.getText().toString().trim();
-                    String newPass = editPassword.getText().toString().trim();
-                    if (newUser.isEmpty()) {
-                        Toast.makeText(requireContext(), "ユーザー名を入力してください", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    if (!prefs.isSecureStorageAvailable()) {
-                        // 平文には保存しない。保存できない理由をそのまま伝える。
-                        new MaterialAlertDialogBuilder(requireContext())
-                                .setTitle(R.string.secure_storage_unavailable_title)
-                                .setMessage(R.string.secure_storage_unavailable_message)
-                                .setPositiveButton(R.string.ok, null)
-                                .show();
-                        return;
-                    }
-                    if (newPass.isEmpty()) {
-                        // 別のアカウントにしたら、setUsername が前のアカウントの方式の控え・キー・SSO を消す。
-                        if (prefs.setUsername(newUser)) com.shakenokirimi12.uoa_app.services.CampusSquareService.clearSession();
-                        render();
-                        Toast.makeText(requireContext(), "ユーザー名を更新しました", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    MoodleService moodleService = new MoodleService();
-                    moodleService.login(newUser, newPass, new ServiceCallback<Boolean>() {
-                        @Override
-                        public void onSuccess(Boolean result) {
-                            if (!isAdded()) return;
-                            if (result) {
-                                boolean otherAccount = prefs.setUsername(newUser);
-                                prefs.setPassword(newPass);
-                                // 別アカウントにしたときだけ、前のユーザーの CampusSquare セッションを引き継がない。
-                                // 同じアカウントのパスワードの更新では、今の確認ログインの SSO とセッションを使い続ける (S-8)。
-                                if (otherAccount) com.shakenokirimi12.uoa_app.services.CampusSquareService.clearSession();
-                                render();
-                                Toast.makeText(requireContext(), "ログイン情報を更新しました", Toast.LENGTH_SHORT).show();
-                            } else {
-                                Toast.makeText(requireContext(), "ログインに失敗しました", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-
-                        @Override
-                        public void onError(String message) {
-                            if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                })
+                .setPositiveButton("保存", null)
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+        // 入力が足りないときは閉じない。閉じると、打ったユーザー名が消えて最初から入れ直しになる。
+        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String newUser = editUsername.getText().toString().trim();
+            String newPass = editPassword.getText().toString().trim();
+            if (newUser.isEmpty()) {
+                Toast.makeText(requireContext(), "ユーザー名を入力してください", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (newPass.isEmpty()) {
+                if (newUser.equals(prefs.getUsername())) {
+                    // 何も変えていない。
+                    dialog.dismiss();
+                    return;
+                }
+                // 新しいユーザー名と、保存しているパスワード (前のアカウントのもの) を組み合わせない。組み合わせると
+                // 次のログインで前のアカウントのパスワードを別のアカウントとして大学の認証システムに送り、失敗して
+                // (ロックの回数に数えられうる) 誤りの印まで立つ。ユーザー名を変えるときはパスワードも入れてもらう。
+                layoutPassword.setError(getString(R.string.account_password_required_for_new_username));
+                editPassword.requestFocus();
+                return;
+            }
+            dialog.dismiss();
+            if (!prefs.isSecureStorageAvailable()) {
+                // 平文には保存しない。保存できない理由をそのまま伝える。
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.secure_storage_unavailable_title)
+                        .setMessage(R.string.secure_storage_unavailable_message)
+                        .setPositiveButton(R.string.ok, null)
+                        .show();
+                return;
+            }
+            // ユーザー名とパスワードは、ログインで確かめてから組で保存する。
+            MoodleService moodleService = new MoodleService();
+            moodleService.login(newUser, newPass, new ServiceCallback<Boolean>() {
+                @Override
+                public void onSuccess(Boolean result) {
+                    if (!isAdded()) return;
+                    if (result) {
+                        boolean otherAccount = prefs.setUsername(newUser);
+                        prefs.setPassword(newPass);
+                        // 別アカウントにしたときだけ、前のユーザーの CampusSquare セッションを引き継がない。
+                        // 同じアカウントのパスワードの更新では、今の確認ログインの SSO とセッションを使い続ける (S-8)。
+                        if (otherAccount) com.shakenokirimi12.uoa_app.services.CampusSquareService.clearSession();
+                        render();
+                        Toast.makeText(requireContext(), "ログイン情報を更新しました", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(requireContext(), "ログインに失敗しました", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onError(String message) {
+                    if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
     }
 }
