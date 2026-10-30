@@ -280,10 +280,19 @@ public class AttendanceManager {
         return new AttendanceSummary(p, a, l, sorted);
     }
 
-    public synchronized void addHistory(String courseId, Status status, Date date, String source) {
-        String key = keyOf(null);
+    public void addHistory(String courseId, Status status, Date date, String source) {
+        addHistory(null, courseId, status, date, source);
+    }
+
+    /**
+     * username の記録に足す (null なら今のアカウント)。保存したら true。記録が読めず書かなかったら false
+     * (呼び出し側は「登録した」と知らせない)。
+     */
+    public synchronized boolean addHistory(@Nullable String username, String courseId, Status status, Date date,
+                                           String source) {
+        String key = keyOf(username);
         Map<String, Record> all = loadForWrite(key);
-        if (all == null) return;
+        if (all == null) return false;
         Record r = all.get(courseId);
         if (r == null) { r = new Record(); all.put(courseId, r); }
 
@@ -301,6 +310,7 @@ public class AttendanceManager {
         item.source = source;
         r.history.add(item);
         saveAll(key, all);
+        return true;
     }
 
     /** 記録の状態を手で変える (自動の欠席を出席に直す、など)。手で変えたものは手動の記録になる。 */
