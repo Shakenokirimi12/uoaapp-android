@@ -23,4 +23,13 @@ public final class AccountSwitch {
         MoodleService.clearSession();
         return true;
     }
+
+    /**
+     * username で始めた取得が、もう今のアカウントのものではないか (保存しているユーザー名が別にある)。
+     * 切り替えの前に積まれた取得がここに来たら、ログインも保存もせずに止める (AccountChangedException)。
+     */
+    public static boolean isStale(@NonNull String username) {
+        String current = PreferenceManager.getInstance().getUsername().trim();
+        return !current.isEmpty() && !current.equals(username.trim());
+    }
 }

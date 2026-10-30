@@ -118,6 +118,7 @@ public class SpSessionCookiesTest {
         String stored = SpSessionCookies.serialize(
                 Arrays.asList(parse(MOODLE, "MoodleSession=M1; Path=/; Secure")), NOW, " " + OWNER + " ");
 
+        assertEquals(OWNER, SpSessionCookies.ownerOf(stored));
         assertTrue(SpSessionCookies.ownedBy(stored, OWNER));
         assertEquals(1, SpSessionCookies.restore(stored, OWNER, ELMS, NOW).size());
 
@@ -128,8 +129,10 @@ public class SpSessionCookiesTest {
         // 持ち主を記録する前の新形式と、旧形式。
         String ownerless = "{\"v\":1,\"cookies\":[{\"name\":\"MoodleSession\",\"value\":\"M1\",\"domain\":\"elms.u-aizu.ac.jp\","
                 + "\"hostOnly\":true,\"path\":\"/\",\"secure\":true,\"httpOnly\":false}]}";
+        assertNull(SpSessionCookies.ownerOf(ownerless));
         assertFalse(SpSessionCookies.ownedBy(ownerless, OWNER));
         assertTrue(SpSessionCookies.restore(ownerless, OWNER, ELMS, NOW).isEmpty());
+        assertNull(SpSessionCookies.ownerOf("MoodleSession=M1; AWSALB=A1"));
         assertFalse(SpSessionCookies.ownedBy("MoodleSession=M1; AWSALB=A1", OWNER));
         assertTrue(SpSessionCookies.restore("MoodleSession=M1; AWSALB=A1", OWNER, ELMS, NOW).isEmpty());
     }

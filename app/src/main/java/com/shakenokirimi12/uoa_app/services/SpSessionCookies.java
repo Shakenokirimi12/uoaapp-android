@@ -62,19 +62,25 @@ public final class SpSessionCookies {
     }
 
     /**
-     * stored が owner のセッションか。持ち主の無いもの (旧形式・持ち主を記録する前の新形式)、壊れたもの、空は false。
-     * 呼び出し側は false なら保存分を消す (よそのセッションを持ち続けない)。
+     * stored の持ち主。持ち主の無いもの (旧形式・持ち主を記録する前の新形式)、壊れたもの、空は null。
+     * 呼び出し側は null なら保存分を消す (誰のものか分からないセッションを持ち続けない)。
      */
-    public static boolean ownedBy(@Nullable String stored, @Nullable String owner) {
-        if (stored == null || stored.trim().isEmpty() || owner == null || isLegacy(stored)) return false;
-        String o = owner.trim();
-        if (o.isEmpty()) return false;
+    @Nullable
+    public static String ownerOf(@Nullable String stored) {
+        if (stored == null || stored.trim().isEmpty() || isLegacy(stored)) return null;
         try {
             Stored s = GSON.fromJson(stored, Stored.class);
-            return s != null && o.equals(s.owner);
+            if (s == null || s.owner == null || s.owner.trim().isEmpty()) return null;
+            return s.owner;
         } catch (JsonParseException e) {
-            return false;
+            return null;
         }
+    }
+
+    /** stored が owner のセッションか。持ち主の無いもの・壊れたもの・空は false。 */
+    public static boolean ownedBy(@Nullable String stored, @Nullable String owner) {
+        if (owner == null || owner.trim().isEmpty()) return false;
+        return owner.trim().equals(ownerOf(stored));
     }
 
     /** 保存する文字列 (owner のセッションとして)。持つべき cookie が無ければ null (保存領域を空にする)。 */

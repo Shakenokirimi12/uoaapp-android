@@ -113,6 +113,7 @@ public class CampusSquareService {
      * _shibsession_ を含む) を、そのまま Cookie ヘッダに載せられる文字列で返す。
      */
     private String authenticatedCookieHeader(String username, String password, AuthorizationContext context) throws Exception {
+        if (AccountSwitch.isStale(username)) throw new AccountChangedException();
         String cached = storedSessionHeader(username);
         String candidate = cached.isEmpty() ? null : cached;
         return coordinator.session(sessionKey(username), context, candidate, this::probeSession,
@@ -134,16 +135,18 @@ public class CampusSquareService {
 
     /**
      * 永続化した owner の CampusSquare のセッションを、CampusSquare へ送る Cookie ヘッダにする。失効分と、Path や
-     * Secure の合わないものはここで落ちる。別のアカウントのもの・持ち主の無いもの (旧形式を含む) は消す。
+     * Secure の合わないものはここで落ちる。持ち主の無いもの (旧形式を含む) は消す。別のアカウントのものは使わないが
+     * 残す (消すと、そのアカウントに戻ったときにログインし直しになる)。
      */
     private static String storedSessionHeader(String owner) {
         PreferenceManager prefs = PreferenceManager.getInstance();
         String stored = prefs.getCsIdpSessionCookies();
         if (stored == null || stored.isEmpty()) return "";
-        if (!SpSessionCookies.ownedBy(stored, owner)) {
+        if (SpSessionCookies.ownerOf(stored) == null) {
             prefs.setCsIdpSessionCookies(null);
             return "";
         }
+        if (!SpSessionCookies.ownedBy(stored, owner)) return "";
         okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl());
         if (base == null) return "";
         long now = System.currentTimeMillis();

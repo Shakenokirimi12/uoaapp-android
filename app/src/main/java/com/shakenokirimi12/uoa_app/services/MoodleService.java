@@ -260,6 +260,7 @@ public class MoodleService {
     }
 
     private String ensureSession(String username, String password, AuthorizationContext context) throws Exception {
+        if (AccountSwitch.isStale(username)) throw new AccountChangedException();
         // プロセス起動直後は cookie jar が空。前回の Moodle セッションを持ち越していれば、まずそれを
         // 入れて生存確認 (probe) にかける。生きていれば IdP ログイン (約 5 秒 + 大学側にログイン記録) を
         // 丸ごと省ける。死んでいれば probe が null を返して普通にログインする。
@@ -268,8 +269,9 @@ public class MoodleService {
         if (!NetworkClient.hasCookies(host)) {
             PreferenceManager prefs = PreferenceManager.getInstance();
             String stored = prefs.getMoodleSessionCookies();
-            // 別のアカウントのもの・持ち主の無いもの (旧形式を含む) は使わずに消す (SpSessionCookies)。
-            if (stored != null && !stored.isEmpty() && !SpSessionCookies.ownedBy(stored, username)) {
+            // 持ち主の無いもの (旧形式を含む) は誰のものか分からないので消す。別のアカウントのものは使わないだけで
+            // 残す (消すと、そのアカウントに戻ったときにログインし直しになる。復元は restore が断る)。
+            if (stored != null && !stored.isEmpty() && SpSessionCookies.ownerOf(stored) == null) {
                 prefs.setMoodleSessionCookies(null);
             }
             List<okhttp3.Cookie> restored = SpSessionCookies.restore(
@@ -470,7 +472,7 @@ public class MoodleService {
         // ダッシュボード。sesskey を返すと owner の取得が別人のコースや課題を読むので、ここで止める。
         String current = jarOwner;
         if (current != null && !current.equals(owner.trim())) {
-            throw new AccountChanged();
+            throw new AccountChangedException();
         }
         sesskey = key;
         userid = uid;
@@ -485,21 +487,13 @@ public class MoodleService {
     private String probeDashboardQuietly(String owner) {
         try {
             return probeDashboard(owner);
-        } catch (AccountChanged e) {
+        } catch (AccountChangedException e) {
             // 死んでいる (null) と答えると、SessionCoordinator が owner でログインし直し、切り替えた先の
             // アカウントのセッションを消す。取得ごと失敗させる。
             throw e;
         } catch (Exception e) {
             return null;
         }
-    }
-
-    /**
-     * 共有 cookie jar の Moodle のセッションが、取得を始めたのと別のアカウントのものに変わった (jarOwner)。
-     * SessionCoordinator の probe から投げても状態は壊れない (probe は lock と飛行中のログインの外で呼ばれる)。
-     */
-    private static final class AccountChanged extends RuntimeException {
-        AccountChanged() { super("アカウントが切り替わったため、読み込みを中止しました。"); }
     }
 
     /**
