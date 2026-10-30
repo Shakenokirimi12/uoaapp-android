@@ -27,9 +27,8 @@ JP = re.compile('[぀-ヿ㐀-鿿＀-￯　-〿]')
 # Owned by another refactor (login / OTP / IdP). Paths are relative to the Java package root or to res/.
 SKIP_JAVA = [
     'services/idp/', 'services/otprelay/', 'services/SessionCoordinator.java', 'services/BackgroundLoginPolicy.java',
-    'services/NetworkClient.java', 'services/AuthErrors.java', 'services/HostScopedCookieJar.java',
-    'services/SpSessionCookies.java', 'services/CampusSquareService.java', 'services/MoodleService.java',
-    'ui/settings/LoginSettingsFragment.java', 'ui/settings/AuthenticatorKeyPrompt.java', 'ui/idp/', 'ui/otprelay/',
+    'services/NetworkClient.java', 'services/HostScopedCookieJar.java',
+    'services/SpSessionCookies.java', 'ui/settings/AuthenticatorKeyPrompt.java', 'ui/idp/', 'ui/otprelay/',
     # Login-purpose files outside the explicit list (kept out when unsure).
     'ui/onboarding/OnboardingActivity.java',
 ]
@@ -38,6 +37,12 @@ SKIP_RES = [
     'layout/fragment_idp_otp_registration.xml', 'layout/fragment_idp_tutorial.xml',
     'layout/fragment_login_settings.xml', 'layout/fragment_otp_relay_settings.xml', 'layout/item_otp_relay_pairing.xml',
     'layout/page_onboarding_login.xml',
+]
+# Files inside the skipped directories whose literals were moved to strings.xml (checked like any other file).
+CHECK_ANYWAY = [
+    'services/idp/SeciossError.java', 'services/idp/OtpPromptCoordinator.java',
+    'services/otprelay/OtpRelayResponder.java', 'services/otprelay/OtpRelayWorker.java',
+    'ui/idp/IdPOtpRegistrationViewModel.java',
 ]
 # Debug-only code is never converted.
 DEBUG_MARKERS = ['/ui/debug/', '/src/debug/']
@@ -55,6 +60,15 @@ KEEP = [
     ('services/GakushokuService.java', '', 'exception text that is never shown (callers show their own string); no Context in the service'),
     ('services/SyllabusService.java', '', 'error text that is never shown (CourseDetailFragment hides the card); no Context in the service'),
     ('services/diagnostics/OtpDiagnostics.java', '', 'diagnostic event text sent to Wana, not shown to the user'),
+    ('services/CampusSquareService.java', '<title>認証エラー', 'matches the CampusSquare SSO error page (parsing, not display)'),
+    ('services/CampusSquareService.java', 'ログアウト', 'success marker on the CampusSquare page (parsing, not display)'),
+    ('services/CampusSquareService.java', 'このシステムを利用することができません', 'matches the CampusSquare SSO error page (parsing, not display)'),
+    ('services/CampusSquareService.java', 'シングルサインオン', 'matches the CampusSquare login page (parsing, not display)'),
+    ('services/CampusSquareService.java', '統合認証', 'matches the CampusSquare login page (parsing, not display)'),
+    ('services/CampusSquareService.java', '証明書', 'matches the CampusSquare login page (parsing, not display)'),
+    ('services/CampusSquareService.java', '履修中', 'matches CampusSquare grade text (parsing, not display)'),
+    ('services/MoodleService.java', 'ログインが無効です', 'matches the Moodle login error page (parsing, not display)'),
+    ('services/otprelay/OtpRelayResponder.java', '', 'attempt.trail.note steps: diagnostic record of a relay request, not UI text'),
     ('res/navigation/nav_graph.xml', 'IdPログインについて', 'IdP destination (login refactor)'),
     ('res/navigation/nav_graph.xml', 'ワンタイムパスワード設定', 'IdP destination (login refactor)'),
 ]
@@ -188,7 +202,7 @@ def japanese_leftovers():
     found, kept = [], []
     for path in walk(os.path.join(MAIN, 'java'), ('.java', '.kt')):
         rel = path[len(JAVA_ROOT):]
-        if skipped(rel, SKIP_JAVA) or any(m in path for m in DEBUG_MARKERS):
+        if (skipped(rel, SKIP_JAVA) and rel not in CHECK_ANYWAY) or any(m in path for m in DEBUG_MARKERS):
             continue
         for line, lit in java_literals(read(path)):
             (kept if keep_reason(rel, lit) else found).append((rel, line, lit, keep_reason(rel, lit)))

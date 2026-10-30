@@ -142,7 +142,7 @@ public class CalendarFragment extends Fragment {
 
         // ID/PW 誤りが確定している間は自動でログインを試みない (アカウントロック対策)。
         if (com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(requireContext()).isCredentialsInvalid()) {
-            android.widget.Toast.makeText(requireContext(), com.shakenokirimi12.uoa_app.services.AuthErrors.INVALID_CREDENTIALS_MESSAGE, android.widget.Toast.LENGTH_LONG).show();
+            android.widget.Toast.makeText(requireContext(), com.shakenokirimi12.uoa_app.services.AuthErrors.invalidCredentialsMessage(), android.widget.Toast.LENGTH_LONG).show();
             eventsFailed = fetchEvents;
             assignmentsFailed = fetchAssignments;
             updateFetchNotice();

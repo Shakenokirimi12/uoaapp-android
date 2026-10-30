@@ -167,11 +167,13 @@ public class SeciossIdPClientTest {
     @Test
     public void maintenanceError_loginAndRegistrationMessages() {
         SeciossError e = new SeciossError(SeciossError.Kind.MAINTENANCE, "メンテナンスモード しばらくお待ちください");
-        assertTrue(e.loginMessage().startsWith("大学のシステムがメンテナンス中です。終了後にもう一度お試しください。"));
-        assertTrue(e.loginMessage().contains("しばらくお待ちください"));
-        assertTrue(e.registrationMessage().startsWith("大学のシステムがメンテナンス中です。"));
-        assertTrue(new SeciossError(SeciossError.Kind.ACCESS_DENIED, "moodle_login_page")
-                .loginMessage().startsWith("Moodle 側でこのアカウントのシングルサインオン"));
+        // 文面は strings.xml (JVM のテストでは読めない)。どの文言に、どの detail を渡すかを確かめる。
+        String maintenance = com.shakenokirimi12.uoa_app.services.AppStrings.get(
+                com.shakenokirimi12.uoa_app.R.string.secioss_error_maintenance, "メンテナンスモード しばらくお待ちください");
+        assertEquals(maintenance, e.loginMessage());
+        assertEquals(maintenance, e.registrationMessage());
+        assertEquals(com.shakenokirimi12.uoa_app.services.AppStrings.get(com.shakenokirimi12.uoa_app.R.string.secioss_error_moodle_sso_not_ready),
+                new SeciossError(SeciossError.Kind.ACCESS_DENIED, "moodle_login_page").loginMessage());
     }
 
     @Test

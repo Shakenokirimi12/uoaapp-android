@@ -139,7 +139,7 @@ public class SessionCoordinatorTest {
         AtomicInteger attempts = new AtomicInteger();
         SessionCoordinator.Login<String> login = () -> {
             attempts.incrementAndGet();
-            throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
+            throw new Exception(AuthErrors.invalidCredentialsMessage());
         };
 
         for (int i = 0; i < 2; i++) {

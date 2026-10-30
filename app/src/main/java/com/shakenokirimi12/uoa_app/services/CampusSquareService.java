@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
 import com.shakenokirimi12.uoa_app.data.models.FacilityUsage;
@@ -103,7 +104,7 @@ public class CampusSquareService {
 
     /** 取得の途中で未認証ページを掴んだことを withSession に伝える。 */
     static final class SessionExpiredException extends Exception {
-        SessionExpiredException() { super("CampusSquare のセッションが切れました"); }
+        SessionExpiredException() { super(AppStrings.get(R.string.campussquare_session_expired)); }
     }
 
     private interface SessionBody<T> { T run(String cookieHeader) throws Exception; }
@@ -273,7 +274,7 @@ public class CampusSquareService {
      * IdP (SECIOSS) 経由でログインし、CampusSquare のセッション Cookie ヘッダを返す (キャッシュにも保存)。
      * entryUrl が null なら resolveCampusSquareEntryUrl() の結果を使う。otp は OTP が要求された
      * 場合にのみ呼ばれる (方式ごとの実体は OtpProviders が決める)。
-     * ID/PW 誤りは AuthErrors.INVALID_CREDENTIALS_MESSAGE の Exception に変換して投げる。既存の
+     * ID/PW 誤りは AuthErrors.invalidCredentialsMessage() の Exception に変換して投げる。既存の
      * onError 側 (markInvalidIfCredentialsError) がそのまま自動同期を止められるようにするため。
      */
     public String loginViaIdP(String entryUrl, String username, String password,
@@ -288,7 +289,7 @@ public class CampusSquareService {
             // OTP 未設定はここでしか分からない。設定画面を探させず、その場で登録画面を開く。
             com.shakenokirimi12.uoa_app.services.idp.OtpRegistrationLauncher.launchIfNeeded(e);
             if (e.kind == SeciossError.Kind.INVALID_CREDENTIALS) {
-                throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
+                throw new Exception(AuthErrors.invalidCredentialsMessage());
             }
             throw new Exception(e.loginMessage(), e);
         }
@@ -300,7 +301,7 @@ public class CampusSquareService {
         String csHost = csUrl != null ? csUrl.host().toLowerCase() : "csweb.u-aizu.ac.jp";
         if (!finalHost.equals(csHost)) {
             throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
-                    "CampusSquareへ戻れていない(final=" + session.finalUrl + ")").asLoginException();
+                    AppStrings.get(R.string.campussquare_error_not_returned, session.finalUrl)).asLoginException();
         }
         // メンテナンスページにも「ログアウト」が含まれるため、成功マーカーより先に見る (Moodle で 2026-09-15 実測)。
         if (SeciossIdPClient.isMaintenancePage(session.finalStatus, session.finalHtml)) {
@@ -315,7 +316,7 @@ public class CampusSquareService {
         }
         if (!containsAnySuccessMarker(session.finalHtml)) {
             throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
-                    "CampusSquareへの復帰後、成功マーカーが見つからない").asLoginException();
+                    AppStrings.get(R.string.campussquare_error_no_success_marker)).asLoginException();
         }
         // 属性込みで保存する (次回起動で storedSessionHeader が読む)。返すのは今回のチェーンの最終ホップに
         // 送られたのと同じヘッダ。
@@ -434,7 +435,7 @@ public class CampusSquareService {
             try {
                 List<Grade> grades = withSession(username, password, context, this::fetchGradesWithSession);
                 if (grades == null) {
-                    postError(callback, "成績ページのフローキー取得に失敗しました");
+                    postError(callback, AppStrings.get(R.string.campussquare_flow_key_failed));
                     return;
                 }
                 postSuccess(callback, grades);
@@ -528,7 +529,7 @@ public class CampusSquareService {
             try {
                 List<CalendarEvent> events = withSession(username, password, context, this::fetchCalendarEventsWithSession);
                 if (events == null) {
-                    postError(callback, "カレンダーURLの取得に失敗しました");
+                    postError(callback, AppStrings.get(R.string.campussquare_calendar_url_failed));
                     return;
                 }
                 postSuccess(callback, events);
@@ -756,7 +757,7 @@ public class CampusSquareService {
                 flowKey = extractMatch(html, "_flowExecutionKey=([a-zA-Z0-9_-]+)");
             }
             if (flowKey == null) {
-                throw new IOException("内部版の施設利用状況ページからフローキーを取得できませんでした");
+                throw new IOException(AppStrings.get(R.string.campussquare_facility_flow_key_failed));
             }
             Request dateReq = new Request.Builder()
                     .url(baseUrl() + "/campussquare.do?_flowExecutionKey=" + flowKey
@@ -774,7 +775,7 @@ public class CampusSquareService {
 
         List<FacilityUsage> facilities = parseFacilityUsage(html);
         if (facilities.isEmpty()) {
-            throw new IOException("内部版の施設利用状況を解析できませんでした");
+            throw new IOException(AppStrings.get(R.string.campussquare_facility_parse_failed));
         }
         return facilities;
     }
@@ -935,6 +936,6 @@ public class CampusSquareService {
     }
 
     private <T> void postError(ServiceCallback<T> cb, String msg) {
-        mainHandler.post(() -> cb.onError(msg != null ? msg : "不明なエラー"));
+        mainHandler.post(() -> cb.onError(msg != null ? msg : AppStrings.get(R.string.common_unknown_problem)));
     }
 }

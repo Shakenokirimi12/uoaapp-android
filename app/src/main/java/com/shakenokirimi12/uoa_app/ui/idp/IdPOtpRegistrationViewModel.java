@@ -171,8 +171,8 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
             } catch (com.jcraft.jsch.JSchException e) {
                 String gateway = com.shakenokirimi12.uoa_app.services.idp.CampusSshTunnel.GATEWAY_HOST;
                 String msg = e.getMessage() != null && e.getMessage().contains("Auth")
-                        ? "学内ゲートウェイ (" + gateway + ") への SSH 認証に失敗しました。AINS のパスワードが正しいか確認してください。"
-                        : "学内ゲートウェイ (" + gateway + ") へ接続できませんでした: " + e.getMessage();
+                        ? getApplication().getString(R.string.gateway_auth_failed, gateway)
+                        : getApplication().getString(R.string.gateway_connection_failed, gateway, e.getMessage());
                 postFailure(msg);
             } catch (SeciossError e) {
                 if (e.kind == SeciossError.Kind.OTP_ALREADY_CONFIGURED && switchingTo != null) {

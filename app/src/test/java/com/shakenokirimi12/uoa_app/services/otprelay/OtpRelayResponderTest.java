@@ -302,7 +302,7 @@ public class OtpRelayResponderTest {
         // 依頼時刻 (5 秒前) は信用できる範囲なので、そのまま探索の起点になる。
         assertEquals(Long.valueOf(NOW - 5_000), mailSince.get(0));
         assertEquals(Integer.valueOf(42), deleted.get(0));
-        assertEquals("true:PC に OTP を送りました", lastResults.get(0));
+        assertEquals("true:" + com.shakenokirimi12.uoa_app.services.AppStrings.get(com.shakenokirimi12.uoa_app.R.string.otp_relay_sent_success), lastResults.get(0));
     }
 
     @Test
@@ -337,7 +337,7 @@ public class OtpRelayResponderTest {
         assertEquals("relay-unreachable", outcome.reason);
         // 500 は数字のまま残す (0 = 通信できなかった、のときだけ理由の文にする)。
         assertTrue(deleted.isEmpty());
-        assertEquals("false:中継サーバの応答: 500", lastResults.get(0));
+        assertEquals("false:" + com.shakenokirimi12.uoa_app.services.AppStrings.get(com.shakenokirimi12.uoa_app.R.string.otp_relay_response_status_format, 500), lastResults.get(0));
         // 返せなかった approved の 1 件だけ。失敗を重ねて送らない。
         assertEquals(1, server.requests().size());
     }

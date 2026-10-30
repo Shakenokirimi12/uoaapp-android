@@ -351,7 +351,7 @@ public class HomeFragment extends Fragment {
         if (prefs.isCredentialsInvalid()) {
             swipeRefresh.setRefreshing(false);
             syncStatusBar.setVisibility(View.GONE);
-            showError(MoodleService.INVALID_CREDENTIALS_MESSAGE);
+            showError(MoodleService.invalidCredentialsMessage());
             eventsFailed |= fetchEvents;
             assignmentsFailed |= fetchAssignments;
             updateFetchNotice();

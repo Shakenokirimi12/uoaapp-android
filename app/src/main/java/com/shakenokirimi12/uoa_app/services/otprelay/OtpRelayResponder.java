@@ -6,6 +6,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.google.gson.JsonObject;
+import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.services.AppStrings;
 import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
 import com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics;
 import com.shakenokirimi12.uoa_app.services.idp.Totp;
@@ -423,8 +425,8 @@ public final class OtpRelayResponder {
         if (status == 409) return Outcome.failed(ALREADY_ANSWERED);
 
         // 通信できなかった (0) ときは、数字ではなく理由を出す。
-        lastResult.save(status == 204, status == 204 ? "PC に OTP を送りました"
-                : status == 0 ? failureText("relay-unreachable") : "中継サーバの応答: " + status, null);
+        lastResult.save(status == 204, status == 204 ? AppStrings.get(R.string.otp_relay_sent_success)
+                : status == 0 ? failureText("relay-unreachable") : AppStrings.get(R.string.otp_relay_response_status_format, status), null);
         if (status == 204) {
             // 中継サーバが受け付けたので、使ったメールを消す。410 (期限切れ・新しい依頼に置き換わった) と
             // 通信失敗は PC に届いていないので、消さずに残す (PC で手入力に使う。残ったものは次に成功したときに消える)。
@@ -476,8 +478,8 @@ public final class OtpRelayResponder {
         body.addProperty("box", box);
         int status = post(attempt, request, keys, body, OtpRelayTiming.POST_TIMEOUT_MS);
         if (status == 409) return Outcome.failed(ALREADY_ANSWERED);
-        lastResult.save(status == 204, status == 204 ? "PC に OTP を送りました"
-                : status == 0 ? failureText("relay-unreachable") : "中継サーバの応答: " + status, null);
+        lastResult.save(status == 204, status == 204 ? AppStrings.get(R.string.otp_relay_sent_success)
+                : status == 0 ? failureText("relay-unreachable") : AppStrings.get(R.string.otp_relay_response_status_format, status), null);
         if (status == 204) return Outcome.sent();
         if (status == 410) return Outcome.failed("expired");
         return Outcome.failed("relay-unreachable");
@@ -629,22 +631,22 @@ public final class OtpRelayResponder {
     /** 通知と設定画面に出す失敗の説明。 */
     @NonNull
     public static String failureText(@Nullable String reason) {
-        if (reason == null) return "大学のメールサーバに接続できませんでした。通信状況を確かめて、PC でもう一度ログインしてください。";
+        if (reason == null) return AppStrings.get(R.string.otp_relay_failure_mail_connection);
         switch (reason) {
-            case CONSENT_REQUIRED: return "この PC との連携の確認が済んでいません。アプリを開いて確認してください。";
-            case METHOD_MISMATCH: return "PC の画面とこのアプリのログイン方式が合っていません。設定のログイン方式を確かめてください。";
-            case TOTP_CONSENT_REQUIRED: return "この PC に認証アプリのコードを送るかの確認が済んでいません。アプリを開いて確認してください。";
-            case TOTP_STEP_USED: return "同じコードを使ったばかりのため、送れませんでした。PC で少し待ってから、もう一度ログインしてください。";
-            case NO_TOTP_KEY: return "このアプリに認証アプリのセットアップキーがありません。設定で認証アプリを登録し直してください。";
-            case KEY_SUSPENDED: return "認証が通らず、再設定が必要です。アプリの設定で認証アプリを登録し直してください。";
-            case "no-credentials": return "アプリにユーザー名とパスワードが入っていません。設定で入力してください。";
-            case "login-failed": return "ユーザー名かパスワードが違うため、大学のメールを読めませんでした。設定で入力し直してください。";
-            case "code-not-found": return "OTP メールからコードを読み取れませんでした。";
-            case "mail-timeout": return "OTP メールが時間内に届きませんでした。PC でもう一度ログインしてください。";
-            case "expired": return "期限が切れました。PC でもう一度ログインしてください。";
-            case "relay-unreachable": return "中継サーバに OTP を送れませんでした。時間をおいて、PC でもう一度ログインしてください。";
-            case "bad-key": return "連携の情報が壊れています。設定で連携を解除して、連携し直してください。";
-            default: return "大学のメールサーバに接続できませんでした。通信状況を確かめて、PC でもう一度ログインしてください。";
+            case CONSENT_REQUIRED: return AppStrings.get(R.string.otp_relay_failure_consent_required);
+            case METHOD_MISMATCH: return AppStrings.get(R.string.otp_relay_failure_method_mismatch);
+            case TOTP_CONSENT_REQUIRED: return AppStrings.get(R.string.otp_relay_failure_totp_consent_required);
+            case TOTP_STEP_USED: return AppStrings.get(R.string.otp_relay_failure_totp_step_used);
+            case NO_TOTP_KEY: return AppStrings.get(R.string.otp_relay_failure_no_totp_key);
+            case KEY_SUSPENDED: return AppStrings.get(R.string.otp_relay_failure_key_suspended);
+            case "no-credentials": return AppStrings.get(R.string.otp_relay_failure_no_credentials);
+            case "login-failed": return AppStrings.get(R.string.otp_relay_failure_login_failed);
+            case "code-not-found": return AppStrings.get(R.string.otp_relay_failure_code_not_found);
+            case "mail-timeout": return AppStrings.get(R.string.otp_relay_failure_mail_timeout);
+            case "expired": return AppStrings.get(R.string.otp_relay_failure_expired);
+            case "relay-unreachable": return AppStrings.get(R.string.otp_relay_failure_relay_unreachable);
+            case "bad-key": return AppStrings.get(R.string.otp_relay_failure_bad_key);
+            default: return AppStrings.get(R.string.otp_relay_failure_mail_connection);
         }
     }
 }

@@ -7,7 +7,9 @@ import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.UoaApplication;
+import com.shakenokirimi12.uoa_app.services.AppStrings;
 import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 import com.shakenokirimi12.uoa_app.ui.idp.OtpPromptDialog;
 
@@ -82,7 +84,7 @@ public final class OtpPromptCoordinator {
         if (activity == null) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
 
         String code = promptOnMainThread(activity,
-                "メールからワンタイムパスワードを取得できませんでした。届いたコードを入力してください。");
+                AppStrings.get(R.string.otp_prompt_mail_manual_fallback));
         if (code == null) throw cancelled();
         return new MailCode(code, null);
     }
@@ -99,7 +101,7 @@ public final class OtpPromptCoordinator {
         Activity activity = UoaApplication.getForegroundActivity();
         if (activity == null) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
 
-        String code = promptOnMainThread(activity, "認証アプリに表示されているコードを入力してください。");
+        String code = promptOnMainThread(activity, AppStrings.get(R.string.otp_prompt_authenticator_code));
         if (code == null) throw cancelled();
         return code;
     }

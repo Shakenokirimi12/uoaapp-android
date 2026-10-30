@@ -344,7 +344,7 @@ public class BackgroundLoginPolicyTest {
         policy.succeeded(UID, PASS, true);
         AtomicInteger logins = new AtomicInteger();
         try {
-            backgroundSession(new SessionCoordinator<>(), policy, logins, new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE));
+            backgroundSession(new SessionCoordinator<>(), policy, logins, new Exception(AuthErrors.invalidCredentialsMessage()));
             fail();
         } catch (Exception expected) {
             assertTrue(AuthErrors.isInvalidCredentials(expected.getMessage()));
@@ -364,7 +364,7 @@ public class BackgroundLoginPolicyTest {
         assertEquals(1, logins.get());
 
         // もう一度誤りと分かっても、同じ指紋では通知しない。
-        policy.failed(UID, PASS, new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE), true);
+        policy.failed(UID, PASS, new Exception(AuthErrors.invalidCredentialsMessage()), true);
         assertEquals(1, invalidNotices.get());
 
         // パスワードを変えたら外れる。
@@ -376,9 +376,9 @@ public class BackgroundLoginPolicyTest {
     @Test
     public void invalidCredentialsInForeground_areNotifiedOnce() {
         BackgroundLoginPolicy policy = policy();
-        policy.failed(UID, PASS, new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE), false);
+        policy.failed(UID, PASS, new Exception(AuthErrors.invalidCredentialsMessage()), false);
         assertTrue(policy.credentialsInvalid(UID, PASS));
-        policy.failed(UID, PASS, new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE), true);
+        policy.failed(UID, PASS, new Exception(AuthErrors.invalidCredentialsMessage()), true);
         policy.markInvalid(UID, PASS);
         assertEquals(1, invalidNotices.get());
     }
@@ -390,8 +390,8 @@ public class BackgroundLoginPolicyTest {
     @Test
     public void invalidMark_staysOnTheSavedCredentials_whenAnUnsavedValueFails() {
         BackgroundLoginPolicy policy = policy();
-        policy.failed(UID, PASS, new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE), true);
-        policy.failed(UID, "typo", new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE), false);
+        policy.failed(UID, PASS, new Exception(AuthErrors.invalidCredentialsMessage()), true);
+        policy.failed(UID, "typo", new Exception(AuthErrors.invalidCredentialsMessage()), false);
         policy.markInvalid(UID, "typo");
         assertTrue(policy.credentialsInvalid(UID, PASS));
         assertFalse(policy.credentialsInvalid(UID, "typo"));
@@ -456,7 +456,7 @@ public class BackgroundLoginPolicyTest {
         }
         policy.checkBeforeIdpLogin(UID, PASS, false); // 前面は手入力で続けられる
 
-        policy.failed(UID, PASS, new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE), false);
+        policy.failed(UID, PASS, new Exception(AuthErrors.invalidCredentialsMessage()), false);
         try {
             policy.checkBeforeIdpLogin(UID, PASS, false);
             fail("誤りと分かった資格情報は前面でも送らない");

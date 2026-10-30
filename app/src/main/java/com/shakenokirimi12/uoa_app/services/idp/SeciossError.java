@@ -3,6 +3,9 @@ package com.shakenokirimi12.uoa_app.services.idp;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.shakenokirimi12.uoa_app.R;
+import com.shakenokirimi12.uoa_app.services.AppStrings;
+
 /**
  * SeciossIdPClient / SeciossRegistrationSession が投げる失敗。iOS の SeciossError (enum) と
  * 1 対 1 に対応させ、呼び出し側が種別で分岐できるようにする。
@@ -99,40 +102,40 @@ public final class SeciossError extends Exception {
             case MISSING_FIELD:
                 // 大学のログイン画面の形が想定と違った。CampusSquare は 2026-09-15 から IdP 経由なので、
                 // 以前の「まだ IdP 化されていない可能性」は当たらない。
-                return "大学のログイン画面を読み取れませんでした(" + detail + ")。少し待ってからもう一度ログインしてください。続くときはお知らせください。";
+                return AppStrings.get(R.string.secioss_error_login_missing_field, detail);
             case UNEXPECTED_STATUS:
-                return detail + "で想定外の応答(HTTP " + status + ")でした。";
+                return AppStrings.get(R.string.secioss_error_unexpected_status, detail, status);
             case OTP_REQUEST_FAILED:
-                return "ワンタイムパスワードの送信に失敗しました。";
+                return AppStrings.get(R.string.secioss_error_otp_request_failed);
             case INVALID_OTP:
-                return "ワンタイムパスワードが通りませんでした。もう一度ログインしてください。";
+                return AppStrings.get(R.string.secioss_error_invalid_otp);
             case OTP_NOT_CONFIGURED:
-                return "このアカウントはワンタイムパスワードが未設定です。学内ネットワークから事前に設定してください(学外からの設定はできません)。";
+                return AppStrings.get(R.string.secioss_error_otp_not_configured);
             case OTP_ALREADY_CONFIGURED:
-                return "このアカウントは既にワンタイムパスワードが設定済みです。";
+                return AppStrings.get(R.string.secioss_error_otp_already_configured);
             case UNRECOGNIZED_STATE:
-                return "想定外の画面に到達しました(" + detail + ")。画面の表示が変わった可能性があります。";
+                return AppStrings.get(R.string.secioss_error_login_unrecognized_state, detail);
             case SESSION_TIMED_OUT:
-                return "IdP側のセッションがタイムアウトしました。もう一度ログインからやり直してください。";
+                return AppStrings.get(R.string.secioss_error_session_timed_out);
             case INTERACTIVE_LOGIN_REQUIRED:
-                return "ワンタイムパスワードの入力が必要です。";
+                return AppStrings.get(R.string.secioss_error_interactive_login_required);
             case TOTP_STEP_UNAVAILABLE:
-                return "認証アプリのコードを作れませんでした。少し待ってからもう一度ログインしてください。";
+                return AppStrings.get(R.string.secioss_error_totp_step_unavailable);
             case OTP_FETCH_FAILED:
-                return "OTP メールを読み取れませんでした。アプリを開いてログインしてください。";
+                return AppStrings.get(R.string.secioss_error_otp_fetch_failed);
             case MAINTENANCE:
-                return "大学のシステムがメンテナンス中です。終了後にもう一度お試しください。\n" + detail;
+                return AppStrings.get(R.string.secioss_error_maintenance, detail);
             case ACCESS_DENIED:
                 if ("moodle_login_page".equals(detail)) {
-                    return "Moodle 側でこのアカウントのシングルサインオンがまだ有効になっていません。大学側の移行作業が完了するまで利用できません。";
+                    return AppStrings.get(R.string.secioss_error_moodle_sso_not_ready);
                 }
                 if ("campussquare_sso_error".equals(detail)) {
-                    return "CampusSquare 側でこのアカウントのシングルサインオンがまだ有効になっていません。大学側の移行作業が完了するまで利用できません。";
+                    return AppStrings.get(R.string.secioss_error_campussquare_sso_not_ready);
                 }
-                return "大学の認証システム(IdP)がこのサービスへのアクセスを許可していません(" + detail + ")。大学側の設定が完了するまで利用できません。";
+                return AppStrings.get(R.string.secioss_error_access_denied, detail);
             case INVALID_CREDENTIALS:
             default:
-                return "ユーザー名またはパスワードが正しくありません。設定画面から入力し直してください。";
+                return AppStrings.get(R.string.secioss_error_invalid_credentials);
         }
     }
 
@@ -141,34 +144,34 @@ public final class SeciossError extends Exception {
     public String registrationMessage() {
         switch (kind) {
             case MISSING_FIELD:
-                return "登録画面が想定した形式ではありませんでした(" + detail + ")。";
+                return AppStrings.get(R.string.secioss_error_registration_missing_field, detail);
             case UNEXPECTED_STATUS:
-                return detail + "で想定外の応答(HTTP " + status + ")でした。";
+                return AppStrings.get(R.string.secioss_error_unexpected_status, detail, status);
             case OTP_REQUEST_FAILED:
-                return "確認コードの送信に失敗しました。";
+                return AppStrings.get(R.string.secioss_error_registration_otp_request_failed);
             case INVALID_OTP:
-                return "確認コードが通りませんでした。もう一度やり直してください。";
+                return AppStrings.get(R.string.secioss_error_registration_invalid_otp);
             case OTP_NOT_CONFIGURED:
-                return "このアカウントはワンタイムパスワードが未設定です。";
+                return AppStrings.get(R.string.secioss_error_registration_otp_not_configured);
             case OTP_ALREADY_CONFIGURED:
-                return "このアカウントは既にワンタイムパスワードが設定済みです。";
+                return AppStrings.get(R.string.secioss_error_otp_already_configured);
             case UNRECOGNIZED_STATE:
-                return "想定外の画面に到達しました(" + detail + ")。学内ネットワークに接続しているか確認してください(OTP登録は学内アクセスからのみ行えます)。";
+                return AppStrings.get(R.string.secioss_error_registration_unrecognized_state, detail);
             case SESSION_TIMED_OUT:
-                return "IdP側のセッションがタイムアウトしました。もう一度やり直してください。";
+                return AppStrings.get(R.string.secioss_error_session_timed_out);
             case INTERACTIVE_LOGIN_REQUIRED:
-                return "ワンタイムパスワードの入力が必要です。設定画面から手動でログインしてください。";
+                return AppStrings.get(R.string.secioss_error_registration_interactive_login_required);
             case TOTP_STEP_UNAVAILABLE:
-                return "認証アプリのコードを作れませんでした。少し待ってからもう一度やり直してください。";
+                return AppStrings.get(R.string.secioss_error_registration_totp_step_unavailable);
             case OTP_FETCH_FAILED:
-                return "OTP メールを読み取れませんでした。もう一度やり直してください。";
+                return AppStrings.get(R.string.secioss_error_registration_otp_fetch_failed);
             case MAINTENANCE:
-                return "大学のシステムがメンテナンス中です。終了後にもう一度お試しください。\n" + detail;
+                return AppStrings.get(R.string.secioss_error_maintenance, detail);
             case ACCESS_DENIED:
-                return "大学の認証システム(IdP)がアクセスを許可していません(" + detail + ")。";
+                return AppStrings.get(R.string.secioss_error_registration_access_denied, detail);
             case INVALID_CREDENTIALS:
             default:
-                return "ユーザー名またはパスワードが正しくありません。設定画面から入力し直してください。";
+                return AppStrings.get(R.string.secioss_error_invalid_credentials);
         }
     }
 }

@@ -186,7 +186,7 @@ final class SessionCoordinator<S> {
                     task = null;
                     // バックグラウンドでは、Unattended が許したときだけ新規ログインを始める。ここが唯一の判断点で、
                     // 許さなければ login クロージャ自体を呼ばない (フラグを見落とす経路を作らないため)。
-                    if (credentialsInvalid) throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
+                    if (credentialsInvalid) throw new Exception(AuthErrors.invalidCredentialsMessage());
                     if (background && !mayLoginUnattended) {
                         throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
                     }
@@ -247,7 +247,7 @@ final class SessionCoordinator<S> {
      * 誤りと分かっている資格情報 (同じ値の入れ直し) では始めない。
      */
     S forceLogin(Object method, Login<S> login, Unattended unattended) throws Exception {
-        if (unattended.credentialsInvalid()) throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
+        if (unattended.credentialsInvalid()) throw new Exception(AuthErrors.invalidCredentialsMessage());
         while (true) {
             FutureTask<S> mine = null;
             FutureTask<S> other = null;

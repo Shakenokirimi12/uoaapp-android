@@ -78,11 +78,9 @@
     <string name="onboarding_username_hint">ユーザー名 (例: s1234567)</string>
     <string name="onboarding_password_hint">パスワード</string>
     <string name="onboarding_login_button">ログイン</string>
-    <string name="onboarding_skip">スキップ</string>
     <string name="onboarding_pc_relay_later_note">使わない場合は「あとで」をタップしてください。あとから設定の「ログインとワンタイムパスワード」の「PC との連携」で連携できます。</string>
     <string name="onboarding_pc_relay_open">PC と連携する</string>
     <string name="onboarding_pc_relay_later">あとで</string>
-    <string name="onboarding_done">完了</string>
 
     <!-- Grades -->
 
@@ -165,8 +163,6 @@
     <string name="auth_credentials_invalid_title">ユーザー名かパスワードが違います</string>
     <string name="auth_credentials_invalid_text">保存しているユーザー名かパスワードでログインできませんでした。どちらかを変えるまで、ログインを止めます。同じ値を入れ直しても再開しません。</string>
     <string name="auth_credentials_invalid_action">ユーザー名かパスワードを変える</string>
-    <string name="login_required_notify_title">ログインが必要です</string>
-    <string name="login_required_notify_text">大学のシステムへのログインが切れたため、バックグラウンドでの同期を止めています。アプリを開いてログインしてください。</string>
     <!-- Push -->
     <string name="push_channel_name">課題の提出期限通知</string>
     <!-- Assignment countdown -->
@@ -574,4 +570,83 @@
     <!-- Attendance -->
     <string name="auto_attendance_registered_title">出席を自動で記録しました</string>
     <string name="auto_attendance_registered_text_format">「%1$s」の出席をこの端末に記録しました。</string>
+
+    <!-- Login / IdP / OTP relay errors (moved from Java) -->
+    <string name="auth_error_invalid_credentials">ログインできませんでした。ユーザー名またはパスワードを確認してください。</string>
+
+    <!-- CampusSquare errors -->
+    <string name="campussquare_session_expired">CampusSquareのセッションが切れました</string>
+    <string name="campussquare_flow_key_failed">成績ページのフローキーを取得できませんでした</string>
+    <string name="campussquare_calendar_url_failed">カレンダーURLを取得できませんでした</string>
+    <string name="campussquare_facility_flow_key_failed">内部版の施設利用状況ページからフローキーを取得できませんでした</string>
+    <string name="campussquare_facility_parse_failed">内部版の施設利用状況を解析できませんでした</string>
+    <string name="campussquare_error_not_returned">CampusSquareへ戻れていない (final=%1$s)</string>
+    <string name="campussquare_error_no_success_marker">CampusSquareへの復帰後、成功マーカーが見つからない</string>
+
+    <!-- Moodle errors -->
+    <string name="moodle_session_expired">Moodleのセッションが切れました</string>
+    <string name="moodle_error_not_returned">Moodleへ戻れていない (final=%1$s)</string>
+    <string name="moodle_error_no_success_marker">Moodleへの復帰後、成功マーカーが見つからない (url=%1$s)</string>
+    <string name="moodle_error_connection_format">通信できませんでした: %1$s</string>
+    <string name="moodle_error_session_establishment_failed">セッションを確立できませんでした。もう一度お試しください。</string>
+    <string name="moodle_error_session_info_failed">セッション情報を取得できませんでした</string>
+    <string name="moodle_error_course_page_format">コースページを取得できませんでした (HTTP %1$d)</string>
+
+    <!-- Common -->
+    <string name="account_changed_fetch_cancelled">アカウントが切り替わったため、読み込みを中止しました。</string>
+    <string name="common_unknown_problem">不明な問題が起きました</string>
+
+    <!-- Gateway errors -->
+    <string name="gateway_auth_failed">学内ゲートウェイ (%1$s) で認証できませんでした。ユーザー名とパスワードが正しいか確認してください。</string>
+    <string name="gateway_connection_failed">学内ゲートウェイ (%1$s) へ接続できませんでした: %2$s</string>
+
+    <!-- OTP prompt -->
+    <string name="otp_prompt_mail_manual_fallback">メールからワンタイムパスワードを取得できませんでした。届いたメールのコードを入力してください。</string>
+    <string name="otp_prompt_authenticator_code">認証アプリに表示されているコードを入力してください。</string>
+
+    <!-- OTP relay -->
+    <string name="otp_relay_browser_default_name">PCのブラウザ</string>
+    <string name="otp_relay_sent_success">PCにOTPを送りました</string>
+    <string name="otp_relay_response_status_format">中継サーバーからの応答: %1$d</string>
+    <string name="otp_relay_failure_mail_connection">大学のメールサーバーに接続できませんでした。通信状況を確認して、PCでもう一度ログインしてください。</string>
+    <string name="otp_relay_failure_consent_required">このPCとの連携の確認が済んでいません。アプリを開いて確認してください。</string>
+    <string name="otp_relay_failure_method_mismatch">PCの画面とこのアプリのログイン方法が合っていません。設定の「ログイン方法」を確認してください。</string>
+    <string name="otp_relay_failure_totp_consent_required">このPCに認証アプリのコードを送るかの確認が済んでいません。アプリを開いて確認してください。</string>
+    <string name="otp_relay_failure_totp_step_used">同じコードを使ったばかりのため、送れませんでした。PCで少し待ってから、もう一度ログインしてください。</string>
+    <string name="otp_relay_failure_no_totp_key">このアプリに認証アプリのセットアップキーがありません。設定で認証アプリを登録し直してください。</string>
+    <string name="otp_relay_failure_key_suspended">認証できず、再設定が必要です。設定で認証アプリを登録し直してください。</string>
+    <string name="otp_relay_failure_no_credentials">アプリにユーザー名とパスワードが保存されていません。設定で入力してください。</string>
+    <string name="otp_relay_failure_login_failed">ユーザー名かパスワードが正しくないため、大学のメールを読めませんでした。設定で入力し直してください。</string>
+    <string name="otp_relay_failure_code_not_found">大学のメールからOTPを読み取れませんでした。</string>
+    <string name="otp_relay_failure_mail_timeout">OTPのメールが時間内に届きませんでした。PCでもう一度ログインしてください。</string>
+    <string name="otp_relay_failure_expired">期限が切れました。PCでもう一度ログインしてください。</string>
+    <string name="otp_relay_failure_relay_unreachable">中継サーバーにOTPを送れませんでした。時間をおいて、PCでもう一度ログインしてください。</string>
+    <string name="otp_relay_failure_bad_key">連携の情報が壊れています。アプリの設定で連携を解除して、連携し直してください。</string>
+
+    <!-- Secioss (IdP) errors -->
+    <string name="secioss_error_login_missing_field">大学のログイン画面を読み取れませんでした (%1$s)。時間をおいて、もう一度ログインしてください。続くときは問い合わせてください。</string>
+    <string name="secioss_error_unexpected_status">%1$sで予期しない応答がありました (HTTP %2$d)。時間をおいて、もう一度お試しください。</string>
+    <string name="secioss_error_otp_request_failed">ワンタイムパスワードを送れませんでした。</string>
+    <string name="secioss_error_invalid_otp">ワンタイムパスワードが正しくないか、期限が切れています。もう一度ログインからやり直してください。</string>
+    <string name="secioss_error_otp_not_configured">ワンタイムパスワードが未設定です。学内ネットワークから設定してください。</string>
+    <string name="secioss_error_otp_already_configured">このアカウントは、すでにワンタイムパスワードが設定されています。</string>
+    <string name="secioss_error_login_unrecognized_state">予期しない画面が表示されました (%1$s)。画面の表示が変わった可能性があります。</string>
+    <string name="secioss_error_session_timed_out">大学の認証システムとの接続の有効期限が切れました。もう一度ログインからやり直してください。</string>
+    <string name="secioss_error_interactive_login_required">ワンタイムパスワードの入力が必要です。</string>
+    <string name="secioss_error_totp_step_unavailable">認証アプリのコードを作れませんでした。時間をおいて、もう一度ログインしてください。</string>
+    <string name="secioss_error_otp_fetch_failed">OTPのメールを読み取れませんでした。アプリを開いてログインしてください。</string>
+    <string name="secioss_error_maintenance">大学のシステムがメンテナンス中です。終了後にもう一度お試しください。\n%1$s</string>
+    <string name="secioss_error_moodle_sso_not_ready">Moodle側でこのアカウントのシングルサインオンがまだ有効になっていません。大学側の移行作業が完了するまで利用できません。</string>
+    <string name="secioss_error_campussquare_sso_not_ready">CampusSquare側でこのアカウントのシングルサインオンがまだ有効になっていません。大学側の移行作業が完了するまで利用できません。</string>
+    <string name="secioss_error_access_denied">大学の認証システムがこのサービスへのアクセスを許可していません (%1$s)。大学側の設定が完了するまで利用できません。</string>
+    <string name="secioss_error_invalid_credentials">ユーザー名またはパスワードが正しくありません。設定で入力し直してください。</string>
+    <string name="secioss_error_registration_missing_field">登録画面が想定した形式ではありませんでした (%1$s)。</string>
+    <string name="secioss_error_registration_otp_request_failed">確認コードを送れませんでした。</string>
+    <string name="secioss_error_registration_invalid_otp">確認コードが正しくないか、期限が切れています。もう一度やり直してください。</string>
+    <string name="secioss_error_registration_otp_not_configured">このアカウントはワンタイムパスワードが未設定です。</string>
+    <string name="secioss_error_registration_unrecognized_state">予期しない画面が表示されました (%1$s)。学内ネットワークに接続しているか確認してください (OTP登録は学内ネットワークからのみ行えます)。</string>
+    <string name="secioss_error_registration_interactive_login_required">ワンタイムパスワードの入力が必要です。設定からログインしてください。</string>
+    <string name="secioss_error_registration_totp_step_unavailable">認証アプリのコードを作れませんでした。時間をおいて、もう一度やり直してください。</string>
+    <string name="secioss_error_registration_otp_fetch_failed">OTPのメールを読み取れませんでした。もう一度やり直してください。</string>
+    <string name="secioss_error_registration_access_denied">大学の認証システムがアクセスを許可していません (%1$s)。</string>
 </resources>

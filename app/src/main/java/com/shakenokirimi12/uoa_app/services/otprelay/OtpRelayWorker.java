@@ -16,6 +16,7 @@ import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
 
@@ -116,7 +117,7 @@ public class OtpRelayWorker extends Worker {
     public ForegroundInfo getForegroundInfo() {
         OtpRelayRequest request = requestFromInput();
         OtpRelayPairing pairing = request != null ? OtpRelayStore.find(request.pairingId) : null;
-        String name = pairing != null ? pairing.browserName : "PC のブラウザ";
+        String name = pairing != null ? pairing.browserName : getApplicationContext().getString(R.string.otp_relay_browser_default_name);
         int id = (request != null ? OtpRelayNotifications.notificationId(request.requestId) : 0x52000000) + 1;
         return new ForegroundInfo(id, OtpRelayNotifications.working(getApplicationContext(), name));
     }

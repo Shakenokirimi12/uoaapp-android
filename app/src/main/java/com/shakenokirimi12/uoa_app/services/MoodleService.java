@@ -5,6 +5,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.google.gson.Gson;
+import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.models.Assignment;
 import com.shakenokirimi12.uoa_app.data.models.MoodleCourse;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
@@ -42,7 +43,7 @@ public class MoodleService {
 
     /** 画面側が「この URL は Moodle か」を判定するために使う。 */
     public static String currentBaseUrl() { return baseUrl(); }
-    public static final String INVALID_CREDENTIALS_MESSAGE = AuthErrors.INVALID_CREDENTIALS_MESSAGE;
+    public static String invalidCredentialsMessage() { return AuthErrors.invalidCredentialsMessage(); }
 
     public static boolean isInvalidCredentialsError(String message) {
         return AuthErrors.isInvalidCredentials(message);
@@ -114,7 +115,7 @@ public class MoodleService {
 
     /** 取得の途中で未認証と分かったことを withSession に伝える。 */
     private static final class SessionExpiredException extends Exception {
-        SessionExpiredException() { super("Moodle のセッションが切れました"); }
+        SessionExpiredException() { super(AppStrings.get(R.string.moodle_session_expired)); }
     }
 
     private interface SessionBody<T> { T run(String sesskey) throws Exception; }
@@ -189,7 +190,7 @@ public class MoodleService {
             // OTP 未設定はここでしか分からない。設定画面を探させず、その場で登録画面を開く。
             com.shakenokirimi12.uoa_app.services.idp.OtpRegistrationLauncher.launchIfNeeded(e);
             if (e.kind == SeciossError.Kind.INVALID_CREDENTIALS) {
-                throw new Exception(INVALID_CREDENTIALS_MESSAGE);
+                throw new Exception(invalidCredentialsMessage());
             }
             throw new Exception(e.loginMessage(), e);
         }
@@ -206,14 +207,14 @@ public class MoodleService {
         String finalHost = finalUrl != null ? finalUrl.host().toLowerCase() : "";
         if (!finalHost.equals(host.toLowerCase())) {
             throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
-                    "Moodle へ戻れていない(final=" + session.finalUrl + ")").asLoginException();
+                    AppStrings.get(R.string.moodle_error_not_returned, session.finalUrl)).asLoginException();
         }
         if (session.finalUrl.contains("login/index.php")) {
             throw new SeciossError(SeciossError.Kind.ACCESS_DENIED, "moodle_login_page").asLoginException();
         }
         if (!containsAnySuccessMarker(session.finalHtml)) {
             throw new SeciossError(SeciossError.Kind.UNRECOGNIZED_STATE,
-                    "Moodle への復帰後、成功マーカーが見つからない(url=" + session.finalUrl + ") "
+                    AppStrings.get(R.string.moodle_error_no_success_marker, session.finalUrl) + " "
                             + SeciossIdPClient.visibleExcerpt(session.finalHtml, 200)).asLoginException();
         }
         NetworkClient.addCookies(session.spCookies);
@@ -330,7 +331,7 @@ public class MoodleService {
         if (e instanceof LoginFailure || AuthErrors.isInvalidCredentials(e.getMessage())) {
             postError(callback, e.getMessage());
         } else {
-            postError(callback, "接続エラー: " + e.getMessage());
+            postError(callback, AppStrings.get(R.string.moodle_error_connection_format, e.getMessage()));
         }
     }
 
@@ -406,7 +407,7 @@ public class MoodleService {
                     || bodyWithoutScripts.contains("invalidlogin")
                     || bodyWithoutScripts.contains("id=\"loginerrormessage\"")) {
                 Log.e(TAG, "Login failed: invalid credentials");
-                throw new LoginFailure(INVALID_CREDENTIALS_MESSAGE);
+                throw new LoginFailure(invalidCredentialsMessage());
             }
         }
 
@@ -453,7 +454,7 @@ public class MoodleService {
                 || dashHtml.contains("id=\"login\"")
                 || dashHtml.contains("id=\"loginerrormessage\"")) {
             Log.e(TAG, "Session invalid after login POST");
-            throw new LoginFailure("セッション確立に失敗しました。再度お試しください。");
+            throw new LoginFailure(AppStrings.get(R.string.moodle_error_session_establishment_failed));
         }
 
         String key = extractMatch(dashHtml, "\"sesskey\":\"([^\"]+)\"");
@@ -466,7 +467,7 @@ public class MoodleService {
                 + ", userid: " + uid);
 
         if (key == null || key.isEmpty()) {
-            throw new LoginFailure("セッション情報の取得に失敗しました");
+            throw new LoginFailure(AppStrings.get(R.string.moodle_error_session_info_failed));
         }
         // 確認している間に別のアカウントのログインが jar を差し替えていたら、いま読んだのはそのアカウントの
         // ダッシュボード。sesskey を返すと owner の取得が別人のコースや課題を読むので、ここで止める。
@@ -525,7 +526,7 @@ public class MoodleService {
                     data = MoodleAjax.firstData(gson, response);
                 } catch (MoodleAjax.AjaxException e) {
                     Log.w(TAG, "core_course_get_enrolled_courses_by_timeline_classification failed: " + e.getMessage());
-                    postError(callback, "コース取得に失敗しました");
+                    postError(callback, AppStrings.get(R.string.courses_unavailable));
                     return;
                 }
                 List<Map<String, Object>> coursesRaw =
@@ -576,14 +577,14 @@ public class MoodleService {
                     data = MoodleAjax.firstData(gson, response);
                 } catch (MoodleAjax.AjaxException e) {
                     Log.w(TAG, "core_calendar_get_action_events_by_timesort failed: " + e.getMessage());
-                    postError(callback, "課題の取得に失敗しました");
+                    postError(callback, AppStrings.get(R.string.assignments_unavailable));
                     return;
                 }
                 List<Map<String, Object>> events = data.get("events") instanceof List
                         ? (List<Map<String, Object>>) data.get("events") : null;
                 if (events == null) {
                     Log.w(TAG, "core_calendar_get_action_events_by_timesort failed: no events");
-                    postError(callback, "課題の取得に失敗しました");
+                    postError(callback, AppStrings.get(R.string.assignments_unavailable));
                     return;
                 }
 
@@ -716,7 +717,7 @@ public class MoodleService {
                 throw new SessionExpiredException();
             }
             if (resp.code() != 200 || resp.body() == null) {
-                throw new java.io.IOException("コースページを読み込めませんでした (HTTP " + resp.code() + ")");
+                throw new java.io.IOException(AppStrings.get(R.string.moodle_error_course_page_format, resp.code()));
             }
             html = resp.body().string();
         }
@@ -792,6 +793,6 @@ public class MoodleService {
     }
 
     private <T> void postError(ServiceCallback<T> cb, String msg) {
-        mainHandler.post(() -> cb.onError(msg != null ? msg : "不明なエラー"));
+        mainHandler.post(() -> cb.onError(msg != null ? msg : AppStrings.get(R.string.common_unknown_problem)));
     }
 }

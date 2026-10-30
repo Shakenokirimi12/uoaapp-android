@@ -2,6 +2,7 @@ package com.shakenokirimi12.uoa_app.services;
 
 import android.content.Context;
 
+import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 
 /**
@@ -12,12 +13,14 @@ import com.shakenokirimi12.uoa_app.data.PreferenceManager;
  * これを検出したら資格情報の指紋に誤りの印を付け (BackgroundLoginPolicy)、ID かパスワードが変わるまでログインしない。
  */
 public final class AuthErrors {
-    public static final String INVALID_CREDENTIALS_MESSAGE = "ログインに失敗しました。ユーザー名またはパスワードを確認してください。";
+    public static String invalidCredentialsMessage() {
+        return AppStrings.get(R.string.auth_error_invalid_credentials);
+    }
 
     private AuthErrors() {}
 
     public static boolean isInvalidCredentials(String message) {
-        return INVALID_CREDENTIALS_MESSAGE.equals(message);
+        return invalidCredentialsMessage().equals(message);
     }
 
     /**
