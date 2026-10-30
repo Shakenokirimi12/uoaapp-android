@@ -466,17 +466,18 @@ public class MoodleService {
         if (key == null || key.isEmpty()) {
             throw new LoginFailure("セッション情報の取得に失敗しました");
         }
+        // 確認している間に別のアカウントのログインが jar を差し替えていたら、いま読んだのはそのアカウントの
+        // ダッシュボード。sesskey を返すと owner の取得が別人のコースや課題を読むので、ここで止める。
+        String current = jarOwner;
+        if (current != null && !current.equals(owner.trim())) {
+            throw new AccountChanged();
+        }
         sesskey = key;
         userid = uid;
         // 次回起動で使い回すために保存する (ensureSession の candidate)。ログイン直後だけでなく生存確認の
         // たびに書き直す: ALB の cookie は応答ごとに更新される。持ち主と一緒に保存する (SpSessionCookies)。
-        String current = jarOwner;
-        if (current == null || current.equals(owner.trim())) {
-            PreferenceManager.getInstance().setMoodleSessionCookies(SpSessionCookies.serialize(
-                    NetworkClient.cookiesForHost(moodleHost()), System.currentTimeMillis(), owner));
-        } else {
-            Log.w(TAG, "Moodle cookies now belong to another account; not saving them for this one");
-        }
+        PreferenceManager.getInstance().setMoodleSessionCookies(SpSessionCookies.serialize(
+                NetworkClient.cookiesForHost(moodleHost()), System.currentTimeMillis(), owner));
         return key;
     }
 
@@ -484,9 +485,21 @@ public class MoodleService {
     private String probeDashboardQuietly(String owner) {
         try {
             return probeDashboard(owner);
+        } catch (AccountChanged e) {
+            // 死んでいる (null) と答えると、SessionCoordinator が owner でログインし直し、切り替えた先の
+            // アカウントのセッションを消す。取得ごと失敗させる。
+            throw e;
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * 共有 cookie jar の Moodle のセッションが、取得を始めたのと別のアカウントのものに変わった (jarOwner)。
+     * SessionCoordinator の probe から投げても状態は壊れない (probe は lock と飛行中のログインの外で呼ばれる)。
+     */
+    private static final class AccountChanged extends RuntimeException {
+        AccountChanged() { super("アカウントが切り替わったため、読み込みを中止しました。"); }
     }
 
     /**
