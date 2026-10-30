@@ -35,7 +35,7 @@ public class OtpRelayLinkTest {
     public void missingName_usesDefault() {
         OtpRelayLink.Pending p = OtpRelayLink.parse("uoa-app://otp-pair#p=" + P + "&k=" + K);
         assertNotNull(p);
-        assertEquals("PC のブラウザ", p.browserName);
+        assertEquals("PCのブラウザ", p.browserName);
     }
 
     @Test
