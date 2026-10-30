@@ -110,7 +110,8 @@ final class SessionCoordinator<S> {
     /**
      * 認証済みセッションを返す。必要なときだけ probe / login を呼ぶ。
      *
-     * @param method    ログイン方式。前回と違えば手持ちのセッションは信用しない
+     * @param method    ログイン方式と持ち主 (ユーザー名) の組。前回と違えば手持ちのセッションは信用せず、
+     *                  違う組の飛行中のログインには合流しない (終わるのを待ってから自分のログインを始める)
      * @param candidate live が無いときに、ログインの前に試す候補 (前回プロセスが永続化した cookie 等)。無ければ null
      */
     S session(Object method, AuthorizationContext context, S candidate, Probe<S> probe, Login<S> login) throws Exception {

@@ -62,7 +62,7 @@ public class CampusSquareService {
     public void login(String username, String password, ServiceCallback<Boolean> callback) {
         executor.execute(() -> {
             try {
-                coordinator.forceLogin(SESSION_KIND, () -> freshLogin(username, password, AuthorizationContext.INTERACTIVE),
+                coordinator.forceLogin(sessionKey(username), () -> freshLogin(username, password, AuthorizationContext.INTERACTIVE),
                         unattended(username, password));
                 postSuccess(callback, true);
             } catch (Exception e) {
@@ -113,10 +113,18 @@ public class CampusSquareService {
      * _shibsession_ を含む) を、そのまま Cookie ヘッダに載せられる文字列で返す。
      */
     private String authenticatedCookieHeader(String username, String password, AuthorizationContext context) throws Exception {
-        String cached = storedSessionHeader();
+        String cached = storedSessionHeader(username);
         String candidate = cached.isEmpty() ? null : cached;
-        return coordinator.session(SESSION_KIND, context, candidate, this::probeSession,
+        return coordinator.session(sessionKey(username), context, candidate, this::probeSession,
                 () -> freshLogin(username, password, context), unattended(username, password));
+    }
+
+    /**
+     * SessionCoordinator に渡す鍵。方式と持ち主 (ユーザー名) の組。アカウントを切り替えている間に前のアカウントの
+     * 取得がセッションを作り直しても、新しいアカウントはそれを使わず、飛行中のログインにも合流しない。
+     */
+    private static Object sessionKey(String username) {
+        return java.util.Arrays.asList(SESSION_KIND, username.trim());
     }
 
     /** バックグラウンドの再ログインの判定。ログインに使うのと同じ ID / パスワードで作る。 */
@@ -125,17 +133,21 @@ public class CampusSquareService {
     }
 
     /**
-     * 永続化した CampusSquare のセッションを、CampusSquare へ送る Cookie ヘッダにする。失効分と、Path や
-     * Secure の合わないものはここで落ちる。旧形式 ("name=value; ...") は host-only として読み、新形式で保存し直す。
+     * 永続化した owner の CampusSquare のセッションを、CampusSquare へ送る Cookie ヘッダにする。失効分と、Path や
+     * Secure の合わないものはここで落ちる。別のアカウントのもの・持ち主の無いもの (旧形式を含む) は消す。
      */
-    private static String storedSessionHeader() {
+    private static String storedSessionHeader(String owner) {
         PreferenceManager prefs = PreferenceManager.getInstance();
         String stored = prefs.getCsIdpSessionCookies();
+        if (stored == null || stored.isEmpty()) return "";
+        if (!SpSessionCookies.ownedBy(stored, owner)) {
+            prefs.setCsIdpSessionCookies(null);
+            return "";
+        }
         okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl());
         if (base == null) return "";
         long now = System.currentTimeMillis();
-        List<okhttp3.Cookie> cookies = SpSessionCookies.restore(stored, base.host(), base.isHttps(), now);
-        if (SpSessionCookies.isLegacy(stored)) prefs.setCsIdpSessionCookies(SpSessionCookies.serialize(cookies, now));
+        List<okhttp3.Cookie> cookies = SpSessionCookies.restore(stored, owner, base.host(), now);
         return SpSessionCookies.headerFor(cookies, base, now);
     }
 
@@ -305,7 +317,7 @@ public class CampusSquareService {
         // 属性込みで保存する (次回起動で storedSessionHeader が読む)。返すのは今回のチェーンの最終ホップに
         // 送られたのと同じヘッダ。
         PreferenceManager.getInstance().setCsIdpSessionCookies(
-                SpSessionCookies.serialize(session.spCookies, System.currentTimeMillis()));
+                SpSessionCookies.serialize(session.spCookies, System.currentTimeMillis(), uid));
         return session.cookieHeader;
     }
 

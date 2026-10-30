@@ -64,6 +64,12 @@ public class MoodleService {
     // detail) called the AJAX API with an empty sesskey and quietly got nothing back.
     private static volatile String sesskey = "";
     private static volatile String userid = "";
+    /**
+     * 共有 cookie jar にある Moodle のセッションの持ち主 (ユーザー名)。null は不明。ログインの開始と保存分の復元で
+     * 決まる。アカウント A の生存確認が走っている間に B のログインが終わると、A の確認は jar にある B の cookie を
+     * 読む。それを A のものとして保存しないために、保存の前に突き合わせる。
+     */
+    private static volatile String jarOwner = null;
 
     /**
      * ログインの要否をプロセスで 1 つ判断する (iOS の ensureSession / lastSessionVerifiedAt と同じ)。
@@ -93,6 +99,7 @@ public class MoodleService {
     public static void clearSession() {
         sesskey = "";
         userid = "";
+        jarOwner = null;
         coordinator.reset();
         PreferenceManager.getInstance().setMoodleSessionCookies(null);
     }
@@ -223,7 +230,7 @@ public class MoodleService {
         }
         executor.execute(() -> {
             try {
-                coordinator.forceLogin(resolveLoginMethod(), () -> doLogin(username, password, AuthorizationContext.INTERACTIVE, true),
+                coordinator.forceLogin(sessionKey(username), () -> doLogin(username, password, AuthorizationContext.INTERACTIVE, true),
                         unattended(username, password));
                 postSuccess(callback, true);
             } catch (Exception e) {
@@ -259,17 +266,30 @@ public class MoodleService {
         String candidate = null;
         String host = moodleHost();
         if (!NetworkClient.hasCookies(host)) {
-            okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl());
+            PreferenceManager prefs = PreferenceManager.getInstance();
+            String stored = prefs.getMoodleSessionCookies();
+            // 別のアカウントのもの・持ち主の無いもの (旧形式を含む) は使わずに消す (SpSessionCookies)。
+            if (stored != null && !stored.isEmpty() && !SpSessionCookies.ownedBy(stored, username)) {
+                prefs.setMoodleSessionCookies(null);
+            }
             List<okhttp3.Cookie> restored = SpSessionCookies.restore(
-                    PreferenceManager.getInstance().getMoodleSessionCookies(), host,
-                    base == null || base.isHttps(), System.currentTimeMillis());
+                    prefs.getMoodleSessionCookies(), username, host, System.currentTimeMillis());
             if (!restored.isEmpty()) {
                 NetworkClient.addCookies(restored);
+                jarOwner = username.trim();
                 candidate = "restored";
             }
         }
-        return coordinator.session(resolveLoginMethod(), context, candidate,
-                key -> probeDashboardQuietly(), () -> doLogin(username, password, context, false), unattended(username, password));
+        return coordinator.session(sessionKey(username), context, candidate,
+                key -> probeDashboardQuietly(username), () -> doLogin(username, password, context, false), unattended(username, password));
+    }
+
+    /**
+     * SessionCoordinator に渡す鍵。方式と持ち主 (ユーザー名) の組。アカウントを切り替えている間に前のアカウントの
+     * 取得がセッションを作り直しても、新しいアカウントはそれを使わず、飛行中のログインにも合流しない。
+     */
+    private static Object sessionKey(String username) {
+        return java.util.Arrays.asList(resolveLoginMethod(), username.trim());
     }
 
     /** バックグラウンドの再ログインの判定。ログインに使うのと同じ ID / パスワードで作る。 */
@@ -324,6 +344,7 @@ public class MoodleService {
         // ここに来るのは手持ちのセッションが無いか死んでいたとき。復元した cookie と新しく発行される cookie の
         // Path / Domain が違うと置き換わらずに同名を二重に送るので、先に捨てる。
         NetworkClient.removeCookiesIssuedTo(moodleHost());
+        jarOwner = username.trim();
 
         if (resolveLoginMethod() == LoginMethod.IDP) {
             // IdP 経由でセッション cookie を得たら、以降 (/my/ で sesskey 取得) は旧方式と共通。
@@ -387,7 +408,7 @@ public class MoodleService {
             }
         }
 
-        String key = probeDashboard();
+        String key = probeDashboard(username);
         Log.d(TAG, "Login successful");
         return key;
     }
@@ -395,8 +416,10 @@ public class MoodleService {
     /**
      * GET /my/ で認証済みか確かめ、sesskey / userid を取り出して共有状態を更新する。
      * 未認証 (ログインページに戻される) なら LoginFailure。ログイン直後とセッション再確認の両方で使う。
+     *
+     * @param owner 保存するセッションの持ち主 (このセッションでログインしたユーザー名)。
      */
-    private String probeDashboard() throws Exception {
+    private String probeDashboard(String owner) throws Exception {
         // リダイレクトは Moodle のホストの中だけ追う (iOS の sameHostRedirectsOnly と同じ)。未ログインだと
         // /my/ は login → IdP (SAML) へ飛び、IdP まで追うと cookie jar に溜まった古い IdP cookie で IdP 内を
         // ループして too many redirects で落ちる (2026-09-16 iOS 実機ログ)。別ホストへの 3xx で未ログインは
@@ -446,16 +469,21 @@ public class MoodleService {
         sesskey = key;
         userid = uid;
         // 次回起動で使い回すために保存する (ensureSession の candidate)。ログイン直後だけでなく生存確認の
-        // たびに書き直す: ALB の cookie は応答ごとに更新され、旧形式で保存されていた分もここで新形式になる。
-        PreferenceManager.getInstance().setMoodleSessionCookies(SpSessionCookies.serialize(
-                NetworkClient.cookiesForHost(moodleHost()), System.currentTimeMillis()));
+        // たびに書き直す: ALB の cookie は応答ごとに更新される。持ち主と一緒に保存する (SpSessionCookies)。
+        String current = jarOwner;
+        if (current == null || current.equals(owner.trim())) {
+            PreferenceManager.getInstance().setMoodleSessionCookies(SpSessionCookies.serialize(
+                    NetworkClient.cookiesForHost(moodleHost()), System.currentTimeMillis(), owner));
+        } else {
+            Log.w(TAG, "Moodle cookies now belong to another account; not saving them for this one");
+        }
         return key;
     }
 
     /** 生きていれば /my/ から取り直した sesskey (以前と違えばそちらが正)、死んでいれば null。 */
-    private String probeDashboardQuietly() {
+    private String probeDashboardQuietly(String owner) {
         try {
-            return probeDashboard();
+            return probeDashboard(owner);
         } catch (Exception e) {
             return null;
         }

@@ -187,6 +187,25 @@ public class SessionCoordinatorTest {
         assertEquals(2, logins.get());
     }
 
+    /**
+     * 鍵の持ち主 (ユーザー名) が違えば、手持ちのセッションを使わない。アカウントを切り替えている間に前のアカウントの
+     * 取得がセッションを作り直しても、新しいアカウントがそれで取得しない。
+     */
+    @Test
+    public void sessionOfAnotherOwner_isNotReused() throws Exception {
+        SessionCoordinator<String> coordinator = new SessionCoordinator<>();
+        Object accountA = java.util.Arrays.asList("idp", "s1300001");
+        Object accountB = java.util.Arrays.asList("idp", "s1300002");
+        coordinator.session(accountA, AuthorizationContext.INTERACTIVE, null, s -> s, () -> "session-a");
+
+        String forB = coordinator.session(accountB, AuthorizationContext.INTERACTIVE, null, s -> s, () -> "session-b");
+        assertEquals("session-b", forB);
+        // 同じ持ち主の鍵は、別に作った List でも同じものとして扱う (信用期間内なので probe もログインもしない)。
+        assertEquals("session-b", coordinator.session(java.util.Arrays.asList("idp", "s1300002"),
+                AuthorizationContext.INTERACTIVE, null, s -> { throw new AssertionError("probe"); },
+                () -> { throw new AssertionError("login"); }));
+    }
+
     /** 障害系の失敗は、バックグラウンドからの再試行を抑える前にそもそもログインへ進ませない。 */
     @Test
     public void backgroundAfterFailure_stillDoesNotLogIn() throws Exception {
