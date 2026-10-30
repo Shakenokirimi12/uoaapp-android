@@ -70,10 +70,10 @@
     <!-- Onboarding -->
     <!-- 「同意して続ける」の対象を明示する。プライバシーポリシーのページは無いので、同意内容はこの場に書く。 -->
     <string name="onboarding_consent_title">続ける前に</string>
-    <string name="onboarding_consent_body">「同意して続ける」をタップすると、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquare や大学のメールへのログインを代行するためだけに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールで受け取る設定 (既定) では、大学のメールに届いたワンタイムパスワードを、このアプリが読み取って入力します。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
+    <string name="onboarding_consent_body">「同意して続ける」をタップすると、次に同意したものとします。\n\n・本アプリは会津大学の非公式アプリで、大学とは一切関係ありません。\n・次の画面で入力するユーザー名・パスワードは、Moodle / CampusSquareや大学のメールへのログインを代行するためだけに使い、この端末内にのみ暗号化して保存します。大学のログイン先以外の外部サーバーには送信しません。\n・ワンタイムパスワードをメールで受け取る設定 (既定) では、大学のメールに届いたワンタイムパスワードを、このアプリが読み取って入力します。\n・本アプリは無保証で提供されます。表示内容の誤りや、本アプリの利用によって生じたいかなる不利益についても、開発者は一切の責任を負いません。</string>
     <string name="onboarding_agree">同意して続ける</string>
     <string name="onboarding_login_title">ログイン</string>
-    <string name="onboarding_login_desc">Moodle / CampusSquare のアカウントでログインしてください。</string>
+    <string name="onboarding_login_desc">Moodle / CampusSquareのアカウントでログインしてください。</string>
     <string name="onboarding_username_hint">ユーザー名 (例: s1234567)</string>
     <string name="onboarding_password_hint">パスワード</string>
     <string name="onboarding_login_button">ログイン</string>
@@ -104,56 +104,56 @@
     <string name="browser_share">共有</string>
     <string name="browser_open_external">ブラウザで開く</string>
     <string name="browser_auth_confirm_title">大学のユーザー名とパスワードを送りますか？</string>
-    <string name="browser_auth_confirm_message">%1$s がログイン (Basic 認証) を求めています。このアプリに保存している大学のユーザー名とパスワードをこのページに送ります。開こうとしたページでなければ「キャンセル」をタップしてください。</string>
+    <string name="browser_auth_confirm_message">%1$sがログイン (Basic認証) を求めています。このアプリに保存している大学のユーザー名とパスワードをこのページに送ります。開こうとしたページでなければ「キャンセル」をタップしてください。</string>
     <string name="browser_auth_confirm_send">送る</string>
-    <string name="browser_auth_failed">%1$s の認証を通過できませんでした。メニューからブラウザで開いてください。</string>
+    <string name="browser_auth_failed">%1$sの認証を通過できませんでした。メニューからブラウザで開いてください。</string>
     <string name="browser_download_started">ダウンロードを開始しました: %1$s</string>
     <string name="browser_download_failed">ダウンロードを開始できませんでした</string>
     <!-- Background sync -->
     <string name="class_channel_name">授業通知</string>
     <string name="lunch_channel_name">学食メニュー</string>
-    <string name="otp_relay_channel_name">PC への OTP 送信結果</string>
-    <string name="otp_relay_title">PC との連携</string>
-    <string name="otp_relay_intro">PC で OTP の入力画面が出ると、この端末が OTP を暗号化して自動で PC に送ります (メール方式なら大学のメールから読み、認証アプリ方式ならセットアップキーで作ります)。ユーザー名・パスワード・セットアップキーは、PC にも中継サーバーにも送りません。</string>
+    <string name="otp_relay_channel_name">PCへのOTP送信結果</string>
+    <string name="otp_relay_title">PCとの連携</string>
+    <string name="otp_relay_intro">PCでOTPの入力画面が出ると、この端末がOTPを暗号化して自動でPCに送ります (メール方式なら大学のメールから読み、認証アプリ方式ならセットアップキーで作ります)。ユーザー名・パスワード・セットアップキーは、PCにも中継サーバーにも送りません。</string>
     <string name="otp_relay_consent_continue">続ける</string>
-    <string name="otp_relay_consent_pending">確認が済むまで OTP を送りません</string>
-    <string name="otp_relay_consent_save_failed">この端末に保存できませんでした。設定の「PC との連携」を開いて、もう一度お試しください。</string>
+    <string name="otp_relay_consent_pending">確認が済むまでOTPを送りません</string>
+    <string name="otp_relay_consent_save_failed">この端末に保存できませんでした。設定の「PCとの連携」を開いて、もう一度お試しください。</string>
     <string name="otp_relay_unreachable">中継サーバーに接続できませんでした。</string>
-    <string name="otp_relay_consent_title">PC との連携を続けますか？</string>
-    <string name="otp_relay_consent_message">「%1$s」で OTP の入力画面が出ると、このアプリが OTP を用意し、暗号化してその PC に自動で送ります。メール方式なら大学のメールから読み取り (OTP のメールは、古いものも含めて削除します)、認証アプリ方式ならこのアプリにあるセットアップキーでコードを作ります。ユーザー名・パスワード・セットアップキーは送りません。「続ける」をタップすると、そのためにメールを読み、コードを作って送ることに同意したことになります。\n\n心当たりのない PC なら、「解除」をタップしてください。</string>
+    <string name="otp_relay_consent_title">PCとの連携を続けますか？</string>
+    <string name="otp_relay_consent_message">「%1$s」でOTPの入力画面が出ると、このアプリがOTPを用意し、暗号化してそのPCに自動で送ります。メール方式なら大学のメールから読み取り (OTPのメールは、古いものも含めて削除します)、認証アプリ方式ならこのアプリにあるセットアップキーでコードを作ります。ユーザー名・パスワード・セットアップキーは送りません。「続ける」をタップすると、そのためにメールを読み、コードを作って送ることに同意したことになります。\n\n心当たりのないPCなら、「解除」をタップしてください。</string>
     <string name="otp_relay_totp_consent_title">「%1$s」に認証アプリのコードを送りますか？</string>
-    <string name="otp_relay_totp_consent_message">この PC で OTP の入力画面が出ると、このアプリが認証アプリのコードを作って自動で送ります。自分の PC でなければ「解除」をタップしてください。</string>
+    <string name="otp_relay_totp_consent_message">このPCでOTPの入力画面が出ると、このアプリが認証アプリのコードを作って自動で送ります。自分のPCでなければ「解除」をタップしてください。</string>
     <string name="otp_relay_totp_consent_send">送る</string>
     <string name="otp_relay_totp_consent_later">あとで</string>
-    <string name="otp_relay_ext_title">PC に拡張機能を入れる</string>
-    <string name="otp_relay_ext_lead">PC のブラウザでこのアドレスを開くと、UoA 非公式拡張を入れられます。</string>
+    <string name="otp_relay_ext_title">PCに拡張機能を入れる</string>
+    <string name="otp_relay_ext_lead">PCのブラウザでこのアドレスを開くと、UoA 非公式拡張を入れられます。</string>
     <string name="otp_relay_ext_url_display" translatable="false">uoa-app.shakenokiri.me/ext</string>
     <string name="otp_relay_ext_copy">アドレスをコピー</string>
     <string name="otp_relay_ext_copied">コピーしました</string>
     <string name="otp_relay_ext_mail">大学のメールに送る</string>
     <string name="otp_relay_ext_share">共有</string>
-    <string name="otp_relay_ext_search">PC のブラウザの Chrome ウェブストアか Firefox アドオンで、「UoA 非公式拡張」を検索しても見つかります。</string>
+    <string name="otp_relay_ext_search">PCのブラウザのChromeウェブストアかFirefoxアドオンで、「UoA 非公式拡張」を検索しても見つかります。</string>
     <string name="otp_relay_ext_mail_subject">UoA 非公式拡張のインストール</string>
-    <string name="otp_relay_ext_mail_body">PC のブラウザで次のアドレスを開くと、UoA 非公式拡張を入れられます。\n%1$s</string>
+    <string name="otp_relay_ext_mail_body">PCのブラウザで次のアドレスを開くと、UoA 非公式拡張を入れられます。\n%1$s</string>
     <string name="otp_relay_ext_no_mail_app">メールアプリが見つかりませんでした。</string>
     <string name="otp_relay_paste_link">リンクを貼り付けて連携</string>
     <string name="otp_relay_paste_title">連携用のリンクを貼り付け</string>
     <string name="otp_relay_paste_hint">uoa-app://otp-pair#…</string>
-    <string name="otp_relay_paste_invalid">連携用のリンクではありません。PC の拡張機能で連携用の QR コードを表示し直し、その中身のリンクを貼り付けてください。</string>
+    <string name="otp_relay_paste_invalid">連携用のリンクではありません。PCの拡張機能で連携用のQRコードを表示し直し、その中身のリンクを貼り付けてください。</string>
     <string name="otp_relay_section_pairings">連携しているブラウザ</string>
     <string name="otp_relay_none">まだありません</string>
     <string name="otp_relay_unpair">解除</string>
-    <string name="otp_relay_paired_on">%1$s に連携</string>
+    <string name="otp_relay_paired_on">%1$sに連携</string>
     <string name="otp_relay_section_last_result">直近の結果</string>
     <string name="otp_relay_section_howto">連携のしかた</string>
-    <string name="otp_relay_howto">1. PC の拡張機能の設定で「OTP 自動入力」の「スマホと連携」をクリックし、連携用の QR コードを表示する
-2. その QR を、この端末の標準のカメラ (または Google レンズ) で読む。カメラから開けないときは、QR コードの中身のリンクをコピーして「リンクを貼り付けて連携」に貼る
+    <string name="otp_relay_howto">1. PCの拡張機能の設定で「OTP 自動入力」の「スマホと連携」をクリックし、連携用のQRコードを表示する
+2. そのQRを、この端末の標準のカメラ (またはGoogleレンズ) で読む。カメラから開けないときは、QRコードの中身のリンクをコピーして「リンクを貼り付けて連携」に貼る
 3. このアプリが開いたら「同意して連携する」をタップする</string>
     <string name="otp_relay_unpair_confirm">「%1$s」との連携を解除しますか？</string>
     <string name="otp_relay_unpair_failed_title">中継サーバーで解除できませんでした</string>
-    <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からだけ削除してください。削除しても、PC の拡張機能で解除するまで依頼は届きます。届いても OTP は送りません。</string>
+    <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からだけ削除してください。削除しても、PCの拡張機能で解除するまで依頼は届きます。届いてもOTPは送りません。</string>
     <string name="otp_relay_forget_local">この端末からだけ削除</string>
-    <string name="otp_relay_progress_channel_name">PC への OTP 送信中</string>
+    <string name="otp_relay_progress_channel_name">PCへのOTP送信中</string>
     <string name="class_channel_description">授業中・次の授業の常駐通知と、出席の自動記録の完了を表示します</string>
     <string name="login_required_channel_name">ログインの通知</string>
     <string name="login_required_notify_title">ログインが必要です</string>
@@ -173,10 +173,10 @@
     <string name="widget_not_logged_in">ログインすると表示されます</string>
     <string name="widget_not_fetched">時間割をまだ取得していません</string>
     <string name="widget_stale">時間割を同期できていません</string>
-    <string name="widget_last_updated">最終同期 %1$s</string>
+    <string name="widget_last_updated">最終同期%1$s</string>
     <string name="widget_classes_finished">今日の授業は終わりました</string>
-    <string name="widget_more">他 %1$d 件</string>
-    <string name="settings_assignment_notify_summary">提出期限前の通知と、2 時間前からの残り時間の表示</string>
+    <string name="widget_more">他%1$d件</string>
+    <string name="settings_assignment_notify_summary">提出期限前の通知と、2時間前からの残り時間の表示</string>
     <string name="settings_notify_times">通知のタイミング</string>
     <string name="settings_class_notification">授業の常駐通知</string>
     <string name="settings_class_notification_summary">授業中と次の授業を通知欄に常に表示します</string>
@@ -196,23 +196,23 @@
     <string name="settings_location_warning">位置情報が「常に許可」でないため、アプリを閉じている間は動きません。タップして変更</string>
     <string name="settings_other">その他</string>
     <string name="settings_support">問い合わせ</string>
-    <string name="settings_support_id">問い合わせ ID</string>
-    <string name="settings_support_id_summary">問い合わせるときは、この ID を書き添えてください。この端末の記録を探すのに使います。</string>
-    <string name="settings_support_id_copy">問い合わせ ID をコピー</string>
-    <string name="settings_support_id_copied">問い合わせ ID をコピーしました</string>
+    <string name="settings_support_id">問い合わせID</string>
+    <string name="settings_support_id_summary">問い合わせるときは、このIDを書き添えてください。この端末の記録を探すのに使います。</string>
+    <string name="settings_support_id_copy">問い合わせIDをコピー</string>
+    <string name="settings_support_id_copied">問い合わせIDをコピーしました</string>
     <string name="settings_usage_stats">利用状況と診断情報を送る</string>
-    <string name="settings_usage_stats_summary">開いた画面の回数と学籍番号の期 (27期など) を1日1回送ります。学籍番号そのものや時間割は送りません。\nOTP メールの読み取りと PC への中継のたびに、かかった時間と手順を問い合わせ ID と一緒に送ります。ユーザー名・パスワード・OTP・メールの中身は送りません。</string>
+    <string name="settings_usage_stats_summary">開いた画面の回数と学籍番号の期 (27期など) を1日1回送ります。学籍番号そのものや時間割は送りません。\nOTPメールの読み取りとPCへの中継のたびに、かかった時間と手順を問い合わせIDと一緒に送ります。ユーザー名・パスワード・OTP・メールの中身は送りません。</string>
     <string name="settings_tabs">タブの並び替え</string>
     <string name="settings_backup">設定をバックアップ</string>
     <string name="settings_restore">バックアップから復元</string>
     <string name="otp_add_to_authenticator">認証アプリで開く</string>
     <string name="otp_choose_authenticator">開く認証アプリを選ぶ</string>
-    <string name="otp_manual_secret_hint">Authy など、リンクから追加できないアプリでは、下のセットアップキーを手で入力するか、別の端末で QR コードを読み取ってください。</string>
-    <string name="otp_show_qr">QR コードを表示</string>
-    <string name="otp_qr_description">認証アプリ用の QR コード</string>
-    <string name="otp_key_dialog_hint">Authy など、リンクから追加できないアプリでは、このセットアップキーを手で入力するか、別の端末でこの QR コードを読み取ってください。</string>
+    <string name="otp_manual_secret_hint">Authyなど、リンクから追加できないアプリでは、下のセットアップキーを手で入力するか、別の端末でQRコードを読み取ってください。</string>
+    <string name="otp_show_qr">QRコードを表示</string>
+    <string name="otp_qr_description">認証アプリ用のQRコード</string>
+    <string name="otp_key_dialog_hint">Authyなど、リンクから追加できないアプリでは、このセットアップキーを手で入力するか、別の端末でこのQRコードを読み取ってください。</string>
     <string name="otp_copy_secret">セットアップキーをコピー</string>
-    <string name="otp_method_authenticator_summary">このアプリがコードを作って入力します。Google Authenticator や Authy にも追加できます。</string>
+    <string name="otp_method_authenticator_summary">このアプリがコードを作って入力します。Google AuthenticatorやAuthyにも追加できます。</string>
     <string name="otp_code_from_app">認証アプリにセットアップキーを追加して、表示されたコードを入力してください。このアプリにも同じセットアップキーを保存し、ログインのコードを自動で入力します。</string>
     <string name="otp_code_mismatch">コードが一致しません。認証アプリに今のセットアップキーを追加したか確認して、表示中のコードを入力してください。</string>
     <string name="otp_secret_unreadable">大学のシステムが発行したセットアップキーを読み取れなかったため、登録していません。</string>
@@ -228,12 +228,12 @@
     <string name="login_account_summary">大学のユーザー名とパスワード</string>
     <string name="login_otp_section">ワンタイムパスワード</string>
     <string name="login_otp_method">ログイン方法</string>
-    <string name="login_show_secret">セットアップキーと QR コードを表示</string>
-    <string name="login_show_secret_summary">Authy などに追加するときに使います。画面ロックの確認があります。</string>
-    <string name="login_relay_section">PC での入力</string>
-    <string name="login_relay_summary">PC のブラウザでログインするとき、コードをこの端末から送ります</string>
+    <string name="login_show_secret">セットアップキーとQRコードを表示</string>
+    <string name="login_show_secret_summary">Authyなどに追加するときに使います。画面ロックの確認があります。</string>
+    <string name="login_relay_section">PCでの入力</string>
+    <string name="login_relay_summary">PCのブラウザでログインするとき、コードをこの端末から送ります</string>
     <string name="login_secret_title">認証アプリのセットアップキー</string>
-    <string name="login_secret_needs_lock">画面ロック (PIN やパターン) を設定すると表示できます。</string>
+    <string name="login_secret_needs_lock">画面ロック (PINやパターン) を設定すると表示できます。</string>
     <string name="login_secret_confirm_title">セットアップキーを表示</string>
     <string name="login_secret_confirm_description">本人か確認します</string>
     <string name="close">閉じる</string>
@@ -307,12 +307,12 @@
 
     <!-- Tab order settings -->
     <string name="nav_settings_description">タップで入れ替えます。下のタブに無い画面は「その他」から開けます。</string>
-    <string name="nav_settings_bottom_tabs_header">下のタブ (4 つまで)</string>
+    <string name="nav_settings_bottom_tabs_header">下のタブ (4つまで)</string>
     <string name="nav_settings_more_header">「その他」</string>
     <string name="nav_settings_reset_button">最初の並びに戻す</string>
 
     <!-- Timetable sharing -->
-    <string name="timetable_exchange_qr_description">時間割の共有の QR コード</string>
+    <string name="timetable_exchange_qr_description">時間割の共有のQRコード</string>
 
     <!-- Syllabus -->
     <string name="syllabus_section_basic">基本情報</string>
@@ -361,14 +361,14 @@
     <string name="class_detail_dialog_location_unset">未設定</string>
     <string name="class_detail_dialog_duration_minutes">%1$d分</string>
     <string name="class_detail_dialog_duration_with_count">%1$d分 (%2$dコマ)</string>
-    <string name="class_detail_dialog_status_in_progress">授業中、残り %1$d分</string>
+    <string name="class_detail_dialog_status_in_progress">授業中、残り%1$d分</string>
     <string name="class_detail_dialog_status_starts_in">%1$d分後に開始</string>
     <string name="class_location_dialog_no_room">教室情報なし</string>
     <string name="class_location_dialog_university_name">会津大学</string>
     <string name="class_location_dialog_no_map_app">地図を開けるアプリがありません</string>
 
     <!-- Class notification -->
-    <string name="class_notification_remaining">"%1$s  残り %2$d分"</string>
+    <string name="class_notification_remaining">"%1$s  残り%2$d分"</string>
     <string name="class_notification_next_title">次の授業: %1$s</string>
     <string name="class_notification_starts_in">"%1$s  %2$d分後"</string>
     <string name="class_notification_finished">今日の授業は終わりました</string>
@@ -401,7 +401,7 @@
 
     <!-- Gakushoku -->
     <string name="gakushoku_unavailable">メニューを取得できませんでした</string>
-    <string name="gakushoku_show_past_format">過去 %1$d 日分を表示</string>
+    <string name="gakushoku_show_past_format">過去%1$d日分を表示</string>
 
     <!-- Grades -->
     <string name="grades_unavailable">成績を取得できませんでした</string>
@@ -467,7 +467,7 @@
     <string name="common_button_later">あとで</string>
 
     <!-- Notification timing settings -->
-    <string name="notify_times_delete_message_format">%1$s を削除しますか？</string>
+    <string name="notify_times_delete_message_format">%1$sを削除しますか？</string>
     <string name="notify_times_unit_days">日</string>
     <string name="notify_times_unit_hours">時間</string>
     <string name="notify_times_unit_minutes">分</string>
@@ -495,37 +495,37 @@
     <string name="settings_login_summary_format">%1$s ・ %2$s</string>
 
     <!-- Timetable sharing -->
-    <string name="timetable_failure_share_expired">この共有は期限切れか、止められています。相手に、もう一度 QR コードを出してもらってください。</string>
+    <string name="timetable_failure_share_expired">この共有は期限切れか、止められています。相手に、もう一度QRコードを出してもらってください。</string>
     <string name="timetable_failure_too_many_requests">短い時間に何度も送られました。少し待ってから、もう一度お試しください。</string>
-    <string name="timetable_failure_full">この QR コードは、受け取れる人数の上限に達しました。相手に、新しい QR コードを出してもらってください。</string>
+    <string name="timetable_failure_full">このQRコードは、受け取れる人数の上限に達しました。相手に、新しいQRコードを出してもらってください。</string>
     <string name="timetable_failure_no_network">通信できませんでした。通信状況を確認して、もう一度お試しください。</string>
     <string name="timetable_failure_unreadable">受け取った時間割を読めませんでした。アプリを最新にしてください。</string>
     <string name="timetable_failure_server_error">サーバーで問題が起きました。少し待ってから、もう一度お試しください。</string>
     <string name="timetable_failure_cannot_store">この端末では共有を始められませんでした。</string>
     <string name="timetable_date_format_month_day">M月d日</string>
     <string name="timetable_date_format_full">yyyy年M月d日</string>
-    <string name="timetable_date_format_until">M月d日 H:mm</string>
-    <string name="timetable_received_on_format">%1$s に受け取り</string>
-    <string name="timetable_valid_until_format">%1$s まで有効</string>
-    <string name="timetable_received_line_format">%1$s ・ 週 %2$d コマ</string>
+    <string name="timetable_date_format_until">M月d日H:mm</string>
+    <string name="timetable_received_on_format">%1$sに受け取り</string>
+    <string name="timetable_valid_until_format">%1$sまで有効</string>
+    <string name="timetable_received_line_format">%1$s ・ 週%2$dコマ</string>
     <string name="timetable_exchange_sending_unnamed">名前なしで送ります</string>
     <string name="timetable_exchange_sending_as_format">「%1$s」として送ります</string>
-    <string name="timetable_exchange_expired">共有の期限が切れました。もう一度 QR コードを作ってください。</string>
-    <string name="timetable_exchange_received_format">%1$s さんの時間割を受け取りました</string>
+    <string name="timetable_exchange_expired">共有の期限が切れました。もう一度QRコードを作ってください。</string>
+    <string name="timetable_exchange_received_format">%1$sさんの時間割を受け取りました</string>
     <string name="timetable_incoming_open_failed_title">時間割の共有を開けませんでした</string>
-    <string name="timetable_incoming_invalid_link_message">QR コードかリンクが正しくありません。相手に、もう一度 QR コードを出してもらってください。</string>
+    <string name="timetable_incoming_invalid_link_message">QRコードかリンクが正しくありません。相手に、もう一度QRコードを出してもらってください。</string>
     <string name="timetable_incoming_receive_failed_title">受け取れませんでした</string>
-    <string name="timetable_incoming_name_format">%1$s さん</string>
-    <string name="timetable_incoming_count_format">週 %1$d コマ</string>
+    <string name="timetable_incoming_name_format">%1$sさん</string>
+    <string name="timetable_incoming_count_format">週%1$dコマ</string>
     <string name="timetable_incoming_sent_back_message">自分の時間割も送りました。相手の画面にも届きます。</string>
     <string name="timetable_incoming_send_back_failed_format">自分の時間割は送れませんでした。%1$s</string>
-    <string name="timetable_incoming_saved_title_format">%1$s さんの時間割を保存しました</string>
+    <string name="timetable_incoming_saved_title_format">%1$sさんの時間割を保存しました</string>
     <string name="timetable_friend_missing">この友達の時間割はありません</string>
-    <string name="timetable_friend_counts_format">同じ授業 %1$d コマ ・ どちらも空き %2$d コマ</string>
+    <string name="timetable_friend_counts_format">同じ授業%1$dコマ ・ どちらも空き%2$dコマ</string>
     <string name="timetable_friend_no_free_slots">どちらも空いているコマはありません</string>
     <string name="timetable_friend_no_same_classes">同じ時間に受けている授業はありません</string>
     <string name="timetable_friend_day_row_format">%1$s %2$s</string>
-    <string name="timetable_friend_delete_title_format">%1$s さんの時間割を削除しますか？</string>
+    <string name="timetable_friend_delete_title_format">%1$sさんの時間割を削除しますか？</string>
     <string name="timetable_paste_open_button">開く</string>
     <string name="timetable_paste_invalid_title">読み取れませんでした</string>
     <string name="timetable_paste_invalid_message">貼り付けた文字に、時間割の共有リンクが見つかりませんでした。</string>
@@ -534,13 +534,13 @@
     <string name="timetable_grid_period_range_format">%1$d〜%2$d限</string>
     <string name="timetable_grid_all_day">終日</string>
     <string name="timetable_grid_list_separator">、</string>
-    <string name="timetable_grid_day_spoken_format">%1$s曜 %2$s</string>
-    <string name="timetable_grid_more_format">他 %1$d 件</string>
+    <string name="timetable_grid_day_spoken_format">%1$s曜%2$s</string>
+    <string name="timetable_grid_more_format">他%1$d件</string>
     <string name="timetable_grid_no_class_spoken">授業なし</string>
     <string name="timetable_grid_same_badge">同じ</string>
     <string name="timetable_grid_same_class_spoken">自分と同じ授業</string>
     <string name="timetable_grid_mine_busy">自分も授業</string>
-    <string name="timetable_grid_mine_class_spoken_format">自分は %1$s</string>
+    <string name="timetable_grid_mine_class_spoken_format">自分は%1$s</string>
 
     <!-- Tabs -->
     <string name="main_tab_grades">成績</string>
