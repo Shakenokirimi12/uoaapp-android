@@ -50,33 +50,48 @@ public final class AssignmentReminderSync {
         return PushNotificationService.shared(ctx);
     }
 
+    /**
+     * sync の「送ってよいかの確認・持っている印・送信の積み込み」と clear の「印の確認・削除の積み込み」を
+     * 互いに割り込ませない。設定は clear を呼ぶ前に書き換わるので (設定画面の切り替え)、どちらが先にロックを
+     * 取っても、同期を積んだあとに削除が積まれるか、同期が積まれないかのどちらかになる。ロックの外で確かめると、
+     * 確認のあとに通知を止めた clear が「何も持っていない」と見て戻り、そのあと積まれた予約がサーバーに残る。
+     * 送信は PushNotificationService の 1 本の executor に積んだ順に出る。
+     */
+    private static final Object lock = new Object();
+
+    private static boolean enabled(PreferenceManager prefs) {
+        return prefs.isAssignmentNotifyEnabled()
+                && AppConfigService.getInstance().isFeatureEnabled("notifications_enabled")
+                && AppConfigService.getInstance().isFeatureEnabled("assignment_reminders_push");
+    }
+
     /** 課題の取得に成功したあとに呼ぶ。 */
     public static void sync(@NonNull Context context, @NonNull List<Assignment> assignments) {
         Context ctx = context.getApplicationContext();
         PreferenceManager prefs = PreferenceManager.getInstance(ctx);
 
-        boolean enabled = prefs.isAssignmentNotifyEnabled()
-                && AppConfigService.getInstance().isFeatureEnabled("notifications_enabled")
-                && AppConfigService.getInstance().isFeatureEnabled("assignment_reminders_push");
-        if (!enabled) {
+        if (!enabled(prefs)) {
             clear(ctx);
             return;
         }
 
         List<PushNotificationService.AssignmentReminder> reminders = build(ctx, prefs, assignments);
-        // 送る前に「持っている」と記録する。応答を待ってから記録すると、送っている最中のログアウトや
-        // アカウントの切り替えで clear が何も送らずに戻り、そのあと届いた前のアカウントの予約が残る。
-        // 送信は 1 本の executor に並ぶので、ここで記録すれば clear の削除はこの同期のあとに届く。
-        if (!reminders.isEmpty()) prefs.setServerHoldingReminders(true);
-        push(ctx).syncAssignmentReminders(reminders, false, ok -> {
-            // 「サーバーは空」と言い切れるのは clearAll のときだけ。通常の再同期は期限の来た
-            // 未配信分を残すので、空を送っても空になったとは限らない。
-            if (ok && !reminders.isEmpty()) prefs.setServerHoldingReminders(true);
-            Log.d(TAG, "synced " + reminders.size() + " reminders, ok=" + ok);
-        });
+        synchronized (lock) {
+            // build のあいだに通知を止めたかもしれない。止めた clear はもう戻っているので、ここで送らない。
+            if (!enabled(prefs)) return;
+            // 送る前に「持っている」と記録する。応答を待ってから記録すると、送っている最中のログアウトや
+            // アカウントの切り替えで clear が何も送らずに戻り、そのあと届いた前のアカウントの予約が残る。
+            if (!reminders.isEmpty()) prefs.setServerHoldingReminders(true);
+            push(ctx).syncAssignmentReminders(reminders, false, ok -> {
+                // 「サーバーは空」と言い切れるのは clearAll のときだけ。通常の再同期は期限の来た
+                // 未配信分を残すので、空を送っても空になったとは限らない。
+                if (ok && !reminders.isEmpty()) prefs.setServerHoldingReminders(true);
+                Log.d(TAG, "synced " + reminders.size() + " reminders, ok=" + ok);
+            });
+        }
     }
 
-    /** 通知を止めるとき (設定 OFF・ログアウト) に呼ぶ。 */
+    /** 通知を止めるとき (設定 OFF・ログアウト) に呼ぶ。設定を書き換えてから呼ぶこと (lock の説明)。 */
     public static void clear(@NonNull Context context) {
         clear(context, null);
     }
@@ -85,12 +100,14 @@ public final class AssignmentReminderSync {
     public static void clear(@NonNull Context context, @androidx.annotation.Nullable Runnable onFailure) {
         Context ctx = context.getApplicationContext();
         PreferenceManager prefs = PreferenceManager.getInstance(ctx);
-        // サーバーが何も持っていないと分かっているなら送る必要がない。
-        if (!prefs.isServerHoldingReminders()) return;
-        push(ctx).syncAssignmentReminders(new ArrayList<>(), true, ok -> {
-            if (ok) prefs.setServerHoldingReminders(false);
-            else if (onFailure != null) onFailure.run();
-        });
+        synchronized (lock) {
+            // サーバーが何も持っていないと分かっているなら送る必要がない。
+            if (!prefs.isServerHoldingReminders()) return;
+            push(ctx).syncAssignmentReminders(new ArrayList<>(), true, ok -> {
+                if (ok) prefs.setServerHoldingReminders(false);
+                else if (onFailure != null) onFailure.run();
+            });
+        }
     }
 
     static List<PushNotificationService.AssignmentReminder> build(Context ctx, PreferenceManager prefs,
