@@ -1,7 +1,11 @@
 package com.shakenokirimi12.uoa_app.services;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+
+import com.shakenokirimi12.uoa_app.services.idp.OtpMethod;
 
 import org.junit.Test;
 
@@ -38,5 +42,20 @@ public class AccountSwitchTest {
         assertFalse(saved.get());
         assertTrue(AccountSwitch.runIfCurrent(AccountSwitch.ticket(), () -> saved.set(true)));
         assertTrue(saved.get());
+    }
+
+    /**
+     * 切り替えの確認のログインで読んだ方式は、そのアカウントに決まったときだけ取り出せる。別のアカウントに決まった
+     * ときと、取り出したあとは null。
+     */
+    @Test
+    public void pendingOtpMethod_isTakenOnlyForTheVerifiedAccount() {
+        AccountSwitch.notePendingOtpMethod("s1300001", OtpMethod.AUTHENTICATOR);
+        assertNull(AccountSwitch.takePendingOtpMethod("s1300002"));
+        assertNull(AccountSwitch.takePendingOtpMethod("s1300001"));
+
+        AccountSwitch.notePendingOtpMethod("s1300001", OtpMethod.AUTHENTICATOR);
+        assertEquals(OtpMethod.AUTHENTICATOR, AccountSwitch.takePendingOtpMethod("s1300001"));
+        assertNull(AccountSwitch.takePendingOtpMethod("s1300001"));
     }
 }

@@ -3,9 +3,11 @@ package com.shakenokirimi12.uoa_app.services;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
+import com.shakenokirimi12.uoa_app.services.idp.OtpMethod;
 import com.shakenokirimi12.uoa_app.services.notification.AssignmentCountdownNotifier;
 import com.shakenokirimi12.uoa_app.services.notification.ClassNotificationService;
 import com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync;
@@ -47,6 +49,10 @@ public final class AccountSwitch {
     /** 世代を進めることと runIfCurrent の確認から保存までを、互いに割り込ませない。 */
     private static final Object lock = new Object();
 
+    /** 確認のログインで読んだ、まだ保存していないアカウントの OTP の方式 (notePendingOtpMethod)。lock で守る。 */
+    @Nullable private static String pendingOtpUser;
+    @Nullable private static OtpMethod pendingOtpMethod;
+
     /** 世代を進める。prepare・committed・loggedOut のほか、テストから呼ぶ。 */
     static void advance() {
         synchronized (lock) { generation.incrementAndGet(); }
@@ -73,6 +79,10 @@ public final class AccountSwitch {
      */
     public static void committed(@NonNull Context context, @NonNull PreferenceManager prefs, @NonNull String newUser) {
         advance();
+        // 確認のログインの最中は、保存しているユーザー名がまだ前のアカウントなので、読んだ方式を控えに書けなかった
+        // (OtpProviders)。ユーザー名が決まったここで書く。
+        OtpMethod method = takePendingOtpMethod(newUser);
+        if (method != null) prefs.recordOtpMethodFromIdp(method);
         // サーバーの予約は今の deviceId のものなので、前のアカウントの課題の分を空にしておく。新しいアカウントの分は
         // 次の課題の取得 (sync) で入る。
         AssignmentReminderSync.clear(context);
@@ -94,10 +104,34 @@ public final class AccountSwitch {
         ClassNotificationService.stop(context);
     }
 
+    /**
+     * 保存しているアカウントとは別の uid で確認のログインをしている最中に、IdP の OTP 入力画面から読んだ方式を
+     * 控えておく (OtpProviders)。このときの控えは前のアカウントの欄なので、そこには書かない。
+     */
+    public static void notePendingOtpMethod(@NonNull String uid, @NonNull OtpMethod method) {
+        synchronized (lock) {
+            pendingOtpUser = uid;
+            pendingOtpMethod = method;
+        }
+    }
+
+    /** uid の確認のログインで控えた方式を取り出して消す。別の uid の控えなら null (それも消す)。 */
+    @Nullable
+    static OtpMethod takePendingOtpMethod(@NonNull String uid) {
+        synchronized (lock) {
+            OtpMethod method = uid.equals(pendingOtpUser) ? pendingOtpMethod : null;
+            pendingOtpUser = null;
+            pendingOtpMethod = null;
+            return method;
+        }
+    }
+
     /** newUser が別のアカウントなら、前のアカウントの SSO・セッション・方式の控えを捨てて true。 */
     public static boolean prepare(@NonNull PreferenceManager prefs, @NonNull String newUser) {
         if (!prefs.isOtherAccount(newUser)) return false;
         advance();
+        // 前に試して確認が通らなかったアカウントの方式を、今回の確認の結果と取り違えない。
+        takePendingOtpMethod(newUser);
         prefs.discardAccountStateForSwitch();
         // メモリ上のセッションと直前の失敗の記録も捨てる (バックオフをアカウントをまたいで残さない)。
         CampusSquareService.clearSession();

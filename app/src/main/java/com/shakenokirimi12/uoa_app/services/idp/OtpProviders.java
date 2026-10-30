@@ -64,7 +64,8 @@ public final class OtpProviders {
     /**
      * OTP 入力画面に着くまでは方式を決めない。着いたら otp_type で選ぶ (forOtpPage)。
      * 保存しているアカウントとは別のアカウントでのログイン (設定画面でのアカウント変更の確認) では、保存している
-     * 控えと鍵は前のアカウントのものなので使わず、書き換えもしない。
+     * 控えと鍵は前のアカウントのものなので使わず、書き換えもしない。読んだ方式は AccountSwitch に預け、
+     * ユーザー名が決まったときに書く。
      */
     private static final class ResolvingOtpProvider implements OtpProvider {
         private final String uid;
@@ -119,6 +120,10 @@ public final class OtpProviders {
                 // IdP がメール方式なら、このアカウントの認証アプリの鍵は使えないので消す
                 // (アプリから切り替えたときと同じ。SPEC.md「3.1 方式の決め方」、decisions D-12)。
                 if (read == OtpMethod.MAIL && prefs.totpOtpauthFor(uid) != null) prefs.clearTotp();
+            } else {
+                // 別のアカウントへの切り替えの確認。控えの欄はまだ前のアカウントのものなので、ユーザー名が決まったら
+                // 書く (AccountSwitch.committed)。書かないと、次にログインし直すまで方式が「不明」のままになる。
+                com.shakenokirimi12.uoa_app.services.AccountSwitch.notePendingOtpMethod(uid, read);
             }
             return of(read, uid, pass, context);
         }
