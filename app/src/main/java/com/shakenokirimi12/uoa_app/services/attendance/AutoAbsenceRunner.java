@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.shakenokirimi12.uoa_app.data.AttendanceManager;
+import com.shakenokirimi12.uoa_app.services.AccountSwitch;
 import com.shakenokirimi12.uoa_app.data.DataCache;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.data.models.CalendarEvent;
@@ -63,6 +64,13 @@ public final class AutoAbsenceRunner {
         // 今の監視の状態を残してから判定する (授業の後の確認として使う)。
         PresenceEvidenceLog.checkpoint(ctx);
 
+        // 出席の記録と付けた分はアカウントごと (AttendanceManager)。ログインしていなければ付けない (付ける先の
+        // アカウントが無い)。時間割と科目より先にアカウントと世代を控え、読んだ時間割と同じアカウントの記録にだけ
+        // 付ける (途中で切り替わったら、runIfCurrent が付けずに止める)。
+        String username = PreferenceManager.getInstance(ctx).getUsername();
+        if (username.trim().isEmpty()) return;
+        AccountSwitch.Ticket ticket = AccountSwitch.ticket();
+
         DataCache cache = DataCache.getInstance(ctx);
         List<CalendarEvent> events = cache.loadEvents();
         List<MoodleCourse> moodleCourses = cache.loadCourses();
@@ -76,34 +84,36 @@ public final class AutoAbsenceRunner {
 
         long now = System.currentTimeMillis();
         AttendanceManager attendance = AttendanceManager.getInstance(ctx);
-        // 出席の記録と付けた分はアカウントごと (AttendanceManager)。判定の間にアカウントが切り替わっても、
-        // 読んだのと同じアカウントの記録に付ける。
-        String username = PreferenceManager.getInstance(ctx).getUsername();
-        // ログインしていなければ付けない (付ける先のアカウントが無い)。
-        if (username.trim().isEmpty()) return;
-        // 時間割と科目はキャッシュから読む。キャッシュは切り替えで空になるので、別のアカウントの時間割で
-        // 判定することは無い。
-        synchronized (AutoAbsenceRunner.class) {
-            SharedPreferences sp = ctx.getApplicationContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-            String markedKey = markedKeyFor(username);
-            migrateLegacyMarked(sp, markedKey);
-            Map<String, Long> marked = loadMarked(sp, markedKey, now);
-            // 読めなければ付けない。付けた分が分からないと、消された欠席を付け直してしまう。
-            if (marked == null) return;
-            List<AutoAbsencePlanner.Mark> marks = AutoAbsencePlanner.plan(
-                    events, courses, cache.eventsWithStatusFetchedAt(), attendance.recordedDates(username),
-                    marked.keySet(), PresenceEvidenceLog.entries(ctx), now, TimeZone.getDefault());
-            for (AutoAbsencePlanner.Mark mark : marks) {
-                String historyId = attendance.addUnconfirmedAbsenceIfUnrecorded(username, mark.courseId, mark.date,
-                        mark.lastClassEnd);
-                if (historyId == null) continue;
-                marked.put(mark.key(), now);
-                Log.d(TAG, "Marked unconfirmed absence for course " + mark.courseId + " on " + mark.date);
-                String name = names.get(mark.courseId);
-                AttendanceConfirmation.ask(ctx, username, mark.courseId, historyId, name != null ? name : "", mark.key());
+        boolean current = AccountSwitch.runIfCurrent(ticket, () -> {
+            synchronized (AutoAbsenceRunner.class) {
+                markLocked(ctx, username, events, courses, names, cache, attendance, now);
             }
-            sp.edit().putString(markedKey, gson.toJson(marked)).apply();
+        });
+        if (!current) Log.d(TAG, "Account changed during evaluation; not marking");
+    }
+
+    private static void markLocked(Context ctx, String username, List<CalendarEvent> events,
+                                   List<AutoAbsencePlanner.Course> courses, Map<String, String> names,
+                                   DataCache cache, AttendanceManager attendance, long now) {
+        SharedPreferences sp = ctx.getApplicationContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String markedKey = markedKeyFor(username);
+        migrateLegacyMarked(sp, markedKey);
+        Map<String, Long> marked = loadMarked(sp, markedKey, now);
+        // 読めなければ付けない。付けた分が分からないと、消された欠席を付け直してしまう。
+        if (marked == null) return;
+        List<AutoAbsencePlanner.Mark> marks = AutoAbsencePlanner.plan(
+                events, courses, cache.eventsWithStatusFetchedAt(), attendance.recordedDates(username),
+                marked.keySet(), PresenceEvidenceLog.entries(ctx), now, TimeZone.getDefault());
+        for (AutoAbsencePlanner.Mark mark : marks) {
+            String historyId = attendance.addUnconfirmedAbsenceIfUnrecorded(username, mark.courseId, mark.date,
+                    mark.lastClassEnd);
+            if (historyId == null) continue;
+            marked.put(mark.key(), now);
+            Log.d(TAG, "Marked unconfirmed absence for course " + mark.courseId + " on " + mark.date);
+            String name = names.get(mark.courseId);
+            AttendanceConfirmation.ask(ctx, username, mark.courseId, historyId, name != null ? name : "", mark.key());
         }
+        sp.edit().putString(markedKey, gson.toJson(marked)).apply();
     }
 
     /** username の、付けた分の保存先。出席の記録 (AttendanceManager) と同じくアカウントごと。 */

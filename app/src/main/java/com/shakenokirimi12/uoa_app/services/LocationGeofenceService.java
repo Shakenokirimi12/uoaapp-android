@@ -210,6 +210,10 @@ public class LocationGeofenceService {
             return;
         }
 
+        // 出席の記録はアカウントごと (AttendanceManager)。ログインしていなければ付けない (付ける先が無い)。
+        // キャッシュより先に世代を控え、読んだ時間割と同じアカウントの記録にだけ付ける (切り替えで古くなる)。
+        if (prefs.getUsername().trim().isEmpty()) return;
+        AccountSwitch.Ticket ticket = AccountSwitch.ticket();
         com.shakenokirimi12.uoa_app.data.DataCache cache = com.shakenokirimi12.uoa_app.data.DataCache.getInstance(ctx);
         List<CalendarEvent> events = cache.loadEvents();
         List<MoodleCourse> courses = cache.loadCourses();
@@ -253,7 +257,11 @@ public class LocationGeofenceService {
                 continue;
             }
 
-            attendance.addHistory(courseId, AttendanceManager.Status.PRESENT, new Date(), "auto");
+            if (!AccountSwitch.runIfCurrent(ticket,
+                    () -> attendance.addHistory(courseId, AttendanceManager.Status.PRESENT, new Date(), "auto"))) {
+                Log.d(TAG, "Account changed; not recording attendance");
+                return;
+            }
             com.shakenokirimi12.uoa_app.services.usage.UsageStats.record(ctx,
                     com.shakenokirimi12.uoa_app.services.usage.UsageFeature.AUTO_ATTENDANCE);
             sp.edit().putLong("last_geofence_time", now).apply();

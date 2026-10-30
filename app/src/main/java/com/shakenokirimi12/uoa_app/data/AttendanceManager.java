@@ -193,7 +193,14 @@ public class AttendanceManager {
         Type type = new TypeToken<Map<String, Record>>() {}.getType();
         try {
             Map<String, Record> map = gson.fromJson(json, type);
-            return map != null ? map : new HashMap<>();
+            if (map == null) return new HashMap<>();
+            // "history" の無い記録 (手で書き換えた・壊れた) でも読めるようにする。
+            map.values().removeIf(r -> r == null);
+            for (Record r : map.values()) {
+                if (r.history == null) r.history = new ArrayList<>();
+                r.history.removeIf(h -> h == null);
+            }
+            return map;
         } catch (RuntimeException e) { return null; }
     }
 
@@ -205,10 +212,25 @@ public class AttendanceManager {
         return keyFor(username != null ? username : currentUser.get());
     }
 
+    /** 読めなければ空 (表示用)。書き戻す処理は loadForWrite を使う。 */
     private Map<String, Record> loadAll(String key) {
+        Map<String, Record> map = loadForWrite(key);
+        return map != null ? map : new HashMap<>();
+    }
+
+    /**
+     * 書き戻すための読み込み。読めなければ null で、呼び出し側は書かずに止める (空で書き戻すと、読めなかった
+     * 記録をすべて消す)。
+     */
+    @Nullable
+    private Map<String, Record> loadForWrite(String key) {
         migrateLegacyRecords();
         Map<String, Record> map = parse(store.get(key));
-        return map != null ? map : new HashMap<>();
+        if (map == null) {
+            android.util.Log.w("AttendanceManager", "Attendance records unreadable; not writing");
+            return null;
+        }
+        return map;
     }
 
     private void saveAll(String key, Map<String, Record> data) {
@@ -228,7 +250,8 @@ public class AttendanceManager {
     /** 今日の記録を消す (デバッグのテスト科目の後始末用)。 */
     public synchronized void removeToday(String courseId) {
         String key = keyOf(null);
-        Map<String, Record> all = loadAll(key);
+        Map<String, Record> all = loadForWrite(key);
+        if (all == null) return;
         Record r = all.get(courseId);
         if (r == null) return;
         String today = dateFmt.format(new Date());
@@ -245,6 +268,7 @@ public class AttendanceManager {
 
         int p = 0, a = 0, l = 0;
         for (HistoryItem h : r.history) {
+            if (h.status == null) continue;
             switch (h.status) {
                 case "PRESENT": p++; break;
                 case "ABSENT": a++; break;
@@ -258,14 +282,15 @@ public class AttendanceManager {
 
     public synchronized void addHistory(String courseId, Status status, Date date, String source) {
         String key = keyOf(null);
-        Map<String, Record> all = loadAll(key);
+        Map<String, Record> all = loadForWrite(key);
+        if (all == null) return;
         Record r = all.get(courseId);
         if (r == null) { r = new Record(); all.put(courseId, r); }
 
         String dateStr = dateFmt.format(date);
         Iterator<HistoryItem> it = r.history.iterator();
         while (it.hasNext()) {
-            if (it.next().date.equals(dateStr)) it.remove();
+            if (dateStr.equals(it.next().date)) it.remove();
         }
 
         HistoryItem item = new HistoryItem();
@@ -289,11 +314,12 @@ public class AttendanceManager {
      */
     public synchronized void updateStatus(@Nullable String username, String courseId, String historyId, Status status) {
         String key = keyOf(username);
-        Map<String, Record> all = loadAll(key);
+        Map<String, Record> all = loadForWrite(key);
+        if (all == null) return;
         Record r = all.get(courseId);
         if (r == null) return;
         for (HistoryItem h : r.history) {
-            if (h.id.equals(historyId)) {
+            if (historyId.equals(h.id)) {
                 h.status = status.name();
                 h.source = "manual";
             }
@@ -325,7 +351,8 @@ public class AttendanceManager {
     public synchronized String addUnconfirmedAbsenceIfUnrecorded(@NonNull String username, String courseId,
                                                                  String date, long classEnd) {
         String key = keyOf(username);
-        Map<String, Record> all = loadAll(key);
+        Map<String, Record> all = loadForWrite(key);
+        if (all == null) return null;
         Record r = all.get(courseId);
         if (r == null) { r = new Record(); all.put(courseId, r); }
         for (HistoryItem h : r.history) if (date.equals(h.date)) return null;
@@ -342,12 +369,13 @@ public class AttendanceManager {
 
     public synchronized void removeHistory(String courseId, String historyId) {
         String key = keyOf(null);
-        Map<String, Record> all = loadAll(key);
+        Map<String, Record> all = loadForWrite(key);
+        if (all == null) return;
         Record r = all.get(courseId);
         if (r == null) return;
         Iterator<HistoryItem> it = r.history.iterator();
         while (it.hasNext()) {
-            if (it.next().id.equals(historyId)) it.remove();
+            if (historyId.equals(it.next().id)) it.remove();
         }
         saveAll(key, all);
     }
