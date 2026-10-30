@@ -59,6 +59,13 @@ public final class AssignmentReminderSync {
      */
     private static final Object lock = new Object();
 
+    /**
+     * sync が「持っている」と記録した回数 (lock で守る)。削除の応答はメインスレッドに遅れて届くので、そのあいだに
+     * 次の同期が積まれていたら印を下ろさない。下ろすと、次の clear (ログアウトなど) が何も送らずに戻り、
+     * あとから送った予約がサーバーに残る。
+     */
+    private static long holdingSeq;
+
     private static boolean enabled(PreferenceManager prefs) {
         return prefs.isAssignmentNotifyEnabled()
                 && AppConfigService.getInstance().isFeatureEnabled("notifications_enabled")
@@ -77,17 +84,21 @@ public final class AssignmentReminderSync {
 
         List<PushNotificationService.AssignmentReminder> reminders = build(ctx, prefs, assignments);
         synchronized (lock) {
-            // build のあいだに通知を止めたかもしれない。止めた clear はもう戻っているので、ここで送らない。
-            if (!enabled(prefs)) return;
+            // build のあいだに通知を止めた (設定・killswitch) かもしれない。送らずに、持っている予約を消す。
+            // 設定を止めた clear はもう戻っているかもしれず、killswitch は clear を呼ばないので、ここで消す。
+            if (!enabled(prefs)) {
+                clearLocked(ctx, prefs, null);
+                return;
+            }
             // 送る前に「持っている」と記録する。応答を待ってから記録すると、送っている最中のログアウトや
             // アカウントの切り替えで clear が何も送らずに戻り、そのあと届いた前のアカウントの予約が残る。
-            if (!reminders.isEmpty()) prefs.setServerHoldingReminders(true);
-            push(ctx).syncAssignmentReminders(reminders, false, ok -> {
-                // 「サーバーは空」と言い切れるのは clearAll のときだけ。通常の再同期は期限の来た
-                // 未配信分を残すので、空を送っても空になったとは限らない。
-                if (ok && !reminders.isEmpty()) prefs.setServerHoldingReminders(true);
-                Log.d(TAG, "synced " + reminders.size() + " reminders, ok=" + ok);
-            });
+            // 送信が失敗しても印は残す (次の clear が余分に 1 回送るだけ)。
+            if (!reminders.isEmpty()) {
+                holdingSeq++;
+                prefs.setServerHoldingReminders(true);
+            }
+            push(ctx).syncAssignmentReminders(reminders, false,
+                    ok -> Log.d(TAG, "synced " + reminders.size() + " reminders, ok=" + ok));
         }
     }
 
@@ -101,13 +112,26 @@ public final class AssignmentReminderSync {
         Context ctx = context.getApplicationContext();
         PreferenceManager prefs = PreferenceManager.getInstance(ctx);
         synchronized (lock) {
-            // サーバーが何も持っていないと分かっているなら送る必要がない。
-            if (!prefs.isServerHoldingReminders()) return;
-            push(ctx).syncAssignmentReminders(new ArrayList<>(), true, ok -> {
-                if (ok) prefs.setServerHoldingReminders(false);
-                else if (onFailure != null) onFailure.run();
-            });
+            clearLocked(ctx, prefs, onFailure);
         }
+    }
+
+    /** lock の中で呼ぶ。 */
+    private static void clearLocked(Context ctx, PreferenceManager prefs,
+                                    @androidx.annotation.Nullable Runnable onFailure) {
+        // サーバーが何も持っていないと分かっているなら送る必要がない。
+        if (!prefs.isServerHoldingReminders()) return;
+        long seq = holdingSeq;
+        push(ctx).syncAssignmentReminders(new ArrayList<>(), true, ok -> {
+            if (ok) {
+                synchronized (lock) {
+                    // 「サーバーは空」と言い切れるのは clearAll のとき、それも削除のあとに同期を積んでいないときだけ。
+                    if (holdingSeq == seq) prefs.setServerHoldingReminders(false);
+                }
+            } else if (onFailure != null) {
+                onFailure.run();
+            }
+        });
     }
 
     static List<PushNotificationService.AssignmentReminder> build(Context ctx, PreferenceManager prefs,
