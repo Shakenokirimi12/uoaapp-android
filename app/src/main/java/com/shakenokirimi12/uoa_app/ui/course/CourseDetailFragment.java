@@ -139,17 +139,19 @@ public class CourseDetailFragment extends Fragment {
             InAppBrowserActivity.open(requireContext(), url);
         });
 
-        swipeRefresh.setOnRefreshListener(this::loadData);
+        // 引っ張って更新は利用者のやり直し。直前のログインの失敗による待ちを解く (開いたときの loadData では解かない)。
+        swipeRefresh.setOnRefreshListener(() -> loadData(true));
 
         cardSyllabus.setVisibility(View.GONE);
-        loadData();
+        loadData(false);
     }
 
-    private void loadData() {
+    /** @param userRetry 引っ張って更新。コースの中身の取得の前に、直前のログインの失敗による待ちを解く。 */
+    private void loadData(boolean userRetry) {
         loadAttendance();
         checkTodayClass();
         loadSyllabus();
-        loadCourseContents();
+        loadCourseContents(userRetry);
         loadAssignments();
         swipeRefresh.setRefreshing(false);
     }
@@ -240,7 +242,7 @@ public class CourseDetailFragment extends Fragment {
         btnAbsent.setEnabled(canRegister);
     }
 
-    private void loadCourseContents() {
+    private void loadCourseContents(boolean userRetry) {
         progressContents.setVisibility(View.VISIBLE);
         layoutContents.removeAllViews();
 
@@ -266,6 +268,7 @@ public class CourseDetailFragment extends Fragment {
         // 直近 10 分以内に他のタブが検証済みなら通信せずに通る。そうでなければ (コース一覧の
         // キャッシュから直接この画面に来た場合など) 必要に応じてログインする。
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
+        if (userRetry) service.allowLoginRetry();
         service.ensureLoggedIn(prefs.getUsername(), prefs.getPassword(), AuthorizationContext.INTERACTIVE, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean ok) {

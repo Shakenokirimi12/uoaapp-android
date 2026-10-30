@@ -291,18 +291,21 @@ public class SettingsFragment extends Fragment {
                         .setTitle(R.string.settings_logout)
                         .setMessage("この端末に保存したログイン情報とデータを消します。")
                         .setPositiveButton(R.string.ok, (dialog, which) -> {
+                            // サーバーの削除が失敗しても端末内の削除は続け、失敗したことは 1 回だけ知らせる (SPEC.md「11」)。
+                            // 画面はすぐ閉じるので、アプリの Context で出す。
+                            Runnable serverDeleteFailed = logoutServerFailureNotice(requireContext().getApplicationContext());
                             // 先にサーバー側の予約を空にする。prefs.clearAll() は deviceId と
                             // 「サーバーが予約を持っている」記録の両方を消すので、後から呼ぶと
                             // 取り消しは早期 return し、古い deviceId の予約が二度と触れなくなる。
-                            com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.clear(requireContext());
+                            com.shakenokirimi12.uoa_app.services.push.AssignmentReminderSync.clear(requireContext(), serverDeleteFailed);
                             // サーバーの端末の行も消す (iOS の「全データを削除」と同じ)。これも今の ID で、clearAll の前に積む。
-                            com.shakenokirimi12.uoa_app.services.PushNotificationService.shared(requireContext()).deleteDevice();
+                            com.shakenokirimi12.uoa_app.services.PushNotificationService.shared(requireContext()).deleteDevice(serverDeleteFailed);
                             // PC 中継の連携も中継サーバから消す。解除が済むまで鍵は「解除待ち」に残し、
                             // 失敗しても送り直す (clearAll でも消えない)。
                             com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairingService.unpairAllOnLogout(requireContext());
                             // 時間割共有: 受け取った友達の時間割と、出している共有を消す (共有はサーバーからも)。
                             // 返事を読むトークンは clearAll が消すので、その前に呼ぶ。
-                            com.shakenokirimi12.uoa_app.data.timetable.TimetableShareStore.getInstance(requireContext()).clearAllOnLogout();
+                            com.shakenokirimi12.uoa_app.data.timetable.TimetableShareStore.getInstance(requireContext()).clearAllOnLogout(serverDeleteFailed);
                             prefs.clearAll();
                             DataCache.getInstance(requireContext()).clearAll();
                             // キャッシュを捨てたら、それを映しているウィジェットと通知も片付ける。
@@ -325,6 +328,17 @@ public class SettingsFragment extends Fragment {
                         })
                         .setNegativeButton(R.string.cancel, null)
                         .show());
+    }
+
+    /** ログアウトでサーバーのデータを消せなかったときの表示。何本失敗しても 1 回だけ出す。どのスレッドから呼んでもよい。 */
+    @NonNull
+    private static Runnable logoutServerFailureNotice(@NonNull android.content.Context app) {
+        java.util.concurrent.atomic.AtomicBoolean shown = new java.util.concurrent.atomic.AtomicBoolean();
+        return () -> {
+            if (!shown.compareAndSet(false, true)) return;
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
+                    Toast.makeText(app, R.string.settings_logout_server_failed, Toast.LENGTH_LONG).show());
+        };
     }
 
     private void showTimePicker(TextView textLunchTime) {

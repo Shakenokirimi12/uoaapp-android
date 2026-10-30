@@ -26,20 +26,22 @@ import okhttp3.HttpUrl;
  *   IdP の SSO ストア (SeciossSsoStore) の 1 時間の上限をここへ持ち込むと 2026-09-25 の OTP メール多発が再発する。
  * - SAML の使い捨て状態 cookie (_opensaml_req_ss:*, _redirection_state) は持たない。
  * - 復元時は、渡されたホストへ送られうる (ドメインが一致する) ものだけを戻す。
- *
- * 旧形式 ("name=value; ...") は捨てずに、そのホストの host-only・Path=/・Secure・セッション cookie として読む。
- * 以前の復元と同じ扱いで、送る先はそのホストだけなので他ホストへ漏れない。捨てると、更新した全員が次の起動で
- * IdP ログイン (OTP メール) をやり直すことになる。読み直したら呼び出し側が新形式で保存し直す。
+ * - 持ち主 (AINS のユーザー名) と一緒に保存し、今のユーザー名と違うものは戻さない。設定でアカウントを切り替えている
+ *   間に、前のアカウントの自動の取得がセッションを作り直しても、新しいアカウントがそれを使わないようにする。
+ *   持ち主の無いもの (旧形式 "name=value; ..."、持ち主を記録する前の新形式) は、誰のものか分からないので
+ *   よそのものとして扱う。更新後の最初の 1 回だけ、SP へのログインをやり直す (IdP の SSO が生きていれば OTP は要らない)。
  */
 public final class SpSessionCookies {
     private SpSessionCookies() {}
 
-    static final int FORMAT_VERSION = 1;
+    static final int FORMAT_VERSION = 2;
     private static final Gson GSON = new Gson();
 
     /** 保存形式。null の expiresAt はセッション cookie。 */
     private static final class Stored {
         int v;
+        /** 持ち主 (AINS のユーザー名、前後の空白を落としたもの)。 */
+        String owner;
         List<Entry> cookies;
     }
 
@@ -55,13 +57,35 @@ public final class SpSessionCookies {
     }
 
     /** 旧形式 ("name=value; ...") か。新形式は JSON オブジェクトなので '{' で始まる (cookie 名に '{' は使えない)。 */
-    public static boolean isLegacy(@Nullable String stored) {
+    private static boolean isLegacy(@Nullable String stored) {
         return stored != null && !stored.isEmpty() && !stored.trim().startsWith("{");
     }
 
-    /** 保存する文字列。持つべき cookie が無ければ null (保存領域を空にする)。 */
+    /**
+     * stored の持ち主。持ち主の無いもの (旧形式・持ち主を記録する前の新形式)、壊れたもの、空は null。
+     * 呼び出し側は null なら保存分を消す (誰のものか分からないセッションを持ち続けない)。
+     */
     @Nullable
-    public static String serialize(@NonNull List<Cookie> cookies, long now) {
+    public static String ownerOf(@Nullable String stored) {
+        if (stored == null || stored.trim().isEmpty() || isLegacy(stored)) return null;
+        try {
+            Stored s = GSON.fromJson(stored, Stored.class);
+            if (s == null || s.owner == null || s.owner.trim().isEmpty()) return null;
+            return s.owner;
+        } catch (JsonParseException e) {
+            return null;
+        }
+    }
+
+    /** stored が owner のセッションか。持ち主の無いもの・壊れたもの・空は false。 */
+    public static boolean ownedBy(@Nullable String stored, @Nullable String owner) {
+        if (owner == null || owner.trim().isEmpty()) return false;
+        return owner.trim().equals(ownerOf(stored));
+    }
+
+    /** 保存する文字列 (owner のセッションとして)。持つべき cookie が無ければ null (保存領域を空にする)。 */
+    @Nullable
+    public static String serialize(@NonNull List<Cookie> cookies, long now, @NonNull String owner) {
         List<Entry> entries = new ArrayList<>();
         for (Cookie c : retainable(cookies, now)) {
             Entry e = new Entry();
@@ -78,24 +102,20 @@ public final class SpSessionCookies {
         if (entries.isEmpty()) return null;
         Stored s = new Stored();
         s.v = FORMAT_VERSION;
+        s.owner = owner.trim();
         s.cookies = entries;
         return GSON.toJson(s);
     }
 
     /**
-     * 保存分を host のセッションとして戻す。失効分・host へ送られないもの・壊れた行は落ちる。
-     *
-     * @param secure 旧形式を読むときに付ける Secure 属性 (SP が https なら true)。新形式は保存された値を使う。
+     * 保存分を owner の host のセッションとして戻す。owner のものでなければ (ownedBy) 何も戻さない。
+     * 失効分・host へ送られないもの・壊れた行は落ちる。
      */
     @NonNull
-    public static List<Cookie> restore(@Nullable String stored, @NonNull String host, boolean secure, long now) {
+    public static List<Cookie> restore(@Nullable String stored, @NonNull String owner, @NonNull String host, long now) {
         List<Cookie> out = new ArrayList<>();
-        if (stored == null || stored.trim().isEmpty()) return out;
+        if (!ownedBy(stored, owner)) return out;
         String h = host.toLowerCase(Locale.ROOT);
-        if (isLegacy(stored)) {
-            for (Cookie c : fromLegacyHeader(stored, h, secure)) out.add(c);
-            return retainable(out, now);
-        }
         Stored s;
         try {
             s = GSON.fromJson(stored, Stored.class);
@@ -152,27 +172,5 @@ public final class SpSessionCookies {
         } catch (IllegalArgumentException ex) {
             return null;
         }
-    }
-
-    @NonNull
-    private static List<Cookie> fromLegacyHeader(@NonNull String header, @NonNull String host, boolean secure) {
-        List<Cookie> out = new ArrayList<>();
-        for (String pair : header.split(";")) {
-            String trimmed = pair.trim();
-            int eq = trimmed.indexOf('=');
-            if (eq <= 0) continue;
-            try {
-                Cookie.Builder b = new Cookie.Builder()
-                        .name(trimmed.substring(0, eq))
-                        .value(trimmed.substring(eq + 1))
-                        .hostOnlyDomain(host)
-                        .path("/");
-                if (secure) b.secure();
-                out.add(b.build());
-            } catch (IllegalArgumentException e) {
-                // 壊れた 1 件だけ落とす。残りのセッションは使える。
-            }
-        }
-        return out;
     }
 }

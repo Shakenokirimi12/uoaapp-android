@@ -140,6 +140,18 @@ public final class SeciossSsoStore {
         }
     }
 
+    /**
+     * uid の (または持ち主が記録されていない) 失効していない SSO cookie を持っているか。バックグラウンドの
+     * メール方式で、2 本目のサービスが 1 本目の SSO で入れるかの見込みに使う (BackgroundLoginPolicy)。
+     */
+    public boolean holdsFor(@NonNull String uid) {
+        synchronized (lock) {
+            String owner = persistence.loadOwner();
+            if (owner != null && !owner.isEmpty() && !owner.equals(uid)) return false;
+        }
+        return !current().isEmpty();
+    }
+
     /** IdP へ seed する cookie (発行元と同じ host-only 表現)。失効分はここで落ちる。 */
     @NonNull
     public List<Cookie> current() {

@@ -117,6 +117,9 @@ public class OtpRegistrationCommitTest {
         assertFalse(OtpRegistrationCommit.idpUsesMethod(OtpMethod.MAIL, "totp"));
         assertTrue(OtpRegistrationCommit.idpUsesMethod(OtpMethod.AUTHENTICATOR, null));
         assertTrue(OtpRegistrationCommit.idpUsesMethod(OtpMethod.AUTHENTICATOR, ""));
+        // 「未設定」の印は方式を表さない (読めない値と同じく、登録した方式をそのまま信じる)。
+        assertTrue(OtpRegistrationCommit.idpUsesMethod(OtpMethod.MAIL, "none"));
+        assertTrue(OtpRegistrationCommit.idpUsesMethod(OtpMethod.AUTHENTICATOR, " none "));
     }
 
     @Test

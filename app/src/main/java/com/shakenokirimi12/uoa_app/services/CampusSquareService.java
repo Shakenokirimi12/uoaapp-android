@@ -62,7 +62,7 @@ public class CampusSquareService {
     public void login(String username, String password, ServiceCallback<Boolean> callback) {
         executor.execute(() -> {
             try {
-                coordinator.forceLogin(SESSION_KIND, () -> freshLogin(username, password, AuthorizationContext.INTERACTIVE),
+                coordinator.forceLogin(sessionKey(username), () -> freshLogin(username, password, AuthorizationContext.INTERACTIVE),
                         unattended(username, password));
                 postSuccess(callback, true);
             } catch (Exception e) {
@@ -113,10 +113,19 @@ public class CampusSquareService {
      * _shibsession_ を含む) を、そのまま Cookie ヘッダに載せられる文字列で返す。
      */
     private String authenticatedCookieHeader(String username, String password, AuthorizationContext context) throws Exception {
-        String cached = storedSessionHeader();
+        if (AccountSwitch.isStale(username)) throw new AccountChangedException();
+        String cached = storedSessionHeader(username);
         String candidate = cached.isEmpty() ? null : cached;
-        return coordinator.session(SESSION_KIND, context, candidate, this::probeSession,
+        return coordinator.session(sessionKey(username), context, candidate, this::probeSession,
                 () -> freshLogin(username, password, context), unattended(username, password));
+    }
+
+    /**
+     * SessionCoordinator に渡す鍵。方式と持ち主 (ユーザー名) の組。アカウントを切り替えている間に前のアカウントの
+     * 取得がセッションを作り直しても、新しいアカウントはそれを使わず、飛行中のログインにも合流しない。
+     */
+    private static Object sessionKey(String username) {
+        return java.util.Arrays.asList(SESSION_KIND, username.trim());
     }
 
     /** バックグラウンドの再ログインの判定。ログインに使うのと同じ ID / パスワードで作る。 */
@@ -125,17 +134,23 @@ public class CampusSquareService {
     }
 
     /**
-     * 永続化した CampusSquare のセッションを、CampusSquare へ送る Cookie ヘッダにする。失効分と、Path や
-     * Secure の合わないものはここで落ちる。旧形式 ("name=value; ...") は host-only として読み、新形式で保存し直す。
+     * 永続化した owner の CampusSquare のセッションを、CampusSquare へ送る Cookie ヘッダにする。失効分と、Path や
+     * Secure の合わないものはここで落ちる。持ち主の無いもの (旧形式を含む) は消す。別のアカウントのものは使わないが
+     * 残す (消すと、そのアカウントに戻ったときにログインし直しになる)。
      */
-    private static String storedSessionHeader() {
+    private static String storedSessionHeader(String owner) {
         PreferenceManager prefs = PreferenceManager.getInstance();
         String stored = prefs.getCsIdpSessionCookies();
+        if (stored == null || stored.isEmpty()) return "";
+        if (SpSessionCookies.ownerOf(stored) == null) {
+            prefs.setCsIdpSessionCookies(null);
+            return "";
+        }
+        if (!SpSessionCookies.ownedBy(stored, owner)) return "";
         okhttp3.HttpUrl base = okhttp3.HttpUrl.parse(baseUrl());
         if (base == null) return "";
         long now = System.currentTimeMillis();
-        List<okhttp3.Cookie> cookies = SpSessionCookies.restore(stored, base.host(), base.isHttps(), now);
-        if (SpSessionCookies.isLegacy(stored)) prefs.setCsIdpSessionCookies(SpSessionCookies.serialize(cookies, now));
+        List<okhttp3.Cookie> cookies = SpSessionCookies.restore(stored, owner, base.host(), now);
         return SpSessionCookies.headerFor(cookies, base, now);
     }
 
@@ -219,6 +234,18 @@ public class CampusSquareService {
         }
     }
 
+    /**
+     * 利用者がやり直したとき (引っ張って更新・再試行ボタン) に、その取得を同じインスタンスで呼ぶ直前に呼ぶ。
+     * 直前のログインの失敗による待ち (SessionCoordinator.LOGIN_BACKOFF_MS) を解き、その取得で新しくログインさせる。
+     * 画面を開いただけの取得では呼ばない (失敗の直後に OTP を自動で求め直さないため)。iOS の allowLoginRetry と同じ。
+     *
+     * 解くのは executor の上で、利用者の取得の直前の順番にする。すぐに解くと、同じ executor で先に走っている
+     * 自動の取得が後から失敗して待ちを付け直し、利用者の取得がその失敗を受け取る (自動の同期の最中に引っ張ったとき)。
+     */
+    public void allowLoginRetry() {
+        executor.execute(coordinator::clearBackoff);
+    }
+
     /** ログアウト時に呼ぶ。永続化した IdP cookie とメモリ上のセッション状態を両方捨てる。 */
     public static void clearSession() {
         PreferenceManager.getInstance().setCsIdpSessionCookies(null);
@@ -293,21 +320,21 @@ public class CampusSquareService {
         // 属性込みで保存する (次回起動で storedSessionHeader が読む)。返すのは今回のチェーンの最終ホップに
         // 送られたのと同じヘッダ。
         PreferenceManager.getInstance().setCsIdpSessionCookies(
-                SpSessionCookies.serialize(session.spCookies, System.currentTimeMillis()));
+                SpSessionCookies.serialize(session.spCookies, System.currentTimeMillis(), uid));
         return session.cookieHeader;
     }
 
     /**
-     * OTP の方式 (メール / 認証アプリ) は OtpProviders が設定から決める。
-     * ここに来るのは SessionCoordinator が新規ログインを許した場合だけ。BACKGROUND なら、OTP を人もメールも
-     * 使わずに用意できると確かめてある (認証アプリ方式で、このアプリが鍵を持っている)。
+     * OTP の方式 (メール / 認証アプリ) は OtpProviders が IdP の OTP 画面 (otp_type) から決める。
+     * ここに来るのは SessionCoordinator が新規ログインを許した場合だけ。BACKGROUND なら、BackgroundLoginPolicy が
+     * 方式ごとの条件 (認証アプリは止めていない鍵、メールは 6 時間の枠) を確かめてある。
      */
     public String loginViaIdPAutomatic(String entryUrl, String username, String password,
                                        AuthorizationContext context) throws Exception {
         com.shakenokirimi12.uoa_app.services.idp.OtpProvider otp =
                 com.shakenokirimi12.uoa_app.services.idp.OtpProviders.forLogin(username.trim(), password.trim(), context);
-        // バックグラウンドでは、判定 (BackgroundLoginPolicy) のあとで方式が変わっていたら IdP に触れずに止める。
-        // 触れるとメール方式では motp.cgi が OTP メールを送ってしまう (送ったあとで code() が止めても遅い)。
+        // バックグラウンドでは、判定 (BackgroundLoginPolicy) のあとで条件が崩れていたら IdP に触れずに止める
+        // (鍵を止めた・控えが消えた等)。メールの送信の枠は送る直前にもう一度取る (OtpProvider.beforeMailDispatch)。
         if (!context.allowsNewLogin() && !otp.canRunUnattended()) {
             throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
         }

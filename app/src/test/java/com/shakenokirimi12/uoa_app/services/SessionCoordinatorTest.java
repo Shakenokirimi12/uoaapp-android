@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * セッションの再利用と「ログインしてよいか」の判断を固定する。
  *
  * ログイン 1 回につき OTP メールが 1 通飛ぶ。ここが緩むと、画面を見ていない間にメールが
- * 積み上がる (iOS で 2026-09-25 に発生。対策の設計は docs/auth-rewrite/ を参照)。
+ * 積み上がる (iOS で 2026-09-25 に発生。対策は SPEC.md「6. バックグラウンドログイン」を参照)。
  */
 public class SessionCoordinatorTest {
 
@@ -153,6 +153,59 @@ public class SessionCoordinatorTest {
         assertEquals(2, attempts.get());
     }
 
+    /**
+     * 前面の障害系の失敗 (OTP の取り消し・通信の失敗) のあと、自動の取得は待つ (OTP を求め直さない)。
+     * 利用者がやり直したとき (clearBackoff) は待たずにもう一度ログインする。
+     */
+    @Test
+    public void interactiveFailure_backsOffUntilUserRetries() throws Exception {
+        SessionCoordinator<String> coordinator = new SessionCoordinator<>();
+        AtomicInteger logins = new AtomicInteger();
+        Exception cancelled = new Exception("OTP の入力が取り消されました");
+        try {
+            coordinator.session(METHOD, AuthorizationContext.INTERACTIVE, null, s -> null,
+                    () -> { logins.incrementAndGet(); throw cancelled; });
+            fail("失敗が投げられるはず");
+        } catch (Exception e) {
+            assertSame(cancelled, e);
+        }
+
+        // 自動の取得 (画面を開いただけ) は、直前の失敗をそのまま受け取り、ログインを始めない。
+        try {
+            coordinator.session(METHOD, AuthorizationContext.INTERACTIVE, null, s -> null,
+                    () -> { logins.incrementAndGet(); return "auto"; });
+            fail("待ちの間は直前の失敗が返るはず");
+        } catch (Exception e) {
+            assertSame(cancelled, e);
+        }
+        assertEquals(1, logins.get());
+
+        coordinator.clearBackoff();
+        String retried = coordinator.session(METHOD, AuthorizationContext.INTERACTIVE, null, s -> null,
+                () -> { logins.incrementAndGet(); return "retried"; });
+        assertEquals("retried", retried);
+        assertEquals(2, logins.get());
+    }
+
+    /**
+     * 鍵の持ち主 (ユーザー名) が違えば、手持ちのセッションを使わない。アカウントを切り替えている間に前のアカウントの
+     * 取得がセッションを作り直しても、新しいアカウントがそれで取得しない。
+     */
+    @Test
+    public void sessionOfAnotherOwner_isNotReused() throws Exception {
+        SessionCoordinator<String> coordinator = new SessionCoordinator<>();
+        Object accountA = java.util.Arrays.asList("idp", "s1300001");
+        Object accountB = java.util.Arrays.asList("idp", "s1300002");
+        coordinator.session(accountA, AuthorizationContext.INTERACTIVE, null, s -> s, () -> "session-a");
+
+        String forB = coordinator.session(accountB, AuthorizationContext.INTERACTIVE, null, s -> s, () -> "session-b");
+        assertEquals("session-b", forB);
+        // 同じ持ち主の鍵は、別に作った List でも同じものとして扱う (信用期間内なので probe もログインもしない)。
+        assertEquals("session-b", coordinator.session(java.util.Arrays.asList("idp", "s1300002"),
+                AuthorizationContext.INTERACTIVE, null, s -> { throw new AssertionError("probe"); },
+                () -> { throw new AssertionError("login"); }));
+    }
+
     /** 障害系の失敗は、バックグラウンドからの再試行を抑える前にそもそもログインへ進ませない。 */
     @Test
     public void backgroundAfterFailure_stillDoesNotLogIn() throws Exception {
@@ -176,5 +229,69 @@ public class SessionCoordinatorTest {
             assertSame(SeciossError.class, e.getClass());
         }
         assertEquals(1, logins.get());
+    }
+
+    /** バックグラウンドを許す Unattended。failed で投げるかを選べる。 */
+    private static SessionCoordinator.Unattended allowAll(boolean failedThrows) {
+        return new SessionCoordinator.Unattended() {
+            @Override public boolean credentialsInvalid() { return false; }
+            @Override public boolean permits() { return true; }
+            @Override public boolean claimSlot() { return true; }
+            @Override public void succeeded(boolean passwordAccepted) {}
+            @Override public void failed(Exception e, boolean background) {
+                if (failedThrows) throw new IllegalStateException("prefs unreadable");
+            }
+        };
+    }
+
+    /**
+     * 前面の呼び出しがバックグラウンドのログインの飛行中に来ても、その失敗 (メールの枠が空いていない等) を
+     * 受け取らない。終わるのを待ってから自分のログイン (OTP の入力ができる) を始める。
+     */
+    @Test
+    public void interactive_doesNotInheritABackgroundLoginFailure() throws Exception {
+        SessionCoordinator<String> coordinator = new SessionCoordinator<>();
+        CountDownLatch backgroundInside = new CountDownLatch(1);
+        CountDownLatch releaseBackground = new CountDownLatch(1);
+        AtomicInteger interactiveLogins = new AtomicInteger();
+        Thread background = new Thread(() -> {
+            try {
+                coordinator.session(METHOD, AuthorizationContext.BACKGROUND, null, s -> null, () -> {
+                    backgroundInside.countDown();
+                    releaseBackground.await();
+                    throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED, "mail dispatch window in use");
+                }, allowAll(false));
+            } catch (Exception expected) {
+                // バックグラウンドは失敗する
+            }
+        });
+        background.start();
+        backgroundInside.await();
+        java.util.concurrent.FutureTask<String> interactive = new java.util.concurrent.FutureTask<>(() ->
+                coordinator.session(METHOD, AuthorizationContext.INTERACTIVE, null, s -> null, () -> {
+                    interactiveLogins.incrementAndGet();
+                    return "typed";
+                }, allowAll(false)));
+        new Thread(interactive).start();
+        Thread.sleep(100);
+        releaseBackground.countDown();
+        assertEquals("typed", interactive.get(5, java.util.concurrent.TimeUnit.SECONDS));
+        assertEquals(1, interactiveLogins.get());
+        background.join(5000);
+    }
+
+    /** 失敗の記録 (failed) が投げても、飛行中のログインを残さない (以後のログインが終わったものに合流し続けない)。 */
+    @Test
+    public void failingToRecordAFailure_stillClearsTheInFlightLogin() throws Exception {
+        SessionCoordinator<String> coordinator = new SessionCoordinator<>();
+        try {
+            coordinator.session(METHOD, AuthorizationContext.INTERACTIVE, null, s -> null, () -> {
+                throw new java.io.IOException("timeout");
+            }, allowAll(true));
+            fail();
+        } catch (java.io.IOException expected) {
+            assertEquals(1, expected.getSuppressed().length);
+        }
+        assertEquals("again", coordinator.forceLogin(METHOD, () -> "again"));
     }
 }

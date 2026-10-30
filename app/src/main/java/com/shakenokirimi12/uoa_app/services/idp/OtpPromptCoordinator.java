@@ -23,8 +23,8 @@ import java.util.concurrent.TimeUnit;
  *      メールを読む同意になる (設定の説明に書いてある)。以前の「メールから自動で取得する」の選択は
  *      2026-10-21 に廃止した
  *   2. 取れなかったら、アプリが前面にいるときだけ入力ダイアログを出して待つ (手入力が最後の手段)
- *   3. 前面にいない (WorkManager の同期) なら待ち受けられないので INTERACTIVE_LOGIN_REQUIRED を投げ、
- *      次に前面へ来たときの同期に任せる
+ *   3. バックグラウンド (WorkManager の同期) では IMAP の自動取得だけ。取れなければ OTP_FETCH_FAILED。
+ *      前面にいないのに前面の文脈で来たときは INTERACTIVE_LOGIN_REQUIRED を投げ、次に前面へ来たときに任せる
  *
  * 呼び出し元はサービス層のワーカースレッドなので、ダイアログの結果はキュー経由で受け取って
  * そのスレッドをブロックする (UI スレッドからは絶対に呼ばないこと)。
@@ -40,37 +40,51 @@ public final class OtpPromptCoordinator {
 
     private OtpPromptCoordinator() {}
 
-    /** メール方式。OTP が実際に要求されたときだけ呼ばれる。 */
-    @NonNull
-    public String code(@NonNull String uid, @NonNull String pass,
-                       @NonNull AuthorizationContext context) throws Exception {
-        // バックグラウンドでは入力も自動取得も待ち受けない。ここまで来ること自体が想定外だが
-        // (ServiceAuthenticator が手前で止める)、経路が増えたときのために念のため塞ぐ。
-        if (!context.allowsNewLogin()) {
-            throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
+    /** メール方式で用意したコード。mail は IMAP から取れたときのメール (接続を持ったまま)、手入力なら null。 */
+    public static final class MailCode {
+        @NonNull public final String code;
+        @Nullable public final ImapOtpFetcher.OtpMail mail;
+
+        MailCode(@NonNull String code, @Nullable ImapOtpFetcher.OtpMail mail) {
+            this.code = code;
+            this.mail = mail;
         }
+    }
+
+    /**
+     * メール方式。OTP が実際に要求されたときだけ呼ばれる。取れたメールは消さずに返す。消すのは IdP がコードを
+     * 受け付けてから (OtpProvider.onAccepted、SPEC.md「8. OTP メールの削除」)。返した mail は呼び出し側が必ず閉じる。
+     * バックグラウンドでは IMAP の自動取得だけを使い、取れなければ OTP_FETCH_FAILED (手入力は待たない)。
+     */
+    @NonNull
+    public MailCode mailCode(@NonNull String uid, @NonNull String pass,
+                             @NonNull AuthorizationContext context) throws Exception {
+        boolean background = !context.allowsNewLogin();
         // SeciossIdPClient は motp.cgi を叩いた直後にここへ来る。メール送信の時刻として使う。
         long requestedAt = System.currentTimeMillis();
         ImapOtpFetcher fetcher = new ImapOtpFetcher();
         try {
-            String code = fetcher.fetchOtpCode(uid, pass, 30, requestedAt);
+            ImapOtpFetcher.OtpMail mail = fetcher.fetchOtpMail(uid, pass, 30, requestedAt);
             // 取得 1 回ごとに診断の記録 (Wana) を送る (待たない)。
             com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayResponder.reportLoginFetch(fetcher.progress(), null);
-            return code;
+            return new MailCode(mail.code, mail);
         } catch (Exception e) {
             com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayResponder.reportLoginFetch(fetcher.progress(), e);
-            // メールが届かない・メールサーバーに繋がらない。手入力に落とす。
             // 例外の文面はサーバの応答行を含みうるので、決まった名前だけを残す (Progress.describe)。
             android.util.Log.w("OtpPromptCoordinator", "メールからの自動取得に失敗: " + ImapOtpFetcher.Progress.describe(e));
+            if (background) {
+                throw new SeciossError(SeciossError.Kind.OTP_FETCH_FAILED, ImapOtpFetcher.Progress.describe(e));
+            }
         }
 
+        // メールが届かない・メールサーバーに繋がらない。手入力に落とす。
         Activity activity = UoaApplication.getForegroundActivity();
         if (activity == null) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
 
         String code = promptOnMainThread(activity,
                 "メールからワンタイムパスワードを取得できませんでした。届いたコードを入力してください。");
-        if (code == null) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
-        return code;
+        if (code == null) throw cancelled();
+        return new MailCode(code, null);
     }
 
     /**
@@ -86,8 +100,18 @@ public final class OtpPromptCoordinator {
         if (activity == null) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
 
         String code = promptOnMainThread(activity, "認証アプリに表示されているコードを入力してください。");
-        if (code == null) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
+        if (code == null) throw cancelled();
         return code;
+    }
+
+    /**
+     * 入力を取り消した (時間切れを含む)。待っていた別のサービスのログインと、同じ同期の残りのログインを始めない
+     * (IdpLoginGate、SPEC.md「5. 前面ログイン」)。
+     */
+    @NonNull
+    private static SeciossError cancelled() {
+        IdpLoginGate.shared().noteCancelled();
+        return new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED, "otp prompt cancelled");
     }
 
     /** キャンセル・タイムアウトなら null。 */

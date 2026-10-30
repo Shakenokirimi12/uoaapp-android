@@ -345,6 +345,7 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
         codeMismatch.postValue(false);
         PreferenceManager prefs = PreferenceManager.getInstance(getApplication());
         String previous = prefs.totpOtpauthFor(uid);
+        boolean previousSuspended = prefs.isTotpSuspended(uid);
         if (!beginPostOnMain(c)) return;
         // 送る前に保存する。IdP だけが新しいシークレットになり、このアプリが持てない状態を作らない。
         if (!prefs.saveTotp(url, uid)) {
@@ -361,16 +362,23 @@ public final class IdPOtpRegistrationViewModel extends AndroidViewModel {
             registered = failRegistration(c, Method.AUTHENTICATOR, e);
         } finally {
             if (!registered) {
-                if (previous != null) prefs.saveTotp(previous, uid);
-                else prefs.clearTotp();
+                // IdP は前のままなので、前のキーを前の状態 (止めていたなら止めたまま) に戻す。
+                if (previous != null) {
+                    prefs.saveTotp(previous, uid);
+                    if (previousSuspended) prefs.suspendTotp(uid);
+                } else {
+                    prefs.clearTotp();
+                }
             }
         }
         if (!registered) return;
+        // 認証アプリの登録 (し直し) の成功で、バックグラウンドのログインの止めた印を外す (SPEC.md「9.3」)。
+        com.shakenokirimi12.uoa_app.services.BackgroundLoginPolicy.getInstance().registrationSucceeded();
         // 登録の確認に使った窓のコードを、このあとのログインで送り直さない。
         com.shakenokirimi12.uoa_app.services.idp.OtpProviders.markStepUsed(params, System.currentTimeMillis());
-        // 送っている間に別のログインがこの新しいキーのコードを送り (IdP はまだ前のキー)、弾かれてキーが消されて
-        // いることがある。登録が済んだ今は新しいキーが正しいので、持っていなければ書き直す。
-        if (!url.equals(prefs.totpOtpauthFor(uid))) prefs.saveTotp(url, uid);
+        // 送っている間に別のログインがこの新しいキーのコードを送り (IdP はまだ前のキー)、弾かれてキーが止められて
+        // いることがある。登録が済んだ今は新しいキーが正しいので、持っていないか止めていれば書き直す (止めた状態も外れる)。
+        if (!url.equals(prefs.totpOtpauthFor(uid)) || prefs.isTotpSuspended(uid)) prefs.saveTotp(url, uid);
     }
 
     /** IdP が「設定が完了しました」を返したあと。 */

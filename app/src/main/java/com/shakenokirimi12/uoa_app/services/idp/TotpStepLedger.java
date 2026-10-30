@@ -69,6 +69,11 @@ public final class TotpStepLedger {
         return shared;
     }
 
+    /** 最後に使った窓。まだ無ければ -1。 */
+    public synchronized long lastUsed() {
+        return Math.max(last, store.load());
+    }
+
     /** まだ使っていない (直近に使ったものより新しい) 窓なら使用済みにして true。 */
     public synchronized boolean claim(long step) {
         long used = Math.max(last, store.load());

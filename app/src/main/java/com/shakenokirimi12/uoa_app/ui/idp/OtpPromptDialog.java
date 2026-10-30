@@ -31,6 +31,15 @@ public final class OtpPromptDialog {
 
     private OtpPromptDialog() {}
 
+    /**
+     * 入力されたコードから空白 (前後も途中も。全角の空白と改行も) を除く。認証アプリは「123 456」のように区切って
+     * 表示し、メールからのコピーには改行が付くことがある。空白ごと送ると IdP に弾かれる。
+     */
+    @NonNull
+    static String normalizedCode(@NonNull String raw) {
+        return raw.replaceAll("[\\s\\u3000]", "");
+    }
+
     /** @param message 案内の文。メール方式なら自動取得に失敗したこと、認証アプリ方式なら入力の案内。 */
     @MainThread
     public static void show(@NonNull Activity activity, @NonNull String message, @NonNull Listener listener) {
@@ -56,7 +65,7 @@ public final class OtpPromptDialog {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity)
                 .setTitle("ワンタイムパスワード")
                 .setView(view)
-                .setPositiveButton("送信", (d, which) -> once.onResult(editCode.getText().toString().trim()))
+                .setPositiveButton("送信", (d, which) -> once.onResult(normalizedCode(editCode.getText().toString())))
                 .setNegativeButton("キャンセル", (d, which) -> once.onResult(null));
 
         androidx.appcompat.app.AlertDialog dialog = builder.create();

@@ -44,7 +44,9 @@ public final class SeciossRegistrationSession {
     public static final class AuthenticatorChallenge {
         /**
          * 外部の認証アプリ (Google/Microsoft Authenticator、1Password 等) へ Intent で渡すための URL。
-         * このアプリ自身はシークレットを保持・計算しない (このアプリだけが 2FA を持つ状態を避けるため)。
+         * このアプリも同じシークレットを保存し、ログインと PC への中継でコードを作る (PreferenceManager.saveTotp)。
+         * 登録は、利用者の認証アプリのコードとこのアプリの計算が一致し、保存できたときだけ完了する
+         * (このアプリだけが 2FA を持つ状態を避けるため。SPEC.md「3.3 認証アプリ方式」)。
          */
         @NonNull public final String otpauthUrl;
         @Nullable public final String existingStatusLabel;

@@ -20,6 +20,7 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputLayout;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.PreferenceManager;
 import com.shakenokirimi12.uoa_app.services.MoodleService;
@@ -45,6 +46,9 @@ public class LoginSettingsFragment extends Fragment {
     private View groupRelay;
     private View rowShowSecret, dividerShowSecret, rowReregister, dividerReregister;
     private View cardReregisterNeeded;
+    private TextView textReregisterNeededTitle;
+    private TextView textReregisterNeededText;
+    private View cardCredentialsInvalid;
 
     /** 画面ロックの確認 (KeyguardManager)。androidx.biometric は依存に無いので使わない。 */
     private final ActivityResultLauncher<Intent> confirmCredential =
@@ -89,6 +93,10 @@ public class LoginSettingsFragment extends Fragment {
         // 登録画面に入るので、手元に通るコードが無くても登録し直せる)。
         rowReregister.setOnClickListener(v -> reregister());
         cardReregisterNeeded = view.findViewById(R.id.card_reregister_needed);
+        textReregisterNeededTitle = view.findViewById(R.id.text_reregister_needed_title);
+        textReregisterNeededText = view.findViewById(R.id.text_reregister_needed_text);
+        cardCredentialsInvalid = view.findViewById(R.id.card_credentials_invalid);
+        view.findViewById(R.id.button_credentials_invalid).setOnClickListener(v -> showEditAccountDialog());
         view.findViewById(R.id.button_reregister_needed).setOnClickListener(v -> reregister());
 
         groupRelay = view.findViewById(R.id.group_relay);
@@ -118,17 +126,22 @@ public class LoginSettingsFragment extends Fragment {
             otpMethodLabel.setText(method == OtpMethod.AUTHENTICATOR
                     ? R.string.settings_otp_method_authenticator : R.string.settings_otp_method_mail);
             otpMethodDetail.setText(method == OtpMethod.AUTHENTICATOR
-                    ? (hasSecret() ? R.string.login_authenticator_with_secret : R.string.login_authenticator_without_secret)
+                    ? authenticatorDetail()
                     : R.string.settings_otp_method_mail_description);
             otpMethodDetail.setVisibility(View.VISIBLE);
         }
         boolean authenticator = known && method == OtpMethod.AUTHENTICATOR;
         setVisible(authenticator && hasSecret(), rowShowSecret, dividerShowSecret);
         setVisible(authenticator, rowReregister, dividerReregister);
-        // キーが無いのは普通の状態ではない (登録し直しが要る)。上に案内を出す。
-        cardReregisterNeeded.setVisibility(authenticator && !hasSecret() ? View.VISIBLE : View.GONE);
-        // PC 連携はメールに届くコードを読む機能なので、メール方式のときだけ出す (iOS と同じ)。
-        groupRelay.setVisibility(known && method == OtpMethod.MAIL ? View.VISIBLE : View.GONE);
+        // キーが無い・止めているのは普通の状態ではない (登録し直しが要る)。上に案内を出す。入口は起動時の案内
+        // (AuthenticatorKeyPrompt) と同じ。
+        boolean suspended = authenticator && prefs.isTotpSuspended(username);
+        cardReregisterNeeded.setVisibility(authenticator && (!hasSecret() || suspended) ? View.VISIBLE : View.GONE);
+        textReregisterNeededTitle.setText(suspended ? R.string.auth_key_suspended_title : R.string.login_reregister_needed_title);
+        textReregisterNeededText.setText(suspended ? R.string.auth_key_suspended_text : R.string.login_reregister_needed_text);
+        cardCredentialsInvalid.setVisibility(prefs.isCredentialsInvalid() ? View.VISIBLE : View.GONE);
+        // PC 連携は、メール方式ならメールから読み、認証アプリ方式ならキーで作って送る。方式にかかわらず出す。
+        groupRelay.setVisibility(View.VISIBLE);
     }
 
     private void reregister() {
@@ -145,6 +158,13 @@ public class LoginSettingsFragment extends Fragment {
 
     private static void setVisible(boolean visible, View... views) {
         for (View v : views) v.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    /** 認証アプリ方式の説明。鍵を止めている間は「自動で再ログインします」と言わない。 */
+    private int authenticatorDetail() {
+        if (!hasSecret()) return R.string.login_authenticator_without_secret;
+        return Totp.parse(prefs.usableTotpOtpauthFor(prefs.getUsername())) != null
+                ? R.string.login_authenticator_with_secret : R.string.login_authenticator_key_suspended;
     }
 
     private boolean hasSecret() {
@@ -203,7 +223,7 @@ public class LoginSettingsFragment extends Fragment {
         boolean unknown = !prefs.isOtpMethodKnown();
         boolean blocked = noAccount || unknown || prefs.isCredentialsInvalid();
         String message = (unknown ? "" : getString(current == OtpMethod.AUTHENTICATOR
-                ? (hasSecret() ? R.string.login_authenticator_with_secret : R.string.login_authenticator_without_secret)
+                ? authenticatorDetail()
                 : R.string.settings_otp_method_mail_description) + "\n\n")
                 + getString(noAccount ? R.string.otp_switch_blocked_no_account
                 : unknown ? R.string.otp_switch_blocked_unknown
@@ -246,57 +266,82 @@ public class LoginSettingsFragment extends Fragment {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_account, null);
         EditText editUsername = dialogView.findViewById(R.id.edit_username);
         EditText editPassword = dialogView.findViewById(R.id.edit_password);
+        TextInputLayout layoutPassword = dialogView.findViewById(R.id.layout_password);
+        // エラーのアイコンがパスワードの表示切り替えを隠さないようにする。
+        layoutPassword.setErrorIconDrawable(null);
         editUsername.setText(prefs.getUsername());
+        // 打ち直したらエラーを外す (補足の文に戻る)。
+        android.text.TextWatcher clearError = new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(android.text.Editable s) { layoutPassword.setError(null); }
+        };
+        editUsername.addTextChangedListener(clearError);
+        editPassword.addTextChangedListener(clearError);
 
-        new MaterialAlertDialogBuilder(requireContext())
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.settings_account)
                 .setView(dialogView)
-                .setPositiveButton("保存", (dialog, which) -> {
-                    String newUser = editUsername.getText().toString().trim();
-                    String newPass = editPassword.getText().toString().trim();
-                    if (newUser.isEmpty()) {
-                        Toast.makeText(requireContext(), "ユーザー名を入力してください", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    if (!prefs.isSecureStorageAvailable()) {
-                        // 平文には保存しない。保存できない理由をそのまま伝える。
-                        new MaterialAlertDialogBuilder(requireContext())
-                                .setTitle(R.string.secure_storage_unavailable_title)
-                                .setMessage(R.string.secure_storage_unavailable_message)
-                                .setPositiveButton(R.string.ok, null)
-                                .show();
-                        return;
-                    }
-                    if (newPass.isEmpty()) {
-                        prefs.setUsername(newUser);
-                        render();
-                        Toast.makeText(requireContext(), "ユーザー名を更新しました", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    MoodleService moodleService = new MoodleService();
-                    moodleService.login(newUser, newPass, new ServiceCallback<Boolean>() {
-                        @Override
-                        public void onSuccess(Boolean result) {
-                            if (!isAdded()) return;
-                            if (result) {
-                                prefs.setUsername(newUser);
-                                prefs.setPassword(newPass);
-                                // 別アカウントかもしれない。前のユーザーの CampusSquare セッションを引き継がない。
-                                com.shakenokirimi12.uoa_app.services.CampusSquareService.clearSession();
-                                render();
-                                Toast.makeText(requireContext(), "ログイン情報を更新しました", Toast.LENGTH_SHORT).show();
-                            } else {
-                                Toast.makeText(requireContext(), "ログインに失敗しました", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-
-                        @Override
-                        public void onError(String message) {
-                            if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                })
+                .setPositiveButton(R.string.login_account_save, null)
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+        // 入力が足りないときは閉じない。閉じると、打ったユーザー名が消えて最初から入れ直しになる。
+        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String newUser = editUsername.getText().toString().trim();
+            String newPass = editPassword.getText().toString().trim();
+            if (newUser.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.login_account_username_required, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (newPass.isEmpty()) {
+                if (newUser.equals(prefs.getUsername())) {
+                    // 何も変えていない。
+                    dialog.dismiss();
+                    return;
+                }
+                // 新しいユーザー名と、保存しているパスワード (前のアカウントのもの) を組み合わせない。組み合わせると
+                // 次のログインで前のアカウントのパスワードを別のアカウントとして大学の認証システムに送り、失敗して
+                // (ロックの回数に数えられうる) 誤りの印まで立つ。ユーザー名を変えるときはパスワードも入れてもらう。
+                layoutPassword.setError(getString(R.string.login_account_password_required));
+                editPassword.requestFocus();
+                return;
+            }
+            dialog.dismiss();
+            if (!prefs.isSecureStorageAvailable()) {
+                // 平文には保存しない。保存できない理由をそのまま伝える。
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.secure_storage_unavailable_title)
+                        .setMessage(R.string.secure_storage_unavailable_message)
+                        .setPositiveButton(R.string.ok, null)
+                        .show();
+                return;
+            }
+            // ユーザー名とパスワードは、ログインで確かめてから組で保存する。別のアカウントなら、前のアカウントの
+            // SSO・セッションを確認のログインの前に捨てる。残すと SSO だけで通ってパスワードを確かめないまま保存し、
+            // 後で捨てると確認のログインで得たセッションまで消える (AccountSwitch)。
+            com.shakenokirimi12.uoa_app.services.AccountSwitch.prepare(prefs, newUser);
+            MoodleService moodleService = new MoodleService();
+            moodleService.login(newUser, newPass, new ServiceCallback<Boolean>() {
+                @Override
+                public void onSuccess(Boolean result) {
+                    if (!isAdded()) return;
+                    if (result) {
+                        // 前のアカウントの SSO・セッションは確認のログインの前に捨ててある。ここで捨てると、確認の
+                        // ログインで得た SSO とセッションまで消える (S-8)。
+                        prefs.setUsername(newUser);
+                        prefs.setPassword(newPass);
+                        render();
+                        Toast.makeText(requireContext(), R.string.login_account_saved, Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(requireContext(), R.string.login_account_login_failed, Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onError(String message) {
+                    if (isAdded()) Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
     }
 }

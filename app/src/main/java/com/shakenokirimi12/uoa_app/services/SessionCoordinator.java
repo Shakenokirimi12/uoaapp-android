@@ -1,5 +1,6 @@
 package com.shakenokirimi12.uoa_app.services;
 
+import com.shakenokirimi12.uoa_app.services.idp.LoginEvidence;
 import com.shakenokirimi12.uoa_app.services.idp.SeciossError;
 
 import java.util.Objects;
@@ -14,12 +15,12 @@ import java.util.concurrent.FutureTask;
  *   1. 直近 TRUST_WINDOW_MS 以内に検証済み → そのまま使う (リクエスト 0)
  *   2. それ以外は probe で 1 リクエストだけ確認し、認証済みなら検証時刻だけ更新
  *   3. 未認証なら単一飛行でログイン。同時に来た呼び出しは同じログインの結果を待つ。
+ *      ID / パスワードが誤りと分かっている資格情報では、どの文脈でも始めない (Unattended.credentialsInvalid)。
  *      バックグラウンド (AuthorizationContext.BACKGROUND) からの要求は、Unattended (BackgroundLoginPolicy)
- *      が許したときだけ新規ログインを始める: 認証アプリ方式でこのアプリが鍵を持ち、パスワードが前回成功した
- *      ものと同じで、前のバックグラウンドのログインが失敗しておらず、間隔の制限 (30 分) も通ったとき。
- *      メール方式では決して始めない (ログイン 1 回 = OTP メール 1 通のため)。始めないときは
+ *      が許したときだけ新規ログインを始める (方式ごとの条件と間隔は BackgroundLoginPolicy)。始めないときは
  *      INTERACTIVE_LOGIN_REQUIRED を返して諦め、次にユーザーが画面を開いたときに任せる。
- *      直前の障害系失敗から LOGIN_BACKOFF_MS 以内なら再試行しない
+ *      直前の前面の障害系失敗から LOGIN_BACKOFF_MS 以内なら再試行しない (バックグラウンドの失敗は前面を止めない)。
+ *      利用者がやり直したとき (引っ張って更新・再試行ボタン) は、呼び出し側が clearBackoff で待ちを解く
  *
  * 各画面と SyncWorker はそれぞれ別のサービスインスタンス (= 別の単一スレッド executor) から
  * 同時にここへ来るため、素の static フィールドでは単一飛行が破れて二重ログイン (= 二重 OTP メール)
@@ -37,20 +38,23 @@ final class SessionCoordinator<S> {
      * (BackgroundLoginPolicy.forAccount)。既定 (NEVER) は決して始めない。
      */
     interface Unattended {
-        /** OTP を人もメールも使わずに用意できるか、など (間隔の制限は含まない)。lock の外で呼ぶ。 */
+        /** この資格情報は誤りと分かっている。前面でもバックグラウンドでもログインを始めない。lock の外で呼ぶ。 */
+        boolean credentialsInvalid();
+        /** バックグラウンドで始めてよいか (間隔の制限は含まない)。lock の外で呼ぶ。 */
         boolean permits();
-        /** 間隔の制限。始めてよければ試行として記録して true。始めると決める直前に lock の下で呼ぶ。 */
+        /** 間隔の制限。始めてよければ試行として記録して true。ほかの条件を全部通ってから、lock の外で呼ぶ。 */
         boolean claimSlot();
-        /** ログインが成功した (文脈を問わない)。 */
-        void succeeded();
-        /** バックグラウンドのログインが失敗した。 */
-        void failed(Exception e);
+        /** ログインが成功した (文脈を問わない)。passwordAccepted: IdP にパスワードを送って通った (LoginEvidence)。 */
+        void succeeded(boolean passwordAccepted);
+        /** ログインが失敗した (background: バックグラウンドのログインだったか)。 */
+        void failed(Exception e, boolean background);
 
         Unattended NEVER = new Unattended() {
+            @Override public boolean credentialsInvalid() { return false; }
             @Override public boolean permits() { return false; }
             @Override public boolean claimSlot() { return false; }
-            @Override public void succeeded() {}
-            @Override public void failed(Exception e) {}
+            @Override public void succeeded(boolean passwordAccepted) {}
+            @Override public void failed(Exception e, boolean background) {}
         };
     }
 
@@ -65,6 +69,8 @@ final class SessionCoordinator<S> {
     private long generation;
     private FutureTask<S> inFlight;
     private Object inFlightMethod;
+    /** 飛行中のログインがバックグラウンドのものか。前面の呼び出しはその失敗を受け取らず、自分でログインし直す。 */
+    private boolean inFlightBackground;
     private Exception lastFailure;
     private long lastFailureAt;
 
@@ -88,9 +94,24 @@ final class SessionCoordinator<S> {
     }
 
     /**
+     * 利用者がやり直したとき (引っ張って更新・再試行ボタン) に呼ぶ。直前の失敗による待ち (LOGIN_BACKOFF_MS) を解く。
+     * 待ちは、画面を開いただけの取得や同じ更新の中で続く取得が、失敗の直後にログインし直して OTP を
+     * もう一度求めない (メールをもう一通飛ばさない) ためのもの。利用者の操作にまで効かせると、OTP を
+     * 取り消した・通信が戻った直後に引っ張って更新しても、最大 1 分間同じ失敗が返るだけになる。
+     * バックグラウンドの判定 (Unattended) と誤りの印は変えない。
+     */
+    void clearBackoff() {
+        synchronized (lock) {
+            lastFailure = null;
+            lastFailureAt = 0;
+        }
+    }
+
+    /**
      * 認証済みセッションを返す。必要なときだけ probe / login を呼ぶ。
      *
-     * @param method    ログイン方式。前回と違えば手持ちのセッションは信用しない
+     * @param method    ログイン方式と持ち主 (ユーザー名) の組。前回と違えば手持ちのセッションは信用せず、
+     *                  違う組の飛行中のログインには合流しない (終わるのを待ってから自分のログインを始める)
      * @param candidate live が無いときに、ログインの前に試す候補 (前回プロセスが永続化した cookie 等)。無ければ null
      */
     S session(Object method, AuthorizationContext context, S candidate, Probe<S> probe, Login<S> login) throws Exception {
@@ -140,45 +161,62 @@ final class SessionCoordinator<S> {
         }
 
         // バックグラウンドで新規ログインしてよいか。暗号化した設定を読むので lock の外で先に決める。
-        // 始めるかどうか (間隔の枠を取る) は下の lock の中で決める。
+        // 間隔の枠 (claimSlot) も設定を読むので lock の外で取り、取ったあとで lock の中の状態を見直す。
         boolean background = !context.allowsNewLogin();
         boolean mayLoginUnattended = background && unattended.permits();
+        boolean credentialsInvalid = unattended.credentialsInvalid();
+        boolean slotClaimed = false;
 
         while (true) {
             FutureTask<S> task;
-            boolean owner;
-            boolean otherMethod = false;
+            boolean owner = false;
+            boolean waitThenRetry = false;
+            boolean needSlot = false;
             synchronized (lock) {
                 // probe している間に別スレッドのログインが終わっていれば、それを使う。
                 if (live != null && Objects.equals(liveMethod, method) && verifiedAt >= began) return live;
                 if (inFlight != null) {
                     task = inFlight;
-                    owner = false;
                     // 別方式のログインが飛行中なら、その結果 (Cookie ヘッダの形が違う) は使えない。
-                    // 終わるのを待ってから自分の方式でやり直す (待つのは lock の外)。
-                    otherMethod = !Objects.equals(inFlightMethod, method);
+                    // 前面の呼び出しがバックグラウンドのログインに合流すると、その失敗 (メールの枠が空いていない、
+                    // OTP メールが取れなかった等) を受け取り、自分で OTP を入力する機会が無い。
+                    // どちらも終わるのを待ってから、自分の文脈でやり直す (待つのは lock の外)。
+                    waitThenRetry = !Objects.equals(inFlightMethod, method) || (inFlightBackground && !background);
                 } else {
+                    task = null;
                     // バックグラウンドでは、Unattended が許したときだけ新規ログインを始める。ここが唯一の判断点で、
                     // 許さなければ login クロージャ自体を呼ばない (フラグを見落とす経路を作らないため)。
+                    if (credentialsInvalid) throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
                     if (background && !mayLoginUnattended) {
                         throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
                     }
+                    // 記録するのは前面の失敗だけ (runLogin)。バックグラウンドの失敗で前面を待たせない。
                     if (lastFailure != null
                             && System.currentTimeMillis() - lastFailureAt < LOGIN_BACKOFF_MS) {
                         throw lastFailure;
                     }
-                    // 間隔の枠は、ほかの条件を全部通ってから取る (取ったら試行として記録される)。
-                    if (background && !unattended.claimSlot()) {
-                        throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
+                    if (background && !slotClaimed) {
+                        // 間隔の枠は、ほかの条件を全部通ってから取る (取ったら試行として記録される)。
+                        needSlot = true;
+                    } else {
+                        task = new FutureTask<>(login::login);
+                        inFlight = task;
+                        inFlightMethod = method;
+                        inFlightBackground = background;
+                        owner = true;
                     }
-                    task = new FutureTask<>(login::login);
-                    inFlight = task;
-                    inFlightMethod = method;
-                    owner = true;
                 }
             }
-            if (otherMethod) {
-                awaitIgnoringResult(task);
+            if (needSlot) {
+                if (!unattended.claimSlot()) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
+                // 枠を取る間に別スレッドがログインを始めた・終えたなら、次の周でそれに合流する・それを使う。
+                slotClaimed = true;
+                continue;
+            }
+            if (waitThenRetry) {
+                awaitSettled(task);
+                // 待っている間に、先のログインが ID / パスワードの誤りを見つけたかもしれない (印は lock の外で読む)。
+                credentialsInvalid = unattended.credentialsInvalid();
                 continue;
             }
             if (!owner) return await(task);
@@ -204,8 +242,12 @@ final class SessionCoordinator<S> {
         return forceLogin(method, login, Unattended.NEVER);
     }
 
-    /** 前面のログインなので、成功したら unattended に伝える (パスワードの確認と、止めていた再ログインの解除)。 */
+    /**
+     * 前面のログインなので、成功したら unattended に伝える (パスワードの確認と、止めていた再ログインの解除)。
+     * 誤りと分かっている資格情報 (同じ値の入れ直し) では始めない。
+     */
     S forceLogin(Object method, Login<S> login, Unattended unattended) throws Exception {
+        if (unattended.credentialsInvalid()) throw new Exception(AuthErrors.INVALID_CREDENTIALS_MESSAGE);
         while (true) {
             FutureTask<S> mine = null;
             FutureTask<S> other = null;
@@ -215,46 +257,73 @@ final class SessionCoordinator<S> {
                     mine = new FutureTask<>(login::login);
                     inFlight = mine;
                     inFlightMethod = method;
+                    inFlightBackground = false;
                 } else {
                     other = inFlight;
                 }
             }
             if (mine != null) return runLogin(mine, method, unattended, false);
             // 先行ログインの成否は関係ない。終わったので自分のログインを始める。
-            awaitIgnoringResult(other);
+            awaitSettled(other);
         }
     }
 
-    private static <S> void awaitIgnoringResult(FutureTask<S> task) throws InterruptedException {
+    /**
+     * task が終わり、持ち主がその後始末 (inFlight を空ける) を終えるまで待つ。結果は使わない。
+     * 後始末の前にやり直すと、同じ task に合流し直して空回りする。
+     */
+    private void awaitSettled(FutureTask<S> task) throws InterruptedException {
         try {
             task.get();
         } catch (ExecutionException ignored) {
             // 結果は使わない
         }
+        synchronized (lock) {
+            while (inFlight == task) lock.wait();
+        }
     }
 
     private S runLogin(FutureTask<S> task, Object method, Unattended unattended, boolean background) throws Exception {
-        task.run();
         try {
-            S session = task.get();
+            LoginEvidence.begin();
+            boolean passwordAccepted;
+            try {
+                task.run();
+            } finally {
+                passwordAccepted = LoginEvidence.end();
+            }
+            S session;
+            try {
+                session = task.get();
+            } catch (ExecutionException e) {
+                Exception cause = unwrap(e);
+                synchronized (lock) {
+                    // ID/PW 誤りは誤りの印で止まるので、ここで抑える対象は障害系だけ。バックグラウンドの失敗は
+                    // 止めた印 (BackgroundLoginPolicy) が受け持ち、前面のログインは待たせない。
+                    if (!background && !AuthErrors.isInvalidCredentials(cause.getMessage())) {
+                        lastFailure = cause;
+                        lastFailureAt = System.currentTimeMillis();
+                    }
+                }
+                try {
+                    unattended.failed(cause, background);
+                } catch (RuntimeException recordFailed) {
+                    // 印を書けなくても (暗号化した設定が読めない等)、ログインの失敗はそのまま返す。
+                    cause.addSuppressed(recordFailed);
+                }
+                throw cause;
+            }
             synchronized (lock) {
                 setLive(session, method);
-                if (inFlight == task) inFlight = null;
             }
-            unattended.succeeded();
+            unattended.succeeded(passwordAccepted);
             return session;
-        } catch (ExecutionException e) {
-            Exception cause = unwrap(e);
-            if (background) unattended.failed(cause);
+        } finally {
+            // 後始末は必ずする。残すと、以後の呼び出しが終わったログインに合流し続ける。
             synchronized (lock) {
                 if (inFlight == task) inFlight = null;
-                // ID/PW 誤りは呼び出し側が同期を止めるので、ここで抑える対象は障害系だけ。
-                if (!AuthErrors.isInvalidCredentials(cause.getMessage())) {
-                    lastFailure = cause;
-                    lastFailureAt = System.currentTimeMillis();
-                }
+                lock.notifyAll();
             }
-            throw cause;
         }
     }
 

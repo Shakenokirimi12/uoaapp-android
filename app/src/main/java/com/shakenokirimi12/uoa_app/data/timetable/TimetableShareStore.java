@@ -299,6 +299,11 @@ public final class TimetableShareStore {
      * 消えるので、先に写してから消す。通信はメインスレッドでしない。
      */
     public void clearAllOnLogout() {
+        clearAllOnLogout(null);
+    }
+
+    /** onFailure: 出している共有をサーバーから消せなかったときに呼ぶ (ログアウトで知らせる)。 */
+    public void clearAllOnLogout(@androidx.annotation.Nullable Runnable onFailure) {
         OutgoingShare current = outgoing();
         String token = ownerToken();
         synchronized (this) {
@@ -310,8 +315,9 @@ public final class TimetableShareStore {
         new Thread(() -> {
             try {
                 api.delete(current.shareId, token);
-            } catch (TimetableShareApi.Failure ignored) {
-                // 消せなかった共有は期限で消える。
+            } catch (TimetableShareApi.Failure e) {
+                // 消せなかった共有は期限 (24 時間) で消える。消せなかったことは知らせる。
+                if (onFailure != null) onFailure.run();
             }
         }, "timetable-share-stop").start();
     }

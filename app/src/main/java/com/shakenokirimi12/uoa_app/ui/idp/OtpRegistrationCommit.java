@@ -91,19 +91,19 @@ public final class OtpRegistrationCommit {
         // 通らなかったのか (コードの誤りなど) を見分けられないので、成功にしない。成功にすると、IdP が
         // 受け付けていない新しいシークレットを保存してしまう。
         if (previous == registered) return Result.FAILED;
-        String otpType = reader.read();
-        if (otpType == null || otpType.isEmpty() || !idpUsesMethod(registered, otpType)) return Result.FAILED;
+        // ここでは読めたときだけ成功にする (分からない値は失敗のまま)。
+        if (OtpMethod.fromOtpType(reader.read()) != registered) return Result.FAILED;
         writer.apply(registered);
         return Result.SUCCEEDED;
     }
 
     /**
-     * IdP がログインに method を使っているとみなせるか。確かめられているのは、メール方式のアカウントで
-     * otp_type が 'mail' になることだけなので、'mail' かどうかだけで見分ける。値が読めないときは登録完了の
-     * 表示を信じる (学内にいると OTP 入力画面を通らないので、読めないことがある)。
+     * IdP がログインに method を使っているとみなせるか。otp_type の解釈は OtpMethod.fromOtpType に任せる。
+     * 分からない値 (読めない・空・"none") のときは登録完了の表示を信じる (学内にいると OTP 入力画面を通らないので、
+     * 読めないことがある)。
      */
     static boolean idpUsesMethod(@NonNull OtpMethod method, @Nullable String otpType) {
-        if (otpType == null || otpType.isEmpty()) return true;
-        return "mail".equals(otpType) == (method == OtpMethod.MAIL);
+        OtpMethod read = OtpMethod.fromOtpType(otpType);
+        return read == null || read == method;
     }
 }

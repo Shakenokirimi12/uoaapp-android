@@ -74,6 +74,7 @@
     <string name="settings_reset">データをリセット</string>
     <string name="settings_version">バージョン</string>
     <string name="settings_logout">ログアウト</string>
+    <string name="settings_logout_server_failed">サーバーのデータの一部を消せませんでした。この端末のデータは消しました。</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome">UoA非公式アプリへようこそ</string>
@@ -88,6 +89,9 @@
     <string name="onboarding_password_hint">パスワード</string>
     <string name="onboarding_login_button">ログイン</string>
     <string name="onboarding_skip">スキップ</string>
+    <string name="onboarding_pc_relay_later_note">使わない場合は「あとで」をタップしてください。あとから設定の「ログインとワンタイムパスワード」の「PC との連携」で連携できます。</string>
+    <string name="onboarding_pc_relay_open">PC と連携する</string>
+    <string name="onboarding_pc_relay_later">あとで</string>
     <string name="onboarding_done">完了</string>
 
     <!-- Grades -->
@@ -172,8 +176,11 @@
     <string name="otp_relay_progress_channel_name">PC への OTP 送信中</string>
     <string name="class_channel_description">授業中・次の授業の常駐通知と、自動出席登録の完了を表示します</string>
     <string name="login_required_channel_name">ログインのお知らせ</string>
-    <string name="login_required_notify_title">ログインが必要です</string>
-    <string name="login_required_notify_text">大学のシステムへのログインが切れたため、裏での更新を止めています。アプリを開いてログインしてください。</string>
+    <string name="auth_mail_dispatch_notify_title">自動でログインしています</string>
+    <string name="auth_mail_dispatch_notify_text">時間割と成績を更新するため、自動でログインしています。大学から OTP メールが 1 通届きます。</string>
+    <string name="auth_credentials_invalid_title">ユーザー名かパスワードが違います</string>
+    <string name="auth_credentials_invalid_text">保存しているユーザー名かパスワードでログインできませんでした。どちらかを変えるまで、ログインを止めます。同じ値を入れ直しても再開しません。</string>
+    <string name="auth_credentials_invalid_action">ユーザー名かパスワードを変える</string>
     <!-- Push -->
     <string name="push_channel_name">課題の期限通知</string>
     <!-- Assignment countdown -->
@@ -254,10 +261,18 @@
     <string name="login_secret_confirm_description">本人か確かめます</string>
     <string name="close">閉じる</string>
     <string name="login_not_logged_in">未ログイン</string>
+    <string name="login_account_save">保存</string>
+    <string name="login_account_username_required">ユーザー名を入力してください。</string>
+    <string name="login_account_password_required">ユーザー名を変えるときは、パスワードも入力してください。</string>
+    <string name="login_account_saved">ログイン情報を保存しました。</string>
+    <string name="login_account_login_failed">ログインできませんでした。時間をおいて、もう一度お試しください。</string>
     <string name="login_authenticator_with_secret">コードはこのアプリが自動で入力します。バックグラウンドでも自動で再ログインします。</string>
+    <string name="login_authenticator_key_suspended">このアプリのキーを止めています。登録し直すまで、ログインのたびにコードを入力します。</string>
     <string name="login_authenticator_without_secret">このアプリにキーがありません。登録し直してください。</string>
     <string name="login_reregister_needed_title">認証アプリの登録し直しが必要です</string>
     <string name="login_reregister_needed_text">このアプリにキーがありません。登録し直すと、このアプリがコードを自動で入力し、バックグラウンドでも再ログインします。それまではログインのたびにコードを入力します。</string>
+    <string name="auth_key_suspended_title">認証が通らず、再設定が必要です</string>
+    <string name="auth_key_suspended_text">このアプリのキーで作ったコードが、大学の認証システムで 2 回続けて通りませんでした。登録し直すまで、キーは自動では使わず、ログインのたびにコードを入力します。</string>
     <string name="login_reregister_prompt_open">登録し直す</string>
     <string name="login_reregister_prompt_later">あとで</string>
     <string name="settings_login_row">ログインとワンタイムパスワード</string>
