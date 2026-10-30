@@ -149,7 +149,7 @@
             android:layout_height="wrap_content"
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
-            android:text="ワンタイムパスワードのログイン方法" />
+            android:text="ログイン方法" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
