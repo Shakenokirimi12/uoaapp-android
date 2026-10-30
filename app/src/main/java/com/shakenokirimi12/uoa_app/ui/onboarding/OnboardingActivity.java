@@ -104,6 +104,9 @@ public class OnboardingActivity extends AppCompatActivity {
         buttonNext.setEnabled(false);
         buttonNext.setText("ログイン中…");
 
+        // 前に別のアカウントを保存していたら、確認のログインの前にそのセッションを捨てる。後で捨てると、
+        // このログインで得たセッションまで消える (AccountSwitch)。
+        com.shakenokirimi12.uoa_app.services.AccountSwitch.prepare(prefs, username);
         moodleService.login(username, password, new ServiceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {

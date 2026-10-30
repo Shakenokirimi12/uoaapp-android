@@ -306,18 +306,20 @@ public class LoginSettingsFragment extends Fragment {
                         .show();
                 return;
             }
-            // ユーザー名とパスワードは、ログインで確かめてから組で保存する。
+            // ユーザー名とパスワードは、ログインで確かめてから組で保存する。別のアカウントなら、前のアカウントの
+            // SSO・セッションを確認のログインの前に捨てる。残すと SSO だけで通ってパスワードを確かめないまま保存し、
+            // 後で捨てると確認のログインで得たセッションまで消える (AccountSwitch)。
+            com.shakenokirimi12.uoa_app.services.AccountSwitch.prepare(prefs, newUser);
             MoodleService moodleService = new MoodleService();
             moodleService.login(newUser, newPass, new ServiceCallback<Boolean>() {
                 @Override
                 public void onSuccess(Boolean result) {
                     if (!isAdded()) return;
                     if (result) {
-                        boolean otherAccount = prefs.setUsername(newUser);
+                        // 前のアカウントの SSO・セッションは確認のログインの前に捨ててある。ここで捨てると、確認の
+                        // ログインで得た SSO とセッションまで消える (S-8)。
+                        prefs.setUsername(newUser);
                         prefs.setPassword(newPass);
-                        // 別アカウントにしたときだけ、前のユーザーの CampusSquare セッションを引き継がない。
-                        // 同じアカウントのパスワードの更新では、今の確認ログインの SSO とセッションを使い続ける (S-8)。
-                        if (otherAccount) com.shakenokirimi12.uoa_app.services.CampusSquareService.clearSession();
                         render();
                         Toast.makeText(requireContext(), "ログイン情報を更新しました", Toast.LENGTH_SHORT).show();
                     } else {

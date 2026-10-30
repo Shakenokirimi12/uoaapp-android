@@ -288,27 +288,44 @@ public class PreferenceManager {
 
     // Credentials
     public String getUsername() { return getSecret(KEY_USERNAME); }
+    /** username が、保存しているのと別のアカウントか (初めて保存するとき・同じ名前では false)。 */
+    public boolean isOtherAccount(String username) {
+        String previous = getUsername();
+        return !previous.isEmpty() && !previous.equals(username != null ? username : "");
+    }
+
     /**
-     * ユーザー名を保存する。別のアカウントに変えたかを返す (初めて保存するとき・同じ名前の保存では false)。
+     * 確認のログインで通ったユーザー名を保存する。別のアカウントに変えたかを返す (初めて保存するとき・同じ名前の
+     * 保存では false)。前のアカウントの方式の控え・SSO・SP のセッションは、確認のログインの前に
+     * discardAccountStateForSwitch で捨ててある。ここで捨てると、確認のログインで得た新しいアカウントの
+     * SSO・セッション・方式の控えまで消え、次の同期でもう一度ログインする (メール方式なら OTP メールがもう 1 通)。
      */
     public boolean setUsername(String username) {
-        String previous = getUsername();
-        boolean otherAccount = !previous.isEmpty() && !previous.equals(username != null ? username : "");
+        boolean otherAccount = isOtherAccount(username);
         putSecret(KEY_USERNAME, username);
         if (!otherAccount) return false;
-        // OTP の受け取り方 (IdP の方式の控え) はアカウントごと。別のアカウントにしたら、次のログインで IdP から
-        // 読み直す (OtpProviders)。初めて保存するとき (初期設定) は、そのログインで読んだ方式を残す。
-        prefs.edit().remove(KEY_OTP_METHOD).apply();
-        // 認証アプリのシークレットもアカウントごと。別のアカウントの鍵でコードを作らない。
+        // 認証アプリのシークレットもアカウントごと。別のアカウントの鍵でコードを作らない。持ち主付きなので、
+        // 確認のログインが失敗して前のアカウントに留まるときのために、保存が決まってから消す。
         clearTotp();
-        // 前のユーザーの IdP セッションと SP のセッションを引き継がない。同じアカウントの保存 (初期設定の直後・
-        // パスワードだけの更新) では消さない。直前の確認ログインが保存した SSO を使えば、次のサービスで
-        // OTP をもう一度求めずに済む (S-8)。
+        return true;
+    }
+
+    /**
+     * 別のアカウントへ切り替えるときに、確認のログインの「前」に呼ぶ (AccountSwitch)。前のアカウントの OTP の
+     * 受け取り方の控え、IdP の SSO、SP のセッションを捨てる。
+     *
+     * 前のアカウントの SSO を残したまま確認のログインをすると、IdP がその SSO だけで通し (パスワードを送らない)、
+     * 新しいユーザー名とパスワードを確かめないまま保存してしまう (持ち主が記録されていない古い SSO は
+     * SeciossSsoStore.claimFor でも捨てられない)。確認のログインが失敗しても、前のアカウントは次のログインで
+     * 取り直すだけで、鍵 (持ち主付き) は残る。
+     */
+    public void discardAccountStateForSwitch() {
+        // OTP の受け取り方 (IdP の方式の控え) はアカウントごと。確認のログインで新しいアカウントの方式を読む (OtpProviders)。
+        prefs.edit().remove(KEY_OTP_METHOD).apply();
         setCsIdpSessionCookies(null);
         // メモリ上のセッション cookie も含めて消す (ストアはプロセス内に写しを持つ)。
         com.shakenokirimi12.uoa_app.services.idp.SeciossSsoStore.getInstance().clear();
         setMoodleSessionCookies(null);
-        return true;
     }
 
     /** 時間割共有の返事を読むトークン。暗号化 prefs にだけ置く (使えない端末では保存されず、空)。 */
