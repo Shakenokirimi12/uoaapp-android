@@ -82,7 +82,7 @@ public final class OtpRelayNotifications {
     /** この端末に無い連携からの依頼。鍵が無いので中継サーバには答えていない。 */
     static void notPaired(@NonNull Context ctx, @NonNull OtpRelayRequest request) {
         result(ctx, request, FAILED_TITLE,
-                "この端末では、この PC と連携していません。PC の拡張で連携を解除して、連携し直してください。", true, null);
+                "この端末では、この PC と連携していません。PC の拡張機能で連携を解除して、連携し直してください。", true, null);
     }
 
     /** 同意を記録する前に作った連携の依頼を断った。押すとアプリで確認が出る。 */

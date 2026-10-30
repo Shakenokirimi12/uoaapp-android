@@ -61,7 +61,7 @@
                 android:layout_weight="1"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorError"
-                tools:text="締切: 4/4 23:59" />
+                tools:text="提出期限: 4/4 23:59" />
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

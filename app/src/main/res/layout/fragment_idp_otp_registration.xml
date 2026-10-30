@@ -123,14 +123,14 @@
                             style="@style/Widget.Uoa.ListRow.Title"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="メール(推奨)" />
+                            android:text="メール (推奨)" />
 
                         <TextView
                             style="@style/Widget.Uoa.ListRow.Supporting"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="別のアプリに依存しないため、二段階認証を丸ごと失うリスクが低い方式です。大学のメールに届く確認コードは、このアプリが読み取って入力します。" />
+                            android:text="別のアプリに依存しないため、二段階認証が使えなくなるおそれが少ない方式です。大学のメールに届くワンタイムパスワードは、このアプリが読み取って入力します。" />
                     </LinearLayout>
 
                     <ImageView
@@ -175,7 +175,7 @@
                             style="@style/Widget.Uoa.ListRow.Title"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Authenticatorアプリ" />
+                            android:text="認証アプリ" />
 
                         <TextView
                             style="@style/Widget.Uoa.ListRow.Supporting"
@@ -263,7 +263,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="この操作は実際にアカウントのワンタイムパスワード設定を変更します。"
+                android:text="この操作で、大学のアカウントのワンタイムパスワード設定が実際に変更されます。"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurface" />
 
@@ -395,7 +395,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="12dp"
                     android:layout_weight="1"
-                    android:text="メールからコードを自動取得中..."
+                    android:text="メールからワンタイムパスワードを自動取得中…"
                     android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:textColor="?attr/colorOnSurfaceVariant" />
             </LinearLayout>

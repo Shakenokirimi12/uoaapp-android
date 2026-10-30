@@ -63,7 +63,7 @@ public class OtpRelayActivity extends AppCompatActivity {
         Uri data = intent.getData();
         OtpRelayLink.Pending pending = OtpRelayLink.parse(data != null ? data.toString() : null);
         if (pending == null) {
-            message("PC との連携", "連携用の QR を読み取れませんでした。PC 側で QR を出し直してください。");
+            message("PC との連携", "連携用の QR コードを読み取れませんでした。PC で QR コードを表示し直してください。");
             return;
         }
         confirmPairing(pending);
@@ -75,11 +75,11 @@ public class OtpRelayActivity extends AppCompatActivity {
                 // 「連携する」がこの連携でメールを読み、コードを作って送ることへの同意になる (OtpRelayPairing.mailConsentAt)。
                 // 何を読んでどこへ返すかを、ここで明示する。
                 .setMessage("「" + pending.browserName + "」で OTP の入力画面が出ると、このアプリが OTP を用意し、"
-                        + "暗号化してその PC に自動で送ります。メール方式なら大学のメールから読み取り (確認コードのメールは、"
+                        + "暗号化してその PC に自動で送ります。メール方式なら大学のメールから読み取り (OTP のメールは、"
                         + "古いものも含めて削除します)、認証アプリ方式ならこのアプリにあるセットアップキーでコードを作ります。"
                         + "ユーザー名・パスワード・セットアップキーは送りません。"
-                        + "「同意して連携する」を押すと、そのためにメールを読み、コードを作って送ることに同意したことになります。\n\n"
-                        + "自分の PC の拡張で出した QR を読み取ったのでなければ、「キャンセル」を押してください。")
+                        + "「同意して連携する」をタップすると、そのためにメールを読み、コードを作って送ることに同意したことになります。\n\n"
+                        + "自分の PC の拡張機能に出た QR コードを読み取ったのでなければ、「キャンセル」をタップしてください。")
                 .setPositiveButton("同意して連携する", (d, w) -> pair(pending))
                 .setNegativeButton("キャンセル", (d, w) -> finish())
                 .setOnCancelListener(d -> finish())
@@ -94,7 +94,7 @@ public class OtpRelayActivity extends AppCompatActivity {
             try {
                 OtpRelayPairingService.pair(app, pending);
                 text = "「" + pending.browserName + "」と連携しました。PC で OTP の入力画面が出ると、この端末が OTP を"
-                        + "自動で送ります。通信状況や通知の設定によっては、送れないことがあります。";
+                        + "自動で送ります。通信状況や通知の設定によっては、送れない場合があります。";
             } catch (OtpRelayPairingService.PairingException e) {
                 text = e.getMessage();
             }
