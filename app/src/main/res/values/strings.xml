@@ -170,8 +170,8 @@
     <string name="otp_relay_progress_channel_name">PCへのOTP送信中</string>
     <string name="class_channel_description">授業中・次の授業の常駐通知と、出席の自動記録の完了を表示します</string>
     <string name="login_required_channel_name">ログインの通知</string>
-    <string name="auth_mail_dispatch_notify_title">自動でログインしています</string>
-    <string name="auth_mail_dispatch_notify_text">時間割と成績を更新するため、自動でログインしています。大学から OTP メールが 1 通届きます。</string>
+    <string name="auth_mail_dispatch_notify_title">自動でログイン中</string>
+    <string name="auth_mail_dispatch_notify_text">時間割と成績を更新するため、自動でログインしています。大学からOTPメールが1通届きます。</string>
     <string name="auth_credentials_invalid_title">ユーザー名かパスワードが違います</string>
     <string name="auth_credentials_invalid_text">保存しているユーザー名かパスワードでログインできませんでした。どちらかを変えるまで、ログインを止めます。同じ値を入れ直しても再開しません。</string>
     <string name="auth_credentials_invalid_action">ユーザー名かパスワードを変える</string>
