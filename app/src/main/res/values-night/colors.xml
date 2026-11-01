@@ -42,6 +42,10 @@
     <color name="on_warning_container">#FFE1A8</color>
     <color name="success">#9BD8A3</color>
     <color name="success_container">#1F4F2A</color>
+    <!-- 時間割共有で自分と比べるときの色 (iOS の TimetableColors: オレンジ 0.28 / 紫 0.32)。凡例と表で同じものを使う。 -->
+    <color name="timetable_mine">#47FF9F0A</color>
+    <color name="timetable_both">#52BF5AF2</color>
+    <color name="timetable_both_badge">#BF5AF2</color>
     <color name="rating_star">#F5C05A</color>
 
     <color name="primary_dark">#0E1513</color>

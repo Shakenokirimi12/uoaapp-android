@@ -50,6 +50,10 @@
     <color name="on_warning_container">#3D2800</color>
     <color name="success">#1F5A2B</color>
     <color name="success_container">#BDEFC3</color>
+    <!-- 時間割共有で自分と比べるときの色 (iOS の TimetableColors: オレンジ 0.28 / 紫 0.32)。凡例と表で同じものを使う。 -->
+    <color name="timetable_mine">#47FF9500</color>
+    <color name="timetable_both">#52AF52DE</color>
+    <color name="timetable_both_badge">#AF52DE</color>
     <color name="rating_star">#E0A100</color>
 
     <!-- Legacy names kept for Java code and layouts not yet migrated. -->

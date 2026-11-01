@@ -18,8 +18,6 @@ import androidx.navigation.Navigation;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
-import com.shakenokirimi12.uoa_app.data.timetable.TimetableShareFeature;
-import com.shakenokirimi12.uoa_app.services.AppConfigService;
 import com.shakenokirimi12.uoa_app.R;
 import com.shakenokirimi12.uoa_app.data.timetable.TimetableFriend;
 import com.shakenokirimi12.uoa_app.data.timetable.TimetableShareLink;
@@ -45,12 +43,6 @@ public class FriendsTimetableFragment extends Fragment {
         binding.buttonExchange.setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.navigation_timetable_exchange));
         binding.buttonPaste.setOnClickListener(v -> showPasteDialog());
-        // フラグが off の間は新しい交換を始めさせない (受け取った時間割を見るのは続けられる)。
-        // 受け取りの画面から「保存した時間割を見る」で来たときもここを通る。
-        boolean enabled = TimetableShareFeature.isEnabled(
-                AppConfigService.getInstance().flagValue(TimetableShareFeature.FLAG_KEY));
-        binding.buttonExchange.setVisibility(enabled ? View.VISIBLE : View.GONE);
-        binding.buttonPaste.setVisibility(enabled ? View.VISIBLE : View.GONE);
     }
 
     @Override

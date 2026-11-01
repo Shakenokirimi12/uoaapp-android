@@ -98,14 +98,14 @@ public class FriendTimetableFragment extends Fragment {
         }
     }
 
-    /** 「同じ授業 N コマ ・ どちらも空き M コマ」。表に出しているコマ (曜日 × 行) で数える。iOS と同じ。 */
+    /** 「同じ授業 N コマ ・ どちらも空き M コマ」。表に出している箱 (TimetableGrid.comparedBoxes) で数える。iOS と同じ。 */
     private String countsLine(List<SharedClass> friend) {
         int same = 0, free = 0;
+        List<int[]> rows = TimetableGrid.rows(friend, mine);
         for (int day : TimetableGrid.days(friend, mine)) {
-            for (int[] r : TimetableGrid.rows(friend, mine)) {
-                TimetableGrid.Overlap o = TimetableGrid.overlap(friend, mine, day, r);
-                if (o == TimetableGrid.Overlap.SAME) same++;
-                else if (o == TimetableGrid.Overlap.BOTH_FREE) free++;
+            for (TimetableGrid.Box b : TimetableGrid.comparedBoxes(friend, mine, day, rows)) {
+                if (b.overlap == TimetableGrid.Overlap.SAME) same++;
+                else if (b.overlap == TimetableGrid.Overlap.BOTH_FREE) free++;
             }
         }
         return getString(R.string.timetable_friend_counts_format, same, free);
@@ -122,8 +122,8 @@ public class FriendTimetableFragment extends Fragment {
         boolean anyFree = false;
         for (int day : days) {
             List<int[]> slots = new ArrayList<>();
-            for (int[] r : rows) {
-                if (TimetableGrid.overlap(friend, mine, day, r) == TimetableGrid.Overlap.BOTH_FREE) slots.add(r);
+            for (TimetableGrid.Box b : TimetableGrid.comparedBoxes(friend, mine, day, rows)) {
+                if (b.overlap == TimetableGrid.Overlap.BOTH_FREE) slots.add(b.range);
             }
             if (slots.isEmpty()) continue;
             anyFree = true;
@@ -142,8 +142,9 @@ public class FriendTimetableFragment extends Fragment {
         box.addView(heading(getString(R.string.timetable_legend_same)));
         boolean anySame = false;
         for (int day : days) {
-            for (int[] r : rows) {
-                if (TimetableGrid.overlap(friend, mine, day, r) != TimetableGrid.Overlap.SAME) continue;
+            for (TimetableGrid.Box b : TimetableGrid.comparedBoxes(friend, mine, day, rows)) {
+                if (b.overlap != TimetableGrid.Overlap.SAME) continue;
+                int[] r = b.range;
                 Set<String> mineTitles = new HashSet<>();
                 for (SharedClass c : TimetableGrid.classes(mine, day, r)) mineTitles.add(TimetableGrid.comparableTitle(c.title));
                 String title = "";

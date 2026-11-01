@@ -10,6 +10,7 @@ import com.shakenokirimi12.uoa_app.data.models.GroupedClass;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -57,6 +58,60 @@ public final class TimetableGrid {
         return result;
     }
 
+    /**
+     * その曜日の列を、上から並べる箱に分ける (箱ごとの {最初の時限, 最後の時限})。iOS の TimetableGrid.segments と同じ。
+     * 授業名と教室が同じ授業が続く時限は、行をまたいでも 1 箱。空いている時限は行ごとの箱で、授業が行の片方の時限だけなら
+     * もう片方が 1 時限の空の箱になる。区切りは友達の授業で決める。比べるとき (mine がある) は、時限ごとの重なり
+     * (同じ・どちらも授業・友達だけ) が変わるところでも区切る (友達 2〜4 限・自分 2 限だけのとき、1 箱にすると 2〜4 限
+     * すべてが「どちらも授業」に見える)。自分の授業名の違いだけでは区切らない。友達が空いている時限は、自分の授業でも区切る
+     * (友達が 1〜2 限とも空きで自分が 1 限だけのとき、「1〜2限」の 1 箱にすると自分の授業が 2 時限あるように見える)。
+     * 出さない行をはさむ時限はつなげない。
+     */
+    @NonNull
+    public static List<int[]> segments(@NonNull List<SharedClass> friend, int day, @NonNull List<int[]> rows) {
+        return segments(friend, null, day, rows);
+    }
+
+    @NonNull
+    public static List<int[]> segments(@NonNull List<SharedClass> friend, @Nullable List<SharedClass> mine, int day, @NonNull List<int[]> rows) {
+        List<int[]> result = new ArrayList<>();
+        int[] current = null;
+        List<String> currentKey = null;
+        int[] currentRow = null;
+        for (int[] row : rows) {
+            for (int p = row[0]; p <= row[1]; p++) {
+                List<String> k = segmentKey(friend, day, p);
+                if (mine != null) {
+                    if (k.isEmpty()) {
+                        // 先頭の \u0001 で、友達の授業の区切りと混ざらないようにする。
+                        for (String m : segmentKey(mine, day, p)) k.add("\u0001" + m);
+                    } else {
+                        // 先頭の \u0002 は重なりの種類。
+                        k.add("\u0002" + overlap(friend, mine, day, new int[]{p, p}).name());
+                    }
+                }
+                if (current != null && current[1] + 1 == p && currentKey.equals(k) && (!k.isEmpty() || currentRow == row)) {
+                    current[1] = p;
+                } else {
+                    if (current != null) result.add(current);
+                    current = new int[]{p, p};
+                    currentKey = k;
+                }
+                currentRow = row;
+            }
+        }
+        if (current != null) result.add(current);
+        return result;
+    }
+
+    private static List<String> segmentKey(@NonNull List<SharedClass> friend, int day, int period) {
+        List<String> key = new ArrayList<>();
+        // 区切りは NUL。授業名と教室は sanitize で制御文字を落としてあるので、中に現れない。
+        for (SharedClass c : classes(friend, day, new int[]{period, period})) key.add(c.title + "\u0000" + c.room);
+        Collections.sort(key);
+        return key;
+    }
+
     /** 出す曜日。月〜金はいつも出し、土日は誰かの授業があるときだけ出す。 */
     @SafeVarargs
     @NonNull
@@ -83,10 +138,45 @@ public final class TimetableGrid {
         if (f.isEmpty() && m.isEmpty()) return Overlap.BOTH_FREE;
         if (m.isEmpty()) return Overlap.FRIEND_ONLY;
         if (f.isEmpty()) return Overlap.MINE_ONLY;
-        Set<String> mineTitles = new HashSet<>();
-        for (SharedClass c : m) mineTitles.add(comparableTitle(c.title));
-        for (SharedClass c : f) if (mineTitles.contains(comparableTitle(c.title))) return Overlap.SAME;
-        return Overlap.BOTH_BUSY;
+        // 時限ごとに比べる。友達のどの授業も、その時限に自分も同じ授業を持つときだけ「同じ」 (iOS と同じ)。
+        // 範囲に同じ授業名があるだけで決めると、友達 2〜4 限・自分 2 限だけの授業や、1 限と 2 限の同名授業が「同じ」になる。
+        // 友達が同じ時限に 2 つ持つ (重複) ときは、両方とも自分と同じでなければ「同じ」にしない。
+        // 片方だけに授業がある時限があれば「同じ」にしない (友達 1 限 A・自分 1 限 A と 2 限 X の 1〜2 限。iOS と同じ)。
+        for (int p = row[0]; p <= row[1]; p++) {
+            Set<String> mineTitles = new HashSet<>();
+            for (SharedClass c : m) if (c.start <= p && c.end >= p) mineTitles.add(comparableTitle(c.title));
+            boolean friendHere = false;
+            for (SharedClass c : f) {
+                if (c.start > p || c.end < p) continue;
+                friendHere = true;
+                if (!mineTitles.contains(comparableTitle(c.title))) return Overlap.BOTH_BUSY;
+            }
+            if (friendHere != !mineTitles.isEmpty()) return Overlap.BOTH_BUSY;
+        }
+        return Overlap.SAME;
+    }
+
+    /** 比べるときの表の箱 (segments) と、その重なり。 */
+    public static final class Box {
+        @NonNull public final int[] range;
+        @NonNull public final Overlap overlap;
+
+        Box(@NonNull int[] range, @NonNull Overlap overlap) {
+            this.range = range;
+            this.overlap = overlap;
+        }
+    }
+
+    /**
+     * 比べるときの表の箱と重なり。表の上の数と下のまとめは、表と同じ箱で数える
+     * (行 (1〜2限) で数えると、1 限がどちらも空きの箱が表にあっても「どちらも空き」に数えない)。iOS の comparedBoxes と同じ。
+     */
+    @NonNull
+    public static List<Box> comparedBoxes(@NonNull List<SharedClass> friend, @NonNull List<SharedClass> mine, int day,
+                                          @NonNull List<int[]> rows) {
+        List<Box> result = new ArrayList<>();
+        for (int[] range : segments(friend, mine, day, rows)) result.add(new Box(range, overlap(friend, mine, day, range)));
+        return result;
     }
 
     /** 同じ授業かを比べるための形。大文字小文字と空白の違いは同じとみなす。 */

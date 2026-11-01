@@ -20,7 +20,10 @@
     <string name="timetable_legend_free">どちらも空き</string>
     <string name="timetable_legend_mine_label">自分</string>
     <string name="timetable_legend_mine">自分の授業</string>
-    <string name="timetable_rename">名前を変更</string>
+    <string name="timetable_legend_both">どちらも授業</string>
+    <!-- 広げた曜日を友達と自分の 2 列にしたときの見出し (iOS timetableShare.grid.friend)。 -->
+    <string name="timetable_grid_friend">友達</string>
+    <string name="timetable_rename">表示名を変更</string>
     <string name="timetable_delete">削除</string>
     <string name="timetable_name_label">相手への表示名</string>
     <string name="timetable_name_hint">例: 太郎</string>
@@ -34,8 +37,8 @@
     <string name="timetable_stop_sharing">共有を停止</string>
     <string name="timetable_stop_failed">共有の停止に失敗しました。通信状況を確認し、もう一度お試しください。</string>
     <string name="timetable_change">変更</string>
-    <string name="timetable_change_name">名前を変更する</string>
-    <string name="timetable_creating">QR コードを生成中…</string>
+    <string name="timetable_change_name">表示名を変更する</string>
+    <string name="timetable_creating">QRコードを生成中…</string>
     <string name="timetable_retry">もう一度試す</string>
     <string name="timetable_unavailable_title">共有できる時間割がありません</string>
     <string name="timetable_unavailable_body">カレンダーで時間割を取得してから、もう一度開いてください。</string>
@@ -44,7 +47,7 @@
     <string name="timetable_save_and_send">自分の時間割を送信して保存する</string>
     <string name="timetable_save_only">自分の時間割は送信せず保存する</string>
     <string name="timetable_save">保存</string>
-    <string name="timetable_send_note">授業名・曜日・時限・教室と名前を送信します。</string>
+    <string name="timetable_send_note">授業名・曜日・時限・教室と表示名を送信します。</string>
     <string name="timetable_cannot_send_back">送信できる時間割が端末にありません。カレンダーで取得すると送れるようになります。</string>
     <string name="timetable_my_name_label">相手への表示名</string>
     <string name="timetable_open_from_list">カレンダーの「友達の時間割」から確認できます。</string>
