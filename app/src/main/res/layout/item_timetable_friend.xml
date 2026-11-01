@@ -41,7 +41,7 @@
             style="@style/Widget.Uoa.ListRow.Supporting"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            tools:text="10月24日 に受け取り ・ 週 12 コマ" />
+            tools:text="共有中 ・ 10月24日に受け取り ・ 週12コマ" />
     </LinearLayout>
 
     <ImageView

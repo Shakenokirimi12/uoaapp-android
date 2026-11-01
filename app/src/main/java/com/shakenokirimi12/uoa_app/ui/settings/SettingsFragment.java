@@ -306,6 +306,8 @@ public class SettingsFragment extends Fragment {
                             // 失敗しても送り直す (clearAll でも消えない)。
                             com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairingService.unpairAllOnLogout(requireContext());
                             // 時間割共有: 受け取った友達の時間割と、出している共有を消す (共有はサーバーからも)。
+                            // 継続共有の自分のフィード (積んであるものと全部の友達の分) も DELETE し、署名の鍵を消す
+                            // (docs/timetable-share-v3.md の 10.7)。消せなかったものは serverDeleteFailed で知らせる。
                             // 返事を読むトークンは clearAll が消すので、その前に呼ぶ。
                             com.shakenokirimi12.uoa_app.data.timetable.TimetableShareStore.getInstance(requireContext()).clearAllOnLogout(serverDeleteFailed);
                             prefs.clearAll();

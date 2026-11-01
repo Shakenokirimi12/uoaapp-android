@@ -30,6 +30,24 @@
             android:layout_height="wrap_content"
             tools:text="10月24日 に受け取り ・ 週 12 コマ" />
 
+        <!-- 継続共有の状態 (docs/timetable-share-v3.md の 10.8)。 -->
+        <TextView
+            android:id="@+id/text_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="?attr/colorOnSurface"
+            tools:text="共有中" />
+
+        <TextView
+            android:id="@+id/text_state_note"
+            style="@style/Widget.Uoa.ListRow.Supporting"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            tools:text="相手が時間割を変えると、友達の一覧を開いたときに反映されます。" />
+
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/toggle_mode"
             android:layout_width="match_parent"
@@ -113,6 +131,17 @@
                 android:orientation="vertical"
                 android:padding="16dp" />
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- 共有中・承認待ちのときだけ出す。 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_stop_feed"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:text="@string/timetable_stop_feed"
+            android:visibility="gone" />
 
         <!-- 上のバーにメニューを持たないアプリなので、名前の変更と削除は画面の下に置く。 -->
         <LinearLayout

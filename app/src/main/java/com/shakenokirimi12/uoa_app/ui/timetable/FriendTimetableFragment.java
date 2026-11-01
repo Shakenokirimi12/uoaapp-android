@@ -59,6 +59,7 @@ public class FriendTimetableFragment extends Fragment {
 
         binding.buttonRename.setOnClickListener(v -> { TimetableFriend f = friend(); if (f != null) rename(f); });
         binding.buttonDelete.setOnClickListener(v -> { TimetableFriend f = friend(); if (f != null) delete(f); });
+        binding.buttonStopFeed.setOnClickListener(v -> { TimetableFriend f = friend(); if (f != null) stopFeed(f); });
         render();
     }
 
@@ -82,9 +83,17 @@ public class FriendTimetableFragment extends Fragment {
             binding.textDetail.setText("");
             binding.toggleMode.setVisibility(View.GONE);
             binding.rowActions.setVisibility(View.GONE);
+            binding.textState.setVisibility(View.GONE);
+            binding.textStateNote.setVisibility(View.GONE);
+            binding.buttonStopFeed.setVisibility(View.GONE);
             binding.grid.removeAllViews();
             return;
         }
+        TimetableFriend.State state = f.state();
+        binding.textState.setText(TimetableShareUi.stateLabel(requireContext(), state));
+        binding.textStateNote.setText(TimetableShareUi.stateNote(requireContext(), state));
+        boolean feed = state == TimetableFriend.State.SHARING || state == TimetableFriend.State.WAITING;
+        binding.buttonStopFeed.setVisibility(feed ? View.VISIBLE : View.GONE);
         boolean compare = binding.toggleMode.getCheckedButtonId() == R.id.button_mode_compare && !mine.isEmpty();
         binding.textName.setText(f.name);
         binding.textDetail.setText(TimetableDates.receivedLine(requireContext(), f.receivedAt, f.timetable.classes.size()));
@@ -215,6 +224,22 @@ public class FriendTimetableFragment extends Fragment {
                     TimetableShareStore.getInstance(requireContext())
                             .rename(f.id, edit.getText() != null ? edit.getText().toString() : "");
                     render();
+                })
+                .setNegativeButton(R.string.timetable_cancel, null)
+                .show();
+    }
+
+    /** 「共有を止める」(10.7)。相手からは 410 に見え、相手の側は「共有が止まりました」になる。 */
+    private void stopFeed(TimetableFriend f) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(getString(R.string.timetable_stop_feed_title_format, f.name))
+                .setMessage(R.string.timetable_stop_feed_message)
+                .setPositiveButton(R.string.timetable_stop_feed_confirm, (d, w) -> {
+                    TimetableShareStore store = TimetableShareStore.getInstance(requireContext());
+                    store.stopContinuousSharing(f.id);
+                    render();
+                    // 積んだフィードを続けて消す。送れなければ、一覧を開いたときにもう一度送る。
+                    new Thread(store::flushFeedDeletions, "timetable-feed-delete").start();
                 })
                 .setNegativeButton(R.string.timetable_cancel, null)
                 .show();

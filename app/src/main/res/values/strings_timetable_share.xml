@@ -54,4 +54,34 @@
     <string name="timetable_close">閉じる</string>
     <string name="timetable_open_saved">保存した時間割を見る</string>
     <string name="timetable_cancel">キャンセル</string>
+    <!-- v3 (docs/timetable-share-v3.md の 10.8)。文面は iOS の timetableShare.* と同じ。 -->
+    <string name="timetable_save_mode_label">保存のしかた</string>
+    <string name="timetable_save_mode_term">今期だけ保存</string>
+    <string name="timetable_save_mode_keep">今後も共有し続ける</string>
+    <string name="timetable_save_mode_term_note">学期が変わると自動で消えます。</string>
+    <string name="timetable_save_mode_keep_note">相手が同意すると、お互いの時間割が変わったときに、友達の一覧を開くと反映されます。どちらからでも止められます。</string>
+    <string name="timetable_already_sharing">すでに共有し続けています。</string>
+    <string name="timetable_incoming_updated_title_format">%1$sさんの時間割を更新しました</string>
+    <string name="timetable_incoming_waiting">相手の同意を待っています。</string>
+    <string name="timetable_share_error_clock_skew">この端末の日時がずれているため、共有できませんでした。日時を正しく設定してから、もう一度お試しください。</string>
+    <string name="timetable_failure_unverified">この共有を確認できませんでした。相手にもう一度QRコードを出してもらってください。</string>
+    <string name="timetable_incoming_own_qr">これは自分のQRコードです。友達のアプリで読み取ってもらってください。</string>
+    <string name="timetable_offer_title_format">%1$sさんと今後も共有しますか？</string>
+    <string name="timetable_offer_message">共有すると、お互いの時間割が変わったときに、友達の一覧を開くと反映されます。どちらからでも止められます。</string>
+    <string name="timetable_offer_accept">共有し続ける</string>
+    <string name="timetable_offer_decline">今期だけにする</string>
+    <string name="timetable_offer_failed">共有を始められませんでした。時間をおいて、もう一度お試しください。</string>
+    <string name="timetable_state_sharing">共有中</string>
+    <string name="timetable_state_waiting">承認待ち</string>
+    <string name="timetable_state_stopped">共有が止まりました</string>
+    <string name="timetable_state_term_only">今期だけ</string>
+    <string name="timetable_state_note_term_only">今期だけ保存した時間割です。学期が変わると自動で消えます。</string>
+    <string name="timetable_state_note_sharing">相手が時間割を変えると、友達の一覧を開いたときに反映されます。</string>
+    <string name="timetable_state_note_waiting">相手の同意を待っています。同意されるまでは、今期だけ保存した時間割と同じ扱いです。</string>
+    <string name="timetable_state_note_stopped">相手が共有を止めました。最後の時間割を、今期だけ保存した時間割として残しています。</string>
+    <string name="timetable_stop_feed">共有を止める</string>
+    <string name="timetable_stop_feed_title_format">%1$sさんとの共有を止めますか？</string>
+    <string name="timetable_stop_feed_message">今の時間割は今期だけ保存した時間割として残り、学期が変わると消えます。</string>
+    <string name="timetable_stop_feed_confirm">止める</string>
+    <string name="timetable_row_detail_format">%1$s ・ %2$s</string>
 </resources>
