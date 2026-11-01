@@ -36,6 +36,7 @@ import java.util.concurrent.Executors;
  * 自分の QR コードを出して、友達に読み取ってもらう画面 (iOS の TimetableExchangeView)。
  * 友達のアプリは、こちらの時間割を保存すると同時に自分の時間割を送り返すので、1 回読み取ってもらうだけで交換が済む。
  * 返事は、この画面を開いている間だけ 3 秒ごとに見に行く。
+ * 返事に「今後も共有し続ける」の申し込みがあれば、ここで 1 人ずつ聞く (OfferPrompter)。
  */
 public class TimetableExchangeFragment extends Fragment {
     private static final long POLL_MS = 3_000;
@@ -47,6 +48,7 @@ public class TimetableExchangeFragment extends Fragment {
     @Nullable private OutgoingShare showing;
     private boolean polling;
     private boolean pollInFlight;
+    private OfferPrompter offers;
 
     private final Runnable poll = this::pollOnce;
 
@@ -60,6 +62,7 @@ public class TimetableExchangeFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle state) {
         store = TimetableShareStore.getInstance(requireContext());
+        offers = new OfferPrompter(this, executor, () -> {});
         binding.buttonShowQr.setOnClickListener(v -> {
             store.setMyName(text(binding.editName));
             create(true);
@@ -107,6 +110,7 @@ public class TimetableExchangeFragment extends Fragment {
     public void onResume() {
         super.onResume();
         if (showing != null) startPolling();
+        offers.promptIfNeeded();
     }
 
     @Override
@@ -216,7 +220,10 @@ public class TimetableExchangeFragment extends Fragment {
             main.post(() -> {
                 pollInFlight = false;
                 if (binding == null || !polling) return;
-                if (r != null && !r.isEmpty()) addReceived(r);
+                if (r != null && !r.isEmpty()) {
+                    addReceived(r);
+                    offers.promptIfNeeded();
+                }
                 if (gone) {
                     fail(getString(R.string.timetable_exchange_expired));
                     return;
@@ -230,7 +237,14 @@ public class TimetableExchangeFragment extends Fragment {
         binding.rowWaiting.setVisibility(View.GONE);
         binding.textReceivedMore.setVisibility(View.VISIBLE);
         for (TimetableFriend f : friends) {
+            // 同じ人の返事は 1 行にまとめる (送り直し・2 台目など)。行には友達の id を付けておき、あれば名前だけ書き直す。
+            View existing = binding.listReceived.findViewWithTag(f.id);
+            if (existing instanceof TextView) {
+                ((TextView) existing).setText(getString(R.string.timetable_exchange_received_format, f.name));
+                continue;
+            }
             TextView t = new TextView(requireContext());
+            t.setTag(f.id);
             t.setText(getString(R.string.timetable_exchange_received_format, f.name));
             t.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleSmall);
             t.setTextColor(ContextCompat.getColor(requireContext(), R.color.success));

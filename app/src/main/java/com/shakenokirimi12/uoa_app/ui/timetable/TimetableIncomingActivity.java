@@ -31,6 +31,7 @@ import java.util.concurrent.Executors;
  * 友達の共有を開く画面 (iOS の IncomingTimetableSheet)。標準のカメラで QR (uoa-app://timetable?id=...) を読む・
  * 案内ページの「アプリで開く」・一覧の「リンクを貼り付けて開く」から来る。
  * 友達の時間割を見せ、保存と同時に自分の時間割を送り返す (1 回の操作で交換が済む)。
+ * 署名付き (v3) の共有なら「今期だけ保存」と「今後も共有し続ける」を選べる (docs/timetable-share-v3.md の 10.5)。
  */
 public class TimetableIncomingActivity extends AppCompatActivity {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -38,7 +39,7 @@ public class TimetableIncomingActivity extends AppCompatActivity {
     private ActivityTimetableIncomingBinding binding;
     private TimetableShareStore store;
     @Nullable private String shareId;
-    @Nullable private SharedTimetable incoming;
+    @Nullable private TimetableShareStore.Incoming incoming;
 
     @NonNull
     public static Intent intent(@NonNull Context ctx, @NonNull String shareId) {
@@ -58,6 +59,7 @@ public class TimetableIncomingActivity extends AppCompatActivity {
         binding.buttonSaveAndSend.setOnClickListener(v -> accept(true));
         binding.buttonSaveOnly.setOnClickListener(v -> accept(false));
         binding.buttonSave.setOnClickListener(v -> accept(false));
+        binding.radioSaveMode.setOnCheckedChangeListener((group, checkedId) -> renderSaveMode());
         handle(getIntent());
     }
 
@@ -86,14 +88,15 @@ public class TimetableIncomingActivity extends AppCompatActivity {
         progress(R.string.timetable_loading);
         String id = shareId;
         executor.execute(() -> {
-            SharedTimetable t = null;
+            TimetableShareStore.Incoming t = null;
             String error = null;
             try {
-                t = store.api().fetch(id);
+                // 署名付きなら確かめる。合わない共有・自分の QR はここで断る (保存しない)。
+                t = store.open(id);
             } catch (TimetableShareApi.Failure e) {
                 error = e.message(this);
             }
-            SharedTimetable ft = t;
+            TimetableShareStore.Incoming ft = t;
             String err = error;
             main.post(() -> {
                 if (isFinishing() || isDestroyed() || !id.equals(shareId)) return;
@@ -116,8 +119,9 @@ public class TimetableIncomingActivity extends AppCompatActivity {
         binding.groupResult.setVisibility(View.GONE);
     }
 
-    private void loaded(@NonNull SharedTimetable t) {
-        incoming = t;
+    private void loaded(@NonNull TimetableShareStore.Incoming in) {
+        incoming = in;
+        SharedTimetable t = in.timetable;
         binding.groupProgress.setVisibility(View.GONE);
         binding.groupResult.setVisibility(View.GONE);
         binding.groupLoaded.setVisibility(View.VISIBLE);
@@ -128,37 +132,52 @@ public class TimetableIncomingActivity extends AppCompatActivity {
         boolean canSendBack = myTimetable() != null;
         binding.groupSendBack.setVisibility(canSendBack ? View.VISIBLE : View.GONE);
         binding.groupSaveOnly.setVisibility(canSendBack ? View.GONE : View.VISIBLE);
+        // 継続共有は署名付きのときだけ選べる。同じ鍵の友達にフィードがもうあれば、選ばせない。
+        boolean signed = in.share != null;
+        binding.groupSaveMode.setVisibility(canSendBack && signed && !in.alreadySharing ? View.VISIBLE : View.GONE);
+        binding.textAlreadySharing.setVisibility(canSendBack && signed && in.alreadySharing ? View.VISIBLE : View.GONE);
+        binding.radioSaveMode.check(R.id.radio_save_term);
+        renderSaveMode();
         binding.editName.setText(store.myName());
     }
 
+    private boolean keepSharingSelected() {
+        return binding.groupSaveMode.getVisibility() == View.VISIBLE
+                && binding.radioSaveMode.getCheckedRadioButtonId() == R.id.radio_save_keep;
+    }
+
+    /** 「今後も共有し続ける」を選んでいる間は「保存だけ」を出さない (続けるには自分の時間割を送る)。 */
+    private void renderSaveMode() {
+        boolean keep = keepSharingSelected();
+        binding.textSaveModeNote.setText(keep ? R.string.timetable_save_mode_keep_note : R.string.timetable_save_mode_term_note);
+        binding.buttonSaveOnly.setVisibility(keep ? View.GONE : View.VISIBLE);
+    }
+
     private void accept(boolean sendBack) {
-        SharedTimetable t = incoming;
+        TimetableShareStore.Incoming t = incoming;
         String id = shareId;
         if (t == null || id == null) return;
+        boolean keep = sendBack && keepSharingSelected();
         if (sendBack) store.setMyName(binding.editName.getText() != null ? binding.editName.getText().toString() : "");
         progress(R.string.timetable_saving);
         executor.execute(() -> {
-            TimetableFriend friend = store.save(t, System.currentTimeMillis());
-            boolean sent = false;
-            String sendError = null;
-            if (sendBack) {
-                SharedTimetable mine = myTimetable();
-                if (mine != null) {
-                    try {
-                        store.api().reply(id, mine);
-                        sent = true;
-                    } catch (TimetableShareApi.Failure e) {
-                        sendError = e.message(this);
-                    }
-                }
-            }
-            boolean s = sent;
-            String err = sendError;
+            // 名前を変えたあとの時間割を、今の時刻で作る (署名付きの共有は作った時刻から 24 時間しか受け付けられない)。
+            SharedTimetable mine = sendBack ? myTimetable() : null;
+            TimetableShareStore.Accepted a = store.accept(id, t, sendBack, keep, mine);
+            String err = a.sendError != null ? a.sendError.message(this) : null;
             main.post(() -> {
                 if (isFinishing() || isDestroyed()) return;
-                String body = s ? getString(R.string.timetable_incoming_sent_back_message)
-                        : err != null ? getString(R.string.timetable_incoming_send_back_failed_format, err) : null;
-                result(true, getString(R.string.timetable_incoming_saved_title_format, friend.name), body, err != null);
+                TimetableFriend friend = a.friend;
+                java.util.List<String> lines = new java.util.ArrayList<>();
+                if (a.sent) lines.add(getString(R.string.timetable_incoming_sent_back_message));
+                if (err != null) lines.add(getString(R.string.timetable_incoming_send_back_failed_format, err));
+                if (a.sharingNotStarted) lines.add(getString(R.string.timetable_offer_failed));
+                // この操作で申し込んだときだけ。前から承認待ちの友達・保存だけのときは出さない。
+                if (a.startedWaiting) lines.add(getString(R.string.timetable_incoming_waiting));
+                String body = lines.isEmpty() ? null : String.join("\n", lines);
+                String title = a.updated ? getString(R.string.timetable_incoming_updated_title_format, friend.name)
+                        : getString(R.string.timetable_incoming_saved_title_format, friend.name);
+                result(true, title, body, err != null || a.sharingNotStarted);
                 binding.buttonOpenSaved.setVisibility(View.VISIBLE);
                 binding.buttonOpenSaved.setOnClickListener(v -> {
                     // アプリの画面 (MainActivity) で、保存した友達の時間割を開く。カメラから開いたときは

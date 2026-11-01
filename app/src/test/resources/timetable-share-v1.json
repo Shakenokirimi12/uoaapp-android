@@ -702,5 +702,189 @@
       "https://uoa-app.shakenokiri.me/push/t/0123",
       ""
     ]
+  },
+  "v3": {
+    "description": "時間割共有 v3 (署名付き)。docs/timetable-share-v3.md の 3・4・6。share.timetable は normalized を JSON にしたバイト列の base64url (パディングなし)。share.signature は \"uoa-timetable-share-v3\\n\" + そのバイト列への ECDSA P-256 / SHA-256 の署名 (IEEE P1363、r||s の 64 バイト)。publicKey は SPKI DER の base64url。署名は毎回変わるので、署名を作る側のテストは「作った署名がこの公開鍵で検証できるか」を見る。",
+    "testKey": {
+      "description": "テスト専用の架空の鍵。このフィクスチャのために作ったもので、実在の端末やアカウントの鍵ではない。",
+      "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWi5U-stgttx5DT6JRyLpw3X5XgBfW7wXDSRnOUNRV3C_Y0mKz96pdxoqxJhQoFfbSJdPGynKSLfFcI5ECwmTsQ",
+      "privateKeyPkcs8": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgPspn4O05UjRBs3g9KTGiL4shbjMn9Vi0SVKxhj4Ty5OhRANCAARaLlT6y2C23HkNPolHIunDdfleAF9bvBcNJGc5Q1FXcL9jSYrP3ql3GirEmFCgV9tIl08bKcpIt8VwjkQLCZOx",
+      "privateKeyRaw": "Pspn4O05UjRBs3g9KTGiL4shbjMn9Vi0SVKxhj4Ty5M"
+    },
+    "otherPublicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoE7WvGEuiLLRlE5xdhD9qz3hEOOan77YY27FwwAI14xYwUvBROauJsF5RB26YqY4e74I2uMXZ6h-xSKhjt6X9g",
+    "share": {
+      "v": 3,
+      "timetable": "eyJmb3JtYXQiOiJ1b2EtdGltZXRhYmxlIiwidmVyc2lvbiI6MSwibmFtZSI6IuODhuOCueODiCDlpKrpg44iLCJjcmVhdGVkQXQiOiIyMDI2LTEwLTI0VDAzOjAwOjAwWiIsImNsYXNzZXMiOlt7ImRheSI6MSwic3RhcnQiOjEsImVuZCI6MiwidGl0bGUiOiLjgqLjg6vjgrTjg6rjgrrjg6Djgajjg4fjg7zjgr_mp4vpgKAiLCJyb29tIjoiTTUifSx7ImRheSI6MSwic3RhcnQiOjUsImVuZCI6NiwidGl0bGUiOiLnt5rlvaLku6PmlbAgSUkiLCJyb29tIjoiUzgifSx7ImRheSI6Mywic3RhcnQiOjMsImVuZCI6NCwidGl0bGUiOiJDb21wdXRlciBOZXR3b3JrcyIsInJvb20iOiJNMSJ9LHsiZGF5Ijo1LCJzdGFydCI6NywiZW5kIjoxMCwidGl0bGUiOiLjgr3jg5Xjg4jjgqbjgqfjgqLlt6XlrabmvJTnv5IiLCJyb29tIjoic3RkNSJ9XX0",
+      "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWi5U-stgttx5DT6JRyLpw3X5XgBfW7wXDSRnOUNRV3C_Y0mKz96pdxoqxJhQoFfbSJdPGynKSLfFcI5ECwmTsQ",
+      "signature": "jEAA8Q6H9HKo9LO6DN-5KkCEs0PNeR_TM90hXS7v3MyUptM_duASB-2oK5atNayjgqfiLvR6EIb0YU8-2mJ-4g"
+    },
+    "timetable": {
+      "format": "uoa-timetable",
+      "version": 1,
+      "name": "テスト 太郎",
+      "createdAt": "2026-10-24T03:00:00Z",
+      "classes": [
+        {
+          "day": 1,
+          "start": 1,
+          "end": 2,
+          "title": "アルゴリズムとデータ構造",
+          "room": "M5"
+        },
+        {
+          "day": 1,
+          "start": 5,
+          "end": 6,
+          "title": "線形代数 II",
+          "room": "S8"
+        },
+        {
+          "day": 3,
+          "start": 3,
+          "end": 4,
+          "title": "Computer Networks",
+          "room": "M1"
+        },
+        {
+          "day": 5,
+          "start": 7,
+          "end": 10,
+          "title": "ソフトウェア工学演習",
+          "room": "std5"
+        }
+      ]
+    },
+    "otherShare": {
+      "v": 3,
+      "timetable": "eyJmb3JtYXQiOiJ1b2EtdGltZXRhYmxlIiwidmVyc2lvbiI6MSwibmFtZSI6IuWIpeOBruS6uiIsImNyZWF0ZWRBdCI6IjIwMjYtMTAtMjRUMDM6MDA6MDBaIiwiY2xhc3NlcyI6W3siZGF5IjoxLCJzdGFydCI6MSwiZW5kIjoyLCJ0aXRsZSI6IuOCouODq-OCtOODquOCuuODoOOBqOODh-ODvOOCv-ani-mAoCIsInJvb20iOiJNNSJ9LHsiZGF5IjoxLCJzdGFydCI6NSwiZW5kIjo2LCJ0aXRsZSI6Iue3muW9ouS7o-aVsCBJSSIsInJvb20iOiJTOCJ9LHsiZGF5IjozLCJzdGFydCI6MywiZW5kIjo0LCJ0aXRsZSI6IkNvbXB1dGVyIE5ldHdvcmtzIiwicm9vbSI6Ik0xIn0seyJkYXkiOjUsInN0YXJ0Ijo3LCJlbmQiOjEwLCJ0aXRsZSI6IuOCveODleODiOOCpuOCp-OCouW3peWtpua8lOe_kiIsInJvb20iOiJzdGQ1In1dfQ",
+      "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoE7WvGEuiLLRlE5xdhD9qz3hEOOan77YY27FwwAI14xYwUvBROauJsF5RB26YqY4e74I2uMXZ6h-xSKhjt6X9g",
+      "signature": "iSBjUoyf_GxNFpc_rX18RdxemrTqczCbCVB1xYT00Zj_bSUcmgdk7VZ1X8bHJxK-iYAgCezetSfcWHPRNEPgNw"
+    },
+    "invalid": [
+      {
+        "why": "時間割を差し替えた (署名が合わない)",
+        "share": {
+          "v": 3,
+          "timetable": "eyJmb3JtYXQiOiJ1b2EtdGltZXRhYmxlIiwidmVyc2lvbiI6MSwibmFtZSI6IuWIpeOBruS6uiIsImNyZWF0ZWRBdCI6IjIwMjYtMTAtMjRUMDM6MDA6MDBaIiwiY2xhc3NlcyI6W3siZGF5IjoxLCJzdGFydCI6MSwiZW5kIjoyLCJ0aXRsZSI6IuOCouODq-OCtOODquOCuuODoOOBqOODh-ODvOOCv-ani-mAoCIsInJvb20iOiJNNSJ9LHsiZGF5IjoxLCJzdGFydCI6NSwiZW5kIjo2LCJ0aXRsZSI6Iue3muW9ouS7o-aVsCBJSSIsInJvb20iOiJTOCJ9LHsiZGF5IjozLCJzdGFydCI6MywiZW5kIjo0LCJ0aXRsZSI6IkNvbXB1dGVyIE5ldHdvcmtzIiwicm9vbSI6Ik0xIn0seyJkYXkiOjUsInN0YXJ0Ijo3LCJlbmQiOjEwLCJ0aXRsZSI6IuOCveODleODiOOCpuOCp-OCouW3peWtpua8lOe_kiIsInJvb20iOiJzdGQ1In1dfQ",
+          "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWi5U-stgttx5DT6JRyLpw3X5XgBfW7wXDSRnOUNRV3C_Y0mKz96pdxoqxJhQoFfbSJdPGynKSLfFcI5ECwmTsQ",
+          "signature": "jEAA8Q6H9HKo9LO6DN-5KkCEs0PNeR_TM90hXS7v3MyUptM_duASB-2oK5atNayjgqfiLvR6EIb0YU8-2mJ-4g"
+        }
+      },
+      {
+        "why": "公開鍵を別の人のものにした",
+        "share": {
+          "v": 3,
+          "timetable": "eyJmb3JtYXQiOiJ1b2EtdGltZXRhYmxlIiwidmVyc2lvbiI6MSwibmFtZSI6IuODhuOCueODiCDlpKrpg44iLCJjcmVhdGVkQXQiOiIyMDI2LTEwLTI0VDAzOjAwOjAwWiIsImNsYXNzZXMiOlt7ImRheSI6MSwic3RhcnQiOjEsImVuZCI6MiwidGl0bGUiOiLjgqLjg6vjgrTjg6rjgrrjg6Djgajjg4fjg7zjgr_mp4vpgKAiLCJyb29tIjoiTTUifSx7ImRheSI6MSwic3RhcnQiOjUsImVuZCI6NiwidGl0bGUiOiLnt5rlvaLku6PmlbAgSUkiLCJyb29tIjoiUzgifSx7ImRheSI6Mywic3RhcnQiOjMsImVuZCI6NCwidGl0bGUiOiJDb21wdXRlciBOZXR3b3JrcyIsInJvb20iOiJNMSJ9LHsiZGF5Ijo1LCJzdGFydCI6NywiZW5kIjoxMCwidGl0bGUiOiLjgr3jg5Xjg4jjgqbjgqfjgqLlt6XlrabmvJTnv5IiLCJyb29tIjoic3RkNSJ9XX0",
+          "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoE7WvGEuiLLRlE5xdhD9qz3hEOOan77YY27FwwAI14xYwUvBROauJsF5RB26YqY4e74I2uMXZ6h-xSKhjt6X9g",
+          "signature": "jEAA8Q6H9HKo9LO6DN-5KkCEs0PNeR_TM90hXS7v3MyUptM_duASB-2oK5atNayjgqfiLvR6EIb0YU8-2mJ-4g"
+        }
+      },
+      {
+        "why": "署名が 64 バイトでない",
+        "share": {
+          "v": 3,
+          "timetable": "eyJmb3JtYXQiOiJ1b2EtdGltZXRhYmxlIiwidmVyc2lvbiI6MSwibmFtZSI6IuODhuOCueODiCDlpKrpg44iLCJjcmVhdGVkQXQiOiIyMDI2LTEwLTI0VDAzOjAwOjAwWiIsImNsYXNzZXMiOlt7ImRheSI6MSwic3RhcnQiOjEsImVuZCI6MiwidGl0bGUiOiLjgqLjg6vjgrTjg6rjgrrjg6Djgajjg4fjg7zjgr_mp4vpgKAiLCJyb29tIjoiTTUifSx7ImRheSI6MSwic3RhcnQiOjUsImVuZCI6NiwidGl0bGUiOiLnt5rlvaLku6PmlbAgSUkiLCJyb29tIjoiUzgifSx7ImRheSI6Mywic3RhcnQiOjMsImVuZCI6NCwidGl0bGUiOiJDb21wdXRlciBOZXR3b3JrcyIsInJvb20iOiJNMSJ9LHsiZGF5Ijo1LCJzdGFydCI6NywiZW5kIjoxMCwidGl0bGUiOiLjgr3jg5Xjg4jjgqbjgqfjgqLlt6XlrabmvJTnv5IiLCJyb29tIjoic3RkNSJ9XX0",
+          "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWi5U-stgttx5DT6JRyLpw3X5XgBfW7wXDSRnOUNRV3C_Y0mKz96pdxoqxJhQoFfbSJdPGynKSLfFcI5ECwmTsQ",
+          "signature": "jEAA8Q6H9HKo9LO6DN-5KkCEs0PNeR_TM90hXS7v3MyUptM_duASB-2oK5atNayjgqfiLvR6EIb0YU8-2mJ-"
+        }
+      },
+      {
+        "why": "v が 3 でない",
+        "share": {
+          "v": 2,
+          "timetable": "eyJmb3JtYXQiOiJ1b2EtdGltZXRhYmxlIiwidmVyc2lvbiI6MSwibmFtZSI6IuODhuOCueODiCDlpKrpg44iLCJjcmVhdGVkQXQiOiIyMDI2LTEwLTI0VDAzOjAwOjAwWiIsImNsYXNzZXMiOlt7ImRheSI6MSwic3RhcnQiOjEsImVuZCI6MiwidGl0bGUiOiLjgqLjg6vjgrTjg6rjgrrjg6Djgajjg4fjg7zjgr_mp4vpgKAiLCJyb29tIjoiTTUifSx7ImRheSI6MSwic3RhcnQiOjUsImVuZCI6NiwidGl0bGUiOiLnt5rlvaLku6PmlbAgSUkiLCJyb29tIjoiUzgifSx7ImRheSI6Mywic3RhcnQiOjMsImVuZCI6NCwidGl0bGUiOiJDb21wdXRlciBOZXR3b3JrcyIsInJvb20iOiJNMSJ9LHsiZGF5Ijo1LCJzdGFydCI6NywiZW5kIjoxMCwidGl0bGUiOiLjgr3jg5Xjg4jjgqbjgqfjgqLlt6XlrabmvJTnv5IiLCJyb29tIjoic3RkNSJ9XX0",
+          "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWi5U-stgttx5DT6JRyLpw3X5XgBfW7wXDSRnOUNRV3C_Y0mKz96pdxoqxJhQoFfbSJdPGynKSLfFcI5ECwmTsQ",
+          "signature": "jEAA8Q6H9HKo9LO6DN-5KkCEs0PNeR_TM90hXS7v3MyUptM_duASB-2oK5atNayjgqfiLvR6EIb0YU8-2mJ-4g"
+        }
+      },
+      {
+        "why": "timetable が base64url でない",
+        "share": {
+          "v": 3,
+          "timetable": "eyJmb3Jt+/QiOiJ1b2EtdGltZXRhYmxlIiwidmVyc2lvbiI6MSwibmFtZSI6IuODhuOCueODiCDlpKrpg44iLCJjcmVhdGVkQXQiOiIyMDI2LTEwLTI0VDAzOjAwOjAwWiIsImNsYXNzZXMiOlt7ImRheSI6MSwic3RhcnQiOjEsImVuZCI6MiwidGl0bGUiOiLjgqLjg6vjgrTjg6rjgrrjg6Djgajjg4fjg7zjgr_mp4vpgKAiLCJyb29tIjoiTTUifSx7ImRheSI6MSwic3RhcnQiOjUsImVuZCI6NiwidGl0bGUiOiLnt5rlvaLku6PmlbAgSUkiLCJyb29tIjoiUzgifSx7ImRheSI6Mywic3RhcnQiOjMsImVuZCI6NCwidGl0bGUiOiJDb21wdXRlciBOZXR3b3JrcyIsInJvb20iOiJNMSJ9LHsiZGF5Ijo1LCJzdGFydCI6NywiZW5kIjoxMCwidGl0bGUiOiLjgr3jg5Xjg4jjgqbjgqfjgqLlt6XlrabmvJTnv5IiLCJyb29tIjoic3RkNSJ9XX0",
+          "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWi5U-stgttx5DT6JRyLpw3X5XgBfW7wXDSRnOUNRV3C_Y0mKz96pdxoqxJhQoFfbSJdPGynKSLfFcI5ECwmTsQ",
+          "signature": "jEAA8Q6H9HKo9LO6DN-5KkCEs0PNeR_TM90hXS7v3MyUptM_duASB-2oK5atNayjgqfiLvR6EIb0YU8-2mJ-4g"
+        }
+      }
+    ],
+    "feed": {
+      "description": "フィードの操作の署名。対象は \"uoa-timetable-feed\\n\" + 操作 (create / put / delete / peer) + \"\\n\" + feedId + \"\\n\" + 版番号 (10 進) + \"\\n\" + 中身。中身は create と put では share.timetable の文字列 (base64url のまま)、delete では空。create の版番号はいつも 0。feedId はアプリが作る 128 ビットの乱数 (16 進 32 文字)。鍵は testKey。peer は相手の欄を書く操作で、feedId は書かれる側 (相手) のフィード、版番号はいつも 0、中身は書き込む自分のフィードの id (peerFeedId)。鍵は peerFeedId のフィードの鍵 (ここでは testKey。peerFeedId は上の feedId)。",
+      "feedId": "00112233445566778899aabbccddeeff",
+      "create": {
+        "version": 0,
+        "content": "eyJmb3JtYXQiOiJ1b2EtdGltZXRhYmxlIiwidmVyc2lvbiI6MSwibmFtZSI6IuODhuOCueODiCDlpKrpg44iLCJjcmVhdGVkQXQiOiIyMDI2LTEwLTI0VDAzOjAwOjAwWiIsImNsYXNzZXMiOlt7ImRheSI6MSwic3RhcnQiOjEsImVuZCI6MiwidGl0bGUiOiLjgqLjg6vjgrTjg6rjgrrjg6Djgajjg4fjg7zjgr_mp4vpgKAiLCJyb29tIjoiTTUifSx7ImRheSI6MSwic3RhcnQiOjUsImVuZCI6NiwidGl0bGUiOiLnt5rlvaLku6PmlbAgSUkiLCJyb29tIjoiUzgifSx7ImRheSI6Mywic3RhcnQiOjMsImVuZCI6NCwidGl0bGUiOiJDb21wdXRlciBOZXR3b3JrcyIsInJvb20iOiJNMSJ9LHsiZGF5Ijo1LCJzdGFydCI6NywiZW5kIjoxMCwidGl0bGUiOiLjgr3jg5Xjg4jjgqbjgqfjgqLlt6XlrabmvJTnv5IiLCJyb29tIjoic3RkNSJ9XX0",
+        "signature": "UHHBK9JfcisxHRkqBMNKecHn3VUujb1uYrSX9bv5KeL2W_aj4dkvi-bp9ZAYXv-r5uxFAQGMrXlKva_oAZchug"
+      },
+      "put": {
+        "version": 2,
+        "content": "eyJmb3JtYXQiOiJ1b2EtdGltZXRhYmxlIiwidmVyc2lvbiI6MSwibmFtZSI6IuODhuOCueODiCDlpKrpg44iLCJjcmVhdGVkQXQiOiIyMDI2LTEwLTI0VDAzOjAwOjAwWiIsImNsYXNzZXMiOlt7ImRheSI6MSwic3RhcnQiOjEsImVuZCI6MiwidGl0bGUiOiLjgqLjg6vjgrTjg6rjgrrjg6Djgajjg4fjg7zjgr_mp4vpgKAiLCJyb29tIjoiTTUifSx7ImRheSI6MSwic3RhcnQiOjUsImVuZCI6NiwidGl0bGUiOiLnt5rlvaLku6PmlbAgSUkiLCJyb29tIjoiUzgifSx7ImRheSI6Mywic3RhcnQiOjMsImVuZCI6NCwidGl0bGUiOiJDb21wdXRlciBOZXR3b3JrcyIsInJvb20iOiJNMSJ9LHsiZGF5Ijo1LCJzdGFydCI6NywiZW5kIjoxMCwidGl0bGUiOiLjgr3jg5Xjg4jjgqbjgqfjgqLlt6XlrabmvJTnv5IiLCJyb29tIjoic3RkNSJ9XX0",
+        "signature": "9eP_edyUWyLpd4XmDWks2sUx0AJUDC3fEeRn8ARx30S-g5mIUCb0Vok0M-H5KG-eisUPdkwZI151kNqOspy91g"
+      },
+      "delete": {
+        "version": 3,
+        "signature": "basZxp7LSljfxY1BZxhC6iK4x9LYc3MkxXEXrstjOLeW_XMUfo8fEtIl4-7th3hsOSXSWale1JmfHHp51vB7FA"
+      },
+      "peer": {
+        "feedId": "ffeeddccbbaa99887766554433221100",
+        "peerFeedId": "00112233445566778899aabbccddeeff",
+        "version": 0,
+        "content": "00112233445566778899aabbccddeeff",
+        "signature": "de_9ye3rulwCCEzm-gP77ZPCVZ3tahXcbeVFnbTFanET0EB8T03VJkO2fuFNna7UI6nyxUdD3z93McYoEK8kDw"
+      }
+    },
+    "derP1363": [
+      {
+        "why": "r の先頭ビットが立つ",
+        "p1363": "800102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f1112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+        "der": "3045022100800102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f02201112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30"
+      },
+      {
+        "why": "s の先頭 2 バイトが 0",
+        "p1363": "1112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30000042434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+        "der": "304202201112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30021e42434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+      },
+      {
+        "why": "どちらもそのまま",
+        "p1363": "1112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f301112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+        "der": "304402201112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f3002201112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30"
+      }
+    ],
+    "terms": {
+      "description": "今期だけ保存した友達を消すための学期の判定 (日本時間)。4〜9 月は「年-1」、10〜12 月は「年-2」、1〜3 月は「前の年-2」。",
+      "cases": [
+        {
+          "at": "2026-03-31T23:59:59+09:00",
+          "term": "2025-2"
+        },
+        {
+          "at": "2026-04-01T00:00:00+09:00",
+          "term": "2026-1"
+        },
+        {
+          "at": "2026-09-30T23:59:59+09:00",
+          "term": "2026-1"
+        },
+        {
+          "at": "2026-10-01T00:00:00+09:00",
+          "term": "2026-2"
+        },
+        {
+          "at": "2026-12-31T23:59:59+09:00",
+          "term": "2026-2"
+        },
+        {
+          "at": "2027-01-15T12:00:00+09:00",
+          "term": "2026-2"
+        },
+        {
+          "at": "2026-09-30T15:00:00Z",
+          "term": "2026-2"
+        },
+        {
+          "at": "2026-03-31T14:59:59Z",
+          "term": "2025-2"
+        }
+      ]
+    }
   }
 }
