@@ -74,6 +74,20 @@ public final class TotpStepLedger {
         return Math.max(last, store.load());
     }
 
+    /**
+     * 鍵の周期が変わった (取り込み・登録し直し)。番号は周期の単位なので、使った窓の終わりの時刻を新しい周期の番号に直す
+     * (新しい周期で、使った時間より後に始まる窓だけを使えるようにする。iOS の TOTPStepLedger.rescale と同じ)。
+     */
+    public synchronized void rescale(int oldPeriod, int newPeriod) {
+        if (oldPeriod <= 0 || newPeriod <= 0 || oldPeriod == newPeriod) return;
+        long used = Math.max(last, store.load());
+        if (used < 0) return;
+        long end = (used + 1) * oldPeriod;
+        long converted = (end + newPeriod - 1) / newPeriod - 1;
+        last = converted;
+        store.save(converted);
+    }
+
     /** まだ使っていない (直近に使ったものより新しい) 窓なら使用済みにして true。 */
     public synchronized boolean claim(long step) {
         long used = Math.max(last, store.load());

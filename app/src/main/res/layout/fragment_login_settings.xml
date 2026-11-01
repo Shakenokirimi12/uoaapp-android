@@ -100,6 +100,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="@string/otp_reregister" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_import_key_needed"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/otp_import_title" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -306,6 +313,49 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/otp_reregister_summary" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginStart="12dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+
+                <com.google.android.material.divider.MaterialDivider
+                    android:id="@+id/divider_import_key"
+                    style="@style/Widget.Uoa.Divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <LinearLayout
+                    android:id="@+id/row_import_key"
+                    style="@style/Widget.Uoa.ListRow.Container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Uoa.ListRow.Title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/otp_import_title" />
+
+                        <TextView
+                            style="@style/Widget.Uoa.ListRow.Supporting"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/otp_import_summary" />
                     </LinearLayout>
 
                     <ImageView

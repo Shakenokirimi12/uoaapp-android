@@ -125,6 +125,11 @@
             android:name=".ui.onboarding.OnboardingActivity"
             android:exported="false"
             android:theme="@style/Theme.Uoaapp.Onboarding" />
+        <!-- 初期設定から開く登録し直し。登録の画面はメイン画面の nav graph の中にあるので、ここに載せる。 -->
+        <activity
+            android:name=".ui.idp.IdPOtpRegistrationActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Uoaapp.Onboarding" />
 
         <service
             android:name=".services.notification.ClassNotificationService"

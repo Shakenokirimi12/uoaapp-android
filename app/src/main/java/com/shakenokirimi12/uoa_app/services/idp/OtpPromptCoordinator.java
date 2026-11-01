@@ -12,6 +12,7 @@ import com.shakenokirimi12.uoa_app.UoaApplication;
 import com.shakenokirimi12.uoa_app.services.AppStrings;
 import com.shakenokirimi12.uoa_app.services.AuthorizationContext;
 import com.shakenokirimi12.uoa_app.ui.idp.OtpPromptDialog;
+import com.shakenokirimi12.uoa_app.ui.settings.AuthenticatorKeyChoice;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -24,7 +25,8 @@ import java.util.concurrent.TimeUnit;
  *   1. メール方式なら、まず IMAP から取る (ユーザーの操作は不要)。メール方式を選んでいることが、
  *      メールを読む同意になる (設定の説明に書いてある)。以前の「メールから自動で取得する」の選択は
  *      2026-10-21 に廃止した
- *   2. 取れなかったら、アプリが前面にいるときだけ入力ダイアログを出して待つ (手入力が最後の手段)
+ *   2. 取れなかったら、アプリが前面にいるときだけ入力ダイアログを出して待つ (手入力が最後の手段)。
+ *      認証アプリ方式で使える鍵が無いときは、手入力の前に取り込み・登録し直しを選べるようにする (codeWithoutKey)
  *   3. バックグラウンド (WorkManager の同期) では IMAP の自動取得だけ。取れなければ OTP_FETCH_FAILED。
  *      前面にいないのに前面の文脈で来たときは INTERACTIVE_LOGIN_REQUIRED を投げ、次に前面へ来たときに任せる
  *
@@ -90,7 +92,69 @@ public final class OtpPromptCoordinator {
     }
 
     /**
-     * 認証アプリ方式。シークレットを持たないので自動取得はできず、必ず手入力になる。
+     * 認証アプリ方式で、このアプリに uid の使える鍵が無い (無い・止めている)。前面でだけ、手入力の前に
+     * 取り込む・登録し直す・手入力・あとで を選んでもらう (AuthenticatorKeyChoice)。
+     * 手入力ならそのコードを、鍵を取り込んだら null を返す (呼び出し側が取り込んだ鍵でコードを作る)。
+     * 登録し直す・あとで・時間切れは取り消し (cancelled)。登録し直すなら、取り消したあとで登録し直しの画面を開く。
+     * バックグラウンドでは選ばせない (INTERACTIVE_LOGIN_REQUIRED)。
+     */
+    @Nullable
+    public String codeWithoutKey(@NonNull String uid, @NonNull AuthorizationContext context) throws Exception {
+        if (!context.allowsNewLogin()) {
+            throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
+        }
+        Activity activity = UoaApplication.getForegroundActivity();
+        if (activity == null) throw new SeciossError(SeciossError.Kind.INTERACTIVE_LOGIN_REQUIRED);
+
+        Handler main = new Handler(Looper.getMainLooper());
+        BlockingQueue<AuthenticatorKeyChoice.Outcome> result = new ArrayBlockingQueue<>(1);
+        java.util.concurrent.atomic.AtomicReference<AuthenticatorKeyChoice.Handle> handle =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        long deadline = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(INPUT_TIMEOUT_MINUTES);
+        main.post(() -> handle.set(AuthenticatorKeyChoice.show(activity, uid, result::offer)));
+        // 取り込み (認証アプリを開いてスクリーンショットを撮る) も含めて、手入力と同じ時間だけ待つ。IdP の OTP 入力画面の
+        // 有効期限が分からないので延ばさない (切れたあとに取り込んだ鍵のコードを送ると、弾かれて鍵を止めうる)。
+        AuthenticatorKeyChoice.Outcome outcome = result.poll(INPUT_TIMEOUT_MINUTES, TimeUnit.MINUTES);
+        if (outcome == null) {
+            // 時間切れ。出したままの選択を閉じる。取り込みの手順の途中なら手順は残し、保存できたらホームで取り直す
+            // (取り込んだ鍵は、このログインには使わない)。
+            main.post(() -> {
+                AuthenticatorKeyChoice.Handle h = handle.get();
+                if (h != null) h.cancel();
+            });
+            throw cancelled();
+        }
+        switch (outcome) {
+            case IMPORTED:
+                return null;
+            case MANUAL: {
+                // 選んでいた時間も含めて、手入力と同じ時間だけ待つ (iOS も選択と入力で 1 つの待ち受け)。
+                long left = Math.max(0, deadline - System.currentTimeMillis());
+                String code = promptOnMainThread(activity, AppStrings.get(R.string.otp_prompt_authenticator_code), left);
+                if (code == null) throw cancelled();
+                return code;
+            }
+            case REREGISTER: {
+                // 先に取り消しを記録してから開く。登録し直しのログインが、取り消しの前に IdpLoginGate で待ち始めると、
+                // この取り消しに巻き込まれて止まる。
+                SeciossError error = cancelled();
+                main.post(() -> {
+                    if (activity instanceof com.shakenokirimi12.uoa_app.ui.idp.OtpReregistrationHost
+                            && !activity.isFinishing() && !activity.isDestroyed()) {
+                        ((com.shakenokirimi12.uoa_app.ui.idp.OtpReregistrationHost) activity).openOtpReregistration();
+                    }
+                });
+                throw error;
+            }
+            case LATER:
+            default:
+                throw cancelled();
+        }
+    }
+
+    /**
+     * 認証アプリ方式の手入力。鍵があっても使える窓が来なかったとき (OtpProviders.AuthenticatorOtpProvider) と、
+     * 別のアカウントへの切り替えの確認 (保存している鍵も設定も前のアカウントのもの) で使う。
      * メールの自動取得は使わないため、受信箱には一切触れない。
      */
     @NonNull
@@ -120,11 +184,25 @@ public final class OtpPromptCoordinator {
     @Nullable
     private String promptOnMainThread(@NonNull Activity activity, @NonNull String message)
             throws InterruptedException {
+        return promptOnMainThread(activity, message, TimeUnit.MINUTES.toMillis(INPUT_TIMEOUT_MINUTES));
+    }
+
+    @Nullable
+    private String promptOnMainThread(@NonNull Activity activity, @NonNull String message, long timeoutMillis)
+            throws InterruptedException {
         BlockingQueue<String> result = new ArrayBlockingQueue<>(1);
-        new Handler(Looper.getMainLooper()).post(() ->
-                OtpPromptDialog.show(activity, message, entered ->
-                        result.offer(entered != null ? entered : CANCELLED)));
-        String value = result.poll(INPUT_TIMEOUT_MINUTES, TimeUnit.MINUTES);
+        Handler main = new Handler(Looper.getMainLooper());
+        java.util.concurrent.atomic.AtomicReference<Runnable> dismiss = new java.util.concurrent.atomic.AtomicReference<>();
+        main.post(() -> dismiss.set(OtpPromptDialog.show(activity, message, entered ->
+                result.offer(entered != null ? entered : CANCELLED))));
+        String value = result.poll(timeoutMillis, TimeUnit.MILLISECONDS);
+        if (value == null) {
+            // 時間切れ。出したままにすると、入れたコードがどこにも届かない。閉じる (出す処理は先に main に積んである)。
+            main.post(() -> {
+                Runnable d = dismiss.get();
+                if (d != null) d.run();
+            });
+        }
         return value == null || CANCELLED.equals(value) ? null : value;
     }
 }

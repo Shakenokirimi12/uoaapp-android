@@ -122,7 +122,7 @@ public class TimetableIncomingActivity extends AppCompatActivity {
         binding.groupResult.setVisibility(View.GONE);
         binding.groupLoaded.setVisibility(View.VISIBLE);
         binding.textName.setText(t.name.isEmpty()
-                ? TimetableShareStore.UNNAMED : getString(R.string.timetable_incoming_name_format, t.name));
+                ? TimetableShareStore.unnamed() : getString(R.string.timetable_incoming_name_format, t.name));
         binding.textCount.setText(getString(R.string.timetable_incoming_count_format, t.classes.size()));
         binding.grid.setData(t.classes, null);
         boolean canSendBack = myTimetable() != null;

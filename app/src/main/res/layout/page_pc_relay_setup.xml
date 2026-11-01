@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PC との連携の案内の 1 ページ (できること、手順 1〜3)。iOS の PCRelaySetupPageView と同じ。
+     ページごとに使う部品だけを PcRelaySetupPages.createPage で出す。初期設定と設定の「PCとの連携」で共有する。 -->
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="56dp"
+        android:paddingBottom="24dp">
+
+        <TextView
+            android:id="@+id/text_pc_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/otp_relay_title"
+            android:textAppearance="?attr/textAppearanceHeadlineSmall"
+            android:textColor="?attr/colorOnSurface"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/group_pc_step"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/text_pc_step_number"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:background="@drawable/bg_step_number"
+                android:gravity="center"
+                android:importantForAccessibility="no"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="?attr/colorOnPrimary" />
+
+            <TextView
+                android:id="@+id/text_pc_step_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/text_pc_body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="?attr/colorOnSurface"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/card_pc_ext_guide"
+            layout="@layout/view_otp_relay_extension_guide"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/text_pc_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone" />
+
+        <!-- 初期設定のときだけ、使わない人に飛ばし方を知らせる。 -->
+        <TextView
+            android:id="@+id/text_pc_skip_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/onboarding_pc_relay_skip_note"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone" />
+
+        <!-- アプリの中には QR の読み取りが無い (標準のカメラで読むと OtpRelayActivity が開く)。
+             アプリの中でできる連携は、リンクの貼り付けだけ。 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_pc_paste"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/otp_relay_paste_link"
+            android:visibility="gone"
+            app:icon="@drawable/ic_clipboard" />
+
+        <LinearLayout
+            android:id="@+id/group_pc_paired"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:drawablePadding="8dp"
+                android:gravity="center_vertical"
+                android:text="@string/otp_relay_setup_paired"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="?attr/colorPrimary"
+                android:drawableStart="@drawable/ic_check_circle"
+                android:drawableTint="?attr/colorPrimary" />
+
+            <TextView
+                android:id="@+id/text_pc_paired_browsers"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

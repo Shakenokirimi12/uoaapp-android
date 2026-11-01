@@ -78,9 +78,10 @@
     <string name="onboarding_username_hint">ユーザー名 (例: s1234567)</string>
     <string name="onboarding_password_hint">パスワード</string>
     <string name="onboarding_login_button">ログイン</string>
-    <string name="onboarding_pc_relay_later_note">使わない場合は「あとで」をタップしてください。あとから設定の「ログインとワンタイムパスワード」の「PC との連携」で連携できます。</string>
-    <string name="onboarding_pc_relay_open">PC と連携する</string>
-    <string name="onboarding_pc_relay_later">あとで</string>
+    <string name="onboarding_pc_relay_skip_note">使わない場合は「スキップして始める」をタップしてください。あとから設定の「ログインとワンタイムパスワード」の「PCとの連携」で連携できます。</string>
+    <string name="onboarding_skip_pc">スキップして始める</string>
+    <string name="onboarding_start">設定を完了して始める</string>
+    <string name="next">次へ</string>
 
     <!-- Grades -->
 
@@ -118,7 +119,8 @@
     <string name="lunch_channel_name">学食メニュー</string>
     <string name="otp_relay_channel_name">PCへのOTP送信結果</string>
     <string name="otp_relay_title">PCとの連携</string>
-    <string name="otp_relay_intro">PCでOTPの入力画面が出ると、この端末がOTPを暗号化して自動でPCに送ります (メール方式なら大学のメールから読み、認証アプリ方式ならセットアップキーで作ります)。ユーザー名・パスワード・セットアップキーは、PCにも中継サーバーにも送りません。</string>
+    <string name="otp_relay_intro">PCでOTPの画面が出ると、この端末がコードをPCに自動で送ります。</string>
+    <string name="otp_relay_privacy">メール方式なら大学のメールから読み、認証アプリ方式ならセットアップキーで作ります。コードは暗号化して送り、ユーザー名・パスワード・セットアップキーは、PCにも中継サーバーにも送りません。</string>
     <string name="otp_relay_consent_continue">続ける</string>
     <string name="otp_relay_consent_pending">確認が済むまでOTPを送りません</string>
     <string name="otp_relay_consent_save_failed">この端末に保存できませんでした。設定の「PCとの連携」を開いて、もう一度お試しください。</string>
@@ -129,7 +131,6 @@
     <string name="otp_relay_totp_consent_message">このPCでOTPの入力画面が出ると、このアプリが認証アプリのコードを作って自動で送ります。自分のPCでなければ「解除」をタップしてください。</string>
     <string name="otp_relay_totp_consent_send">送る</string>
     <string name="otp_relay_totp_consent_later">あとで</string>
-    <string name="otp_relay_ext_title">PCに拡張機能を追加</string>
     <string name="otp_relay_ext_lead">PCのブラウザでこのアドレスを開くと、UoA 非公式拡張を入れられます。</string>
     <string name="otp_relay_ext_url_display" translatable="false">uoa-app.shakenokiri.me/ext</string>
     <string name="otp_relay_ext_copy">アドレスをコピー</string>
@@ -145,12 +146,23 @@
     <string name="otp_relay_paste_hint">uoa-app://otp-pair#…</string>
     <string name="otp_relay_paste_invalid">連携用のリンクではありません。PCの拡張機能で連携用のQRコードを表示し直し、その中身のリンクを貼り付けてください。</string>
     <string name="otp_relay_section_pairings">連携しているブラウザ</string>
-    <string name="otp_relay_none">まだありません</string>
     <string name="otp_relay_unpair">解除</string>
     <string name="otp_relay_paired_on">%1$sに連携</string>
     <string name="otp_relay_section_last_result">直近の結果</string>
-    <string name="otp_relay_section_howto">連携方法</string>
-    <string name="otp_relay_howto">1. PCの拡張機能の設定で「OTP 自動入力」の「スマホと連携」をクリックし、連携用のQRコードを表示する\n2. そのQRコードを、この端末の標準のカメラ (またはGoogleレンズ) で読む。カメラから開けないときは、QRコードの中身のリンクをコピーして「リンクを貼り付けて連携」に貼る\n3. このアプリが開いたら「同意して連携する」をタップする</string>
+    <string name="otp_relay_section_howto">連携のしかた</string>
+    <string name="otp_relay_step1">1. PCのブラウザにUoA 非公式拡張を入れます</string>
+    <string name="otp_relay_steps_rest">2. 拡張機能の設定の「OTP の自動入力」で「スマホと連携」をクリックし、QRコードを出します
+3. そのQRコードを、この端末の標準のカメラかGoogleレンズで読み、開いたこのアプリで「同意して連携する」をタップします。カメラから開けないときは、QRコードの中身のリンクをコピーして下の「リンクを貼り付けて連携」に貼ります</string>
+    <!-- 連携の案内のページ (PcRelaySetupPages)。iOS の otpRelay.setup.* / otpRelay.settings.step1〜3 と同じ内容。 -->
+    <string name="otp_relay_setup_benefits">学外からCampusSquareやMoodleなどにログインするとき、PCのブラウザに出るOTPの入力画面を、拡張機能が自動で埋めます。メールを開いたり、認証アプリのコードを打ち込んだりしなくて済み、この端末の操作も要りません。</string>
+    <string name="otp_relay_setup_step1">PCのブラウザにUoA 非公式拡張を入れます</string>
+    <string name="otp_relay_setup_step2">PCで拡張機能の案内を開き、「スマホと連携」をクリックします</string>
+    <string name="otp_relay_setup_step2_hint">案内は拡張機能を入れると開きます。閉じたときは、拡張機能の設定の「OTP の自動入力」にある「スマホと連携」からQRコードを出せます。</string>
+    <string name="otp_relay_setup_step3">表示されたQRコードをこの端末の標準のカメラかGoogleレンズで読み取り、開いたこのアプリで「同意して連携する」をタップします</string>
+    <string name="otp_relay_setup_step3_hint">カメラから開けないときは、QRコードの中身のリンクをコピーして、「リンクを貼り付けて連携」から貼り付けます。</string>
+    <string name="otp_relay_setup_paired">連携しました</string>
+    <string name="pc_relay_setup_page_position">%2$dページ中%1$dページ目</string>
+    <string name="otp_relay_another_pc">別のPCと連携する</string>
     <string name="otp_relay_unpair_confirm">「%1$s」との連携を解除しますか？</string>
     <string name="otp_relay_unpair_failed_title">中継サーバーで解除できませんでした</string>
     <string name="otp_relay_unpair_failed_message">通信できる状態でもう一度試すか、この端末からのみ削除してください。削除しても、PCの拡張機能で解除するまで依頼は届きます。届いてもOTPは送りません。</string>
@@ -252,11 +264,9 @@
     <string name="login_authenticator_key_suspended">このアプリのキーを止めています。登録し直すまで、ログインのたびにコードを入力します。</string>
     <string name="login_authenticator_without_secret">このアプリにセットアップキーがありません。登録し直してください。</string>
     <string name="login_reregister_needed_title">認証アプリの登録し直しが必要です</string>
-    <string name="login_reregister_needed_text">このアプリにセットアップキーがありません。登録し直すと、このアプリがコードを自動で入力し、バックグラウンドでも再ログインします。それまではログインのたびにコードを入力します。</string>
+    <string name="login_reregister_needed_text">このアプリにセットアップキーがありません。登録し直すか、認証アプリにある大学のアカウントを取り込むと、このアプリがコードを自動で入力し、バックグラウンドでも再ログインします。それまではログインのたびにコードを入力します。</string>
     <string name="auth_key_suspended_title">認証が通らず、再設定が必要です</string>
-    <string name="auth_key_suspended_text">このアプリのキーで作ったコードが、大学の認証システムで 2 回続けて通りませんでした。登録し直すまで、キーは自動では使わず、ログインのたびにコードを入力します。</string>
-    <string name="login_reregister_prompt_open">登録し直す</string>
-    <string name="login_reregister_prompt_later">あとで</string>
+    <string name="auth_key_suspended_text">このアプリのキーで作ったコードが、大学の認証システムで2回続けて正しくないと判定されました。登録し直すか認証アプリから取り込むまで、キーは自動では使わず、ログインのたびにコードを入力します。</string>
     <string name="settings_login_row">ログインとワンタイムパスワード</string>
 
     <!-- Class dialogs -->
@@ -521,7 +531,8 @@
     <string name="timetable_received_on_format">%1$sに受け取り</string>
     <string name="timetable_valid_until_format">%1$sまで有効</string>
     <string name="timetable_received_line_format">%1$s ・ 週%2$dコマ</string>
-    <string name="timetable_exchange_sending_unnamed">名前なしで送ります</string>
+    <string name="timetable_friend_unnamed">表示名なし</string>
+    <string name="timetable_exchange_sending_unnamed">表示名なしで送ります</string>
     <string name="timetable_exchange_sending_as_format">「%1$s」として送ります</string>
     <string name="timetable_exchange_expired">共有の期限が切れました。もう一度QRコードを生成してください。</string>
     <string name="timetable_exchange_received_format">%1$sさんの時間割を受け取りました</string>

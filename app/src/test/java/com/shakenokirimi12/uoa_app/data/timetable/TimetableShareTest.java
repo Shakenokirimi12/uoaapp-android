@@ -1,5 +1,6 @@
 package com.shakenokirimi12.uoa_app.data.timetable;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -19,6 +20,8 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -119,6 +122,64 @@ public class TimetableShareTest {
         assertEquals(classes(derive.get("expected")), TimetableDerivation.weeklyClasses(events, now));
     }
 
+    /** 1 件で 2〜4 限にかかる予定は 2〜4 限、2 限だけの予定は 2 限だけ (iOS testMultiPeriodEventCoversEveryPeriod と同じ)。 */
+    @Test
+    public void multiPeriodEventCoversEveryPeriod() {
+        List<CalendarEvent> events = new ArrayList<>();
+        for (String day : new String[]{"2026-10-20", "2026-10-27"}) {
+            events.add(new CalendarEvent("実験", "M1", date(day + "T09:50:00+09:00"), date(day + "T12:30:00+09:00")));
+            events.add(new CalendarEvent("ゼミ", "M1", date(day + "T13:20:00+09:00"), date(day + "T14:10:00+09:00")));
+            events.add(new CalendarEvent("ゼミ", "M2", date(day + "T14:10:00+09:00"), date(day + "T15:00:00+09:00")));
+        }
+        List<SharedClass> expected = new ArrayList<>();
+        expected.add(new SharedClass(2, 2, 4, "実験", "M1"));
+        expected.add(new SharedClass(2, 5, 5, "ゼミ", "M1"));
+        expected.add(new SharedClass(2, 6, 6, "ゼミ", "M2"));
+        long now = OffsetDateTime.parse("2026-10-21T12:00:00+09:00").toInstant().toEpochMilli();
+        assertEquals(expected, TimetableDerivation.weeklyClasses(events, now));
+    }
+
+    /** ある週だけ途中の時限で教室が変わっても、授業は消えない (iOS testRoomChangeInOneWeekKeepsTheClass と同じ)。 */
+    @Test
+    public void roomChangeInOneWeekKeepsTheClass() {
+        List<CalendarEvent> events = new ArrayList<>();
+        events.add(new CalendarEvent("実験", "M1", date("2026-10-20T09:50:00+09:00"), date("2026-10-20T12:30:00+09:00")));
+        events.add(new CalendarEvent("実験", "M1", date("2026-10-27T09:50:00+09:00"), date("2026-10-27T11:40:00+09:00")));
+        events.add(new CalendarEvent("実験", "M2", date("2026-10-27T11:40:00+09:00"), date("2026-10-27T12:30:00+09:00")));
+        List<SharedClass> expected = new ArrayList<>();
+        expected.add(new SharedClass(2, 2, 4, "実験", "M1"));
+        long now = OffsetDateTime.parse("2026-10-21T12:00:00+09:00").toInstant().toEpochMilli();
+        assertEquals(expected, TimetableDerivation.weeklyClasses(events, now));
+    }
+
+    /** 同じ授業が続く時限は行をまたいで 1 箱。空きは行ごと (iOS testColumnSegments と同じ)。 */
+    @Test
+    public void columnSegments() {
+        List<SharedClass> classes = new ArrayList<>();
+        classes.add(new SharedClass(2, 2, 4, "実験", "M1"));
+        classes.add(new SharedClass(2, 5, 5, "ゼミ", "M1"));
+        classes.add(new SharedClass(2, 6, 6, "ゼミ", "M2"));
+        classes.add(new SharedClass(1, 1, 2, "A", ""));
+        List<SharedClass> none = new ArrayList<>();
+        List<int[]> rows = TimetableGrid.rows(classes, none);
+        assertEquals("1-1 2-4 5-5 6-6 7-8 ", ranges(TimetableGrid.segments(classes, 2, rows)));
+        assertEquals("1-2 3-4 5-6 7-8 ", ranges(TimetableGrid.segments(classes, 1, rows)));
+        List<SharedClass> late = new ArrayList<>();
+        late.add(new SharedClass(3, 8, 8, "B", ""));
+        late.add(new SharedClass(3, 11, 11, "B", ""));
+        assertEquals("1-2 3-4 5-6 7-7 8-8 11-11 ", ranges(TimetableGrid.segments(late, 3, TimetableGrid.rows(late, none))));
+    }
+
+    private static String ranges(List<int[]> list) {
+        StringBuilder b = new StringBuilder();
+        for (int[] r : list) b.append(r[0]).append('-').append(r[1]).append(' ');
+        return b.toString();
+    }
+
+    private static Date date(String iso) {
+        return Date.from(OffsetDateTime.parse(iso).toInstant());
+    }
+
     @Test
     public void shareLinks() {
         JsonObject links = fixture().getAsJsonObject("links");
@@ -158,7 +219,7 @@ public class TimetableShareTest {
         assertNotNull(kept);
         assertEquals("たろう", kept.name);
         assertEquals(one, kept.timetable.classes);
-        assertEquals(TimetableShareStore.UNNAMED, friends.get(0).name);
+        assertEquals(TimetableShareStore.unnamed(), friends.get(0).name);
     }
 
     /** 名前か授業が変わったら、出している共有を使い回さない。作った日時は見ない。 */
@@ -186,12 +247,60 @@ public class TimetableShareTest {
         assertEquals("a\uD83D\uDE00", SharedTimetable.sanitize("a\uD83D\uDE00", 10));
     }
 
+    /** 「同じ授業」は時限ごとに比べる。範囲に同じ授業名があるだけでは「同じ」にしない (iOS と同じ)。 */
     @Test
-    public void featureShownOnlyWhenFlagIsExactlyTrue() {
-        assertTrue(TimetableShareFeature.isEnabled("true"));
-        assertFalse(TimetableShareFeature.isEnabled(null));
-        assertFalse(TimetableShareFeature.isEnabled("false"));
-        assertFalse(TimetableShareFeature.isEnabled(""));
-        assertFalse(TimetableShareFeature.isEnabled("TRUE"));
+    public void overlapComparesEachPeriod() {
+        List<SharedClass> friend = Arrays.asList(new SharedClass(1, 2, 4, "A", ""),
+                new SharedClass(2, 1, 1, "B", ""), new SharedClass(3, 1, 2, "C", ""));
+        List<SharedClass> mine = Arrays.asList(new SharedClass(1, 2, 2, "A", ""),
+                new SharedClass(2, 2, 2, "B", ""), new SharedClass(3, 1, 2, "c", ""));
+        assertEquals(TimetableGrid.Overlap.BOTH_BUSY, TimetableGrid.overlap(friend, mine, 1, new int[]{2, 4}));
+        assertEquals(TimetableGrid.Overlap.SAME, TimetableGrid.overlap(friend, mine, 1, new int[]{2, 2}));
+        assertEquals(TimetableGrid.Overlap.BOTH_BUSY, TimetableGrid.overlap(friend, mine, 2, new int[]{1, 2}));
+        assertEquals(TimetableGrid.Overlap.SAME, TimetableGrid.overlap(friend, mine, 3, new int[]{1, 2}));
+        // 友達が同じ時限に A と B を持ち、自分は A だけなら「同じ」にしない。
+        List<SharedClass> doubled = Arrays.asList(new SharedClass(4, 1, 1, "A", ""), new SharedClass(4, 1, 1, "B", ""));
+        List<SharedClass> onlyA = Collections.singletonList(new SharedClass(4, 1, 1, "A", ""));
+        assertEquals(TimetableGrid.Overlap.BOTH_BUSY, TimetableGrid.overlap(doubled, onlyA, 4, new int[]{1, 1}));
+    }
+
+    /** 比べるときは、友達が空いている時限を自分の授業でも区切り、友達の授業も重なりが変わるところで区切る (iOS と同じ)。 */
+    @Test
+    public void comparedSegmentsSplitFreePeriodsByMine() {
+        List<SharedClass> friend = Collections.singletonList(new SharedClass(1, 3, 4, "A", ""));
+        List<SharedClass> mine = Arrays.asList(new SharedClass(1, 1, 1, "X", ""), new SharedClass(1, 3, 3, "A", ""));
+        List<int[]> rows = TimetableGrid.rows(friend, mine);
+        assertEquals("1-1 2-2 3-3 4-4 5-6 7-8 ", ranges(TimetableGrid.segments(friend, mine, 1, rows)));
+        assertEquals("1-2 3-4 5-6 7-8 ", ranges(TimetableGrid.segments(friend, 1, rows)));
+    }
+
+    /** 友達 2〜4 限・自分 1〜2 限は、2 限と 3〜4 限に分ける。自分の授業名が変わっても重なりが同じなら割らない。 */
+    @Test
+    public void comparedSegmentsSplitAFriendClassWhereTheOverlapChanges() {
+        List<SharedClass> friend = Collections.singletonList(new SharedClass(2, 2, 4, "Lab", ""));
+        List<SharedClass> mine = Collections.singletonList(new SharedClass(2, 1, 2, "ML", ""));
+        List<int[]> rows = TimetableGrid.rows(friend, mine);
+        assertEquals("1-1 2-2 3-4 5-6 7-8 ", ranges(TimetableGrid.segments(friend, mine, 2, rows)));
+        assertEquals(TimetableGrid.Overlap.FRIEND_ONLY, TimetableGrid.overlap(friend, mine, 2, new int[]{3, 4}));
+        List<SharedClass> mineTwo = Arrays.asList(new SharedClass(2, 2, 2, "X", ""), new SharedClass(2, 3, 4, "Y", ""));
+        assertEquals("1-1 2-4 5-6 7-8 ", ranges(TimetableGrid.segments(friend, mineTwo, 2, rows)));
+    }
+
+    /** 表の上の数と下のまとめは、表と同じ箱で数える。片方だけに授業がある時限があれば「同じ」にしない (iOS と同じ)。 */
+    @Test
+    public void comparedBoxesCountLikeTheGrid() {
+        List<SharedClass> friend = Arrays.asList(new SharedClass(1, 2, 2, "A", ""), new SharedClass(2, 1, 1, "S", ""));
+        List<SharedClass> mine = Arrays.asList(new SharedClass(1, 2, 2, "B", ""),
+                new SharedClass(2, 1, 1, "S", ""), new SharedClass(2, 2, 2, "X", ""));
+        List<int[]> rows = TimetableGrid.rows(friend, mine);
+        List<TimetableGrid.Box> monday = TimetableGrid.comparedBoxes(friend, mine, 1, rows);
+        assertArrayEquals(new int[]{1, 1}, monday.get(0).range);
+        assertEquals(TimetableGrid.Overlap.BOTH_FREE, monday.get(0).overlap);
+        assertEquals(TimetableGrid.Overlap.BOTH_BUSY, TimetableGrid.overlap(friend, mine, 2, new int[]{1, 2}));
+        List<TimetableGrid.Box> tuesday = TimetableGrid.comparedBoxes(friend, mine, 2, rows);
+        assertArrayEquals(new int[]{1, 1}, tuesday.get(0).range);
+        assertEquals(TimetableGrid.Overlap.SAME, tuesday.get(0).overlap);
+        assertArrayEquals(new int[]{2, 2}, tuesday.get(1).range);
+        assertEquals(TimetableGrid.Overlap.MINE_ONLY, tuesday.get(1).overlap);
     }
 }

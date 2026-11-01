@@ -118,8 +118,10 @@ public class OtpProvidersTest {
 
         TotpStepLedger ledger = TotpStepLedger.inMemory();
         ledger.claim(ahead);
+        // 鍵はあるので、取り込み・登録し直しの選択は出さない (使える窓が無いだけ)。
         OtpProvider foreground = new OtpProviders.AuthenticatorOtpProvider("s1300000", AuthorizationContext.INTERACTIVE,
-                () -> OTPAUTH, ledger, suspended::add, ctx -> "123456");
+                () -> OTPAUTH, ledger, suspended::add, ctx -> "123456",
+                (u, ctx) -> { throw new AssertionError("a stored key must not offer the no-key choice"); });
         long started = System.currentTimeMillis();
         assertEquals("123456", foreground.code());
         assertTrue("待たない", System.currentTimeMillis() - started < 2_000);
@@ -137,6 +139,46 @@ public class OtpProvidersTest {
         }
     }
 
+    /** 鍵が無いときは選択 (AuthenticatorKeyChoice) を通し、手入力を選んだらそのコードを送る。弾かれても鍵は止めない。 */
+    @Test
+    public void authenticatorWithoutKey_foreground_usesTheCodeTypedFromTheChoice() throws Exception {
+        java.util.List<String> suspended = new java.util.ArrayList<>();
+        java.util.List<String> asked = new java.util.ArrayList<>();
+        OtpProvider p = new OtpProviders.AuthenticatorOtpProvider("s1300000", AuthorizationContext.INTERACTIVE,
+                () -> null, TotpStepLedger.inMemory(), suspended::add,
+                ctx -> { throw new AssertionError("manual entry goes through the choice"); },
+                (u, ctx) -> {
+                    asked.add(u);
+                    return "654321";
+                });
+        assertEquals("654321", p.code());
+        assertEquals(java.util.Collections.singletonList("s1300000"), asked);
+        assertFalse(p.retriesRejectedCode());
+        p.onRejected();
+        assertTrue(suspended.isEmpty());
+    }
+
+    /**
+     * 選択で鍵を取り込んだら、何も打たせずに取り込んだ鍵でコードを作る。以後は保存した鍵と同じ扱い
+     * (台帳に窓を記録し、弾かれたら次の窓でやり直す)。
+     */
+    @Test
+    public void authenticatorWithoutKey_importedFromTheChoice_generatesTheCodeFromTheNewKey() throws Exception {
+        String[] stored = {null};
+        TotpStepLedger ledger = TotpStepLedger.inMemory();
+        OtpProvider p = new OtpProviders.AuthenticatorOtpProvider("s1300000", AuthorizationContext.INTERACTIVE,
+                () -> stored[0], ledger, owner -> { },
+                ctx -> { throw new AssertionError("an imported key must not ask for a code"); },
+                (u, ctx) -> {
+                    stored[0] = OTPAUTH;
+                    return null;
+                });
+        String code = p.code();
+        assertTrue(Totp.matches(Totp.parse(OTPAUTH), code, System.currentTimeMillis()));
+        assertTrue(p.retriesRejectedCode());
+        assertFalse("used step is recorded", ledger.claim(Totp.step(Totp.parse(OTPAUTH), System.currentTimeMillis()) - 1));
+    }
+
     /** 鍵が無ければ (登録し直しが要る)、バックグラウンドではコードを用意できない。 */
     @Test
     public void authenticatorWithoutKey_refusesInBackground() {
@@ -150,5 +192,18 @@ public class OtpProvidersTest {
         } catch (Exception e) {
             fail("unexpected " + e);
         }
+    }
+
+    /** 周期の違う鍵に替えたら、使った窓の終わりの時刻で番号を直す (iOS の testLedgerRescalesWhenThePeriodChanges と同じ)。 */
+    @Test
+    public void ledgerRescalesWhenThePeriodChanges() {
+        TotpStepLedger ledger = TotpStepLedger.inMemory();
+        assertTrue(ledger.claim(100));
+        ledger.rescale(30, 60);
+        assertFalse(ledger.claim(50));
+        assertTrue(ledger.claim(51));
+        ledger.rescale(60, 30);
+        assertFalse(ledger.claim(103));
+        assertTrue(ledger.claim(104));
     }
 }

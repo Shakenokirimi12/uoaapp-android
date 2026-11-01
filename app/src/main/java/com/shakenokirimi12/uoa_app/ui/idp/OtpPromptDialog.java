@@ -40,9 +40,13 @@ public final class OtpPromptDialog {
         return raw.replaceAll("[\\s\\u3000]", "");
     }
 
-    /** @param message 案内の文。メール方式なら自動取得に失敗したこと、認証アプリ方式なら入力の案内。 */
+    /**
+     * @param message 案内の文。メール方式なら自動取得に失敗したこと、認証アプリ方式なら入力の案内。
+     * @return 出したダイアログを閉じる処理 (待ちが時間切れになったときに呼ぶ。main で)。出せなければ null。
+     */
     @MainThread
-    public static void show(@NonNull Activity activity, @NonNull String message, @NonNull Listener listener) {
+    @androidx.annotation.Nullable
+    public static Runnable show(@NonNull Activity activity, @NonNull String message, @NonNull Listener listener) {
         // 送信・キャンセル・破棄のどれで終わっても、待っているスレッドを必ず 1 回だけ解放する。
         final boolean[] delivered = {false};
         Listener once = code -> {
@@ -54,7 +58,7 @@ public final class OtpPromptDialog {
         // 前面 Activity を掴んでから main へ post するまでの間に回転・終了が起きうる。
         if (activity.isFinishing() || activity.isDestroyed()) {
             once.onResult(null);
-            return;
+            return null;
         }
 
         View view = activity.getLayoutInflater().inflate(R.layout.dialog_otp_prompt, null);
@@ -85,7 +89,11 @@ public final class OtpPromptDialog {
             android.util.Log.w("OtpPromptDialog", "ダイアログを表示できなかった: " + e);
             activity.getApplication().unregisterActivityLifecycleCallbacks(watcher);
             once.onResult(null);
+            return null;
         }
+        return () -> {
+            if (dialog.isShowing()) dialog.dismiss();
+        };
     }
 
     /**

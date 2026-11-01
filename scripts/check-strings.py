@@ -28,7 +28,7 @@ JP = re.compile('[぀-ヿ㐀-鿿＀-￯　-〿]')
 SKIP_JAVA = [
     'services/idp/', 'services/otprelay/', 'services/SessionCoordinator.java', 'services/BackgroundLoginPolicy.java',
     'services/NetworkClient.java', 'services/HostScopedCookieJar.java',
-    'services/SpSessionCookies.java', 'ui/settings/AuthenticatorKeyPrompt.java', 'ui/idp/', 'ui/otprelay/',
+    'services/SpSessionCookies.java', 'ui/idp/', 'ui/otprelay/',
     # Login-purpose files outside the explicit list (kept out when unsure).
     'ui/onboarding/OnboardingActivity.java',
 ]

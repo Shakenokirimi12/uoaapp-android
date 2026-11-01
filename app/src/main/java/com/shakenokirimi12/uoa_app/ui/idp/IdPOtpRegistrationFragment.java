@@ -36,6 +36,16 @@ import com.shakenokirimi12.uoa_app.services.idp.OtpMethod;
 public class IdPOtpRegistrationFragment extends Fragment {
     /** 切り替え先 (OtpMethod.value)。無ければ新規登録。 */
     public static final String ARG_SWITCHING_TO = "switching_to";
+    /**
+     * true なら、登録が済んだあとホームで取り直す (ログインで鍵が無いと分かり、選択で登録し直しを選んだとき。
+     * MainActivity.openOtpReregistration)。そのときのログインは取り消してあるので、取り直さないとデータが出ないまま。
+     */
+    public static final String ARG_RESYNC_ON_SUCCESS = "resync_on_success";
+    /**
+     * true なら、保存済みの ID / パスワードではなく、初期設定が確かめている最中の値を使う (IdPOtpRegistrationActivity)。
+     * パスワードは引数に載せず、OnboardingActivity.pendingCredentials から読む。
+     */
+    public static final String ARG_ONBOARDING_CREDENTIALS = "onboarding_credentials";
     /** 切り替えの画面を閉じたときに、設定画面へ返す結果 (FragmentManager の fragment result)。 */
     public static final String RESULT_SWITCH = "otp_method_switch";
     /** 結果の中身: 切り替え先 (OtpMethod.value)。 */
@@ -111,7 +121,7 @@ public class IdPOtpRegistrationFragment extends Fragment {
         view.findViewById(R.id.button_copy_secret).setOnClickListener(v -> copySecret());
         view.findViewById(R.id.button_show_qr).setOnClickListener(v -> showQr());
 
-        buttonCloseStatus.setOnClickListener(v -> Navigation.findNavController(v).popBackStack());
+        buttonCloseStatus.setOnClickListener(v -> close());
         view.findViewById(R.id.card_method_email).setOnClickListener(v -> viewModel.chooseEmail());
         view.findViewById(R.id.card_method_authenticator).setOnClickListener(v -> {
             showProgress("認証アプリ用の情報を取得しています…");
@@ -144,10 +154,31 @@ public class IdPOtpRegistrationFragment extends Fragment {
         });
 
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
-        if (editEmail.getText().length() == 0) {
-            editEmail.setText(prefs.getUsername().trim() + "@u-aizu.ac.jp");
+        String uid = prefs.getUsername();
+        String pass = prefs.getPassword();
+        if (getArguments() != null && getArguments().getBoolean(ARG_ONBOARDING_CREDENTIALS, false)) {
+            String[] pending = com.shakenokirimi12.uoa_app.ui.onboarding.OnboardingActivity.pendingCredentials();
+            if (pending == null) {
+                // プロセスが作り直されて、確かめている最中の値が無い。初期設定に戻ってログインし直してもらう。
+                requireActivity().finish();
+                return;
+            }
+            uid = pending[0];
+            pass = pending[1];
         }
-        viewModel.startOnce(prefs.getUsername(), prefs.getPassword(), switchingTo);
+        if (editEmail.getText().length() == 0) {
+            editEmail.setText(uid.trim() + "@u-aizu.ac.jp");
+        }
+        viewModel.startOnce(uid, pass, switchingTo);
+    }
+
+    /** 閉じる。初期設定から開いたとき (nav graph の外) は画面ごと閉じる。 */
+    private void close() {
+        if (getActivity() instanceof IdPOtpRegistrationActivity) {
+            getActivity().finish();
+            return;
+        }
+        Navigation.findNavController(requireView()).popBackStack();
     }
 
     private static final String STATE_RE_REGISTERING = "re_registering";
@@ -268,6 +299,10 @@ public class IdPOtpRegistrationFragment extends Fragment {
                 showProgress("登録しています…");
                 break;
             case SUCCESS:
+                // 閉じても戻っても、ログインを取り消した元の画面に戻る。その画面は取得に失敗してキャッシュが古いままなので、
+                // 開き直したときに取り直す。ホームはキャッシュに関係なく取り直させる (次にホームを開いたとき。ホームが読んで消す)。
+                if (resyncOnSuccess()) requestHomeSync();
+                if (getActivity() instanceof IdPOtpRegistrationActivity) ((IdPOtpRegistrationActivity) getActivity()).registered();
                 showStatus(R.drawable.ic_check_circle, androidx.appcompat.R.attr.colorPrimary,
                         switchingTo == null ? "ワンタイムパスワードの設定が完了しました。"
                                 : reRegistering ? getString(R.string.otp_reregister_done)
@@ -281,6 +316,20 @@ public class IdPOtpRegistrationFragment extends Fragment {
                 showStatus(R.drawable.ic_circle_alert, androidx.appcompat.R.attr.colorError,
                         viewModel.failureMessage().getValue());
                 break;
+        }
+    }
+
+    private boolean resyncOnSuccess() {
+        return getArguments() != null && getArguments().getBoolean(ARG_RESYNC_ON_SUCCESS, false);
+    }
+
+    /** ホームの取得 (引っ張って更新と同じ、前面のログイン) をキャッシュに関係なく走らせる (IdPTutorialFragment と同じ印)。 */
+    private void requestHomeSync() {
+        try {
+            Navigation.findNavController(requireView()).getBackStackEntry(R.id.navigation_home).getSavedStateHandle()
+                    .set(com.shakenokirimi12.uoa_app.ui.home.HomeFragment.KEY_FORCE_SYNC, true);
+        } catch (IllegalArgumentException e) {
+            // ホームが戻る先に無い。開いたときの自動の取得 (キャッシュが古ければ取る) に任せる。
         }
     }
 

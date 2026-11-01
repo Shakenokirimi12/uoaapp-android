@@ -50,11 +50,30 @@ public final class OtpProviders {
     @NonNull
     static OtpProvider of(@NonNull OtpMethod method, @NonNull String uid, @NonNull String pass,
                           @NonNull AuthorizationContext context) {
+        return of(method, uid, pass, context, true);
+    }
+
+    /**
+     * ownsSettings: このアカウントの控えと鍵を読み書きしてよいか (ResolvingOtpProvider)。false (別のアカウントへの
+     * 切り替えの確認) では、鍵が無くても取り込み・登録し直しを選ばせない。取り込むと前のアカウントの鍵と方式の控えを
+     * 書き換え、登録し直しは保存している (前の) アカウントで始まるため。そのときは今までどおり手入力だけ。
+     */
+    @NonNull
+    static OtpProvider of(@NonNull OtpMethod method, @NonNull String uid, @NonNull String pass,
+                          @NonNull AuthorizationContext context, boolean ownsSettings) {
         switch (method) {
-            case AUTHENTICATOR:
-                // 止めた鍵 (2 回弾かれた) は自動では使わない。前面では手入力になる (SPEC.md「7.2」)。
+            case AUTHENTICATOR: {
+                // 止めた鍵 (2 回弾かれた) は自動では使わない。前面では、取り込み・登録し直し・手入力から選んでもらう
+                // (SPEC.md「7.2」、AuthenticatorKeyChoice)。
+                AuthenticatorOtpProvider.ManualCode manual =
+                        ctx -> OtpPromptCoordinator.getInstance().codeFromAuthenticator(ctx);
+                AuthenticatorOtpProvider.NoKeyCode noKey = ownsSettings
+                        ? (u, ctx) -> OtpPromptCoordinator.getInstance().codeWithoutKey(u, ctx)
+                        : (u, ctx) -> manual.code(ctx);
                 return new AuthenticatorOtpProvider(uid, context,
-                        () -> PreferenceManager.getInstance().usableTotpOtpauthFor(uid));
+                        () -> PreferenceManager.getInstance().usableTotpOtpauthFor(uid), TotpStepLedger.shared(),
+                        AuthenticatorOtpProvider::suspendStoredKey, manual, noKey);
+            }
             case MAIL:
             default:
                 return new MailOtpProvider(uid, pass, context);
@@ -91,7 +110,7 @@ public final class OtpProviders {
 
         private OtpProvider fallback() {
             OtpMethod cached = cached();
-            return of(cached != null ? cached : OtpMethod.MAIL, uid, pass, context);
+            return of(cached != null ? cached : OtpMethod.MAIL, uid, pass, context, ownsSettings);
         }
 
         // forOtpPage の前に問われたときは控えの方式で答える (SeciossIdPClient は必ず forOtpPage を先に呼ぶ)。
@@ -125,7 +144,7 @@ public final class OtpProviders {
                 // 書く (AccountSwitch.committed)。書かないと、次にログインし直すまで方式が「不明」のままになる。
                 com.shakenokirimi12.uoa_app.services.AccountSwitch.notePendingOtpMethod(uid, read);
             }
-            return of(read, uid, pass, context);
+            return of(read, uid, pass, context, ownsSettings);
         }
 
         /**
@@ -153,10 +172,14 @@ public final class OtpProviders {
         }
     }
 
-    /** 診断に載せる otp_type。null は "(absent)"、空は "(empty)"。英数と - _ だけを 32 文字まで残す。 */
+    /**
+     * 診断に載せる otp_type。null は "(absent)"、空は "(empty)"。英数と - _ だけを 32 文字まで残す。
+     * 「otp_type も motp.cgi も無い」の印 (NO_MAIL_DISPATCH_OTP_TYPE) は IdP が書いた値ではないので、見分けられる形にする。
+     */
     @NonNull
     static String otpTypeLabel(@Nullable String raw) {
         if (raw == null) return "(absent)";
+        if (SeciossIdPClient.NO_MAIL_DISPATCH_OTP_TYPE.equals(raw)) return "(absent:no-motp)";
         String cleaned = raw.trim().replaceAll("[^A-Za-z0-9_-]", "?");
         if (cleaned.isEmpty()) return "(empty)";
         return cleaned.length() > 32 ? cleaned.substring(0, 32) : cleaned;
@@ -243,8 +266,9 @@ public final class OtpProviders {
      * 認証アプリ方式。登録のときに必ずシークレットをこのアプリにも保存し、アプリがコードを作って入れる
      * (iOS と同じ)。バックグラウンドの再ログインも同じシークレットで作る (canRunUnattended)。
      * 使えないのは、この決まりより前に登録した人 (鍵が無い) か、作ったコードを IdP に 2 回弾かれて止めたとき
-     * (登録し直しが要る)。その間は前面でだけ認証アプリのコードを手入力してもらい、バックグラウンドでは
-     * INTERACTIVE_LOGIN_REQUIRED で止める (OtpPromptCoordinator.codeFromAuthenticator)。
+     * (登録し直しが要る)。その間は前面でだけ、取り込み・登録し直し・手入力から選んでもらい
+     * (OtpPromptCoordinator.codeWithoutKey)、取り込んだらその鍵でコードを作る。バックグラウンドでは
+     * INTERACTIVE_LOGIN_REQUIRED で止める。
      */
     static final class AuthenticatorOtpProvider implements OtpProvider {
         private final String uid;
@@ -266,6 +290,13 @@ public final class OtpProviders {
         interface ManualCode { @NonNull String code(@NonNull AuthorizationContext context) throws Exception; }
         private final ManualCode manual;
 
+        /**
+         * 使える鍵が無いときのコード (OtpPromptCoordinator.codeWithoutKey)。手入力ならそのコード、鍵を取り込んだら null。
+         * テストで差し替える。
+         */
+        interface NoKeyCode { @Nullable String code(@NonNull String uid, @NonNull AuthorizationContext context) throws Exception; }
+        private final NoKeyCode noKey;
+
         AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth) {
             this(uid, context, otpauth, TotpStepLedger.shared(), AuthenticatorOtpProvider::suspendStoredKey);
         }
@@ -282,7 +313,15 @@ public final class OtpProviders {
 
         AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth,
                                  TotpStepLedger ledger, java.util.function.Consumer<String> suspend, ManualCode manual) {
+            this(uid, context, otpauth, ledger, suspend, manual,
+                    (u, ctx) -> OtpPromptCoordinator.getInstance().codeWithoutKey(u, ctx));
+        }
+
+        AuthenticatorOtpProvider(String uid, AuthorizationContext context, java.util.function.Supplier<String> otpauth,
+                                 TotpStepLedger ledger, java.util.function.Consumer<String> suspend, ManualCode manual,
+                                 NoKeyCode noKey) {
             this.manual = manual;
+            this.noKey = noKey;
             this.uid = uid;
             this.context = context;
             this.otpauth = otpauth;
@@ -300,7 +339,15 @@ public final class OtpProviders {
         @Override public String code() throws Exception {
             Totp.Params params = Totp.parse(otpauth.get());
             generated = params != null;
-            if (params == null) return manual.code(context);
+            if (params == null) {
+                String typed = noKey.code(uid, context);
+                if (typed != null) return typed;
+                // 選択で鍵を取り込んだ。取り込んだ鍵でコードを作り、以後は保存した鍵と同じに扱う (同じ窓を使わない・
+                // 弾かれたら次の窓で 1 回やり直す・2 回続けて弾かれたら止める)。読めなければ (保存に失敗した等) 手入力。
+                params = Totp.parse(otpauth.get());
+                if (params == null) return manual.code(context);
+                generated = true;
+            }
             try {
                 return unusedCode(params, ledger);
             } catch (SeciossError e) {

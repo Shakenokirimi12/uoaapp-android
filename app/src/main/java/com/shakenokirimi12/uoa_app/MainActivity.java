@@ -25,11 +25,10 @@ import com.shakenokirimi12.uoa_app.services.PushNotificationService;
 import com.shakenokirimi12.uoa_app.ui.onboarding.OnboardingActivity;
 import com.shakenokirimi12.uoa_app.ui.util.EdgeToEdge;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements com.shakenokirimi12.uoa_app.ui.idp.OtpReregistrationHost {
     /** 時間割共有の受け取り画面 (TimetableIncomingActivity) の「保存した時間割を見る」。値は友達の ID。 */
     public static final String EXTRA_OPEN_TIMETABLE_FRIEND = "open_timetable_friend";
-    /** 初期設定の「PC との連携」の段で「PC と連携する」を選んだ。連携の画面を開く。 */
-    public static final String EXTRA_OPEN_OTP_RELAY = "open_otp_relay";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +45,11 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(this, OnboardingActivity.class));
             finish();
             return;
+        }
+        // 初期設定を終えた人に、アップデートで増えた段だけを上に出す。作り直し (回転・プロセスの復元) では出し直さない。
+        if (savedInstanceState == null
+                && !com.shakenokirimi12.uoa_app.ui.onboarding.OnboardingProgress.newSteps(prefs).isEmpty()) {
+            startActivity(OnboardingActivity.catchUp(this));
         }
 
         setContentView(R.layout.activity_main);
@@ -106,12 +110,6 @@ public class MainActivity extends AppCompatActivity {
         if (savedInstanceState == null && !prefs.hasSeenIdPTutorial()) {
             navController.navigate(R.id.navigation_idp_tutorial);
         }
-        // 初期設定の「PC との連携」の段から来た。チュートリアルの上に開き、戻るとチュートリアルに戻る。
-        if (savedInstanceState == null && getIntent() != null
-                && getIntent().getBooleanExtra(EXTRA_OPEN_OTP_RELAY, false)) {
-            getIntent().removeExtra(EXTRA_OPEN_OTP_RELAY);
-            navController.navigate(R.id.navigation_otp_relay);
-        }
 
         // Register device for push notifications
         PushNotificationService pushService = PushNotificationService.shared(this);
@@ -167,8 +165,8 @@ public class MainActivity extends AppCompatActivity {
         // リモート設定の取り直しは、アプリが前面に出るたびに UoaApplication が行う (どの画面から戻っても)。
         // 同意を記録する前に作った PC との連携があれば、起動して最初に前面に出たときに 1 回だけ確かめる。
         com.shakenokirimi12.uoa_app.ui.otprelay.OtpRelayConsentPrompt.showAtLaunch(this);
-        // 認証アプリ方式なのにキーが無い人へ、登録し直しを一度だけ案内する。
-        com.shakenokirimi12.uoa_app.ui.settings.AuthenticatorKeyPrompt.showAtLaunch(this, this::openLoginSettings);
+        // 認証アプリ方式なのにキーが無い人への案内は、起動時ではなく、ログインでコードが要ったときに出す
+        // (AuthenticatorKeyChoice)。ログインの設定画面の案内は残る。
     }
 
     @Override
@@ -179,19 +177,6 @@ public class MainActivity extends AppCompatActivity {
         if (hasFocus) com.shakenokirimi12.uoa_app.ui.idp.AuthenticatorKeyActions.clearExpiredSecret(this);
     }
 
-    /** ログインとワンタイムパスワードの設定を開く。既に開いていれば何もしない。 */
-    private void openLoginSettings() {
-        if (isFinishing() || isDestroyed()) return;
-        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.nav_host_fragment);
-        if (navHostFragment == null) return;
-        NavController navController = navHostFragment.getNavController();
-        androidx.navigation.NavDestination current = navController.getCurrentDestination();
-        if (current != null && current.getId() == R.id.navigation_login_settings) return;
-        navController.navigate(R.id.navigation_login_settings);
-    }
-
-    /** API 33 以降は許可が無いと通知が一切出ない。これまでどこでも求めていなかった。 */
     /**
      * 下タブを「タブの表示設定」どおりに組み直し、NavigationUI と結び直す。起動時と、設定画面で
      * タブを入れ替えたときに呼ぶ。トップバーの「戻る」を出さない画面 (= タブの根) も同時に更新する。
@@ -266,6 +251,58 @@ public class MainActivity extends AppCompatActivity {
         navController.navigate(R.id.navigation_idp_otp_registration);
     }
 
+    /** 設定画面と同じ判断 (ID / パスワードが無い・誤りなら理由をトーストで出す)。 */
+    @Override
+    public boolean canStartReregistration() {
+        return com.shakenokirimi12.uoa_app.ui.settings.LoginSettingsFragment.canStartReregistration(
+                this, com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance(this));
+    }
+
+    /**
+     * ログインで鍵が無いと分かり、選択で「認証アプリに登録し直す」を選んだ (AuthenticatorKeyChoice)。
+     * 設定画面の「認証アプリに登録し直す」と同じ登録し直しを開き、済んだらホームで取り直す (ARG_RESYNC_ON_SUCCESS)。
+     * 既に開いていれば何もしない。
+     */
+    @Override
+    public void openOtpReregistration() {
+        if (isFinishing() || isDestroyed()) return;
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.nav_host_fragment);
+        if (navHostFragment == null) return;
+        NavController navController = navHostFragment.getNavController();
+        androidx.navigation.NavDestination current = navController.getCurrentDestination();
+        if (current != null && current.getId() == R.id.navigation_idp_otp_registration) return;
+        Bundle args = new Bundle();
+        args.putString(com.shakenokirimi12.uoa_app.ui.idp.IdPOtpRegistrationFragment.ARG_SWITCHING_TO,
+                com.shakenokirimi12.uoa_app.services.idp.OtpMethod.AUTHENTICATOR.value);
+        args.putBoolean(com.shakenokirimi12.uoa_app.ui.idp.IdPOtpRegistrationFragment.ARG_RESYNC_ON_SUCCESS, true);
+        navController.navigate(R.id.navigation_idp_otp_registration, args);
+    }
+
+    /**
+     * ログインの待ちが時間切れになったあとで、鍵を取り込めた (AuthenticatorKeyChoice)。ホームで取り直す。
+     * ホームが出ていればその場で、戻る先にあれば戻ったときに取り直す (KEY_FORCE_SYNC)。
+     */
+    @Override
+    public void syncAfterKeyImport() {
+        if (isFinishing() || isDestroyed()) return;
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.nav_host_fragment);
+        if (navHostFragment == null) return;
+        androidx.fragment.app.Fragment shown = navHostFragment.getChildFragmentManager().getPrimaryNavigationFragment();
+        if (shown instanceof com.shakenokirimi12.uoa_app.ui.home.HomeFragment) {
+            ((com.shakenokirimi12.uoa_app.ui.home.HomeFragment) shown).syncNow();
+            return;
+        }
+        try {
+            navHostFragment.getNavController().getBackStackEntry(R.id.navigation_home).getSavedStateHandle()
+                    .set(com.shakenokirimi12.uoa_app.ui.home.HomeFragment.KEY_FORCE_SYNC, true);
+        } catch (IllegalArgumentException e) {
+            // ホームが戻る先に無い。開いたときの自動の取得に任せる。
+        }
+    }
+
+    /** API 33 以降は許可が無いと通知が一切出ない。これまでどこでも求めていなかった。 */
     private void requestNotificationPermissionIfNeeded() {
         if (android.os.Build.VERSION.SDK_INT < 33) return;
         if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)

@@ -3,6 +3,7 @@ package com.shakenokirimi12.uoa_app.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKeys;
 import android.util.Log;
@@ -22,6 +23,7 @@ public class PreferenceManager {
     /** 時間割共有で、自分が出している共有の返事を読むトークン (data/timetable/TimetableShareStore)。 */
     private static final String KEY_TIMETABLE_SHARE_OWNER_TOKEN = "timetable_share_owner_token";
     private static final String KEY_ONBOARDING_DONE = "onboarding_done";
+    private static final String KEY_ONBOARDING_SEEN_STEPS = "onboarding_seen_steps";
     /** 以前の「ID/PW 誤り」の印 (真偽値)。指紋 (KEY_CREDENTIALS_INVALID_FP) に移して消す。 */
     private static final String KEY_CREDENTIALS_INVALID_LEGACY = "credentials_invalid";
     /** ID/PW 誤りと分かった資格情報の指紋 (BackgroundLoginPolicy.fingerprint)。資格情報が変わるまでログインしない (D-8)。 */
@@ -40,6 +42,8 @@ public class PreferenceManager {
     private static final String KEY_AUTO_ATTENDANCE = "auto_attendance_enabled";
     /** 「利用状況と診断情報を送る」(OTP の診断の記録 OtpDiagnostics もこれに従う)。BackupService.SETTINGS_KEYS と同じ文字列 (設定として持ち運ぶ)。 */
     public static final String KEY_USAGE_STATS_ENABLED = "usage_stats_enabled";
+    /** 最後に送った OTP 画面の形と、そのときの日付と版 (OtpDiagnostics.claimOtpPageShape)。 */
+    private static final String KEY_OTP_PAGE_SHAPE_SENT = "otp_page_shape_sent";
     private static final String KEY_SELECTED_NOTIFY_TIMES = "selected_notify_times";
     private static final String KEY_CUSTOM_NOTIFY_TIMES = "custom_notify_times";
     private static final String KEY_LUNCH_NOTIFY_TIME = "lunch_notify_time";
@@ -66,8 +70,6 @@ public class PreferenceManager {
     private static final String KEY_BG_LOGIN_LAST_MAIL_DISPATCH = "background_login_last_mail_dispatch";
     /** 鍵で作ったコードが IdP に 2 回続けて弾かれ、自動での使用を止めている (D-5)。鍵と同じ暗号化側に置き、鍵と一緒に消える。 */
     private static final String KEY_TOTP_SUSPENDED = "totp_suspended";
-    /** 認証アプリ方式なのに鍵が無い (止めている) 人へ、登録し直しを案内したか (起動時に一度だけ)。鍵を保存・停止したら戻す。 */
-    private static final String KEY_TOTP_REREGISTRATION_PROMPTED = "totp_reregistration_prompted";
     /** 最後に IdP に渡した (渡す予定の) TOTP の窓の番号 (TotpStepLedger)。番号だけなので平文の prefs に置く。 */
     private static final String KEY_TOTP_LAST_USED_STEP = "totp_last_used_step";
 
@@ -88,9 +90,6 @@ public class PreferenceManager {
      */
     public static final String[] DEVICE_LOCAL_KEYS = {
             KEY_DEVICE_ID, KEY_FCM_TOKEN, KEY_SERVER_HOLDS_REMINDERS, KEY_OTP_METHOD, KEY_SUPPORT_ID,
-            // 認証アプリのキーは暗号化側でバックアップの対象外。「案内した」だけが別の端末へ移ると、キーの無い新しい
-            // 端末で登録し直しの案内が出ない。
-            KEY_TOTP_REREGISTRATION_PROMPTED,
     };
 
     /**
@@ -119,6 +118,9 @@ public class PreferenceManager {
         // OTP をメールから自動で取得するかの選択。メール方式ではいつも自動で取得するようにしたので
         // (2026-10-21)、キーごと消した。
         if (prefs.contains("otp_auto_fetch_enabled")) prefs.edit().remove("otp_auto_fetch_enabled").apply();
+        // 鍵の無い人へ起動時に登録し直しを案内したかの印。案内はログインでコードが要ったときの選択に移した
+        // (2026-10-31、AuthenticatorKeyChoice) ので、キーごと消した。
+        if (prefs.contains("totp_reregistration_prompted")) prefs.edit().remove("totp_reregistration_prompted").apply();
         // 授業評価は機能ごと消した (2026-10-22)。端末に残った同意と、サーバーのアカウント ID を消す。
         dropRemovedKeys(new String[] {"review_consent_given", "review_guidelines_accepted", "review_user_id"},
                 new String[] {"review_user_id", "review_token"});
@@ -399,6 +401,16 @@ public class PreferenceManager {
     // Onboarding
     public boolean isOnboardingDone() { return prefs.getBoolean(KEY_ONBOARDING_DONE, false); }
     public void setOnboardingDone(boolean done) { prefs.edit().putBoolean(KEY_ONBOARDING_DONE, done).apply(); }
+    /** 初期設定で見た段 (OnboardingProgress の ID)。記録を始める前に終えた端末では null。 */
+    @Nullable
+    public java.util.Set<String> getOnboardingSeenSteps() {
+        java.util.Set<String> saved = prefs.getStringSet(KEY_ONBOARDING_SEEN_STEPS, null);
+        // 返された Set は書き換えてはいけない (SharedPreferences の決まり)。
+        return saved != null ? new java.util.HashSet<>(saved) : null;
+    }
+    public void setOnboardingSeenSteps(@NonNull java.util.Set<String> steps) {
+        prefs.edit().putStringSet(KEY_ONBOARDING_SEEN_STEPS, new java.util.HashSet<>(steps)).apply();
+    }
 
     // Notifications
     public boolean isAssignmentNotifyEnabled() { return prefs.getBoolean(KEY_NOTIFY_ASSIGNMENTS, true); }
@@ -457,6 +469,8 @@ public class PreferenceManager {
     // 利用状況 (services/usage/UsageStats)。既定は ON。回数と ID は別のファイル (usage_stats) に置き、ここは設定だけ。
     public boolean isUsageStatsEnabled() { return prefs.getBoolean(KEY_USAGE_STATS_ENABLED, true); }
     public void setUsageStatsEnabled(boolean enabled) { prefs.edit().putBoolean(KEY_USAGE_STATS_ENABLED, enabled).apply(); }
+    @Nullable public String getOtpPageShapeSent() { return prefs.getString(KEY_OTP_PAGE_SHAPE_SENT, null); }
+    public void setOtpPageShapeSent(@NonNull String mark) { prefs.edit().putString(KEY_OTP_PAGE_SHAPE_SENT, mark).apply(); }
 
     // Auto attendance
     public boolean isAutoAttendanceEnabled() { return prefs.getBoolean(KEY_AUTO_ATTENDANCE, false); }
@@ -510,7 +524,8 @@ public class PreferenceManager {
         return true;
     }
     /**
-     * IdP への登録が完了した方式に揃える。呼ぶのは OtpRegistrationCommit (登録が済んだと分かったとき) だけ。
+     * IdP への登録が完了した方式に揃える。呼ぶのは OtpRegistrationCommit (登録が済んだと分かったとき) と、
+     * 認証アプリにある鍵を取り込んだとき (OtpKeyImport。鍵を保存できたあと) だけ。
      * 大学側 (IdP) に登録されている方式と揃っていないとログインできないので、設定画面の切り替えも復元も、
      * 値を直接書かない。ほかに書くのは、ログインで IdP の方式を読み取ったときの recordOtpMethodFromIdp だけ。
      */
@@ -585,23 +600,29 @@ public class PreferenceManager {
      */
     public boolean saveTotp(@NonNull String otpauthUrl, @NonNull String owner) {
         if (encryptedPrefs == null) return false;
+        // 使った窓の番号は周期の単位なので、周期が変わる鍵 (取り込んだ 60 秒の鍵など) では直す (iOS の TOTPSecretStore.save と同じ)。
+        // 直さないと、新しい番号が前の番号よりずっと小さく、使用済みとみなされて自動でコードを作れない。
+        com.shakenokirimi12.uoa_app.services.idp.Totp.Params before =
+                com.shakenokirimi12.uoa_app.services.idp.Totp.parse(encryptedPrefs.getString(KEY_TOTP_OTPAUTH, null));
+        com.shakenokirimi12.uoa_app.services.idp.Totp.Params after =
+                com.shakenokirimi12.uoa_app.services.idp.Totp.parse(otpauthUrl);
         // 新しく保存した鍵は止めていない (登録し直しの成功で止めた状態を外す、D-5)。
         boolean saved = encryptedPrefs.edit()
                 .putString(KEY_TOTP_OTPAUTH, otpauthUrl)
                 .putString(KEY_TOTP_OWNER, owner.trim())
                 .remove(KEY_TOTP_SUSPENDED)
                 .commit();
-        // 鍵を持てたので、また無くなったら (作ったコードを IdP に弾かれて捨てたら) もう一度案内する。
-        if (saved) prefs.edit().remove(KEY_TOTP_REREGISTRATION_PROMPTED).apply();
+        if (saved && after != null) {
+            // 鍵が無ければ、otpauth の既定の周期。
+            int previousPeriod = before != null ? before.periodSeconds() : 30;
+            com.shakenokirimi12.uoa_app.services.idp.TotpStepLedger.shared().rescale(previousPeriod, after.periodSeconds());
+        }
         return saved;
     }
 
     public long getTotpLastUsedStep() { return prefs.getLong(KEY_TOTP_LAST_USED_STEP, -1L); }
     /** commit で書く。中継とログインが続けて読むので、書き終えてから返す。 */
     public void setTotpLastUsedStep(long step) { prefs.edit().putLong(KEY_TOTP_LAST_USED_STEP, step).commit(); }
-
-    public boolean isTotpReregistrationPrompted() { return prefs.getBoolean(KEY_TOTP_REREGISTRATION_PROMPTED, false); }
-    public void setTotpReregistrationPrompted() { prefs.edit().putBoolean(KEY_TOTP_REREGISTRATION_PROMPTED, true).apply(); }
 
     // ---- バックグラウンドの再ログイン (BackgroundLoginPolicy) ----
 
@@ -659,7 +680,6 @@ public class PreferenceManager {
     public void suspendTotp(@NonNull String owner) {
         if (encryptedPrefs == null || totpOtpauthFor(owner) == null) return;
         encryptedPrefs.edit().putBoolean(KEY_TOTP_SUSPENDED, true).commit();
-        prefs.edit().remove(KEY_TOTP_REREGISTRATION_PROMPTED).apply();
     }
 
     public void clearTotp() {

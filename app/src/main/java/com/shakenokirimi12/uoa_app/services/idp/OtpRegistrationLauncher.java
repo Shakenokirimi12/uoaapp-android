@@ -26,9 +26,17 @@ public final class OtpRegistrationLauncher {
         Throwable t = error;
         while (t != null && !(t instanceof SeciossError)) t = t.getCause();
         if (!(t instanceof SeciossError) || ((SeciossError) t).kind != SeciossError.Kind.OTP_NOT_CONFIGURED) return;
+        Activity activity = UoaApplication.getForegroundActivity();
+        // 初期設定のログインでも開く (iOS は初期設定の画面の上に出す)。ID / パスワードはまだ保存していないので、
+        // 初期設定が確かめている最中の値で登録する (IdPOtpRegistrationActivity)。初期設定のログインは利用者が
+        // ボタンを押したときだけ走るので、間隔を空けずに毎回開く (閉じてから押し直したら、また登録を出す)。
+        if (activity instanceof com.shakenokirimi12.uoa_app.ui.onboarding.OnboardingActivity) {
+            new Handler(Looper.getMainLooper()).post(() ->
+                    ((com.shakenokirimi12.uoa_app.ui.onboarding.OnboardingActivity) activity).openOtpRegistration());
+            return;
+        }
         long now = System.currentTimeMillis();
         if (now - lastLaunchedAt < REPEAT_SUPPRESS_MS) return;
-        Activity activity = UoaApplication.getForegroundActivity();
         if (!(activity instanceof MainActivity)) return;
         lastLaunchedAt = now;
         new Handler(Looper.getMainLooper()).post(() -> ((MainActivity) activity).openOtpRegistration());

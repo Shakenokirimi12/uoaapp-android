@@ -310,6 +310,12 @@ public class HomeFragment extends Fragment {
      * @param force true for pull-to-refresh: always fetch. false for automatic loads: skip each
      *              dataset that was fetched (by this screen or SyncWorker) within the cache window.
      */
+    /** キャッシュに関係なく取り直す (MainActivity.syncAfterKeyImport)。 */
+    public void syncNow() {
+        if (getView() == null) return;
+        syncData(true);
+    }
+
     private void syncData(boolean force) {
         PreferenceManager prefs = PreferenceManager.getInstance(requireContext());
         String user = prefs.getUsername();

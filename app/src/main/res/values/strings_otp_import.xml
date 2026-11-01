@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 認証アプリにある鍵の取り込み (ui/settings/OtpKeyImport)。iOS の otpImport.* と同じ内容 -->
+    <!-- 認証アプリ方式で使える鍵が無い人が、ログインでコードを求められたときの選択 (ui/settings/AuthenticatorKeyChoice) -->
+    <string name="otp_no_key_title">ワンタイムパスワード</string>
+    <string name="otp_no_key_message">このアプリに認証アプリのセットアップキーがありません。取り込むか登録し直すと、次からはこのアプリがコードを自動で入力します。</string>
+    <string name="otp_no_key_message_suspended">このアプリのセットアップキーで作ったコードが、大学の認証システムで2回続けて正しくないと判定されたため、セットアップキーを使っていません。取り込むか登録し直すと、次からはこのアプリがコードを自動で入力します。</string>
+    <string name="otp_no_key_manual">コードを入力してログイン</string>
+    <string name="otp_no_key_later">あとで</string>
+    <string name="otp_import_title">認証アプリから取り込む</string>
+    <string name="otp_import_summary">認証アプリにすでに大学のアカウントがあるときは、登録し直さずにセットアップキーを取り込めます</string>
+    <string name="otp_import_pick">スクリーンショットを選ぶ</string>
+    <string name="otp_import_choose_title">取り込むアカウントを選んでください</string>
+    <string name="otp_import_done_title">セットアップキーを取り込みました</string>
+    <string name="otp_import_done_text">次のログインから、このアプリがコードを自動で入力し、バックグラウンドでも再ログインします。コードが通らなかったときは、「認証アプリに登録し直す」を案内します。</string>
+    <string name="otp_import_error_no_qr">画像からQRコードが見つかりませんでした。QRコード全体が写ったスクリーンショットを選んでください。</string>
+    <string name="otp_import_error_unreadable">このQRコードは認証アプリのものではありません。</string>
+    <string name="otp_import_error_no_totp">このQRコードには、取り込める認証アプリのアカウントがありません。</string>
+    <string name="otp_import_error_save_failed">セットアップキーを保存できませんでした。もう一度お試しください。</string>
+    <string name="otp_import_apps_title">使っている認証アプリを選んでください</string>
+    <string name="otp_import_app_unsupported">%1$s ・ 取り込めません</string>
+    <string name="otp_import_back">戻る</string>
+    <!-- 「認証アプリに登録し直す」を出せない画面 (初期設定など) で、取り込めないアプリの手順に書き足す -->
+    <string name="otp_import_reregister_unavailable">この画面からは登録し直せません。ログインしたあと、設定の「ログインとワンタイムパスワード」から登録し直してください。今回は、認証アプリに表示されているコードを入力してログインできます。</string>
+    <string name="otp_import_paste_hint">セットアップキーかotpauth://のURL</string>
+    <string name="otp_import_paste_button">取り込む</string>
+    <string name="otp_import_pasted_name">貼り付けたセットアップキー</string>
+    <string name="otp_import_error_paste_unreadable">セットアップキーとして読み取れませんでした。英数字の文字列か、otpauth://で始まるURLを貼り付けてください。</string>
+    <!-- 一覧と手順は、各アプリの公式の案内で確かめた範囲 (SPEC.md 3.3)。iOS の AuthenticatorApp と同じ (Aegis と Samsung Pass は Android だけ) -->
+    <string name="otp_import_app_google">Google認証システム</string>
+    <string name="otp_import_app_ente">Ente Auth</string>
+    <string name="otp_import_app_aegis">Aegis</string>
+    <string name="otp_import_app_twofas">2FAS</string>
+    <string name="otp_import_app_onepassword">1Password</string>
+    <string name="otp_import_app_bitwarden">Bitwarden Authenticator</string>
+    <string name="otp_import_app_microsoft">Microsoft Authenticator</string>
+    <string name="otp_import_app_authy">Authy</string>
+    <string name="otp_import_app_samsung">Samsung Pass</string>
+    <string name="otp_import_app_iij">IIJ SmartKey</string>
+    <string name="otp_import_app_other">その他のアプリ</string>
+    <string name="otp_import_guide_google">1. Google認証システムのメニューから「アカウントを移行」→「アカウントをエクスポート」に進みます。\n2. 大学のアカウントだけを選び、「次へ」でQRコードを表示します。大学のアカウントは、slink.secioss.comなどの名前で出ています。\n3. スクリーンショットを撮り、「スクリーンショットを選ぶ」で選びます。撮れないときや別の端末に出したときは、写真を撮って選びます。読み取ったあと、スクリーンショットは削除してください。\n\nセットアップキーはこの端末にだけ保存し、外部に送りません。</string>
+    <string name="otp_import_guide_ente">1. Ente Authで大学のアカウントのコードを長押しし、「QR」を選んでQRコードを表示します。\n2. スクリーンショットを撮り、「スクリーンショットを選ぶ」で選びます。撮れないときや別の端末に出したときは、写真を撮って選びます。読み取ったあと、スクリーンショットは削除してください。\n\nセットアップキーはこの端末にだけ保存し、外部に送りません。</string>
+    <string name="otp_import_guide_aegis">1. Aegisで大学のアカウントを選び、転送 (Transfer) の操作でQRコードを表示します。\n2. スクリーンショットを撮り、「スクリーンショットを選ぶ」で選びます。撮れないときや別の端末に出したときは、写真を撮って選びます。読み取ったあと、スクリーンショットは削除してください。\n\nセットアップキーはこの端末にだけ保存し、外部に送りません。</string>
+    <string name="otp_import_guide_twofas">1. 2FASで大学のアカウントを開き、編集画面に進みます。\n2. 隠れているシークレットキーを目のアイコンで表示し、コピーします。\n3. 下の欄に貼り付けて、「取り込む」をタップします。\n\nセットアップキーはこの端末にだけ保存し、外部に送りません。</string>
+    <string name="otp_import_guide_onepassword">1. 1Passwordで大学のアカウントの項目を開き、「編集」をタップします。\n2. ワンタイムパスワードの欄から、セットアップキーかotpauth://で始まるURLをコピーします。\n3. 下の欄に貼り付けて、「取り込む」をタップします。\n\nセットアップキーはこの端末にだけ保存し、外部に送りません。</string>
+    <string name="otp_import_guide_bitwarden">1. Bitwarden Authenticatorの「設定」→「エクスポート」で、JSONかCSVを書き出します。\n2. 書き出したファイルを開き、大学のアカウントのotpauth://で始まる部分をコピーします。\n3. 下の欄に貼り付けて、「取り込む」をタップします。\n\n書き出したファイルにはセットアップキーがそのまま入っています。取り込んだら、ファイルを削除してください。\n\nセットアップキーはこの端末にだけ保存し、外部に送りません。</string>
+    <string name="otp_import_guide_microsoft">Microsoft Authenticatorには、セットアップキーを取り出す機能がありません。\n\n下の「認証アプリに登録し直す」から登録し直してください。登録し直すと、このアプリがコードを自動で入力できるようになります。</string>
+    <string name="otp_import_guide_authy">Authyには、セットアップキーを取り出す機能がありません。\n\n下の「認証アプリに登録し直す」から登録し直してください。登録し直すと、このアプリがコードを自動で入力できるようになります。</string>
+    <string name="otp_import_guide_samsung">Samsung Passからセットアップキーを取り出す方法は、確認できていません。\n\n下の「認証アプリに登録し直す」から登録し直してください。登録し直すと、このアプリがコードを自動で入力できるようになります。</string>
+    <string name="otp_import_guide_iij">IIJ SmartKeyからセットアップキーを取り出す方法は、確認できていません。\n\n下の「認証アプリに登録し直す」から登録し直してください。登録し直すと、このアプリがコードを自動で入力できるようになります。</string>
+    <string name="otp_import_guide_other">1. 認証アプリで大学のアカウントのQRコードを表示できるなら、スクリーンショットを撮り、「スクリーンショットを選ぶ」で選びます。撮れないときや別の端末に出したときは、写真を撮って選びます。読み取ったあと、スクリーンショットは削除してください。\n2. セットアップキーをコピーできるなら、下の欄に貼り付けて「取り込む」をタップします。セットアップキーは、英数字の文字列か、otpauth://で始まるURLです。\n3. どちらもできないときは、下の「認証アプリに登録し直す」から登録し直してください。\n\nセットアップキーはこの端末にだけ保存し、外部に送りません。</string>
+</resources>

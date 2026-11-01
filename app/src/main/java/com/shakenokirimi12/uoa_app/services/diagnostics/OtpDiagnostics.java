@@ -234,6 +234,24 @@ public final class OtpDiagnostics {
     }
 
     /**
+     * この形を送るか。同じ形は 1 日 (端末の日付) に 1 回、アプリの版ごとに送る。形を確かめるのが目的なので、
+     * 認証アプリ方式で otp_type が無いのが普通の画面でも、ログイン (バックグラウンドを含む) のたびには送らない。
+     * 送れたかは分からない (sendAsync) ので、圏外などで落ちても翌日にまた送れるよう、日付も印に入れる。読めなければ送らない。
+     */
+    public static synchronized boolean claimOtpPageShape(@NonNull String shape) {
+        try {
+            PreferenceManager prefs = PreferenceManager.getInstance();
+            String day = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date());
+            String mark = day + "|" + BuildConfig.VERSION_NAME + "(" + BuildConfig.VERSION_CODE + ")|" + shape;
+            if (mark.equals(prefs.getOtpPageShapeSent())) return false;
+            prefs.setOtpPageShapeSent(mark);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
      * 設定の「利用状況と診断情報を送る」(PreferenceManager.isUsageStatsEnabled、既定はオン)。オフなら送らない。
      * 読めなければ (初期化の前など) 送らない側に倒す。
      */

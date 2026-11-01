@@ -29,7 +29,10 @@ public final class TimetableShareStore {
     private static final String KEY_MY_NAME = "my_name";
     /** 名前の入力欄の上限。送るときは SharedTimetable.MAX_NAME で切る。 */
     public static final int MY_NAME_MAX = 20;
-    public static final String UNNAMED = "名前なし";
+    /** 名前の無い友達に付ける名前 (保存する)。 */
+    public static String unnamed() {
+        return com.shakenokirimi12.uoa_app.services.AppStrings.get(com.shakenokirimi12.uoa_app.R.string.timetable_friend_unnamed);
+    }
 
     private static TimetableShareStore instance;
 
@@ -78,7 +81,7 @@ public final class TimetableShareStore {
     @NonNull
     static TimetableFriend add(@NonNull List<TimetableFriend> friends, @NonNull SharedTimetable timetable,
                                long receivedAt, @NonNull String newId) {
-        TimetableFriend f = new TimetableFriend(newId, timetable.name.isEmpty() ? UNNAMED : timetable.name,
+        TimetableFriend f = new TimetableFriend(newId, timetable.name.isEmpty() ? unnamed() : timetable.name,
                 timetable.name, receivedAt, timetable);
         friends.add(0, f);
         return f;

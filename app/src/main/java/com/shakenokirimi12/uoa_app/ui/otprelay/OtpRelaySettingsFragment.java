@@ -1,11 +1,5 @@
 package com.shakenokirimi12.uoa_app.ui.otprelay;
 
-import android.content.ActivityNotFoundException;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,10 +7,8 @@ import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -24,9 +16,6 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.shakenokirimi12.uoa_app.R;
-import com.shakenokirimi12.uoa_app.data.PreferenceManager;
-import com.shakenokirimi12.uoa_app.services.idp.ImapOtpFetcher;
-import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayLink;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairing;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayPairingService;
 import com.shakenokirimi12.uoa_app.services.otprelay.OtpRelayStore;
@@ -39,7 +28,10 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** PC との連携 (OTP)。連携の一覧・解除・リンクの貼り付けによる連携。依頼にはいつも自動で返す。 */
+/**
+ * PC との連携 (OTP)。まだ連携していなければ手順、連携していれば一覧・解除・リンクの貼り付けによる連携。
+ * 依頼にはいつも自動で返す。1 ページずつ送る案内 (PcRelaySetupPages) は初期設定だけで使う (iOS と同じ)。
+ */
 public class OtpRelaySettingsFragment extends Fragment {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -55,50 +47,12 @@ public class OtpRelaySettingsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle state) {
         super.onViewCreated(view, state);
         container = view.findViewById(R.id.container_pairings);
-        view.findViewById(R.id.button_paste_link).setOnClickListener(v -> showPasteDialog());
-        setUpExtensionGuide(view);
-    }
-
-    /** 拡張の短縮 URL。ブラウザに合わせて Chrome ウェブストア・Firefox アドオン・案内のページに飛ぶ。 */
-    private static final String EXTENSION_URL = "https://uoa-app.shakenokiri.me/ext";
-
-    /**
-     * 「PC に拡張を入れる」。アプリからは何も送らない。メールは利用者がメールのアプリで送る
-     * (宛先は、OTP を読むのと同じ自分の大学のメール)。
-     */
-    private void setUpExtensionGuide(View view) {
-        view.findViewById(R.id.button_ext_copy).setOnClickListener(v -> {
-            ClipboardManager cm = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
-            if (cm == null) return;
-            cm.setPrimaryClip(ClipData.newPlainText("UoA 非公式拡張", EXTENSION_URL));
-            // Android 13 以降はシステムがコピーしたことを表示するので、重ねて出さない。
-            if (android.os.Build.VERSION.SDK_INT < 33) {
-                Toast.makeText(requireContext(), R.string.otp_relay_ext_copied, Toast.LENGTH_SHORT).show();
-            }
+        view.findViewById(R.id.button_paste_link).setOnClickListener(v -> PcRelaySetupPages.showPasteDialog(requireContext()));
+        view.findViewById(R.id.button_another_pc).setOnClickListener(v -> {
+            showHowtoWhenPaired = true;
+            render();
         });
-        View mail = view.findViewById(R.id.button_ext_mail);
-        String address = ImapOtpFetcher.mailboxAddress(PreferenceManager.getInstance(requireContext()).getUsername());
-        // ユーザー名が無いと宛先が決まらない。宛先なしのメールは出さない。
-        mail.setVisibility(address != null ? View.VISIBLE : View.GONE);
-        mail.setOnClickListener(v -> {
-            if (address == null) return;
-            String subject = getString(R.string.otp_relay_ext_mail_subject);
-            String body = getString(R.string.otp_relay_ext_mail_body, EXTENSION_URL);
-            // 宛先・件名・本文は mailto: (RFC 6068) だけで渡す。extras にも入れると、両方を読んで
-            // 宛先や本文を二重にするメールのアプリがある。
-            Uri mailto = Uri.parse("mailto:" + Uri.encode(address, "@") + "?subject=" + Uri.encode(subject)
-                    + "&body=" + Uri.encode(body));
-            Intent intent = new Intent(Intent.ACTION_SENDTO, mailto);
-            try {
-                startActivity(intent);
-            } catch (ActivityNotFoundException e) {
-                Toast.makeText(requireContext(), R.string.otp_relay_ext_no_mail_app, Toast.LENGTH_SHORT).show();
-            }
-        });
-        view.findViewById(R.id.button_ext_share).setOnClickListener(v -> {
-            Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, EXTENSION_URL);
-            startActivity(Intent.createChooser(send, null));
-        });
+        PcRelaySetupPages.setUpExtensionGuide(view.findViewById(R.id.card_ext_guide));
     }
 
     @Override
@@ -116,16 +70,22 @@ public class OtpRelaySettingsFragment extends Fragment {
         super.onDestroy();
     }
 
+    /** 連携しているときに「別の PC と連携する」で手順を開いたか。 */
+    private boolean showHowtoWhenPaired = false;
+
     private void render() {
         View root = getView();
         if (root == null) return;
         container.removeAllViews();
         List<OtpRelayPairing> pairings = OtpRelayStore.all();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
-        if (pairings.isEmpty()) {
-            TextView empty = (TextView) inflater.inflate(R.layout.item_otp_relay_empty, container, false);
-            container.addView(empty);
-        }
+        // 連携の有無で出し分ける (iOS と同じ)。まだなら手順を開いたまま出し、連携していれば一覧と結果を出し、手順は畳む。
+        boolean paired = !pairings.isEmpty();
+        // 解除して連携が無くなったら畳んだ状態に戻す (次に連携したときは iOS と同じく手順を畳んで出す)。
+        if (!paired) showHowtoWhenPaired = false;
+        root.findViewById(R.id.group_pairings).setVisibility(paired ? View.VISIBLE : View.GONE);
+        root.findViewById(R.id.group_howto).setVisibility(!paired || showHowtoWhenPaired ? View.VISIBLE : View.GONE);
+        root.findViewById(R.id.button_another_pc).setVisibility(paired && !showHowtoWhenPaired ? View.VISIBLE : View.GONE);
         SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy/MM/dd", Locale.JAPAN);
         for (int i = 0; i < pairings.size(); i++) {
             OtpRelayPairing p = pairings.get(i);
@@ -153,37 +113,6 @@ public class OtpRelaySettingsFragment extends Fragment {
             detail.setVisibility(last.detail != null && !last.detail.isEmpty() ? View.VISIBLE : View.GONE);
             detail.setText(last.detail);
         }
-    }
-
-    private void showPasteDialog() {
-        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_otp_relay_paste, null);
-        EditText edit = dialogView.findViewById(R.id.edit_link);
-        // クリップボードに連携用のリンクが入っていれば、最初から入れておく。
-        ClipboardManager cm = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
-        if (cm != null && cm.hasPrimaryClip()) {
-            ClipData clip = cm.getPrimaryClip();
-            if (clip != null && clip.getItemCount() > 0 && clip.getItemAt(0).getText() != null) {
-                String text = clip.getItemAt(0).getText().toString().trim();
-                if (OtpRelayLink.parse(text) != null) edit.setText(text);
-            }
-        }
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.otp_relay_paste_title)
-                .setView(dialogView)
-                .setPositiveButton("連携", (d, w) -> {
-                    String link = edit.getText().toString().trim();
-                    if (OtpRelayLink.parse(link) == null) {
-                        new MaterialAlertDialogBuilder(requireContext())
-                                .setTitle("読み取れませんでした")
-                                .setMessage(R.string.otp_relay_paste_invalid)
-                                .setPositiveButton(R.string.ok, null)
-                                .show();
-                        return;
-                    }
-                    startActivity(OtpRelayActivity.pairIntent(requireContext(), link));
-                })
-                .setNegativeButton(R.string.cancel, null)
-                .show();
     }
 
     private void confirmUnpair(OtpRelayPairing p) {

@@ -27,9 +27,30 @@ public class SeciossIdPClientTest {
         assertEquals("mail", SeciossIdPClient.otpType(html));
     }
 
+    /** otp_type が無いとき: メールを頼む仕組み (motp.cgi) があれば控えに任せ (null)、無ければ認証アプリ方式とみなす (iOS と同じ)。 */
     @Test
-    public void otpType_missing_returnsNull() {
-        assertNull(SeciossIdPClient.otpType("<html><body>ログアウト</body></html>"));
+    public void otpType_missing_dependsOnMailDispatch() {
+        String mailUi = "<button id=\"otp_send_button\"></button><script>$.post('/pub/motp.cgi', {});</script>";
+        assertNull(SeciossIdPClient.otpType(mailUi));
+        String noMailUi = "<form action=\"allotplogin.cgi\"><input name=\"password\"><input type=\"hidden\" name=\"sessid\" value=\"abc123\"></form>";
+        assertEquals(SeciossIdPClient.NO_MAIL_DISPATCH_OTP_TYPE, SeciossIdPClient.otpType(noMailUi));
+        assertEquals(OtpMethod.AUTHENTICATOR, OtpMethod.fromOtpType(SeciossIdPClient.otpType(noMailUi)));
+        assertEquals("mail", SeciossIdPClient.otpType("<script>var otp_type = 'mail';</script>"));
+    }
+
+    /** 診断に送る形は名前だけで、値 (sessid・ユーザー名) を入れない。 */
+    @Test
+    public void otpPageShape_hasNamesButNoValues() {
+        String html = "<input type=\"hidden\" name=\"sessid\" value=\"deadbeef0123\"><input type=\"hidden\" name=\"username\" value=\"s1300000\">"
+                + "<input type=\"number\" id=\"password_input\" name=\"password\"><script>var error_onload = 0; var totp_mode = 'x';</script>";
+        String shape = SeciossIdPClient.otpPageShape(html);
+        assertEquals("motp=0;inputs=password,sessid,username;vars=error_onload,totp_mode", shape);
+        assertFalse(shape.contains("deadbeef"));
+        assertFalse(shape.contains("s1300000"));
+        // data-id などの属性の値は名前として拾わない。motp.cgi は大文字でも見つける。
+        assertEquals("motp=1;inputs=otp;vars=",
+                SeciossIdPClient.otpPageShape("<input name=\"otp\" data-id=\"s1300000\"><script src=\"/pub/MOTP.CGI\"></script>"));
+        assertNull(SeciossIdPClient.otpType("<script>$.post('/pub/MOTP.CGI')</script>"));
     }
 
     @Test

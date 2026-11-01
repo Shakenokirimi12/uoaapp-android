@@ -13,14 +13,36 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
+    <!-- 段の位置の印 (iOS の OnboardingView のページの印と同じ)。 -->
+    <LinearLayout
+        android:id="@+id/dots"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_next"
         style="@style/Widget.Material3.Button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
         android:text="@string/onboarding_agree" />
+
+    <!-- PC との連携は任意。使わない人は、どのページからでも飛ばして始められる。
+         最後のページでは、ボタンの位置が上下に動かないように場所を取っておく (INVISIBLE)。 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_skip_pc"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="-12dp"
+        android:layout_marginBottom="8dp"
+        android:text="@string/onboarding_skip_pc"
+        android:visibility="gone" />
 
 </LinearLayout>

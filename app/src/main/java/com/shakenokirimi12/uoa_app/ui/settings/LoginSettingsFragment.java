@@ -44,7 +44,7 @@ public class LoginSettingsFragment extends Fragment {
     private TextView otpMethodLabel;
     private TextView otpMethodDetail;
     private View groupRelay;
-    private View rowShowSecret, dividerShowSecret, rowReregister, dividerReregister;
+    private View rowShowSecret, dividerShowSecret, rowReregister, dividerReregister, rowImportKey, dividerImportKey;
     private View cardReregisterNeeded;
     private TextView textReregisterNeededTitle;
     private TextView textReregisterNeededText;
@@ -56,6 +56,14 @@ public class LoginSettingsFragment extends Fragment {
                 if (!isAdded()) return;
                 if (result.getResultCode() == Activity.RESULT_OK) showSecret();
             });
+
+    /** 認証アプリにある鍵の取り込み (OtpKeyImport)。写真の選択は権限が要らない (Photo Picker)。 */
+    private final ActivityResultLauncher<androidx.activity.result.PickVisualMediaRequest> pickQrImage =
+            registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), uri -> {
+                if (isAdded() && prefs != null) importFlow().onImagePicked(uri);
+            });
+    /** 取り込みの手順。始めるか写真の結果が来たときに作る (ユーザー名はそのときの値)。 */
+    @Nullable private OtpKeyImportFlow importFlow;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -98,12 +106,28 @@ public class LoginSettingsFragment extends Fragment {
         cardCredentialsInvalid = view.findViewById(R.id.card_credentials_invalid);
         view.findViewById(R.id.button_credentials_invalid).setOnClickListener(v -> showEditAccountDialog());
         view.findViewById(R.id.button_reregister_needed).setOnClickListener(v -> reregister());
+        // 認証アプリにはもう大学のアカウントがある人は、登録し直さずに鍵を取り込める。
+        rowImportKey = view.findViewById(R.id.row_import_key);
+        dividerImportKey = view.findViewById(R.id.divider_import_key);
+        rowImportKey.setOnClickListener(v -> showImportGuide());
+        view.findViewById(R.id.button_import_key_needed).setOnClickListener(v -> showImportGuide());
 
         groupRelay = view.findViewById(R.id.group_relay);
         view.findViewById(R.id.row_otp_relay).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.action_login_settings_to_otp_relay));
 
         render();
+    }
+
+    @Override
+    public void onDestroyView() {
+        // 回転などで画面が作り直される。出している手順のダイアログを閉じる (閉じないと前の Activity に残って
+        // WindowLeaked になる)。写真を選んでいる間の結果は、作り直した画面の pickQrImage が新しい手順で読む。
+        if (importFlow != null) {
+            importFlow.dismiss();
+            importFlow = null;
+        }
+        super.onDestroyView();
     }
 
     @Override
@@ -133,8 +157,9 @@ public class LoginSettingsFragment extends Fragment {
         boolean authenticator = known && method == OtpMethod.AUTHENTICATOR;
         setVisible(authenticator && hasSecret(), rowShowSecret, dividerShowSecret);
         setVisible(authenticator, rowReregister, dividerReregister);
-        // キーが無い・止めているのは普通の状態ではない (登録し直しが要る)。上に案内を出す。入口は起動時の案内
-        // (AuthenticatorKeyPrompt) と同じ。
+        // 方式が分からないまま (otp_type が読めない) でも、認証アプリにある鍵は取り込める。メール方式の人には出さない。
+        setVisible((authenticator || !known) && !username.isEmpty(), rowImportKey, dividerImportKey);
+        // キーが無い・止めているのは普通の状態ではない (登録し直しが要る)。上に案内を出す。
         boolean suspended = authenticator && prefs.isTotpSuspended(username);
         cardReregisterNeeded.setVisibility(authenticator && (!hasSecret() || suspended) ? View.VISIBLE : View.GONE);
         textReregisterNeededTitle.setText(suspended ? R.string.auth_key_suspended_title : R.string.login_reregister_needed_title);
@@ -144,16 +169,68 @@ public class LoginSettingsFragment extends Fragment {
         groupRelay.setVisibility(View.VISIBLE);
     }
 
-    private void reregister() {
-        // 登録はパスワードでのログインから始まる。無い・誤りと分かっているときは始めない (誤ったパスワードで
-        // 試し続けると大学側でロックされうる)。
-        if (!prefs.hasCredentials() || prefs.isCredentialsInvalid()) {
-            Toast.makeText(requireContext(), prefs.hasCredentials()
-                    ? R.string.otp_switch_blocked_credentials : R.string.otp_switch_blocked_no_account,
-                    Toast.LENGTH_LONG).show();
-            return;
+    /** 使っている認証アプリを選んでもらい、鍵を取り込む (OtpKeyImportFlow)。 */
+    private void showImportGuide() {
+        // 前の手順の途中のもの (ユーザー名を含む) を持ち越さない。
+        importFlow = null;
+        importFlow().start();
+    }
+
+    /**
+     * 取り込みの手順。Fragment が作り直されたら (回転など) 作り直す。写真を選んでいる間に作り直されても、
+     * 結果は新しい Fragment の pickQrImage に返り、新しい手順で読む。
+     */
+    @NonNull
+    private OtpKeyImportFlow importFlow() {
+        if (importFlow == null) {
+            importFlow = new OtpKeyImportFlow(requireContext(), prefs, prefs.getUsername(), new OtpKeyImportFlow.Host() {
+                @Override public boolean isAlive() { return isAdded(); }
+
+                @Override public void launchImagePicker() {
+                    pickQrImage.launch(new androidx.activity.result.PickVisualMediaRequest.Builder()
+                            .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                            .build());
+                }
+
+                @Override public void onSaved() {
+                    importFlow = null;
+                    render();
+                    new MaterialAlertDialogBuilder(requireContext())
+                            .setTitle(R.string.otp_import_done_title)
+                            .setMessage(R.string.otp_import_done_text)
+                            .setPositiveButton(android.R.string.ok, null)
+                            .show();
+                }
+
+                @Override public void onClosed() { importFlow = null; }
+
+                @Override public boolean offersReregistration() { return true; }
+
+                @Override public void reregister() {
+                    importFlow = null;
+                    LoginSettingsFragment.this.reregister();
+                }
+            });
         }
+        return importFlow;
+    }
+
+    private void reregister() {
+        if (!canStartReregistration(requireContext(), prefs)) return;
         openRegistration(OtpMethod.AUTHENTICATOR);
+    }
+
+    /**
+     * 登録し直しを始めてよいか。登録はパスワードでのログインから始まる。無い・誤りと分かっているときは始めず、
+     * 理由をトーストで出す (誤ったパスワードで試し続けると大学側でロックされうる)。ログイン中の選択
+     * (AuthenticatorKeyChoice) も同じ判断を使う。
+     */
+    public static boolean canStartReregistration(@NonNull Context context, @NonNull PreferenceManager prefs) {
+        if (prefs.hasCredentials() && !prefs.isCredentialsInvalid()) return true;
+        Toast.makeText(context, prefs.hasCredentials()
+                ? R.string.otp_switch_blocked_credentials : R.string.otp_switch_blocked_no_account,
+                Toast.LENGTH_LONG).show();
+        return false;
     }
 
     private static void setVisible(boolean visible, View... views) {

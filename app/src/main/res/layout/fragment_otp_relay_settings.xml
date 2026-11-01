@@ -1,192 +1,174 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- PC との連携 (OTP)。iOS の OTPRelaySettingsView と同じ構成。 -->
-<androidx.core.widget.NestedScrollView
+<!-- PC との連携 (OTP)。iOS の OTPRelaySettingsView と同じ構成。連携の有無で出し分ける。
+     まだ連携していなければ手順 (group_howto) を開いたまま出し、連携していれば一覧 (group_pairings) を出す。 -->
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:clipToPadding="false"
-    android:paddingBottom="24dp">
+    android:layout_height="match_parent">
 
-    <LinearLayout
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_paired"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp">
 
-        <TextView
-            style="@style/Widget.Uoa.ListRow.Supporting"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingStart="20dp"
-            android:paddingTop="12dp"
-            android:paddingEnd="20dp"
-            android:text="@string/otp_relay_intro" />
+            android:orientation="vertical">
 
-        <!-- PC に拡張を入れる。短縮 URL はブラウザに合わせてストアか案内のページに飛ぶ。 -->
-        <TextView
-            style="@style/Widget.Uoa.SectionHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/otp_relay_ext_title" />
+            <TextView
+                style="@style/Widget.Uoa.ListRow.Supporting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="20dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="20dp"
+                android:text="@string/otp_relay_intro" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp">
-
+            <!-- 連携の有無で出し分ける (iOS の OTPRelaySettingsView と同じ)。連携していれば一覧と結果を先に出す。 -->
             <LinearLayout
-                style="@style/Widget.Uoa.ListRow.Container"
+                android:id="@+id/group_pairings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
                 <TextView
+                    style="@style/Widget.Uoa.SectionHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/otp_relay_section_pairings" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp">
+
+                    <LinearLayout
+                        android:id="@+id/container_pairings"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:id="@+id/header_last_result"
+                    style="@style/Widget.Uoa.SectionHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/otp_relay_section_last_result"
+                    android:visibility="gone" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_last_result"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        style="@style/Widget.Uoa.ListRow.Container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/text_last_summary"
+                            style="@style/Widget.Uoa.ListRow.Title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <TextView
+                            android:id="@+id/text_last_when"
+                            style="@style/Widget.Uoa.ListRow.Supporting"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <TextView
+                            android:id="@+id/text_last_detail"
+                            style="@style/Widget.Uoa.ListRow.Supporting"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="monospace"
+                            android:textIsSelectable="true"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_another_pc"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/otp_relay_another_pc" />
+            </LinearLayout>
+
+            <!-- 連携のしかた。まだの人にはいつも出し、連携した人は「別の PC と連携する」で開く。 -->
+            <LinearLayout
+                android:id="@+id/group_howto"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/Widget.Uoa.SectionHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/otp_relay_section_howto" />
+
+                <TextView
                     style="@style/Widget.Uoa.ListRow.Supporting"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/otp_relay_ext_lead" />
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:paddingBottom="8dp"
+                    android:text="@string/otp_relay_step1" />
 
-                <LinearLayout
+                <!-- PC に拡張機能を入れる。案内のページの手順 1 と同じもの。 -->
+                <include
+                    android:id="@+id/card_ext_guide"
+                    layout="@layout/view_otp_relay_extension_guide"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp" />
 
-                    <TextView
-                        android:id="@+id/text_ext_url"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/otp_relay_ext_url_display"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
-                        android:textIsSelectable="true" />
+                <TextView
+                    style="@style/Widget.Uoa.ListRow.Supporting"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:lineSpacingExtra="4dp"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:text="@string/otp_relay_steps_rest" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_ext_copy"
-                        style="@style/Widget.Material3.Button.IconButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:contentDescription="@string/otp_relay_ext_copy"
-                        app:icon="@drawable/ic_clipboard" />
-                </LinearLayout>
-
-                <!-- 横に並べると「大学のメールに送る」が 2 行に折れるので、縦に並べる。 -->
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_ext_mail"
+                    android:id="@+id/button_paste_link"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/otp_relay_ext_mail"
-                    app:icon="@drawable/ic_mail" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_ext_share"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/otp_relay_ext_share" />
-
-                <TextView
-                    style="@style/Widget.Uoa.ListRow.Supporting"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/otp_relay_ext_search" />
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginEnd="16dp"
+                    android:text="@string/otp_relay_paste_link" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_paste_link"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="16dp"
-            android:text="@string/otp_relay_paste_link" />
-
-        <TextView
-            style="@style/Widget.Uoa.SectionHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/otp_relay_section_pairings" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp">
-
-            <LinearLayout
-                android:id="@+id/container_pairings"
+            <TextView
+                style="@style/Widget.Uoa.ListRow.Supporting"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical" />
-        </com.google.android.material.card.MaterialCardView>
+                android:paddingStart="20dp"
+                android:paddingTop="16dp"
+                android:paddingEnd="20dp"
+                android:text="@string/otp_relay_privacy" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 
-        <TextView
-            android:id="@+id/header_last_result"
-            style="@style/Widget.Uoa.SectionHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/otp_relay_section_last_result"
-            android:visibility="gone" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_last_result"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:visibility="gone">
-
-            <LinearLayout
-                style="@style/Widget.Uoa.ListRow.Container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/text_last_summary"
-                    style="@style/Widget.Uoa.ListRow.Title"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-                <TextView
-                    android:id="@+id/text_last_when"
-                    style="@style/Widget.Uoa.ListRow.Supporting"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-                <TextView
-                    android:id="@+id/text_last_detail"
-                    style="@style/Widget.Uoa.ListRow.Supporting"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="monospace"
-                    android:textIsSelectable="true"
-                    android:visibility="gone" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <TextView
-            style="@style/Widget.Uoa.SectionHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/otp_relay_section_howto" />
-
-        <TextView
-            style="@style/Widget.Uoa.ListRow.Supporting"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:lineSpacingExtra="4dp"
-            android:paddingStart="20dp"
-            android:paddingEnd="20dp"
-            android:text="@string/otp_relay_howto" />
-    </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+</FrameLayout>

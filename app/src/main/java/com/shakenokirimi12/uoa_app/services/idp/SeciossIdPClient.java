@@ -714,7 +714,10 @@ public final class SeciossIdPClient {
         }
 
         // 方式は IdP 側の登録が正。この画面の otp_type で選ぶ (読めなければ控え。OtpProviders)。
-        OtpProvider provider = otp.forOtpPage(otpType(current.html));
+        String otpType = otpType(current.html);
+        // otp_type が書かれていない画面は、形 (欄と変数の名前だけ) を診断に送る (同じ形は 1 日 1 回)。認証アプリ方式の画面の中身はまだ確かめていない。
+        if (otpType == null || NO_MAIL_DISPATCH_OTP_TYPE.equals(otpType)) reportOtpPageShape(current.html);
+        OtpProvider provider = otp.forOtpPage(otpType);
         try {
             return submitOtp(provider, current, otpSessid, otpBack, otpUsername);
         } finally {
@@ -841,10 +844,72 @@ public final class SeciossIdPClient {
      * メール方式のアカウントで 'mail' (2026-09-07 の HAR と uoa-unofficial-extension の
      * fixtures/idp/allotplogin.html で確認)。認証アプリ方式のアカウントで出る値は未確認なので、
      * 値の解釈は呼び出し側に任せ、書かれている文字列をそのまま返す (iOS の IdPPageParser.otpType と同じ)。
+     * <p>
+     * otp_type が無いときは、メールを送る仕組みがあるかで分ける (SPEC.md 3.1)。メール方式の画面は、開くとすぐ
+     * motp.cgi にメールを頼む (doSend。otp_type もその中で使う)。その仕組みが無い OTP 画面ではメールのコードは
+     * 使えないので {@link #NO_MAIL_DISPATCH_OTP_TYPE} を返す (認証アプリ方式とみなす)。仕組みがあるのに読めなければ null。
+     * 2026-10-30、設定済みの認証アプリのアカウントで otp_type が読めず、メール方式として扱ってログインに失敗していた。
      */
     @Nullable
     static String otpType(@NonNull String html) {
-        return firstGroup("var\\s+otp_type\\s*=\\s*['\"]([^'\"]*)['\"]", html);
+        String value = firstGroup("var\\s+otp_type\\s*=\\s*['\"]([^'\"]*)['\"]", html);
+        if (value != null) return value;
+        return hasMailDispatch(html) ? null : NO_MAIL_DISPATCH_OTP_TYPE;
+    }
+
+    /** メールを送る仕組み (motp.cgi) があるか。大文字小文字は区別しない。iOS の hasMailDispatch と同じ。 */
+    private static boolean hasMailDispatch(@NonNull String html) {
+        return html.toLowerCase(java.util.Locale.ROOT).contains("motp.cgi");
+    }
+
+    /** otp_type が無く、メールを送る仕組みも無い OTP 画面 (otpType を参照)。OtpMethod.fromOtpType で認証アプリになる。 */
+    static final String NO_MAIL_DISPATCH_OTP_TYPE = "no-mail-dispatch";
+
+    /**
+     * 診断用の OTP 画面の形。入力欄の name と、JS の var の名前と、メールを送る仕組みの有無だけで、値は入れない
+     * (sessid やユーザー名を送らない)。otp_type が読めない画面の中身を確かめるのに使う。iOS の otpPageShape と同じ。
+     */
+    @NonNull
+    static String otpPageShape(@NonNull String html) {
+        java.util.TreeSet<String> inputs = names("(?i)<(?:input|button|select)[^>]*(?<![-\\w])(?:name|id)\\s*=\\s*['\"]([A-Za-z0-9_\\-]+)['\"]", html);
+        java.util.TreeSet<String> vars = names("\\bvar\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*=", html);
+        String shape = "motp=" + (hasMailDispatch(html) ? 1 : 0) + ";inputs=" + String.join(",", inputs)
+                + ";vars=" + String.join(",", vars);
+        return shape.length() > 400 ? shape.substring(0, 400) : shape;
+    }
+
+    private static java.util.TreeSet<String> names(String pattern, String html) {
+        java.util.TreeSet<String> out = new java.util.TreeSet<>();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(pattern).matcher(html);
+        while (m.find()) {
+            String name = m.group(1);
+            out.add(name.length() > 30 ? name.substring(0, 30) : name);
+        }
+        return out;
+    }
+
+    /** otp_type が書かれていない画面の形を診断に送る。送れなくてもログインは続ける (単体テストでは android の API が使えない)。 */
+    private static void reportOtpPageShape(@NonNull String html) {
+        try {
+            String shape = otpPageShape(html);
+            if (!com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.enabled()
+                    || !com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.claimOtpPageShape(shape)) return;
+            com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.sendAsync(java.util.Collections.singletonList(
+                    com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.event("IdPOtpPage", null,
+                            com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.CONTEXT_LOGIN, "unknown",
+                            com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.supportId(),
+                            java.util.Collections.emptyMap(), shapeExtra(shape), java.util.Collections.emptyList(),
+                            com.shakenokirimi12.uoa_app.services.diagnostics.OtpDiagnostics.Build.current(),
+                            System.currentTimeMillis())));
+        } catch (RuntimeException e) {
+            // 上の理由で握る。ログインの結果には関わらない。
+        }
+    }
+
+    private static com.google.gson.JsonObject shapeExtra(String shape) {
+        com.google.gson.JsonObject extra = new com.google.gson.JsonObject();
+        extra.addProperty("shape", shape);
+        return extra;
     }
 
     /**
