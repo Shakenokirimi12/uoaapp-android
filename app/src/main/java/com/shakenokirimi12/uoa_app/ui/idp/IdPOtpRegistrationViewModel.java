@@ -156,9 +156,10 @@ public final class IdPOtpRegistrationViewModel extends ViewModel {
     public void proceedAfterConfirmation() {
         stage.setValue(Stage.WAITING_FOR_CODE);
         if (method != Method.EMAIL) return;
-        // メールの自動読み取りは、チュートリアルで明示的に同意した場合だけ。未同意なら手入力に任せる。
-        // iOS (IdPOTPRegistrationFlow) はこの画面だけ同意を見ずに常に取りに行くので、そちらが直るまで
-        // 挙動が食い違う。同意を取っていない受信箱へ接続しない側に揃える。
+        // メールの自動読み取りは otp_auto_fetch_enabled に従う。既定は true (PreferenceManager 参照、
+        // 2026-09-15 の判断) で、IdP チュートリアルで切った人だけ手入力になる。
+        // iOS (IdPOTPRegistrationFlow) はこの画面だけ設定を見ずに常に取りに行くので、そちらが直るまで
+        // 挙動が食い違う。切った人の受信箱へは接続しない側に揃える。
         if (!com.shakenokirimi12.uoa_app.data.PreferenceManager.getInstance().isOtpAutoFetchEnabled()) return;
         autoFetchingEmailCode.setValue(true);
         executor.execute(() -> {

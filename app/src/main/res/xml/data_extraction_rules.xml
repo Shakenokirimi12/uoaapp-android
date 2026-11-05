@@ -1,19 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Android 12 以降のバックアップと機種変更時の転送 (android:dataExtractionRules)。
+   除外理由は backup_rules.xml と同じ。ファイル名は PreferenceManager.SECURE_PREF_NAME と一致させること。
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="uoa_app_secure_prefs.xml" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="uoa_app_secure_prefs.xml" />
     </device-transfer>
-    -->
 </data-extraction-rules>

@@ -1,13 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older that API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Android 11 以前の自動バックアップ (android:fullBackupContent)。
+   暗号化 prefs は Keystore の鍵と一緒でないと復号できず、鍵は端末の外へ出ない。ファイルだけ復元されると
+   開けなくなるので除外する (中身はパスワードと IdP/SP のセッション cookie)。
+   ファイル名は PreferenceManager.SECURE_PREF_NAME と一致させること。
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="sharedpref" path="uoa_app_secure_prefs.xml" />
 </full-backup-content>

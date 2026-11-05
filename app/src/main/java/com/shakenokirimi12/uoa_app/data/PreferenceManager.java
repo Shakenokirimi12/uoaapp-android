@@ -43,6 +43,15 @@ public class PreferenceManager {
     private static final String KEY_IDP_SSO_COOKIE_HEADER = "idp_sso_cookie_header";
     private static final String KEY_MOODLE_SESSION_COOKIE_HEADER = "moodle_session_cookie_header";
 
+    /** 暗号化 prefs のファイル名。res/xml のバックアップ除外指定と一致させること。 */
+    private static final String SECURE_PREF_NAME = "uoa_app_secure_prefs";
+
+    /** 暗号化側にだけ置く値。平文 prefs に見つかったら移して消す。 */
+    private static final String[] SECRET_KEYS = {
+            KEY_USERNAME, KEY_PASSWORD, KEY_MOODLE_TOKEN, KEY_REVIEW_USER_ID,
+            KEY_CS_IDP_SESSION_COOKIE_HEADER, KEY_IDP_SSO_COOKIE_HEADER, KEY_MOODLE_SESSION_COOKIE_HEADER,
+    };
+
     private static PreferenceManager instance;
     private final SharedPreferences prefs;
     private SharedPreferences encryptedPrefs;
@@ -50,49 +59,65 @@ public class PreferenceManager {
     private PreferenceManager(Context context) {
         Context appContext = context.getApplicationContext();
         prefs = appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        
-        try {
-            String masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
-            encryptedPrefs = EncryptedSharedPreferences.create(
-                    "uoa_app_secure_prefs",
-                    masterKeyAlias,
-                    appContext,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            );
-        } catch (GeneralSecurityException | IOException e) {
-            e.printStackTrace();
-            encryptedPrefs = prefs; // Fallback
-        }
-
+        encryptedPrefs = openSecurePrefs(appContext);
         migrateLegacyCredentials();
     }
 
-    private void migrateLegacyCredentials() {
-        if (prefs.contains(KEY_PASSWORD)) {
-            String legacyUsername = prefs.getString(KEY_USERNAME, "");
-            String legacyPassword = prefs.getString(KEY_PASSWORD, "");
-            String legacyMoodleToken = prefs.getString(KEY_MOODLE_TOKEN, "");
-
-            SharedPreferences.Editor secEdit = encryptedPrefs.edit();
-            if (!legacyUsername.isEmpty()) {
-                secEdit.putString(KEY_USERNAME, legacyUsername);
-            }
-            if (!legacyPassword.isEmpty()) {
-                secEdit.putString(KEY_PASSWORD, legacyPassword);
-            }
-            if (!legacyMoodleToken.isEmpty()) {
-                secEdit.putString(KEY_MOODLE_TOKEN, legacyMoodleToken);
-            }
-            secEdit.apply();
-
-            // Delete plain text legacy credentials
-            prefs.edit()
-                    .remove(KEY_USERNAME)
-                    .remove(KEY_PASSWORD)
-                    .remove(KEY_MOODLE_TOKEN)
-                    .apply();
+    /**
+     * 暗号化 prefs を開く。失敗しても平文 prefs には絶対に落とさない。
+     *
+     * 典型的な失敗は、バックアップ・機種変更で secure prefs のファイルだけが復元され、それを暗号化した
+     * Keystore の鍵が無い場合 (鍵は端末の外へ出ない)。ファイルはもう誰にも復号できないので、消して作り直す。
+     * それでも開けなければメモリ上だけに持つ (再起動で消え、ログインし直しになるが平文では残らない)。
+     */
+    private static SharedPreferences openSecurePrefs(Context appContext) {
+        try {
+            return createEncryptedPrefs(appContext);
+        } catch (GeneralSecurityException | IOException | RuntimeException e) {
+            android.util.Log.w("PreferenceManager", "secure prefs を開けないので作り直す: " + e.getClass().getSimpleName());
         }
+        appContext.deleteSharedPreferences(SECURE_PREF_NAME);
+        try {
+            return createEncryptedPrefs(appContext);
+        } catch (GeneralSecurityException | IOException | RuntimeException e) {
+            android.util.Log.e("PreferenceManager", "secure prefs を作り直せない。メモリ上だけで保持する: " + e.getClass().getSimpleName());
+            return new InMemorySharedPreferences();
+        }
+    }
+
+    private static SharedPreferences createEncryptedPrefs(Context appContext) throws GeneralSecurityException, IOException {
+        String masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
+        return EncryptedSharedPreferences.create(
+                SECURE_PREF_NAME,
+                masterKeyAlias,
+                appContext,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        );
+    }
+
+    /**
+     * 平文 prefs に残っている資格情報を暗号化側へ移して消す。昔の版 (平文保存) と、以前の
+     * 「暗号化に失敗したら平文 prefs をそのまま使う」フォールバックで書かれたものの両方を拾う。
+     * 暗号化側に既に値があればそちらを優先する (平文側は古い写しとみなして消すだけ)。
+     */
+    private void migrateLegacyCredentials() {
+        SharedPreferences.Editor secEdit = encryptedPrefs.edit();
+        SharedPreferences.Editor plainEdit = prefs.edit();
+        boolean found = false;
+        for (String key : SECRET_KEYS) {
+            if (!prefs.contains(key)) continue;
+            found = true;
+            String value = prefs.getString(key, "");
+            if (!value.isEmpty() && !encryptedPrefs.contains(key)) {
+                secEdit.putString(key, value);
+            }
+            plainEdit.remove(key);
+        }
+        if (!found) return;
+        // 暗号化側への書き込みが確定してから平文を消す (順序が逆だと途中で落ちたとき資格情報を失う)。
+        secEdit.commit();
+        plainEdit.commit();
     }
 
     public static synchronized PreferenceManager getInstance(Context context) {
