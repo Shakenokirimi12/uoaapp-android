@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.PersistableBundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -35,6 +36,9 @@ import com.shakenokirimi12.uoa_app.data.PreferenceManager;
  * 登録操作自体は学内ネットワークからのアクセスでないと SECIOSS 側の仕様で通らない。
  */
 public class IdPOtpRegistrationFragment extends Fragment {
+    /** ClipDescription.EXTRA_IS_SENSITIVE (API 33)。minSdk 26 でも参照できるよう値を直接持つ。 */
+    private static final String EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE";
+
     private IdPOtpRegistrationViewModel viewModel;
 
     private View groupProgress, groupStatus, groupMethod, groupEmail, groupConfirm, groupCode, groupAutoFetch, groupCodeInput;
@@ -184,8 +188,15 @@ public class IdPOtpRegistrationFragment extends Fragment {
     private void openAuthenticatorApp() {
         String url = viewModel.otpauthUrl();
         if (url == null) return;
+        Intent view = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        // URL には TOTP のシークレットがそのまま入っている。otpauth:// を受け取ると宣言したアプリなら
+        // どれでも受け取れるので、既定アプリに黙って渡さず、毎回ユーザーに渡す先を選ばせる。
+        if (view.resolveActivity(requireContext().getPackageManager()) == null) {
+            showNoAuthenticatorAppDialog();
+            return;
+        }
         try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            startActivity(Intent.createChooser(view, "シークレットを渡す認証アプリを選択"));
         } catch (ActivityNotFoundException e) {
             showNoAuthenticatorAppDialog();
         }
@@ -201,7 +212,13 @@ public class IdPOtpRegistrationFragment extends Fragment {
             builder.setPositiveButton("シークレットをコピー", (d, w) -> {
                 ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
                 if (clipboard != null) {
-                    clipboard.setPrimaryClip(ClipData.newPlainText("otp secret", secret));
+                    ClipData clip = ClipData.newPlainText("otp secret", secret);
+                    // 機密として印を付ける。Android 13 以降はコピー時のプレビューで中身が伏せられ、
+                    // キーボードのクリップボード候補にも出なくなる (それより前の OS では無視される)。
+                    PersistableBundle extras = new PersistableBundle();
+                    extras.putBoolean(EXTRA_IS_SENSITIVE, true);
+                    clip.getDescription().setExtras(extras);
+                    clipboard.setPrimaryClip(clip);
                     Toast.makeText(requireContext(), "コピーしました", Toast.LENGTH_SHORT).show();
                 }
             });
